@@ -267,7 +267,7 @@ Plans:
   4. `make run-tests-python` and `make run-tests-angular` both exit 0 in CI
 **Plans:** 1 plan
 Plans:
-- [ ] 56-01-PLAN.md -- TBD
+- [ ] 56-01-PLAN.md -- Strengthen Python assertions and add E2E Sonarr connection failure spec
 
 ### Phase 57: README & Community Health
 **Goal**: A first-time visitor to `thejuran/seedsyncarr` immediately understands the value, can install in under 5 minutes, and has clear paths for getting help or contributing
