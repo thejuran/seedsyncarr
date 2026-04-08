@@ -323,17 +323,13 @@ await expect(page.locator('.notification.danger')).toBeVisible({ timeout: 10000 
 | A1 | The E2E unhappy-path test can restore valid config by calling the config API at the end of the test and restarting the app, without breaking subsequent specs | Common Pitfalls / Code Examples | If restart takes too long or leaves the app in a bad state, subsequent tests may fail — mitigate with explicit wait for `server_up` and `remote_scan_done` |
 | A2 | Playwright `page.request.get()` is available in the Playwright version installed in the E2E container | Code Examples | If the Playwright version is old enough to not have the request fixture, the pattern needs adjustment — but `@playwright/test` is installed via npm in the E2E Dockerfile, likely recent |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Which Python test methods have no assertions?**
-   - What we know: Surface grep found `pass` in stub classes; `test_add_listener` confirmed as assertion-free
-   - What's unclear: Whether a full automated grep for `def test_` methods with no `assert`/`Mock.assert_*`/`assertEqual` calls exists anywhere else
-   - Recommendation: The planner should instruct the executor to grep for test methods containing only `pass` or no assert statements, rather than assuming the above list is exhaustive
+   - RESOLVED: Only `test_add_listener` in `test_model.py` is genuinely assertion-free. Others are intentional "no crash" tests, timeout-based lifecycle tests, or use `log_capture.check()`. Plan Task 1 targets only `test_add_listener`.
 
 2. **What UI element represents the error state in the Settings page?**
-   - What we know: There are `.notification.danger` and `.notification.warning` toast elements used in bulk-actions.spec.ts
-   - What's unclear: Whether a bad remote_address surfaces as a toast, a status indicator in the UI, or only in the logs
-   - Recommendation: The safest E2E unhappy path is the Settings page Sonarr/Radarr "Test Connection" button with an invalid URL — the config handler already returns a structured error for `requests.exceptions.ConnectionError` (confirmed in `test_config_handler.py`) and the Angular UI must render it somewhere
+   - RESOLVED: `.test-result` div with `[class.text-danger]` binding from `settings-page.component.html`. Plan Task 2 uses Playwright locator for `.test-result.text-danger` after clicking "Test Connection" with an unreachable Sonarr URL.
 
 ## Metadata
 
