@@ -274,19 +274,15 @@ None — linting infrastructure already exists. No new test files needed. HARD-0
 | A1 | `TemplateRef<unknown>` is the correct type for an untyped `@ViewChild` template ref | Code Examples | Minor — Angular may require `TemplateRef<any>` in some edge cases; test will catch it |
 | A2 | `SseFrame` interface approach compiles cleanly with existing SSE observable chain | Code Examples | Minor — may need `unknown` instead of `string` for data field; compile will catch |
 | A3 | Enabling Dependabot on new repo will produce zero open alerts immediately | Dependabot section | Medium — if upstream dependencies have new vulnerabilities, alerts could appear; need triage |
-| A4 | Removing old copyright headers carries no legal obligation for this project | Comment Quality | Medium — original code was MIT/public per PROJECT.md, but user should confirm before wholesale removal |
+| A4 | Removing old copyright headers carries no legal obligation for this project | Comment Quality | Low — ACKNOWLEDGMENTS.md already credits Inderpreet Singh at project level; Apache 2.0 LICENSE.txt covers the project |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Copyright header removal scope**
-   - What we know: 72 Python source files carry `# Copyright 2017, Inderpreet Singh, All rights reserved.`
-   - What's unclear: Whether the original license requires attribution in source files, or whether LICENSE.txt + ACKNOWLEDGMENTS.md is sufficient
-   - Recommendation: Check ACKNOWLEDGMENTS.md and LICENSE.txt. If attribution is already handled at project level, removing per-file headers is clean. If not, replace with a minimal attribution note rather than deleting entirely.
+1. **Copyright header removal scope** — RESOLVED
+   - ACKNOWLEDGMENTS.md already credits Inderpreet Singh ("SeedSyncarr is a maintained fork of the original project created by **Inderpreet Singh**") with a link to the original repository. The project is licensed under Apache 2.0 (LICENSE.txt). Per-file `# Copyright 2017, Inderpreet Singh` headers are redundant — project-level attribution in ACKNOWLEDGMENTS.md is sufficient. Safe to remove all per-file headers.
 
-2. **`--max-warnings 0` in CI**
-   - What we know: The CI `npm run lint` passes today with 25 warnings (exits 0)
-   - What's unclear: Whether to add `--max-warnings 0` to the lint script in package.json, or only to the CI step
-   - Recommendation: Add it to the CI step (`npm run lint -- --max-warnings 0`) so local dev still gets warnings as feedback, but CI enforces zero. Alternatively add to the package.json lint script directly.
+2. **`--max-warnings 0` placement** — RESOLVED
+   - Adding `--max-warnings 0` directly to the `package.json` lint script (not just CI). This ensures both local `npm run lint` and CI enforce zero warnings consistently. Plan 02 Task 2 implements this in `src/angular/package.json`.
 
 ## Sources
 

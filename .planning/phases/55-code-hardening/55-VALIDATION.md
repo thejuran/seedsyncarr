@@ -38,10 +38,11 @@ created: 2026-04-08
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 55-01-01 | 01 | 1 | HARD-01 | — | N/A | grep | `git ls-files \| grep -i planning` | ✅ | ⬜ pending |
-| 55-01-02 | 01 | 1 | HARD-02 | — | N/A | grep | `grep -rn "# Copyright 2017" src/python/` | ✅ | ⬜ pending |
-| 55-02-01 | 02 | 1 | HARD-06 | — | N/A | lint | `cd src/angular && npm run lint` | ✅ | ⬜ pending |
-| 55-03-01 | 03 | 2 | HARD-05 | — | N/A | lint | `ruff check src/python` | ✅ | ⬜ pending |
+| 55-01-01 | 01 | 1 | HARD-01 | — | N/A | grep | `grep -rn "# Copyright 2017" src/python/` | ✅ | ⬜ pending |
+| 55-01-02 | 01 | 1 | HARD-01 | — | N/A | grep + lint | `python3 -m ruff check src/python` | ✅ | ⬜ pending |
+| 55-02-01a | 02 | 1 | HARD-06 | — | N/A | lint + test | `cd src/angular && npm run lint && npm test -- --watch=false` | ✅ | ⬜ pending |
+| 55-02-01b | 02 | 1 | HARD-06, HARD-01 | — | N/A | lint + test | `cd src/angular && npm run lint && npm test -- --watch=false` | ✅ | ⬜ pending |
+| 55-02-02 | 02 | 1 | HARD-06 | T-55-02 | Dependabot enabled, zero alerts | lint + API | `cd src/angular && npm run lint && gh api repos/thejuran/seedsyncarr/dependabot/alerts --jq 'length'` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -58,7 +59,7 @@ created: 2026-04-08
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
 | Code style consistency | HARD-05 | Subjective assessment | Review files for consistent structure |
-| Comment quality | HARD-02 | Requires human judgment | Spot-check comments describe "why" not "what" |
+| Comment quality | HARD-01 | Requires human judgment | Spot-check comments describe "why" not "what" |
 
 ---
 
