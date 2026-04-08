@@ -237,7 +237,7 @@ Plans:
   1. `github.com/thejuran/seedsync` shows the "Archived" banner and accepts no new issues or pull requests
   2. The `thejuran/seedsync` repository description or README contains a visible pointer to `thejuran/seedsyncarr`
   3. A user following the old repo URL can find the new project in one click without any prior knowledge
-**Plans:** 1 plan
+**Plans:** 2 plans
 Plans:
 - [x] 54-01-PLAN.md -- Update README with deprecation notice, archive repository, verify one-click discoverability
 
@@ -265,7 +265,7 @@ Plans:
   2. At least one E2E test covers a failed operation path (e.g., invalid config, connection failure, or download error) confirming the UI surfaces the error state
   3. Coverage threshold (`fail_under`) continues to pass -- no regression from hardening changes
   4. `make run-tests-python` and `make run-tests-angular` both exit 0 in CI
-**Plans:** 1 plan
+**Plans:** 2 plans
 Plans:
 - [ ] 56-01-PLAN.md -- Strengthen Python assertions and add E2E Sonarr connection failure spec
 
@@ -281,9 +281,10 @@ Plans:
   5. `CONTRIBUTING.md`, `SECURITY.md`, and a `CHANGELOG.md` (or GitHub Releases note) are present and non-empty
   6. The repository has at least the topic tags: `seedbox`, `sonarr`, `radarr`, `lftp`, `arr`, `self-hosted`, `file-sync`
   7. GitHub Discussions is enabled with at least a Support category visible to visitors
-**Plans:** 1 plan
+**Plans:** 2 plans
 Plans:
-- [ ] 57-01-PLAN.md -- TBD
+- [ ] 57-01-PLAN.md -- README rewrite, issue template conversion, CONTRIBUTING.md, CHANGELOG.md, screenshot
+- [ ] 57-02-PLAN.md -- Enable GitHub Discussions, set topic tags, human-verify presentation
 **UI hint**: yes
 
 ### Phase 58: Docs Site
@@ -296,7 +297,7 @@ Plans:
   3. The docs site includes a configuration reference covering all environment variables and settings fields
   4. The Sonarr/Radarr webhook setup guide exists as a dedicated page with step-by-step instructions for connecting at least one *arr app
   5. A FAQ or troubleshooting page addresses at least three common problems (e.g., connection refused, HMAC mismatch, arm64 test caveat)
-**Plans:** 1 plan
+**Plans:** 2 plans
 Plans:
 - [ ] 58-01-PLAN.md -- TBD
 
@@ -309,7 +310,7 @@ Plans:
   2. Follow-up posts to Servarr Discord, r/sonarr, and r/radarr are published 24-48 hours after the Reddit post, each customized for that audience
   3. LNCH-03 (awesome-selfhosted PR) is documented as deferred with an August 2026 calendar reminder -- not submitted early
   4. LNCH-04 (Awesomarr PR) is documented as deferred pending 50+ GitHub stars -- not submitted early
-**Plans:** 1 plan
+**Plans:** 2 plans
 Plans:
 - [ ] 59-01-PLAN.md -- TBD
 
