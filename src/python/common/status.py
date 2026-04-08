@@ -19,7 +19,6 @@ class BaseStatus:
     Provides functionality to dynamically create properties
     """
 
-    # noinspection PyProtectedMember
     @classmethod
     def _create_property(cls, name: str) -> property:
         return property(fget=lambda s: s._get_property(name),
@@ -163,7 +162,6 @@ class Status(BaseStatus):
     def __create_component(self, comp_cls: Type[T]) -> T:
         """Create a component and register our listener with it"""
         # PyCharm is confused and complains about the ctor
-        # noinspection PyCallingNonCallable
         comp = comp_cls()
         comp.add_listener(self.__comp_listener)
         return comp

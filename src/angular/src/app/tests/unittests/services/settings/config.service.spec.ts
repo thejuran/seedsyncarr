@@ -12,7 +12,6 @@ import {RestService} from "../../../../services/utils/rest.service";
 import {StreamServiceRegistry} from "../../../../services/base/stream-service.registry";
 
 
-// noinspection JSUnusedLocalSymbols
 const DoNothing = {next: (_reaction: unknown): void => {
     // Stub callback - intentionally discards reaction
 }};
@@ -144,7 +143,7 @@ describe("Testing config service", () => {
 
     it("should get null on disconnect", fakeAsync(() => {
         const configExpected = [
-            new Config({lftp: {remote_address: "first"} as any}),
+            new Config({lftp: {remote_address: "first"} as Config["lftp"]}),
             null
         ];
 

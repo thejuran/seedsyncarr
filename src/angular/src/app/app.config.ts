@@ -25,7 +25,6 @@ import {ConfigServiceProvider} from "./services/settings/config.service";
 import {ServerCommandServiceProvider} from "./services/server/server-command.service";
 import {LOCAL_STORAGE, LocalStorageService} from "./services/utils/local-storage.service";
 
-// noinspection JSUnusedLocalSymbols
 function dummyFactory(_s: unknown): () => null {
     return () => null;
 }

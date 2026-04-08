@@ -44,7 +44,6 @@ class DummyCommandCallback(Controller.Command.ICallback):
         pass
 
 
-# noinspection SpellCheckingInspection
 class TestController(unittest.TestCase):
     __KEEP_FILES = False  # for debugging
 
@@ -375,7 +374,6 @@ class TestController(unittest.TestCase):
         if not TestController.__KEEP_FILES:
             shutil.rmtree(self.temp_dir)
 
-    # noinspection PyMethodMayBeStatic
     def __wait_for_initial_model(self):
         while len(self.controller.get_model_files()) < 5:
             self.controller.process()
@@ -387,7 +385,6 @@ class TestController(unittest.TestCase):
         self.context.config.lftp.remote_path = "<bad>"
         self.context.config.lftp.local_path = "<bad>"
         self.context.config.lftp.remote_path_to_scan_script = "<bad>"
-        # noinspection PyBroadException
         try:
             self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         except Exception:
@@ -398,11 +395,9 @@ class TestController(unittest.TestCase):
         self.context.config.lftp.remote_address = "<bad>"
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
-        # noinspection PyUnusedLocal
         with self.assertRaises(AppError) as error:
             while True:
                 self.controller.process()
-        # noinspection PyUnreachableCode
         # Accept either old SSH error format or new validation error
         error_str = str(error.exception)
         self.assertTrue(
@@ -417,11 +412,9 @@ class TestController(unittest.TestCase):
         self.context.config.lftp.remote_username = "<bad>"
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
-        # noinspection PyUnusedLocal
         with self.assertRaises(AppError) as error:
             while True:
                 self.controller.process()
-        # noinspection PyUnreachableCode
         # Accept either old SSH error format or new validation error
         error_str = str(error.exception)
         self.assertTrue(
@@ -436,11 +429,9 @@ class TestController(unittest.TestCase):
         self.context.config.lftp.remote_path = "<bad>"
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
-        # noinspection PyUnusedLocal
         with self.assertRaises(AppError) as error:
             while True:
                 self.controller.process()
-        # noinspection PyUnreachableCode
         self.assertEqual(
             Localization.Error.REMOTE_SERVER_SCAN.format("SystemScannerError: Path does not exist: <bad>"),
             str(error.exception)
@@ -451,11 +442,9 @@ class TestController(unittest.TestCase):
         self.context.config.lftp.local_path = "<bad>"
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
-        # noinspection PyUnusedLocal
         with self.assertRaises(AppError) as error:
             while True:
                 self.controller.process()
-        # noinspection PyUnreachableCode
         self.assertEqual(Localization.Error.LOCAL_SERVER_SCAN, str(error.exception))
 
     @timeout_decorator.timeout(20)
@@ -463,11 +452,9 @@ class TestController(unittest.TestCase):
         self.context.config.lftp.remote_path_to_scan_script = "<bad>"
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
-        # noinspection PyUnusedLocal
         with self.assertRaises(AppError) as error:
             while True:
                 self.controller.process()
-        # noinspection PyUnreachableCode
         # Accept either old SSH error format or new scp error format
         error_str = str(error.exception)
         self.assertTrue(
@@ -483,11 +470,9 @@ class TestController(unittest.TestCase):
         self.context.config.lftp.use_ssh_key = False
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
-        # noinspection PyUnusedLocal
         with self.assertRaises(AppError) as error:
             while True:
                 self.controller.process()
-        # noinspection PyUnreachableCode
         self.assertEqual(
             Localization.Error.REMOTE_SERVER_INSTALL.format("Incorrect password"),
             str(error.exception)
@@ -917,10 +902,8 @@ class TestController(unittest.TestCase):
     @timeout_decorator.timeout(20)
     def test_command_stop_directory(self):
         # White box hack: limit the rate of lftp so download doesn't finish
-        # noinspection PyUnresolvedReferences
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
-        # noinspection PyUnresolvedReferences
         self.controller._Controller__lftp_manager.lftp.rate_limit = 100
 
         # wait for initial scan
@@ -981,10 +964,8 @@ class TestController(unittest.TestCase):
     @timeout_decorator.timeout(20)
     def test_command_stop_file(self):
         # White box hack: limit the rate of lftp so download doesn't finish
-        # noinspection PyUnresolvedReferences
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
-        # noinspection PyUnresolvedReferences
         self.controller._Controller__lftp_manager.lftp.rate_limit = 100
 
         # wait for initial scan
@@ -1085,10 +1066,8 @@ class TestController(unittest.TestCase):
     @timeout_decorator.timeout(20)
     def test_command_stop_queued(self):
         # White box hack: limit the rate of lftp so download doesn't finish
-        # noinspection PyUnresolvedReferences
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
-        # noinspection PyUnresolvedReferences
         self.controller._Controller__lftp_manager.lftp.rate_limit = 100
 
         # wait for initial scan
@@ -1157,10 +1136,8 @@ class TestController(unittest.TestCase):
     @timeout_decorator.timeout(20)
     def test_command_stop_wrong(self):
         # White box hack: limit the rate of lftp so download doesn't finish
-        # noinspection PyUnresolvedReferences
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
-        # noinspection PyUnresolvedReferences
         self.controller._Controller__lftp_manager.lftp.rate_limit = 100
 
         # wait for initial scan
@@ -1217,10 +1194,8 @@ class TestController(unittest.TestCase):
     @timeout_decorator.timeout(20)
     def test_command_stop_invalid(self):
         # White box hack: limit the rate of lftp so download doesn't finish
-        # noinspection PyUnresolvedReferences
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
-        # noinspection PyUnresolvedReferences
         self.controller._Controller__lftp_manager.lftp.rate_limit = 100
 
         # wait for initial scan
@@ -1801,7 +1776,6 @@ class TestController(unittest.TestCase):
         self.controller.start()
 
         # White box hack: limit the rate of lftp so download doesn't finish
-        # noinspection PyUnresolvedReferences
         self.controller._Controller__lftp_manager.lftp.rate_limit = 100
 
         # wait for initial scan
@@ -1826,7 +1800,6 @@ class TestController(unittest.TestCase):
         ra_downloading = False
         rb_downloading = False
 
-        # noinspection PyUnusedLocal
         def updated_side_effect(old_file: ModelFile, new_file: ModelFile):
             nonlocal ra_downloading, rb_downloading
             if new_file.local_size and new_file.local_size > 0:
@@ -1859,7 +1832,6 @@ class TestController(unittest.TestCase):
         self.controller.start()
 
         # White box hack: limit the rate of lftp so download doesn't finish
-        # noinspection PyUnresolvedReferences
         self.controller._Controller__lftp_manager.lftp.rate_limit = 100
 
         # wait for initial scan
@@ -1881,7 +1853,6 @@ class TestController(unittest.TestCase):
         # Process until the downloads starts
         ra_downloading = False
 
-        # noinspection PyUnusedLocal
         def updated_side_effect(old_file: ModelFile, new_file: ModelFile):
             nonlocal ra_downloading
             if new_file.local_size and new_file.local_size > 0:
@@ -1925,7 +1896,6 @@ class TestController(unittest.TestCase):
         # Process until the downloads starts
         rc_downloaded = False
 
-        # noinspection PyUnusedLocal
         def updated_side_effect(old_file: ModelFile, new_file: ModelFile):
             nonlocal rc_downloaded
             if new_file.state == ModelFile.State.DOWNLOADED and new_file.name == "rc":
@@ -1950,7 +1920,6 @@ class TestController(unittest.TestCase):
         self.controller.start()
 
         # White box hack: limit the rate of lftp so download doesn't finish
-        # noinspection PyUnresolvedReferences
         self.controller._Controller__lftp_manager.lftp.rate_limit = 100
 
         # wait for initial scan
@@ -1978,7 +1947,6 @@ class TestController(unittest.TestCase):
         # Process until the downloads starts
         ra_downloading = False
 
-        # noinspection PyUnusedLocal
         def updated_side_effect(old_file: ModelFile, new_file: ModelFile):
             nonlocal ra_downloading
             if new_file.local_size and new_file.local_size > 0:
@@ -2334,12 +2302,9 @@ class TestController(unittest.TestCase):
         self.context.config.lftp.num_max_connections_per_dir_file = 20
         self.context.config.lftp.num_max_parallel_files_per_download = 8
 
-        # noinspection PyUnresolvedReferences
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
-        # noinspection PyUnresolvedReferences
         self.controller._Controller__lftp_manager.lftp.rate_limit = 5*1024
-        # noinspection PyUnresolvedReferences
         self.controller._Controller__lftp_manager.lftp.min_chunk_size = "10"
 
         # wait for initial scan

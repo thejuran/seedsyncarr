@@ -1,10 +1,11 @@
 import * as Immutable from "immutable";
 
-import {LogRecord} from "../../../../services/logs/log-record";
+import {LogRecord, LogRecordJson} from "../../../../services/logs/log-record";
 
 
 describe("Testing log record initialization", () => {
-    let baseJson: any;
+    // Backend sends time as string and exc_tb as nullable; cast through unknown
+    let baseJson: Record<string, unknown>;
     let baseLogRecord: LogRecord;
 
     beforeEach(() => {
@@ -15,7 +16,7 @@ describe("Testing log record initialization", () => {
             message: "LftpModel: Adding a listener",
             exc_tb: "Exception Traceback"
         };
-        baseLogRecord = LogRecord.fromJson(baseJson);
+        baseLogRecord = LogRecord.fromJson(baseJson as unknown as LogRecordJson);
     });
 
     it("should be immutable", () => {
@@ -32,19 +33,19 @@ describe("Testing log record initialization", () => {
 
     it("should correctly initialize level names", () => {
         baseJson.level_name = "DEBUG";
-        baseLogRecord = LogRecord.fromJson(baseJson);
+        baseLogRecord = LogRecord.fromJson(baseJson as unknown as LogRecordJson);
         expect(baseLogRecord.level).toBe(LogRecord.Level.DEBUG);
         baseJson.level_name = "INFO";
-        baseLogRecord = LogRecord.fromJson(baseJson);
+        baseLogRecord = LogRecord.fromJson(baseJson as unknown as LogRecordJson);
         expect(baseLogRecord.level).toBe(LogRecord.Level.INFO);
         baseJson.level_name = "WARNING";
-        baseLogRecord = LogRecord.fromJson(baseJson);
+        baseLogRecord = LogRecord.fromJson(baseJson as unknown as LogRecordJson);
         expect(baseLogRecord.level).toBe(LogRecord.Level.WARNING);
         baseJson.level_name = "ERROR";
-        baseLogRecord = LogRecord.fromJson(baseJson);
+        baseLogRecord = LogRecord.fromJson(baseJson as unknown as LogRecordJson);
         expect(baseLogRecord.level).toBe(LogRecord.Level.ERROR);
         baseJson.level_name = "CRITICAL";
-        baseLogRecord = LogRecord.fromJson(baseJson);
+        baseLogRecord = LogRecord.fromJson(baseJson as unknown as LogRecordJson);
         expect(baseLogRecord.level).toBe(LogRecord.Level.CRITICAL);
     });
 
@@ -55,7 +56,7 @@ describe("Testing log record initialization", () => {
     it("should correctly initialize exception traceback", () => {
         expect(baseLogRecord.exceptionTraceback).toEqual("Exception Traceback");
         baseJson.exc_tb = null;
-        baseLogRecord = LogRecord.fromJson(baseJson);
+        baseLogRecord = LogRecord.fromJson(baseJson as unknown as LogRecordJson);
         expect(baseLogRecord.exceptionTraceback).toBeNull();
     });
 });

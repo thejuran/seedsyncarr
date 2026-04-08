@@ -3,7 +3,6 @@ import unittest
 from lftp import LftpJobStatusParser, LftpJobStatus, LftpJobStatusParserError
 
 
-# noinspection PyPep8
 class TestLftpJobStatusParser(unittest.TestCase):
     def setUp(self):
         # Show full diff
@@ -495,7 +494,6 @@ class TestLftpJobStatusParser(unittest.TestCase):
 
     def test_queue_and_jobs_5(self):
         """Queued items, parallel jobs running, '\\mirror' line with 'cd'"""
-        # noinspection PyPep8
         output = """
         [0] queue (sftp://someone:@localhost) 
         sftp://someone:@localhost/home/someone

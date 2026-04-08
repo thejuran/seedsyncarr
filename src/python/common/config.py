@@ -123,7 +123,6 @@ class InnerConfig(ABC):
 
     @classmethod
     def _create_property(cls, name: str, checker: Callable, converter: Callable) -> property:
-        # noinspection PyProtectedMember
         prop = property(fget=lambda s: s._get_property(name),
                         fset=lambda s, v: s._set_property(name, v, checker))
         prop_addon = InnerConfig.PropMetadata(checker=checker, converter=converter)
@@ -150,7 +149,6 @@ class InnerConfig(ABC):
 
         # Loop over all the property name, and set them to the value given in config_dict
         # Raise error if a matching key is not found in config_dict
-        # noinspection PyCallingNonCallable
         inner_config = cls()
         property_map = {p: getattr(cls, p) for p in dir(cls) if isinstance(getattr(cls, p), property)}
         for name, prop in property_map.items():
@@ -201,12 +199,10 @@ class InnerConfig(ABC):
         # Do the conversion if value is of type str
         native_value = prop_addon.converter(cls, name, value) if type(value) is str else value
         # Set the property, which will invoke the checker
-        # noinspection PyProtectedMember
         self._set_property(name, native_value, prop_addon.checker)
 
 # Useful aliases
 IC = InnerConfig
-# noinspection PyProtectedMember
 PROP = InnerConfig._create_property
 
 class Config(Persist):

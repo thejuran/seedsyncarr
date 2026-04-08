@@ -68,7 +68,6 @@ class MultiprocessingLogger:
         self.logger.debug("Started listener thread")
 
         while not self.__listener_shutdown.is_set():
-            # noinspection PyBroadException
             try:
                 while True:
                     try:

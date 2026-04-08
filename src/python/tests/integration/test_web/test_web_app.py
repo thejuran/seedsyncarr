@@ -50,7 +50,6 @@ class BaseTestWebApp(unittest.TestCase):
         self.controller.get_model_files_and_add_listener.side_effect = capture_listener
         self.controller.remove_model_listener = MagicMock()
 
-        # noinspection PyTypeChecker
         self.web_app_builder = WebAppBuilder(self.context,
                                              self.controller,
                                              self.auto_queue_persist,

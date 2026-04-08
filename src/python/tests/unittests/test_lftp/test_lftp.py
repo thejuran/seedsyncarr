@@ -17,7 +17,6 @@ _TEST_USER = "seedsyncarrtest"
 _TEST_PASSWORD = "seedsyncarrpass"
 
 
-# noinspection PyPep8Naming,SpellCheckingInspection
 class TestLftp(unittest.TestCase):
     temp_dir = None
 

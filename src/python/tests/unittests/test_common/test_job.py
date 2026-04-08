@@ -12,21 +12,18 @@ class DummyError(Exception):
 
 class DummyFailingJob(Job):
     def setup(self):
-        # noinspection PyAttributeOutsideInit
         self.cleanup_run = False
 
     def execute(self):
         raise DummyError()
 
     def cleanup(self):
-        # noinspection PyAttributeOutsideInit
         self.cleanup_run = True
 
 
 class TestJob(unittest.TestCase):
     def test_exception_propagates(self):
         context = MagicMock()
-        # noinspection PyTypeChecker
         job = DummyFailingJob("DummyFailingJob", context)
         job.start()
         time.sleep(0.2)
@@ -37,7 +34,6 @@ class TestJob(unittest.TestCase):
 
     def test_cleanup_executes_on_execute_error(self):
         context = MagicMock()
-        # noinspection PyTypeChecker
         job = DummyFailingJob("DummyFailingJob", context)
         job.start()
         time.sleep(0.2)

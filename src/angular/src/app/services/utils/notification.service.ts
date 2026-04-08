@@ -17,7 +17,6 @@ export class NotificationService implements OnDestroy {
     private _notificationsSubject: BehaviorSubject<Immutable.List<Notification>> =
             new BehaviorSubject(this._notifications);
 
-    // noinspection UnterminatedStatementJS
     private _comparator = (a: Notification, b: Notification): number => {
         // First sort by level
         if (a.level !== b.level) {

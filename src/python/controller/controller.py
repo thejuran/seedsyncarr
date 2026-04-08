@@ -349,7 +349,6 @@ class Controller:
             return
         if file.import_status != ModelFile.ImportStatus.IMPORTED:
             new_file = copy.copy(file)
-            # noinspection PyProtectedMember
             new_file._unfreeze()
             # Fix parent references after shallow copy so children point to new_file
             for child in new_file.get_children():

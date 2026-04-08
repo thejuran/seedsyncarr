@@ -108,15 +108,19 @@ export class FileComponent implements OnChanges, AfterViewInit {
      * Uses individual class bindings instead of @HostBinding('class') to
      * avoid overwriting parent-applied classes like [class.even-row].
      */
-    @HostBinding("class.status-default")     get isStatusDefault()     { return this.file?.status === ViewFile.Status.DEFAULT; }
-    @HostBinding("class.status-queued")      get isStatusQueued()      { return this.file?.status === ViewFile.Status.QUEUED; }
-    @HostBinding("class.status-downloading") get isStatusDownloading() { return this.file?.status === ViewFile.Status.DOWNLOADING; }
-    @HostBinding("class.status-downloaded")  get isStatusDownloaded()  { return this.file?.status === ViewFile.Status.DOWNLOADED; }
-    @HostBinding("class.status-stopped")     get isStatusStopped()     { return this.file?.status === ViewFile.Status.STOPPED; }
-    @HostBinding("class.status-deleted")     get isStatusDeleted()     { return this.file?.status === ViewFile.Status.DELETED; }
-    @HostBinding("class.status-extracting")  get isStatusExtracting()  { return this.file?.status === ViewFile.Status.EXTRACTING; }
-    @HostBinding("class.status-extracted")   get isStatusExtracted()   { return this.file?.status === ViewFile.Status.EXTRACTED; }
-    @HostBinding("class.downloading-active") get isDownloadingActive() { return this.file?.status === ViewFile.Status.DOWNLOADING; }
+    @HostBinding("class.status-default") get isStatusDefault(): boolean { return this.file?.status === ViewFile.Status.DEFAULT; }
+    @HostBinding("class.status-queued") get isStatusQueued(): boolean { return this.file?.status === ViewFile.Status.QUEUED; }
+    @HostBinding("class.status-downloading") get isStatusDownloading(): boolean {
+        return this.file?.status === ViewFile.Status.DOWNLOADING;
+    }
+    @HostBinding("class.status-downloaded") get isStatusDownloaded(): boolean { return this.file?.status === ViewFile.Status.DOWNLOADED; }
+    @HostBinding("class.status-stopped") get isStatusStopped(): boolean { return this.file?.status === ViewFile.Status.STOPPED; }
+    @HostBinding("class.status-deleted") get isStatusDeleted(): boolean { return this.file?.status === ViewFile.Status.DELETED; }
+    @HostBinding("class.status-extracting") get isStatusExtracting(): boolean { return this.file?.status === ViewFile.Status.EXTRACTING; }
+    @HostBinding("class.status-extracted") get isStatusExtracted(): boolean { return this.file?.status === ViewFile.Status.EXTRACTED; }
+    @HostBinding("class.downloading-active") get isDownloadingActive(): boolean {
+        return this.file?.status === ViewFile.Status.DOWNLOADING;
+    }
 
     constructor(private confirmModal: ConfirmModalService) {}
 

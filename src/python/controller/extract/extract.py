@@ -20,7 +20,6 @@ class Extract:
         if not os.path.isfile(archive_path):
             return False
         try:
-            # noinspection PyUnusedLocal,PyShadowingBuiltins
             format, compression = patoolib.get_archive_format(archive_path)
             return True
         except patoolib.util.PatoolError:
@@ -35,7 +34,6 @@ class Extract:
         file_ext = os.path.splitext(os.path.basename(archive_path))[1]
         if file_ext:
             file_ext = file_ext[1:]  # remove the dot
-            # noinspection SpellCheckingInspection
             return file_ext in [
                 "7z",
                 "bz2",

@@ -27,7 +27,6 @@ export class LoggerService {
         }
     }
 
-    // noinspection JSUnusedGlobalSymbols
     get warn(): (...args: unknown[]) => void {
         if (this.level >= LoggerService.Level.WARN) {
             return console.warn.bind(console);

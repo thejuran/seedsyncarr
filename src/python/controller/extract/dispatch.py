@@ -106,7 +106,6 @@ class ExtractDispatch:
         self.logger.debug("Received extract for {}".format(model_file.name))
 
         # Build the task BEFORE acquiring mutex (no shared state access needed)
-        # noinspection PyProtectedMember
         task = ExtractDispatch._Task(model_file.name, model_file.is_dir)
 
         if model_file.is_dir:

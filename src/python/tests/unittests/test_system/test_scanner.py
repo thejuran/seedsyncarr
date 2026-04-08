@@ -28,7 +28,6 @@ def my_touch_latin(size, *args):
         f.write(bytearray([0xff] * size))
 
 
-# noinspection SpellCheckingInspection
 class TestSystemScanner(unittest.TestCase):
     temp_dir = None
 

@@ -52,11 +52,9 @@ class TestLftp(unittest.TestCase):
         shutil.rmtree(os.path.join(TestLftp.temp_dir, "remote"))
         shutil.rmtree(os.path.join(TestLftp.temp_dir, "local"))
 
-    # noinspection PyMethodMayBeStatic
     def my_mkdir(self, *args):
         os.mkdir(os.path.join(TestLftp.temp_dir, "remote", *args))
 
-    # noinspection PyMethodMayBeStatic
     def my_touch(self, size: int, *args):
         path = os.path.join(TestLftp.temp_dir, "remote", *args)
         with open(path, 'wb') as f:

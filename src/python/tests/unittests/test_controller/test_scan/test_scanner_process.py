@@ -170,5 +170,4 @@ class TestScannerProcess(unittest.TestCase):
         with self.assertRaises(ScannerError) as ctx:
             while True:
                 self.process.propagate_exception()
-        # noinspection PyUnreachableCode
         self.assertEqual("non-recoverable error", str(ctx.exception))

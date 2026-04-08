@@ -90,7 +90,6 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
         this._badValueNotifs = new Map();
     }
 
-    // noinspection JSUnusedGlobalSymbols
     ngOnInit(): void {
         // Read API token from meta tag injected by Bottle server
         const meta = document.querySelector("meta[name=\"api-token\"]");

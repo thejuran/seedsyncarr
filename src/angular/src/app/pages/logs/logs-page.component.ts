@@ -1,7 +1,7 @@
 import {
     AfterContentChecked, AfterViewInit,
     ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, HostListener,
-    OnDestroy, OnInit, ViewChild, ViewContainerRef
+    OnDestroy, OnInit, TemplateRef, ViewChild, ViewContainerRef
 } from "@angular/core";
 import { DatePipe, AsyncPipe } from "@angular/common";
 
@@ -29,13 +29,13 @@ export class LogsPageComponent implements OnInit, AfterViewInit, AfterContentChe
 
     public headerHeight: Observable<number>;
 
-    @ViewChild("templateRecord", {static: false}) templateRecord: any;
+    @ViewChild("templateRecord", {static: false}) templateRecord!: TemplateRef<unknown>;
 
     // Where to insert the cloned content
-    @ViewChild("container", {static: false, read: ViewContainerRef}) container: any;
+    @ViewChild("container", {static: false, read: ViewContainerRef}) container!: ViewContainerRef;
 
-    @ViewChild("logHead", {static: false}) logHead: any;
-    @ViewChild("logTail", {static: false}) logTail: any;
+    @ViewChild("logHead", {static: false}) logHead!: ElementRef;
+    @ViewChild("logTail", {static: false}) logTail!: ElementRef;
 
     public showScrollToTopButton = false;
     public showScrollToBottomButton = false;
@@ -103,7 +103,6 @@ export class LogsPageComponent implements OnInit, AfterViewInit, AfterContentChe
     }
 
     scrollToTop(): void {
-        // this.logHead.nativeElement.scrollIntoView(true);
         window.scrollTo(0, 0);
     }
 

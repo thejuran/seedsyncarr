@@ -35,7 +35,6 @@ class Job(threading.Thread, ABC):
 
         while not self.shutdown_flag.is_set():
             # ... Job code here ...
-            # noinspection PyBroadException
             try:
                 self.execute()
             except Exception:

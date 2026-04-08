@@ -19,12 +19,10 @@ export class MockViewFileService {
         return this._filteredFiles.asObservable();
     }
 
-    // noinspection JSUnusedLocalSymbols
     public setFilterCriteria(_criteria: ViewFileFilterCriteria): void {
         // Stub - not used in this test
     }
 
-    // noinspection JSUnusedLocalSymbols
     public setComparator(_comparator: ViewFileComparator): void {
         // Stub - not used in this test
     }

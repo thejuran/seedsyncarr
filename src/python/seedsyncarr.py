@@ -217,7 +217,6 @@ class Seedsyncarr:
         self.context.config.to_file(self.config_path)
 
     def signal(self, signum: int, _):
-        # noinspection PyUnresolvedReferences
         # Signals is a generated enum
         self.context.logger.info("Caught signal {}".format(signal.Signals(signum).name))
         raise ServiceExit()
@@ -235,8 +234,6 @@ class Seedsyncarr:
 
         # Html path is only required if not running a frozen package
         # For a frozen package, set default to root/html
-        # noinspection PyUnresolvedReferences
-        # noinspection PyProtectedMember
         default_html_path = os.path.join(sys._MEIPASS, "html") if is_frozen else None
         parser.add_argument("--html",
                             required=not is_frozen,
@@ -245,8 +242,6 @@ class Seedsyncarr:
 
         # Scanfs path is only required if not running a frozen package
         # For a frozen package, set default to root/scanfs
-        # noinspection PyUnresolvedReferences
-        # noinspection PyProtectedMember
         default_scanfs_path = os.path.join(sys._MEIPASS, "scanfs") if is_frozen else None
         parser.add_argument("--scanfs",
                             required=not is_frozen,
@@ -397,10 +392,8 @@ class Seedsyncarr:
                 # backup file
                 Seedsyncarr.__backup_file(file_path)
 
-                # noinspection PyCallingNonCallable
                 return cls()
         else:
-            # noinspection PyCallingNonCallable
             return cls()
 
     @staticmethod

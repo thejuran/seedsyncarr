@@ -152,7 +152,6 @@ class TestExtractDispatch(unittest.TestCase):
     def test_extract_calls_listener_on_failed(self):
         self.mock_is_archive.return_value = True
 
-        # noinspection PyUnusedLocal
         def _extract_archive(**kwargs):
             raise ExtractError()
         self.mock_extract_archive.side_effect = _extract_archive
@@ -175,7 +174,6 @@ class TestExtractDispatch(unittest.TestCase):
         self.mock_is_archive.return_value = True
         self.count = 0
 
-        # noinspection PyUnusedLocal
         def _extract_archive(**kwargs):
             # raise error for first and third extractions
             self.count += 1
@@ -291,7 +289,6 @@ class TestExtractDispatch(unittest.TestCase):
             self.dispatch.extract(a)
         self.assertTrue(str(ctx.exception).startswith("Directory does not contain any archives"))
 
-    # noinspection SpellCheckingInspection
     @timeout_decorator.timeout(2)
     def test_extract_dir(self):
         self.mock_is_archive.return_value = True
@@ -359,7 +356,6 @@ class TestExtractDispatch(unittest.TestCase):
         self.assertEqual(5, self.mock_extract_archive.call_count)
         self.assertEqual(golden_calls, self.actual_calls)
 
-    # noinspection SpellCheckingInspection
     @timeout_decorator.timeout(2)
     def test_extract_dir_skips_remote_files(self):
         self.mock_is_archive.return_value = True
@@ -419,10 +415,8 @@ class TestExtractDispatch(unittest.TestCase):
         self.assertEqual(3, self.mock_extract_archive.call_count)
         self.assertEqual(golden_calls, self.actual_calls)
 
-    # noinspection SpellCheckingInspection
     @timeout_decorator.timeout(2)
     def test_extract_dir_skips_non_archive_files(self):
-        # noinspection SpellCheckingInspection
         def _is_archive(archive_path: str):
             return archive_path in (
                 os.path.join(self.local_path, "a", "aa", "aaa"),
@@ -486,7 +480,6 @@ class TestExtractDispatch(unittest.TestCase):
         self.assertEqual(3, self.mock_extract_archive.call_count)
         self.assertEqual(golden_calls, self.actual_calls)
 
-    # noinspection SpellCheckingInspection
     @timeout_decorator.timeout(2)
     def test_extract_dir_does_not_extract_split_rar_files(self):
         self.mock_is_archive.return_value = True
@@ -603,7 +596,6 @@ class TestExtractDispatch(unittest.TestCase):
         self.send_count = 0
         self.rx_count = 0
 
-        # noinspection PyUnusedLocal
         def _extract(**kwargs):
             # barrier implementation
             while self.send_count <= self.rx_count:

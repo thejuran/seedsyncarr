@@ -315,9 +315,7 @@ test.describe('Bulk File Actions', () => {
         });
 
         // Note: Tests 3.4-3.6 for "Select all matching" feature were removed.
-        // The feature was intentionally removed as it was misleading - it claimed
-        // to select "all files matching filter" but only operated on visible files.
-        // See planning docs/BULK_ACTIONS_FIXES.md for details.
+        // Removed: bulk actions only operated on visible files, not all matching.
     });
 
     test.describe('TS-4: Keyboard Shortcuts', () => {

@@ -25,7 +25,6 @@ export interface ViewFileFilterCriteria {
 /**
  * Interface for sorting view files
  */
-// noinspection TsLint
 export type ViewFileComparator = (a: ViewFile, b: ViewFile) => number;
 
 

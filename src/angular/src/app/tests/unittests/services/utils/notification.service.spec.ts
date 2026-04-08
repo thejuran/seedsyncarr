@@ -73,7 +73,6 @@ describe("Testing notification service", () => {
         notificationService.show(expectedNotification);
 
         let actualCount = 0;
-        // noinspection JSUnusedLocalSymbols
         notificationService.notifications.subscribe({
             next: _list => {
                 actualCount++;
@@ -94,7 +93,6 @@ describe("Testing notification service", () => {
         notificationService.hide(expectedNotification);
 
         let actualCount = 0;
-        // noinspection JSUnusedLocalSymbols
         notificationService.notifications.subscribe({
             next: _list => {
                 actualCount++;

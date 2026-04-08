@@ -168,7 +168,6 @@ export const autoQueueServiceFactory = (
   return autoQueueService;
 };
 
-// noinspection JSUnusedGlobalSymbols
 export const AutoQueueServiceProvider = {
     provide: AutoQueueService,
     useFactory: autoQueueServiceFactory,

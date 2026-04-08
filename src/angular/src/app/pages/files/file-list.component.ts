@@ -250,7 +250,6 @@ export class FileListComponent {
         return tagName === "input" || tagName === "textarea" || tagName === "select";
     }
 
-    // noinspection JSUnusedLocalSymbols
     /**
      * Used for trackBy in ngFor
      * @param index

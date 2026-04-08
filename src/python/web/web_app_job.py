@@ -48,7 +48,6 @@ class MyWSGIHandler(httpserver.WSGIHandler):
     """
     This class is overridden to fix a bug in Paste http server
     """
-    # noinspection SpellCheckingInspection
     def wsgi_write_chunk(self, chunk):
         if type(chunk) is str:
             chunk = str.encode(chunk)

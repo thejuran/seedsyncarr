@@ -1,10 +1,11 @@
 import * as Immutable from "immutable";
 
-import {ModelFile} from "../../../../services/files/model-file";
+import {ModelFile, ModelFileJson} from "../../../../services/files/model-file";
 
 describe("Testing model file initialization", () => {
-    let baseJson: any;
-    let baseModelFile: any;
+    // Backend sends timestamps as strings; typed looser than ModelFileJson
+    let baseJson: Record<string, unknown>;
+    let baseModelFile: ModelFile;
 
     beforeEach(() => {
         baseJson = {
@@ -23,7 +24,7 @@ describe("Testing model file initialization", () => {
             remote_modified_timestamp: "1541828418.9439101",
             children: []
         };
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
     });
 
     it("should be immutable", () => {
@@ -36,25 +37,25 @@ describe("Testing model file initialization", () => {
 
     it("should correctly initialize all states", () => {
         baseJson.state = "default";
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
         expect(baseModelFile.state).toBe(ModelFile.State.DEFAULT);
         baseJson.state = "queued";
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
         expect(baseModelFile.state).toBe(ModelFile.State.QUEUED);
         baseJson.state = "downloading";
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
         expect(baseModelFile.state).toBe(ModelFile.State.DOWNLOADING);
         baseJson.state = "downloaded";
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
         expect(baseModelFile.state).toBe(ModelFile.State.DOWNLOADED);
         baseJson.state = "deleted";
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
         expect(baseModelFile.state).toBe(ModelFile.State.DELETED);
         baseJson.state = "extracting";
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
         expect(baseModelFile.state).toBe(ModelFile.State.EXTRACTING);
         baseJson.state = "extracted";
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
         expect(baseModelFile.state).toBe(ModelFile.State.EXTRACTED);
     });
 
@@ -77,16 +78,16 @@ describe("Testing model file initialization", () => {
 
     it("should initialize null timestamps correctly", () => {
         baseJson.local_created_timestamp = null;
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
         expect(baseModelFile.local_created_timestamp).toBeNull();
         baseJson.local_modified_timestamp = null;
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
         expect(baseModelFile.local_modified_timestamp).toBeNull();
         baseJson.remote_created_timestamp = null;
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
         expect(baseModelFile.remote_created_timestamp).toBeNull();
         baseJson.remote_modified_timestamp = null;
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
         expect(baseModelFile.remote_modified_timestamp).toBeNull();
     });
 
@@ -130,7 +131,7 @@ describe("Testing model file initialization", () => {
                 children: []
             }
         ];
-        baseModelFile = ModelFile.fromJson(baseJson);
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
         expect(baseModelFile.children.size).toBe(2);
 
         const a = baseModelFile.children.find((value: ModelFile) => {return value.name === "a";});

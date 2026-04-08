@@ -202,20 +202,20 @@ describe("Testing stream dispatch service", () => {
 describe("Testing stream service registry", () => {
     let registry: StreamServiceRegistry;
 
-    let mockDispatch: any;
+    let mockDispatch: jasmine.SpyObj<StreamDispatchService>;
 
-    let mockModelFileService: any;
-    let mockServerStatusService: any;
-    let mockConnectedService: any;
-    let mockLogService: any;
+    let mockModelFileService: jasmine.Spy;
+    let mockServerStatusService: jasmine.Spy;
+    let mockConnectedService: jasmine.Spy;
+    let mockLogService: jasmine.Spy;
 
-    let registered: any[];
+    let registered: unknown[];
 
     beforeEach(() => {
         registered = [];
 
         mockDispatch = jasmine.createSpyObj("mockDispatch", ["registerService"]);
-        mockDispatch.registerService.and.callFake((value: any) => registered.push(value));
+        mockDispatch.registerService.and.callFake((value: IStreamService): IStreamService => { registered.push(value); return value; });
 
         mockModelFileService = jasmine.createSpy("mockModelFileService");
         mockServerStatusService = jasmine.createSpy("mockServerStatusService");

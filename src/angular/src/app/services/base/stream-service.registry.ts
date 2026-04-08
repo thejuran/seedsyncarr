@@ -181,7 +181,7 @@ export class StreamDispatchService implements OnDestroy {
         this._currentSubscription?.unsubscribe();
         this._currentSubscription = null;
 
-        const observable = new Observable(observer => {
+        const observable = new Observable<{ event: string; data: string }>(observer => {
             const eventSource = EventSourceFactory.createEventSource(this.STREAM_URL);
 
             // Store reference for proactive close on timeout
@@ -206,8 +206,6 @@ export class StreamDispatchService implements OnDestroy {
                 // used to keep the connection alive and detect timeouts
             });
 
-            // noinspection SpellCheckingInspection
-            // noinspection JSUnusedLocalSymbols
             eventSource.onopen = (_event): void => {
                 this._logger.info("Connected to server stream");
 
@@ -230,10 +228,9 @@ export class StreamDispatchService implements OnDestroy {
             };
         });
         this._currentSubscription = observable.subscribe({
-            next: (x: any) => {
-                const eventName = x["event"];
-                const eventData = x["data"];
-                // this._logger.debug("Received event:", eventName);
+            next: (x: { event: string; data: string }) => {
+                const eventName = x.event;
+                const eventData = x.data;
                 const service = this._eventNameToServiceMap.get(eventName);
                 if (service) {
                     this._zone.run(() => {
@@ -320,7 +317,6 @@ export const streamServiceRegistryFactory = (
     return streamServiceRegistry;
 };
 
-// noinspection JSUnusedGlobalSymbols
 export const StreamServiceRegistryProvider = {
     provide: StreamServiceRegistry,
     useFactory: streamServiceRegistryFactory,

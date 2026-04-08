@@ -306,7 +306,6 @@ class TestRemoteScanner(unittest.TestCase):
         self.ssh_run_command_count = 0
 
         # Ssh run command fails the first time with a non-timeout error
-        # noinspection PyUnusedLocal
         def ssh_shell(*args):
             self.ssh_run_command_count += 1
             if self.ssh_run_command_count == 1:
@@ -339,7 +338,6 @@ class TestRemoteScanner(unittest.TestCase):
         self.ssh_run_command_count = 0
 
         # Ssh run command times out on the first scan attempt
-        # noinspection PyUnusedLocal
         def ssh_shell(*args):
             self.ssh_run_command_count += 1
             if self.ssh_run_command_count == 1:
@@ -372,7 +370,6 @@ class TestRemoteScanner(unittest.TestCase):
         self.ssh_run_command_count = 0
 
         # Ssh run command gets connection refused on the first scan attempt
-        # noinspection PyUnusedLocal
         def ssh_shell(*args):
             self.ssh_run_command_count += 1
             if self.ssh_run_command_count == 1:
@@ -410,7 +407,6 @@ class TestRemoteScanner(unittest.TestCase):
 
         # First scan: install succeeds (md5 match skips copy), scan times out
         # Second scan: install skipped (already done), scan succeeds
-        # noinspection PyUnusedLocal
         def ssh_shell(*args):
             self.ssh_run_command_count += 1
             if self.ssh_run_command_count == 1:
@@ -448,7 +444,6 @@ class TestRemoteScanner(unittest.TestCase):
 
         self.ssh_run_command_count = 0
 
-        # noinspection PyUnusedLocal
         def ssh_shell(*args):
             self.ssh_run_command_count += 1
             if self.ssh_run_command_count == 1:
@@ -525,7 +520,6 @@ class TestRemoteScanner(unittest.TestCase):
         local_md5 = TestRemoteScanner.scan_script_md5
         self.ssh_run_command_count = 0
 
-        # noinspection PyUnusedLocal
         def ssh_shell(*args):
             self.ssh_run_command_count += 1
             if self.ssh_run_command_count == 1:
@@ -561,7 +555,6 @@ class TestRemoteScanner(unittest.TestCase):
         local_md5 = TestRemoteScanner.scan_script_md5
         self.ssh_run_command_count = 0
 
-        # noinspection PyUnusedLocal
         def ssh_shell(*args):
             self.ssh_run_command_count += 1
             if self.ssh_run_command_count == 1:
@@ -596,7 +589,6 @@ class TestRemoteScanner(unittest.TestCase):
         self.ssh_run_command_count = 0
 
         # Ssh run command succeeds first time, raises error the second time
-        # noinspection PyUnusedLocal
         def ssh_shell(*args):
             self.ssh_run_command_count += 1
             if self.ssh_run_command_count == 1:
@@ -633,7 +625,6 @@ class TestRemoteScanner(unittest.TestCase):
         self.ssh_run_command_count = 0
 
         # Ssh run command succeeds first time, raises error the second time, fine after that
-        # noinspection PyUnusedLocal
         def ssh_shell(*args):
             self.ssh_run_command_count += 1
             if self.ssh_run_command_count == 1:
@@ -667,7 +658,6 @@ class TestRemoteScanner(unittest.TestCase):
             remote_path_to_scan_script="/remote/path/to/scan/script"
         )
 
-        # noinspection PyUnusedLocal
         def ssh_copy(*args, **kwargs):
             raise SshcpError("an scp error")
         self.mock_ssh.copy.side_effect = ssh_copy
@@ -711,7 +701,6 @@ class TestRemoteScanner(unittest.TestCase):
         self.ssh_run_command_count = 0
 
         # Ssh run command raises error the first time, succeeds the second time
-        # noinspection PyUnusedLocal
         def ssh_shell(*args):
             self.ssh_run_command_count += 1
             if self.ssh_run_command_count == 1:

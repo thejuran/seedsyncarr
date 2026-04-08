@@ -51,7 +51,6 @@ export const serverCommandServiceFactory = (
   return serverCommandService;
 };
 
-// noinspection JSUnusedGlobalSymbols
 export const ServerCommandServiceProvider = {
     provide: ServerCommandService,
     useFactory: serverCommandServiceFactory,

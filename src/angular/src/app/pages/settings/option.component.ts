@@ -29,7 +29,6 @@ export class OptionComponent implements OnInit, OnDestroy {
     private newValue = new Subject<string | number | boolean>();
     private destroy$ = new Subject<void>();
 
-    // noinspection JSUnusedGlobalSymbols
     ngOnInit(): void {
         // Debounce
         // References:

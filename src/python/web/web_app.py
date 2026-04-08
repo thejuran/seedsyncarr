@@ -234,7 +234,6 @@ class WebApp(bottle.Bottle):
         body = self._inject_meta_tag(self._index_html_template)
         return HTTPResponse(body=body, headers={"Content-Type": "text/html; charset=UTF-8"})
 
-    # noinspection PyMethodMayBeStatic
     def __static(self, file_path: str):
         """
         Serves all the static files

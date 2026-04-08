@@ -13,7 +13,6 @@ class TestSystemFile(unittest.TestCase):
         sf = SystemFile("", 42, False)
         self.assertEqual(42, sf.size)
         with self.assertRaises(ValueError) as context:
-            # noinspection PyUnusedLocal
             sf = SystemFile("", -42, False)
         self.assertTrue("File size must be greater than zero" in str(context.exception))
 

@@ -84,7 +84,6 @@ class LogStreamHandler(IStreamHandler):
         self.handler = QueueLogHandler()
         self.serialize = SerializeLogRecord()
 
-    # noinspection PyUnresolvedReferences
     @classmethod
     @overrides(IStreamHandler)
     def register(cls, web_app: "WebApp", **kwargs):

@@ -110,7 +110,6 @@ class TestLftpModel(unittest.TestCase):
 
         file = ModelFile("test", False)
         self.model.add_file(file)
-        # noinspection PyUnresolvedReferences
         listener.file_added.assert_called_once_with(file)
 
     def test_listener_file_removed(self):
@@ -122,7 +121,6 @@ class TestLftpModel(unittest.TestCase):
         file = ModelFile("test", False)
         self.model.add_file(file)
         self.model.remove_file("test")
-        # noinspection PyUnresolvedReferences
         listener.file_removed.assert_called_once_with(file)
 
     def test_listener_file_updated(self):
@@ -137,7 +135,6 @@ class TestLftpModel(unittest.TestCase):
         new_file = ModelFile("test", False)
         new_file.local_size = 200
         self.model.update_file(new_file)
-        # noinspection PyUnresolvedReferences
         listener.file_updated.assert_called_once_with(old_file, new_file)
 
     def test_file_immutable_after_add(self):

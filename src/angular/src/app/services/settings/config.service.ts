@@ -17,7 +17,6 @@ import {RestService, WebReaction} from "../utils/rest.service";
 export class ConfigService extends BaseWebService implements OnDestroy {
     private readonly CONFIG_GET_URL = "/server/config/get";
 
-    // noinspection UnterminatedStatementJS
     private readonly CONFIG_SET_URL =
         (section: string, option: string, value: string): string =>
             `/server/config/set/${section}/${option}/${value}`;
@@ -140,7 +139,6 @@ export const configServiceFactory = (
   return configService;
 };
 
-// noinspection JSUnusedGlobalSymbols
 export const ConfigServiceProvider = {
     provide: ConfigService,
     useFactory: configServiceFactory,

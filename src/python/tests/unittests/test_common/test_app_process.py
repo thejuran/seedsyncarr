@@ -68,7 +68,6 @@ class LongRunningThreadProcess(AppProcess):
     def run_cleanup(self):
         pass
 
-    # noinspection PyMethodMayBeStatic
     def long_task(self):
         print("Thread task started")
         while True:

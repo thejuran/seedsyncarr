@@ -16,18 +16,14 @@ from ssh import Sshcp, SshcpError
 
 # Test credentials for Docker-based test container (see test/python/Dockerfile).
 # These are NOT production secrets — they exist only in the ephemeral test environment.
-# noinspection SpellCheckingInspection
 _TEST_USER = "seedsyncarrtest"
-# noinspection SpellCheckingInspection
 _TEST_PASSWORD = "seedsyncarrpass"
-# noinspection SpellCheckingInspection
 _PARAMS = [
     ("password", _TEST_PASSWORD),
     ("keyauth", None)
 ]
 
 
-# noinspection SpellCheckingInspection
 class TestSshcp(unittest.TestCase):
     __KEEP_FILES = False  # for debugging
 
