@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 from typing import List
 import multiprocessing
@@ -8,7 +6,6 @@ import queue
 from .scanner_process import IScanner
 from common import overrides
 from system import SystemScanner, SystemScannerError, SystemFile
-
 
 class ActiveScanner(IScanner):
     """
@@ -30,8 +27,6 @@ class ActiveScanner(IScanner):
     def set_active_files(self, file_names: List[str]):
         """
         Set the list of active file names. Only these files will be scanned.
-        :param file_names:
-        :return:
         """
         self.__active_files_queue.put(file_names)
 

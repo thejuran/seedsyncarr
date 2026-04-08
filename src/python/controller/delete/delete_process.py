@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import os
 import shlex
 import shutil
@@ -7,7 +5,6 @@ from typing import Optional
 
 from common import AppOneShotProcess
 from ssh import Sshcp, SshcpError
-
 
 class DeleteLocalProcess(AppOneShotProcess):
     def __init__(self, local_path: str, file_name: str):
@@ -25,7 +22,6 @@ class DeleteLocalProcess(AppOneShotProcess):
                 os.remove(file_path)
             else:
                 shutil.rmtree(file_path, ignore_errors=True)
-
 
 class DeleteRemoteProcess(AppOneShotProcess):
     def __init__(self,

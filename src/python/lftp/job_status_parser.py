@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import os
 import re
 from abc import ABC, abstractmethod
@@ -9,10 +7,8 @@ import logging
 from common import AppError
 from .job_status import LftpJobStatus
 
-
 class LftpJobStatusParserError(AppError):
     pass
-
 
 class RegexPatterns:
     """
@@ -152,7 +148,6 @@ class RegexPatterns:
         r"(?P<rq>[\'\"]|)(?P<local>.+)(?P=rq)$"
     )
 
-
 class TransferStateParser:
     """
     Utility class for parsing transfer state information from LFTP output.
@@ -231,7 +226,6 @@ class TransferStateParser:
             eta = TransferStateParser.eta_to_seconds(match.group("eta"))
         return LftpJobStatus.TransferState(size_local, size_remote, percent_local, speed, eta)
 
-
 class BaseJobParser(ABC):
     """
     Abstract base class for job-specific parsers.
@@ -257,7 +251,6 @@ class BaseJobParser(ABC):
         :return: LftpJobStatus or None if parsing failed
         """
         pass
-
 
 class PgetJobParser(BaseJobParser):
     """
@@ -331,7 +324,6 @@ class PgetJobParser(BaseJobParser):
         # No data line at all
         return LftpJobStatus.TransferState(None, None, None, None, None)
 
-
 class MirrorJobParser(BaseJobParser):
     """
     Parser for mirror (directory download) jobs.
@@ -397,7 +389,6 @@ class MirrorJobParser(BaseJobParser):
             flags=flags
         )
 
-
 class JobParserFactory:
     """
     Factory for creating appropriate job parsers based on line content.
@@ -420,7 +411,6 @@ class JobParserFactory:
             if parser.can_parse(line):
                 return parser
         return None
-
 
 class QueueParser:
     """
@@ -533,7 +523,6 @@ class QueueParser:
             name=name,
             flags=flags
         )
-
 
 class ActiveJobsParser:
     """
@@ -687,7 +676,6 @@ class ActiveJobsParser:
             return True
 
         return False
-
 
 class LftpJobStatusParser:
     """

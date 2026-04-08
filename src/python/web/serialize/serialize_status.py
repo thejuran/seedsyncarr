@@ -1,10 +1,7 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import json
 
 from .serialize import Serialize
 from common import Status
-
 
 class SerializeStatusJson:
     # Data keys
@@ -41,7 +38,6 @@ class SerializeStatusJson:
 
         status_json = json.dumps(json_dict)
         return status_json
-
 
 class SerializeStatus(Serialize):
     """

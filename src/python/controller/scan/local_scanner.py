@@ -1,12 +1,9 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 from typing import List
 
 from .scanner_process import IScanner, ScannerError
 from common import overrides, Localization, Constants
 from system import SystemScanner, SystemFile, SystemScannerError
-
 
 class LocalScanner(IScanner):
     """

@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from __future__ import annotations
 
 import logging
@@ -15,7 +13,6 @@ if TYPE_CHECKING:
 from ..utils import StreamQueue
 from ..serialize import SerializeLogRecord
 from common import overrides
-
 
 class CachedQueueLogHandler(logging.Handler):
     """
@@ -59,7 +56,6 @@ class CachedQueueLogHandler(logging.Handler):
         if prune_index >= 0:
             self.__cached_records = self.__cached_records[prune_index+1:]
 
-
 class QueueLogHandler(logging.Handler, StreamQueue[logging.LogRecord]):
     """
     A log handler that stored records in a thread-safe queue
@@ -71,7 +67,6 @@ class QueueLogHandler(logging.Handler, StreamQueue[logging.LogRecord]):
     @overrides(logging.Handler)
     def emit(self, record):
         self.put(record)
-
 
 class LogStreamHandler(IStreamHandler):
     """

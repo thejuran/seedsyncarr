@@ -1,10 +1,6 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
-
 class Constants:
     """
     POD class to hold shared constants
-    :return:
     """
     SERVICE_NAME = "seedsyncarr"
     MAIN_THREAD_SLEEP_INTERVAL_IN_SECS = 0.5

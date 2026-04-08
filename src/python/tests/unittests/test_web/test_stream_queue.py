@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import unittest
 
 from web.utils import StreamQueue, DEFAULT_QUEUE_MAXSIZE

@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import json
 import unittest
 from unittest.mock import patch

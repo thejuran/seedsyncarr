@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 from threading import Thread
 
@@ -10,11 +8,9 @@ from paste.translogger import TransLogger
 from .web_app import WebApp
 from common import overrides, Job, Context
 
-
 class WebAppJob(Job):
     """
     Web interface service
-    :return:
     """
     def __init__(self, context: Context, web_app: WebApp):
         super().__init__(name=self.__class__.__name__, context=context)
@@ -48,7 +44,6 @@ class WebAppJob(Job):
         self.__server.stop()
         self.__server_thread.join()
 
-
 class MyWSGIHandler(httpserver.WSGIHandler):
     """
     This class is overridden to fix a bug in Paste http server
@@ -58,7 +53,6 @@ class MyWSGIHandler(httpserver.WSGIHandler):
         if type(chunk) is str:
             chunk = str.encode(chunk)
         super().wsgi_write_chunk(chunk)
-
 
 class MyWSGIRefServer(bottle.ServerAdapter):
     """

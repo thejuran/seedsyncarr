@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from typing import Type, Callable, Optional
 from abc import ABC, abstractmethod
 import hmac
@@ -13,7 +11,6 @@ from bottle import static_file, HTTPResponse
 from common import Context, Config
 from controller import Controller
 
-
 class IHandler(ABC):
     """
     Abstract class that defines a web handler
@@ -22,11 +19,8 @@ class IHandler(ABC):
     def add_routes(self, web_app: "WebApp"):
         """
         Add all the handled routes to the given web app
-        :param web_app:
-        :return:
         """
         pass
-
 
 class IStreamHandler(ABC):
     """
@@ -50,10 +44,8 @@ class IStreamHandler(ABC):
         Register this streaming handler with the web app
         :param web_app: web_app instance
         :param kwargs: args for stream handler ctor
-        :return:
         """
         web_app.add_streaming_handler(cls, **kwargs)
-
 
 class WebApp(bottle.Bottle):
     """
@@ -175,7 +167,6 @@ class WebApp(bottle.Bottle):
         """
         Add the default routes. This must be called after all the handlers have
         been added.
-        :return:
         """
         # Streaming route
         self.get("/server/stream")(self.__web_stream)
@@ -205,14 +196,12 @@ class WebApp(bottle.Bottle):
     def process(self):
         """
         Advance the web app state
-        :return:
         """
         pass
 
     def stop(self):
         """
         Exit gracefully, kill any connections and clean up any state
-        :return:
         """
         # Use object.__setattr__ to bypass Bottle's special __setattr__ handling
         object.__setattr__(self, '_stop_flag', True)
@@ -249,8 +238,6 @@ class WebApp(bottle.Bottle):
     def __static(self, file_path: str):
         """
         Serves all the static files
-        :param file_path:
-        :return:
         """
         return static_file(file_path, root=self._html_path)
 

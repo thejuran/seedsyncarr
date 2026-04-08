@@ -1,12 +1,9 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from typing import Optional
 
 from ..web_app import IStreamHandler
 from ..serialize import SerializeStatus
 from ..utils import StreamQueue
 from common import overrides, Status, IStatusListener
-
 
 class StatusListener(IStatusListener, StreamQueue[Status]):
     """
@@ -19,7 +16,6 @@ class StatusListener(IStatusListener, StreamQueue[Status]):
     @overrides(IStatusListener)
     def notify(self):
         self.put(self.__status.copy())
-
 
 class StatusStreamHandler(IStreamHandler):
     def __init__(self, status: Status):

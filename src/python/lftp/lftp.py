@@ -1,28 +1,21 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 import re
 from functools import wraps
 from typing import Callable, Union, List, Optional
 
-# 3rd party libs
 import pexpect
 
-# my libs
 from common import AppError
 from .job_status_parser import LftpJobStatus, LftpJobStatusParser, LftpJobStatusParserError
 
-
 # How many status errors are allowed before error propagates out
 MAX_CONSECUTIVE_STATUS_ERRORS = 2
-
 
 class LftpError(AppError):
     """
     Custom exception that describes the failure of the lftp command
     """
     pass
-
 
 class Lftp:
     """
@@ -76,7 +69,6 @@ class Lftp:
     def __setup(self):
         """
         Setup the lftp instance with default settings
-        :return:
         """
         # Set to kill on exit to prevent a zombie process
         self.__set(Lftp.__SET_COMMAND_AT_EXIT, "\"kill all\"")
@@ -87,8 +79,6 @@ class Lftp:
         """
         Decorator that checks for a valid process before executing
         the decorated method
-        :param method:
-        :return:
         """
         @wraps(method)
         def wrapper(inst: "Lftp", *args, **kwargs):
@@ -112,7 +102,6 @@ class Lftp:
         Raise any pending errors
         Errors show up late after a command is executed
         This method raises any errors that were detected while executing the next command
-        :return:
         """
         if self.__pending_error:
             error = self.__pending_error
@@ -177,17 +166,12 @@ class Lftp:
     def __set(self, setting: str, value: str):
         """
         Set a setting in the lftp runtime
-        :param setting:
-        :param value:
-        :return:
         """
         self.__run_command("set {} {}".format(setting, value))
 
     def __get(self, setting: str) -> str:
         """
         Get a setting from the lftp runtime
-        :param setting:
-        :return:
         """
         out = self.__run_command("set -a | grep {}".format(setting))
         m = re.search("set {} (.*)".format(setting), out)
@@ -314,7 +298,6 @@ class Lftp:
     def status(self) -> List[LftpJobStatus]:
         """
         Return a status list of queued and running jobs
-        :return:
         """
         out = self.__run_command("jobs -v")
         try:
@@ -337,7 +320,6 @@ class Lftp:
           * File/folder does not exist
         :param name: name of file or folder to download
         :param is_dir: true if folder, false if file
-        :return:
         """
         # Escape single and double quotes in any string used in queue command
         # Also reject newline/CR/null which could inject arbitrary LFTP commands via sendline()
@@ -362,7 +344,6 @@ class Lftp:
     def kill(self, name: str) -> bool:
         """
         Kill a queued or running job
-        :param name:
         :return: True if job of given name was found, False otherwise
         """
         # look for this name in the status list
@@ -390,17 +371,12 @@ class Lftp:
     def kill_all(self):
         """
         Kills are jobs, queued or downloading
-        :return:
         """
         # empty the queue and kill running jobs
         self.__run_command("queue -d *")
         self.__run_command("kill all")
 
     def exit(self):
-        """
-        Exit the lftp instance. It cannot be used after being killed
-        :return:
-        """
         self.kill_all()
         self.__process.sendline("exit")
         self.__process.close(force=True)

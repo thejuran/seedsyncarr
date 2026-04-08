@@ -1,10 +1,7 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from typing import List, Optional
 
 from common import Context, Constants
 from lftp import Lftp, LftpError, LftpJobStatus, LftpJobStatusParserError
-
 
 class LftpManager:
     """

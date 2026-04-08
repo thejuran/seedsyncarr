@@ -1,10 +1,7 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from collections import OrderedDict
 from typing import TypeVar, Generic, Iterator, Iterable, Optional, Set
 
 T = TypeVar('T')
-
 
 class BoundedOrderedSet(Generic[T]):
     """

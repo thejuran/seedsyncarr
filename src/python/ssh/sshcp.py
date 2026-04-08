@@ -1,20 +1,15 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 import time
 
 import pexpect
 
-# my libs
 from common import AppError
-
 
 class SshcpError(AppError):
     """
     Custom exception that describes the failure of the ssh command
     """
     pass
-
 
 # Error message prefixes that indicate transient network issues (timeouts,
 # connection drops, unreachable hosts). Consumers can use these to decide
@@ -25,7 +20,6 @@ TRANSIENT_ERROR_PATTERNS = ("Timed out", "Connection refused by server")
 # (wrong credentials, changed host keys, bad hostnames). These should not
 # be retried — the user needs to fix the configuration.
 PERMANENT_ERROR_PATTERNS = ("Incorrect password", "Remote host key has changed", "Bad hostname:")
-
 
 class Sshcp:
     """
@@ -165,8 +159,6 @@ class Sshcp:
     def shell(self, command: str) -> bytes:
         """
         Run a shell command on remote service and return output
-        :param command:
-        :return:
         """
         if not command:
             raise ValueError("Command cannot be empty")
@@ -195,9 +187,6 @@ class Sshcp:
     def copy(self, local_path: str, remote_path: str):
         """
         Copies local file at local_path to remote remote_path
-        :param local_path:
-        :param remote_path:
-        :return:
         """
         if not local_path:
             raise ValueError("Local path cannot be empty")

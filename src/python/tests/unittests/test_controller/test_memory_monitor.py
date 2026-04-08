@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import unittest
 
 from controller.memory_monitor import MemoryMonitor, MemoryStats

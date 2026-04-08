@@ -1,10 +1,7 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from typing import List, Optional, Tuple
 
 from common import Context, MultiprocessingLogger
 from .scan import ScannerProcess, ScannerResult, ActiveScanner, LocalScanner, RemoteScanner
-
 
 class ScanManager:
     """

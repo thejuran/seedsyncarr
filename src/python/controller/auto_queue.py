@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import json
 import threading
 from abc import ABC, abstractmethod
@@ -9,7 +7,6 @@ import fnmatch
 from common import overrides, Constants, Context, Persist, PersistError, Serializable
 from model import IModelListener, ModelFile
 from .controller import Controller
-
 
 class AutoQueuePattern(Serializable):
     # Keys
@@ -38,7 +35,6 @@ class AutoQueuePattern(Serializable):
         dct = json.loads(content)
         return AutoQueuePattern(pattern=dct[AutoQueuePattern.__KEY_PATTERN])
 
-
 class IAutoQueuePersistListener(ABC):
     """Listener for receiving AutoQueuePersist events"""
 
@@ -49,7 +45,6 @@ class IAutoQueuePersistListener(ABC):
     @abstractmethod
     def pattern_removed(self, pattern: AutoQueuePattern):
         pass
-
 
 class AutoQueuePersist(Persist):
     """
@@ -119,7 +114,6 @@ class AutoQueuePersist(Persist):
         dct[AutoQueuePersist.__KEY_PATTERNS] = list(p.to_str() for p in self.__patterns)
         return json.dumps(dct, indent=Constants.JSON_PRETTY_PRINT_INDENT)
 
-
 class AutoQueueModelListener(IModelListener):
     """Keeps track of added and modified files"""
     def __init__(self):
@@ -138,7 +132,6 @@ class AutoQueueModelListener(IModelListener):
     def file_removed(self, file: ModelFile):
         pass
 
-
 class AutoQueuePersistListener(IAutoQueuePersistListener):
     """Keeps track of newly added patterns"""
     def __init__(self):
@@ -152,7 +145,6 @@ class AutoQueuePersistListener(IAutoQueuePersistListener):
     def pattern_removed(self, pattern: AutoQueuePattern):
         if pattern in self.new_patterns:
             self.new_patterns.remove(pattern)
-
 
 class AutoQueue:
     """
@@ -190,7 +182,6 @@ class AutoQueue:
     def process(self):
         """
         Advance the auto queue state
-        :return:
         """
         if not self.__enabled:
             return
@@ -343,8 +334,6 @@ class AutoQueue:
         Also takes into consideration new patterns that were added
         The accept criteria is applied to candidates AND all existing files in case of
         new patterns
-        :param candidates:
-        :param accept:
         :return: list of (filename, pattern) pairs
         """
         # Files accepted and matched, filename -> pattern map
@@ -376,9 +365,6 @@ class AutoQueue:
     def __match(pattern: AutoQueuePattern, file: ModelFile) -> bool:
         """
         Returns true is file matches the pattern
-        :param pattern:
-        :param file:
-        :return:
         """
         # make the search case insensitive
         pattern = pattern.pattern.lower()

@@ -1,11 +1,8 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import json
 import logging
 import re
 
 from .serialize import Serialize
-
 
 class SerializeLogRecord(Serialize):
     """

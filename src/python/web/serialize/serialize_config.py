@@ -1,10 +1,7 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import json
 import collections
 
 from common import Config
-
 
 # Sensitive fields that must never be returned in API responses.
 # Keyed by section name (lowercase), values are field names to redact.
@@ -16,7 +13,6 @@ _SENSITIVE_FIELDS = {
 }
 
 _REDACTED = "**REDACTED**"
-
 
 class SerializeConfig:
     @staticmethod

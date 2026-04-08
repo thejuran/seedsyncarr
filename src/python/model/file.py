@@ -1,11 +1,8 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from datetime import datetime
 from enum import Enum
 from typing import Optional, List
 import copy
 import os
-
 
 class ModelFile:
     """

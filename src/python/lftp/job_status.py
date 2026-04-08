@@ -1,9 +1,6 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from collections import namedtuple
 from enum import Enum
 from typing import List, Tuple
-
 
 class LftpJobStatus:
     """
@@ -74,7 +71,6 @@ class LftpJobStatus:
     def get_active_file_transfer_states(self) -> List[Tuple[str, TransferState]]:
         """
         Returns list of pairs (filename, transfer state)
-        :return:
         """
         return list(zip(self.__active_files_state.keys(), self.__active_files_state.values()))
 

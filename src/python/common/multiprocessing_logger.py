@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import multiprocessing
 import threading
 import queue
@@ -7,7 +5,6 @@ import logging
 import time
 import sys
 from logging.handlers import QueueHandler
-
 
 class MultiprocessingLogger:
     """
@@ -42,7 +39,6 @@ class MultiprocessingLogger:
         """
         Raises any exception captured by the listener thread
         Source: https://stackoverflow.com/a/1854263/8571324
-        :return:
         """
         if self.__listener_exc_info:
             exc_info = self.__listener_exc_info
@@ -53,7 +49,6 @@ class MultiprocessingLogger:
         """
         Returns a process-safe logger
         This logger sends all records to the main process
-        :return:
         """
         queue_handler = QueueHandler(self.__queue)
         root_logger = logging.getLogger()

@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 import json
 from typing import List, Optional
@@ -11,7 +9,6 @@ from .scanner_process import IScanner, ScannerError
 from common import overrides, Localization
 from ssh import Sshcp, SshcpError, TRANSIENT_ERROR_PATTERNS, PERMANENT_ERROR_PATTERNS
 from system import SystemFile
-
 
 class RemoteScanner(IScanner):
     """

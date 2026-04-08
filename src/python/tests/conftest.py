@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 """
 Shared pytest fixtures for SeedSyncarr tests.
 

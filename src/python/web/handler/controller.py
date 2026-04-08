@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import json
 import logging
 import os
@@ -15,9 +13,7 @@ from common import overrides
 from controller import Controller
 from ..web_app import IHandler, WebApp
 
-
 logger = logging.getLogger(__name__)
-
 
 class WebResponseActionCallback(Controller.Command.ICallback):
     """
@@ -57,7 +53,6 @@ class WebResponseActionCallback(Controller.Command.ICallback):
         """
         return self.__event.wait(timeout=timeout)
 
-
 class ControllerHandler(IHandler):
     def __init__(self, controller: Controller, local_path: str = ""):
         self.__controller = controller
@@ -79,8 +74,6 @@ class ControllerHandler(IHandler):
     def __handle_action_queue(self, file_name: str) -> HTTPResponse:
         """
         Request a QUEUE action
-        :param file_name:
-        :return:
         """
         # value is double encoded
         file_name = unquote(file_name)
@@ -100,8 +93,6 @@ class ControllerHandler(IHandler):
     def __handle_action_stop(self, file_name: str) -> HTTPResponse:
         """
         Request a STOP action
-        :param file_name:
-        :return:
         """
         # value is double encoded
         file_name = unquote(file_name)
@@ -121,8 +112,6 @@ class ControllerHandler(IHandler):
     def __handle_action_extract(self, file_name: str) -> HTTPResponse:
         """
         Request a EXTRACT action
-        :param file_name:
-        :return:
         """
         # value is double encoded
         file_name = unquote(file_name)
@@ -146,8 +135,6 @@ class ControllerHandler(IHandler):
     def __handle_action_delete_local(self, file_name: str) -> HTTPResponse:
         """
         Request a DELETE LOCAL action
-        :param file_name:
-        :return:
         """
         # value is double encoded
         file_name = unquote(file_name)
@@ -171,8 +158,6 @@ class ControllerHandler(IHandler):
     def __handle_action_delete_remote(self, file_name: str) -> HTTPResponse:
         """
         Request a DELETE REMOTE action
-        :param file_name:
-        :return:
         """
         # value is double encoded
         file_name = unquote(file_name)
@@ -347,10 +332,9 @@ class ControllerHandler(IHandler):
                 content_type="application/json"
             )
 
-        # Deduplicate files while preserving order
         files = list(dict.fromkeys(files))
 
-        # Enforce maximum file limit to prevent DoS
+        # Prevent DoS — enforce file limit
         if len(files) > self._MAX_BULK_FILES:
             return HTTPResponse(
                 body=json.dumps({
@@ -415,7 +399,7 @@ class ControllerHandler(IHandler):
             self._BULK_MAX_TIMEOUT
         )
 
-        # Phase 1: Queue all commands (parallel queuing)
+        # Queue all commands (parallel queuing)
         commands_with_callbacks: List[Tuple[str, WebResponseActionCallback]] = []
         results = []
         succeeded = 0
@@ -445,12 +429,11 @@ class ControllerHandler(IHandler):
             action_name, file_count, queue_time - start_time
         ))
 
-        # Phase 2: Wait for all callbacks to complete
+        # Wait for all callbacks to complete
         # The controller will process all queued commands in its next cycle,
         # so waiting for all at once is much faster than waiting one-by-one.
         timed_out = 0
 
-        # Calculate remaining time for each callback
         for file_name, callback in commands_with_callbacks:
             remaining_timeout = max(0.1, timeout - (time.time() - start_time))
             completed = callback.wait(timeout=remaining_timeout)

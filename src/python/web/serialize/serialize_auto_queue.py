@@ -1,10 +1,7 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import json
 from typing import List
 
 from controller import AutoQueuePattern
-
 
 class SerializeAutoQueue:
     __KEY_PATTERN = "pattern"

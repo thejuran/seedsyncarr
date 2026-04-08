@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import json
 import ipaddress
 import socket
@@ -13,7 +11,6 @@ from bottle import HTTPResponse
 from common import overrides, Config, ConfigError
 from ..web_app import IHandler, WebApp
 from ..serialize import SerializeConfig
-
 
 class ConfigHandler(IHandler):
     def __init__(self, config: Config):

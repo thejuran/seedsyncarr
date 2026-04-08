@@ -1,11 +1,6 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
-
-# my libs
 from common import overrides, Job, Context
 from .controller import Controller
 from .auto_queue import AutoQueue
-
 
 class ControllerJob(Job):
     """

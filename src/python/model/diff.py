@@ -1,12 +1,8 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from enum import Enum
 from typing import List, Optional
 
-# my libs
 from .file import ModelFile
 from .model import Model
-
 
 class ModelDiff:
     """
@@ -40,15 +36,11 @@ class ModelDiff:
     def new_file(self) -> Optional[ModelFile]:
         return self.__new_file
 
-
 class ModelDiffUtil:
     @staticmethod
     def diff_models(model_before: Model, model_after: Model) -> List[ModelDiff]:
         """
         Compare two models and generate their diff
-        :param model_before:
-        :param model_after:
-        :return:
         """
         diffs = []
         file_names_before = model_before.get_file_names()

@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import hmac
 import hashlib
 import json
@@ -14,11 +12,9 @@ from common.config import Config
 from controller.webhook_manager import WebhookManager
 from ..web_app import IHandler, WebApp
 
-
 logger = logging.getLogger(__name__)
 
 _WEBHOOK_MAX_BODY_BYTES = 1_048_576  # 1 MB
-
 
 class WebhookHandler(IHandler):
     """

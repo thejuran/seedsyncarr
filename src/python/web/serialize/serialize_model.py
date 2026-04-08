@@ -1,12 +1,9 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from enum import Enum
 import json
 from typing import List, Optional
 
 from .serialize import Serialize
 from model import ModelFile
-
 
 class SerializeModel(Serialize):
     """
@@ -96,7 +93,6 @@ class SerializeModel(Serialize):
     def model(self, model_files: List[ModelFile]) -> str:
         """
         Serialize the model
-        :return:
         """
         model_json_list = [SerializeModel.__model_file_to_json_dict(f) for f in model_files]
         model_json = json.dumps(model_json_list)

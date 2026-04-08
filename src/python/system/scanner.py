@@ -1,21 +1,16 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import os
 import re
 from typing import List
 from datetime import datetime
 
-# my libs
 from common import AppError
 from .file import SystemFile
-
 
 class SystemScannerError(AppError):
     """
     Exception indicating a bad config value
     """
     pass
-
 
 class PseudoDirEntry:
     def __init__(self, name: str, path: str, is_dir: bool, stat):
@@ -29,7 +24,6 @@ class PseudoDirEntry:
 
     def stat(self):
         return self._stat
-
 
 class SystemScanner:
     """
@@ -50,16 +44,12 @@ class SystemScanner:
     def add_exclude_prefix(self, prefix: str):
         """
         Exclude files that begin with the given prefix
-        :param prefix:
-        :return:
         """
         self.exclude_prefixes.append(prefix)
 
     def add_exclude_suffix(self, suffix: str):
         """
         Exclude files that end with the given suffix
-        :param suffix:
-        :return:
         """
         self.exclude_suffixes.append(suffix)
 
@@ -68,15 +58,10 @@ class SystemScanner:
         Set the suffix used by LFTP temp files
         Scanner will ignore the suffix and show these files with their
         original name
-        :return:
         """
         self.__lftp_temp_file_suffix = suffix
 
     def scan(self) -> List[SystemFile]:
-        """
-        Scan the path to generate list of system files
-        :return:
-        """
         if not os.path.exists(self.path_to_scan):
             raise SystemScannerError("Path does not exist: {}".format(self.path_to_scan))
         elif not os.path.isdir(self.path_to_scan):
@@ -86,8 +71,6 @@ class SystemScanner:
     def scan_single(self, name: str) -> SystemFile:
         """
         Scan a single file/dir
-        :param name:
-        :return:
         """
         path = os.path.join(self.path_to_scan, name)
         temp_path = (path + self.__lftp_temp_file_suffix) if self.__lftp_temp_file_suffix else None
@@ -195,8 +178,6 @@ class SystemScanner:
     def _lftp_status_file_size(status: str) -> int:
         """
         Returns the real file size as indicated by an lftp status content
-        :param status:
-        :return:
         """
         size_pattern_m = re.compile(r"^size=(\d+)$")
         pos_pattern_m = re.compile(r"^\d+\.pos=(\d+)$")

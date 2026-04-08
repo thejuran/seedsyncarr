@@ -1,13 +1,9 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 import copy
 import collections
 
-# my libs
 from .config import Config
 from .status import Status
-
 
 class Args:
     """
@@ -28,7 +24,6 @@ class Args:
         dct["debug"] = str(self.debug)
         dct["exit"] = str(self.exit)
         return dct
-
 
 class Context:
     """

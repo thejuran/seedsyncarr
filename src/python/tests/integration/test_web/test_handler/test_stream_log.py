@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 import unittest
 from unittest.mock import patch

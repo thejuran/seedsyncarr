@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import unittest
 import os
 from unittest.mock import patch, MagicMock, call

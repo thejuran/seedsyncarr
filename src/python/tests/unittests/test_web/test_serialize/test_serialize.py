@@ -1,6 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
-
 from web.serialize import Serialize
 
 

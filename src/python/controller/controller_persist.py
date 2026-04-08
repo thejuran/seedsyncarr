@@ -1,11 +1,8 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import json
 import logging
 from typing import Optional
 
 from common import overrides, Constants, Persist, PersistError, BoundedOrderedSet
-
 
 class ControllerPersist(Persist):
     """

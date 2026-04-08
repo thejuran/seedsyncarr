@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import os
 from abc import ABC, abstractmethod
 from typing import Type, TypeVar
@@ -7,11 +5,9 @@ from typing import Type, TypeVar
 from .error import AppError
 from .localization import Localization
 
-
 # Source: https://stackoverflow.com/a/39205612/8571324
 T_Persist = TypeVar('T_Persist', bound='Persist')
 T_Serializable = TypeVar('T_Serializable', bound='Serializable')
-
 
 class Serializable(ABC):
     """
@@ -27,13 +23,11 @@ class Serializable(ABC):
     def to_str(self) -> str:
         pass
 
-
 class PersistError(AppError):
     """
     Exception indicating persist loading/saving error
     """
     pass
-
 
 class Persist(Serializable):
     """

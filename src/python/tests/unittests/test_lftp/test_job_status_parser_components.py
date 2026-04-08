@@ -1,4 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
 # Extended tests for refactored job status parser components.
 
 import unittest

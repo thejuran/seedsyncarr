@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import collections
 import os
 import logging
@@ -7,13 +5,11 @@ import time
 from typing import List, Optional
 import math
 
-# my libs
 from system import SystemFile
 from lftp import LftpJobStatus
 from model import ModelFile, Model, ModelError
 from common.bounded_ordered_set import BoundedOrderedSet
 from .extract import ExtractStatus, Extract
-
 
 class ModelBuilder:
     """
@@ -104,7 +100,6 @@ class ModelBuilder:
     def has_changes(self) -> bool:
         """
         Returns true is model has changes and requires rebuild
-        :return:
         """
         return self.__cached_model is None
 

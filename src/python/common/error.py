@@ -1,12 +1,8 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
-
 class AppError(Exception):
     """
     Exception indicating an error
     """
     pass
-
 
 class ServiceExit(AppError):
     """
@@ -14,7 +10,6 @@ class ServiceExit(AppError):
     of all running threads and the main program.
     """
     pass
-
 
 class ServiceRestart(AppError):
     """

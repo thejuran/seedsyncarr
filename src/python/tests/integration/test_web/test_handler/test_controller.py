@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from unittest.mock import MagicMock
 from urllib.parse import quote
 

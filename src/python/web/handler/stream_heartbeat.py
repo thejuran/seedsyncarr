@@ -1,12 +1,9 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import time
 from typing import Optional
 
 from ..web_app import IStreamHandler
 from ..serialize import Serialize
 from common import overrides
-
 
 class SerializeHeartbeat(Serialize):
     """
@@ -16,7 +13,6 @@ class SerializeHeartbeat(Serialize):
 
     def ping(self, timestamp: float) -> str:
         return self._sse_pack(event=SerializeHeartbeat.__EVENT_PING, data=str(timestamp))
-
 
 class HeartbeatStreamHandler(IStreamHandler):
     """

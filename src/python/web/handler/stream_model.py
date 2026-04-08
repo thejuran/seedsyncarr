@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from typing import Optional, List
 
 from ..web_app import IStreamHandler
@@ -8,7 +6,6 @@ from ..serialize import SerializeModel
 from model import IModelListener, ModelFile
 from common import overrides
 from controller import Controller
-
 
 class WebResponseModelListener(IModelListener, StreamQueue[SerializeModel.UpdateEvent]):
     """
@@ -35,7 +32,6 @@ class WebResponseModelListener(IModelListener, StreamQueue[SerializeModel.Update
         self.put(SerializeModel.UpdateEvent(change=SerializeModel.UpdateEvent.Change.UPDATED,
                                             old_file=old_file,
                                             new_file=new_file))
-
 
 class ModelStreamHandler(IStreamHandler):
     def __init__(self, controller: Controller):

@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import configparser
 from typing import Dict
 from io import StringIO
@@ -10,7 +8,6 @@ from typing import Type, TypeVar, Callable, Any
 from .error import AppError
 from .persist import Persist, PersistError
 from .types import overrides
-
 
 def _strtobool(value: str) -> int:
     """Convert a string representation of a boolean to 1 or 0.
@@ -28,21 +25,17 @@ def _strtobool(value: str) -> int:
     else:
         raise ValueError("Invalid truth value: {!r}".format(value))
 
-
 class ConfigError(AppError):
     """
     Exception indicating a bad config value
     """
     pass
 
-
 InnerConfigType = Dict[str, str]
 OuterConfigType = Dict[str, InnerConfigType]
 
-
 # Source: https://stackoverflow.com/a/39205612/8571324
 T = TypeVar('T', bound='InnerConfig')
-
 
 class Converters:
     @staticmethod
@@ -77,7 +70,6 @@ class Converters:
             ))
         return val
 
-
 class Checkers:
     @staticmethod
     def null(_: T, __: str, value: Any) -> Any:
@@ -106,7 +98,6 @@ class Checkers:
                 cls.__name__, name, value
             ))
         return value
-
 
 class InnerConfig(ABC):
     """
@@ -154,8 +145,6 @@ class InnerConfig(ABC):
         """
         Construct and return inner config from a dict
         Dict values can be either native types, or str representations
-        :param config_dict:
-        :return:
         """
         config_dict = dict(config_dict)  # copy that we can modify
 
@@ -180,7 +169,6 @@ class InnerConfig(ABC):
     def as_dict(self) -> InnerConfigType:
         """
         Return the dict representation of the inner config
-        :return:
         """
         config_dict = collections.OrderedDict()
         cls = self.__class__
@@ -197,8 +185,6 @@ class InnerConfig(ABC):
     def has_property(self, name: str) -> bool:
         """
         Returns true if the given property exists, false otherwise
-        :param name:
-        :return:
         """
         try:
             return isinstance(getattr(self.__class__, name), property)
@@ -207,11 +193,8 @@ class InnerConfig(ABC):
 
     def set_property(self, name: str, value: Any):
         """
-        Set a property dynamically
-        Do a str conversion of the value, if necessary
-        :param name:
-        :param value:
-        :return:
+        Set a property dynamically.
+        Converts str values to native types using the property's converter.
         """
         cls = self.__class__
         prop_addon = InnerConfig.__prop_addon_map[getattr(cls, name)]
@@ -221,12 +204,10 @@ class InnerConfig(ABC):
         # noinspection PyProtectedMember
         self._set_property(name, native_value, prop_addon.checker)
 
-
 # Useful aliases
 IC = InnerConfig
 # noinspection PyProtectedMember
 PROP = InnerConfig._create_property
-
 
 class Config(Persist):
     """
@@ -480,8 +461,6 @@ class Config(Persist):
     def has_section(self, name: str) -> bool:
         """
         Returns true if the given section exists, false otherwise
-        :param name:
-        :return:
         """
         try:
             return isinstance(getattr(self, name), InnerConfig)

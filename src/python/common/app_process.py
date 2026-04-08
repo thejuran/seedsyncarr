@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 import sys
 import time
@@ -14,9 +12,7 @@ import tblib.pickling_support
 
 from common import overrides, ServiceExit, MultiprocessingLogger
 
-
 tblib.pickling_support.install()
-
 
 class ExceptionWrapper:
     """
@@ -29,7 +25,6 @@ class ExceptionWrapper:
 
     def re_raise(self):
         raise self.ee.with_traceback(self.tb)
-
 
 class AppProcess(Process):
     """
@@ -118,7 +113,6 @@ class AppProcess(Process):
     def propagate_exception(self):
         """
         Raises any exception that was caught by the process
-        :return:
         """
         try:
             exc = self.__exception_queue.get(block=False)
@@ -130,7 +124,6 @@ class AppProcess(Process):
     def run_init(self):
         """
         Called once before the run loop
-        :return:
         """
         pass
 
@@ -138,7 +131,6 @@ class AppProcess(Process):
     def run_cleanup(self):
         """
         Called once before cleanup
-        :return:
         """
         pass
 
@@ -149,10 +141,8 @@ class AppProcess(Process):
         This function is repeatedly called until process exits.
         The check for graceful shutdown is performed between the loop iterations,
         so try to limit the run time for this method.
-        :return:
         """
         pass
-
 
 class AppOneShotProcess(AppProcess):
     """
@@ -172,6 +162,5 @@ class AppOneShotProcess(AppProcess):
     def run_once(self):
         """
         Process behaviour should be implemented here
-        :return:
         """
         pass

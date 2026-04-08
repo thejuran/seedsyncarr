@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 import sys
 import time
@@ -13,7 +11,6 @@ except ImportError:
     # resource module not available on Windows
     HAS_RESOURCE = False
 
-
 @dataclass
 class MemoryStats:
     """Container for memory statistics snapshot."""
@@ -25,7 +22,6 @@ class MemoryStats:
     model_files_count: int
     lftp_statuses_count: int
     stream_queues_stats: Dict[str, Dict[str, int]]
-
 
 class MemoryMonitor:
     """

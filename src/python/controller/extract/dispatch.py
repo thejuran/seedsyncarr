@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import collections
 from enum import Enum
 from typing import List
@@ -15,10 +13,8 @@ from .extract import Extract, ExtractError
 from model import ModelFile
 from common import AppError
 
-
 class ExtractDispatchError(AppError):
     pass
-
 
 class ExtractListener(ABC):
     @abstractmethod
@@ -28,7 +24,6 @@ class ExtractListener(ABC):
     @abstractmethod
     def extract_failed(self, name: str, is_dir: bool):
         pass
-
 
 class ExtractStatus:
     """
@@ -54,7 +49,6 @@ class ExtractStatus:
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
-
 
 class ExtractDispatch:
 
@@ -225,8 +219,6 @@ class ExtractDispatch:
     def __coalesce_extractions(task: _Task):
         """
         Remove duplicate extractions due to split files
-        :param task:
-        :return:
         """
         # Filter out any rxx files for a split rar
         filtered_paths = []

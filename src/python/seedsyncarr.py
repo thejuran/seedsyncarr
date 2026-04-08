@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import signal
 import sys
 import time
@@ -12,7 +10,6 @@ from typing import Optional, Type, TypeVar
 import shutil
 import platform
 
-# my libs
 from common import ServiceExit, Context, Constants, Config, Args, AppError
 from common import ServiceRestart
 from common import Localization, Status, ConfigError, Persist, PersistError
@@ -20,9 +17,7 @@ from controller import Controller, ControllerJob, ControllerPersist, AutoQueue, 
 from controller.webhook_manager import WebhookManager
 from web import WebAppJob, WebAppBuilder
 
-
 T_Persist = TypeVar('T_Persist', bound=Persist)
-
 
 class Seedsyncarr:
     """
@@ -302,7 +297,6 @@ class Seedsyncarr:
     def _create_default_config() -> Config:
         """
         Create a config with default values
-        :return:
         """
         config = Config()
 
@@ -392,9 +386,6 @@ class Seedsyncarr:
         Loads a persist from file.
         Backs up existing persist if it's corrupted. Returns a new blank
         persist in its place.
-        :param cls:
-        :param file_path:
-        :return:
         """
         if os.path.isfile(file_path):
             try:
@@ -453,7 +444,6 @@ class Seedsyncarr:
             Seedsyncarr.logger.info("Backing up {} to {}".format(file_path, backup_path))
         shutil.copy(file_path, backup_path)
 
-
 def main():
     """Entry point for pip-installed seedsyncarr command."""
     if sys.hexversion < 0x03050000:
@@ -471,7 +461,6 @@ def main():
             Seedsyncarr.logger.exception("Caught exception")
             raise
     Seedsyncarr.logger.info("Exited successfully")
-
 
 if __name__ == "__main__":
     main()

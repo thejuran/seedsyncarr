@@ -1,21 +1,16 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 import threading
 from abc import ABC, abstractmethod
 from typing import Set
 
-# my libs
 from common import AppError
 from .file import ModelFile
-
 
 class ModelError(AppError):
     """
     Exception indicating a model error
     """
     pass
-
 
 class IModelListener(ABC):
     """
@@ -25,8 +20,6 @@ class IModelListener(ABC):
     def file_added(self, file: ModelFile):
         """
         Event indicating a file was added to the model
-        :param file:
-        :return:
         """
         pass
 
@@ -34,8 +27,6 @@ class IModelListener(ABC):
     def file_removed(self, file: ModelFile):
         """
         Event indicating that the given file was removed from the model
-        :param file:
-        :return:
         """
         pass
 
@@ -43,12 +34,8 @@ class IModelListener(ABC):
     def file_updated(self, old_file: ModelFile, new_file: ModelFile):
         """
         Event indicating that the given file was updated
-        :param old_file:
-        :param new_file:
-        :return:
         """
         pass
-
 
 class Model:
     """
@@ -70,8 +57,6 @@ class Model:
     def add_listener(self, listener: IModelListener):
         """
         Add a model listener
-        :param listener:
-        :return:
         """
         self.logger.debug("LftpModel: Adding a listener")
         with self.__listeners_lock:
@@ -81,8 +66,6 @@ class Model:
     def remove_listener(self, listener: IModelListener):
         """
         Remove a model listener
-        :param listener:
-        :return:
         """
         self.logger.debug("LftpModel: Removing a listener")
         with self.__listeners_lock:
@@ -94,8 +77,6 @@ class Model:
     def add_file(self, file: ModelFile):
         """
         Add a file to the model
-        :param file:
-        :return:
         """
         self.logger.debug("LftpModel: Adding file '{}'".format(file.name))
         if file.name in self.__files:
@@ -112,8 +93,6 @@ class Model:
     def remove_file(self, filename: str):
         """
         Remove the file from the model
-        :param filename:
-        :return:
         """
         self.logger.debug("LftpModel: Removing file '{}'".format(filename))
         if filename not in self.__files:
@@ -129,8 +108,6 @@ class Model:
     def update_file(self, file: ModelFile):
         """
         Update an already existing file
-        :param file:
-        :return:
         """
         self.logger.debug("LftpModel: Updating file '{}'".format(file.name))
         if file.name not in self.__files:
@@ -150,8 +127,6 @@ class Model:
         """
         Returns the file of the given name.
         The returned file is frozen (immutable) and safe to use across threads.
-        :param name:
-        :return:
         """
         if name not in self.__files:
             raise ModelError("File does not exist in the model")

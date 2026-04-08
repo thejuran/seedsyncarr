@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import os
 
 import patoolib
@@ -7,13 +5,11 @@ import patoolib.util
 
 from common import AppError
 
-
 class ExtractError(AppError):
     """
     Indicates an extraction error
     """
     pass
-
 
 class Extract:
     """
@@ -35,8 +31,6 @@ class Extract:
         """
         Fast version of is_archive that only looks at file extension
         May return false negatives
-        :param archive_path:
-        :return:
         """
         file_ext = os.path.splitext(os.path.basename(archive_path))[1]
         if file_ext:

@@ -1,14 +1,10 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import sys
 import threading
 import time
 from abc import ABC, abstractmethod
 
-# my libs
 from .context import Context
 from .types import overrides
-
 
 class Job(threading.Thread, ABC):
     """
@@ -61,7 +57,6 @@ class Job(threading.Thread, ABC):
     def terminate(self):
         """
         Mark job for termination
-        :return:
         """
         self.shutdown_flag.set()
 
@@ -69,7 +64,6 @@ class Job(threading.Thread, ABC):
         """
         Raises any exception captured by this job in whatever thread calls this method
         Source: https://stackoverflow.com/a/1854263/8571324
-        :return:
         """
         if self.exc_info:
             exc_info = self.exc_info
@@ -78,10 +72,6 @@ class Job(threading.Thread, ABC):
 
     @abstractmethod
     def setup(self):
-        """
-        Setup is run once when the job starts
-        :return:
-        """
         pass
 
     @abstractmethod
@@ -90,14 +80,9 @@ class Job(threading.Thread, ABC):
         Execute is run repeatedly, separated by a sleep interval, while the job is running
         This method must return relatively quickly, otherwise the job won't be able to safely
         terminate
-        :return:
         """
         pass
 
     @abstractmethod
     def cleanup(self):
-        """
-        Cleanup is run one when the job is about to terminate
-        :return:
-        """
         pass

@@ -1,8 +1,5 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from typing import List
 from datetime import datetime
-
 
 class SystemFile:
     """

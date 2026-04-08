@@ -1,11 +1,8 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from bottle import HTTPResponse
 
 from common import Status, overrides
 from ..web_app import IHandler, WebApp
 from ..serialize import SerializeStatusJson
-
 
 class StatusHandler(IHandler):
     def __init__(self, status: Status):

@@ -1,16 +1,11 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 from queue import Queue, Empty, Full
 from typing import TypeVar, Generic, Optional
 
-
 T = TypeVar('T')
-
 
 # Default maximum queue size to prevent unbounded memory growth
 DEFAULT_QUEUE_MAXSIZE = 1000
-
 
 class StreamQueue(Generic[T]):
     """
@@ -70,7 +65,6 @@ class StreamQueue(Generic[T]):
     def get_next_event(self) -> Optional[T]:
         """
         Returns the next event if there is one, otherwise returns None
-        :return:
         """
         try:
             return self.__queue.get(block=False)

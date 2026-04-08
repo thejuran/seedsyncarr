@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from common import Context
 from controller import Controller, AutoQueuePersist
 from .web_app import WebApp
@@ -13,7 +11,6 @@ from .handler.stream_log import LogStreamHandler
 from .handler.stream_heartbeat import HeartbeatStreamHandler
 from .handler.status import StatusHandler
 from .handler.webhook import WebhookHandler
-
 
 class WebAppBuilder:
     """

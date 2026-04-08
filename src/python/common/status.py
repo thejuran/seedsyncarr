@@ -1,25 +1,18 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from abc import ABC, abstractmethod
 from typing import Any, TypeVar, Type
 from threading import Lock
 
 from common import overrides
 
-
 T = TypeVar('T', bound='StatusComponent')
-
 
 class IStatusComponentListener(ABC):
     @abstractmethod
     def notify(self, name: str):
         """
         Called when a property is changed
-        :param name:
-        :return:
         """
         pass
-
 
 class BaseStatus:
     """
@@ -37,7 +30,6 @@ class BaseStatus:
 
     def _set_property(self, name: str, value: Any):
         setattr(self, "__" + name, value)
-
 
 class StatusComponent(BaseStatus):
     """
@@ -78,16 +70,13 @@ class StatusComponent(BaseStatus):
         for listener in listeners:
             listener.notify(name)
 
-
 class IStatusListener(ABC):
     @abstractmethod
     def notify(self):
         """
         Called when any property of a component is changed
-        :return:
         """
         pass
-
 
 class Status(BaseStatus):
     """

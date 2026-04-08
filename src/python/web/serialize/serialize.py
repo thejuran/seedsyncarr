@@ -1,7 +1,4 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from abc import ABC
-
 
 class Serialize(ABC):
     """

@@ -1,12 +1,9 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from typing import List, Optional, Callable
 
 from common import Context, MultiprocessingLogger, AppOneShotProcess
 from model import ModelFile
 from .extract import ExtractProcess, ExtractStatus
 from .delete import DeleteLocalProcess, DeleteRemoteProcess
-
 
 class CommandProcessWrapper:
     """
@@ -15,7 +12,6 @@ class CommandProcessWrapper:
     def __init__(self, process: AppOneShotProcess, post_callback: Callable):
         self.process = process
         self.post_callback = post_callback
-
 
 class FileOperationManager:
     """

@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import logging
 from abc import ABC, abstractmethod
 import multiprocessing
@@ -9,7 +7,6 @@ import queue
 
 from common import overrides, AppProcess, AppError
 from system import SystemFile
-
 
 class ScannerError(AppError):
     """
@@ -21,7 +18,6 @@ class ScannerError(AppError):
     def __init__(self, message: str, recoverable: bool = False):
         super().__init__(message)
         self.recoverable = recoverable
-
 
 class IScanner(ABC):
     """
@@ -37,7 +33,6 @@ class IScanner(ABC):
     def set_base_logger(self, base_logger: logging.Logger):
         pass
 
-
 class ScannerResult:
     """
     Results of a system scan
@@ -51,7 +46,6 @@ class ScannerResult:
         self.files = files
         self.failed = failed
         self.error_message = error_message
-
 
 class ScannerProcess(AppProcess):
     """
@@ -115,7 +109,6 @@ class ScannerProcess(AppProcess):
         Process-safe method to retrieve latest scan result
         Returns None if no new scan result was generated since the last time
         this method was called
-        :return:
         """
         latest_scan = None
         try:

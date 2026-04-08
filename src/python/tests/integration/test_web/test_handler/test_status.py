@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import json
 
 from tests.integration.test_web.test_web_app import BaseTestWebApp

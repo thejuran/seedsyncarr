@@ -1,12 +1,8 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import json
 import sys
 import argparse
 
-# my libs
 from system import SystemScanner, SystemFile, SystemScannerError
-
 
 if __name__ == "__main__":
     if sys.hexversion < 0x03050000:

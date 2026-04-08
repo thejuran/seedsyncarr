@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from abc import ABC, abstractmethod
 import collections
 import threading
@@ -9,7 +7,6 @@ from queue import Queue
 from enum import Enum
 import copy
 
-# my libs
 from .scan_manager import ScanManager
 from .lftp_manager import LftpManager
 from .file_operation_manager import FileOperationManager
@@ -23,13 +20,11 @@ from model import ModelError, ModelFile, Model, ModelDiff, ModelDiffUtil, IModel
 from lftp import LftpError, LftpJobStatus, LftpJobStatusParserError
 from .controller_persist import ControllerPersist
 
-
 class ControllerError(AppError):
     """
     Exception indicating a controller error
     """
     pass
-
 
 class Controller:
     """
@@ -183,7 +178,6 @@ class Controller:
         """
         Start the controller
         Must be called after ctor and before process()
-        :return:
         """
         self.logger.debug("Starting controller")
         self.__scan_manager.start()
@@ -195,7 +189,6 @@ class Controller:
         """
         Advance the controller state
         This method should return relatively quickly as the heavy lifting is done by concurrent tasks
-        :return:
         """
         if not self.__started:
             raise ControllerError("Cannot process, controller is not started")
@@ -228,7 +221,6 @@ class Controller:
     def get_model_files(self) -> List[ModelFile]:
         """
         Returns a copy of all the model files
-        :return:
         """
         with self.__model_lock:
             model_files = self.__get_model_files()
@@ -267,8 +259,6 @@ class Controller:
     def add_model_listener(self, listener: IModelListener):
         """
         Adds a listener to the controller's model
-        :param listener:
-        :return:
         """
         with self.__model_lock:
             self.__model.add_listener(listener)
@@ -276,8 +266,6 @@ class Controller:
     def remove_model_listener(self, listener: IModelListener):
         """
         Removes a listener from the controller's model
-        :param listener:
-        :return:
         """
         with self.__model_lock:
             self.__model.remove_listener(listener)
@@ -292,8 +280,6 @@ class Controller:
             2. add_listener() -> model updated -> get_model()
                The model update is duplicated on client side (once through listener, and once
                through the model).
-        :param listener:
-        :return:
         """
         with self.__model_lock:
             self.__model.add_listener(listener)
@@ -932,7 +918,6 @@ class Controller:
     def __propagate_exceptions(self):
         """
         Propagate any exceptions from child processes/threads to this thread
-        :return:
         """
         self.__lftp_manager.raise_pending_error()
         self.__scan_manager.propagate_exceptions()

@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 from bottle import HTTPResponse
 from urllib.parse import unquote
 
@@ -7,7 +5,6 @@ from common import overrides
 from controller import AutoQueuePersist, AutoQueuePattern
 from ..web_app import IHandler, WebApp
 from ..serialize import SerializeAutoQueue
-
 
 class AutoQueueHandler(IHandler):
     def __init__(self, auto_queue_persist: AutoQueuePersist):

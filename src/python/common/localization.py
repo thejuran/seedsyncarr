@@ -1,6 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
-
 class Localization:
     class Error:
         MISSING_FILE = "The file '{}' doesn't exist."

@@ -1,5 +1,3 @@
-# Copyright 2017, Inderpreet Singh, All rights reserved.
-
 import multiprocessing
 import datetime
 import time
@@ -11,19 +9,16 @@ from .dispatch import ExtractDispatch, ExtractStatus, ExtractListener, ExtractDi
 from common import overrides, AppProcess
 from model import ModelFile
 
-
 class ExtractStatusResult:
     def __init__(self, timestamp: datetime, statuses: List[ExtractStatus]):
         self.timestamp = timestamp
         self.statuses = statuses
-
 
 class ExtractCompletedResult:
     def __init__(self, timestamp: datetime, name: str, is_dir: bool):
         self.timestamp = timestamp
         self.name = name
         self.is_dir = is_dir
-
 
 class ExtractProcess(AppProcess):
     __DEFAULT_SLEEP_INTERVAL_IN_SECS = 0.5
@@ -96,8 +91,6 @@ class ExtractProcess(AppProcess):
     def extract(self, file: ModelFile):
         """
         Process-safe method to queue an extraction
-        :param file:
-        :return:
         """
         self.__command_queue.put(file)
 
@@ -106,7 +99,6 @@ class ExtractProcess(AppProcess):
         Process-safe method to retrieve latest extract status
         Returns none if no new status is available since the last time
         this method was called
-        :return:
         """
         latest_result = None
         try:
@@ -121,7 +113,6 @@ class ExtractProcess(AppProcess):
         Process-safe method to retrieve list of newly completed extractions
         Returns an empty list if no new extractions were completed since the
         last time this method was called.
-        :return:
         """
         completed = []
         try:
