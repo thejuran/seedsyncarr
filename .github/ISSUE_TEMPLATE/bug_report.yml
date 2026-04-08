@@ -13,7 +13,7 @@ body:
       label: Installation type
       options:
         - Docker
-        - Debian package
+        - pip
     validations:
       required: true
   - type: input
