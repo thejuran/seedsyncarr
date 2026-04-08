@@ -513,26 +513,16 @@ applicable to README or community health files. Validation is entirely manual / 
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Screenshot strategy**
-   - What we know: No screenshot files exist on disk; README references `doc/images/screenshot-dashboard.png`
-   - What's unclear: Is Docker available locally to spin up the app and capture a screenshot?
-   - Recommendation: Plan task should attempt `docker run ghcr.io/thejuran/seedsyncarr:latest`,
-     use gsd-browser to navigate and screenshot, save to `doc/images/`. If Docker unavailable,
-     flag as manual prerequisite.
+   - RESOLVED: Docker v29.2.0 is available locally. Plan can use `docker run` + gsd-browser to capture screenshots. If capture fails at execution time, create placeholder and flag for manual screenshot.
 
 2. **Docker Compose port and volume**
-   - What we know: Compose block is not yet in the repo
-   - What's unclear: Exact port, volume mount path, and env vars needed for minimal working setup
-   - Recommendation: Check `src/docker/` or Makefile for the actual port and config path before
-     writing the compose block. [ASSUMED: port 8800 based on common pattern in similar tools]
+   - RESOLVED: Port 8800 confirmed from `src/docker/build/docker-image/Dockerfile:164` (`EXPOSE 8800`) and `src/docker/test/e2e/compose-dev.yml`. Config path is `/config` (from Dockerfile). Local path is `/downloads`.
 
 3. **`doc/DeveloperReadme.md` existence**
-   - What we know: README.md currently links to `doc/DeveloperReadme.md` for contributing
-   - What's unclear: Whether this file exists (doc/ directory was not found)
-   - Recommendation: If missing, CONTRIBUTING.md should contain the dev setup inline rather than
-     a broken cross-reference.
+   - RESOLVED: File does not exist, `doc/` directory does not exist. CONTRIBUTING.md should contain dev setup inline, not cross-reference a missing file.
 
 ---
 
