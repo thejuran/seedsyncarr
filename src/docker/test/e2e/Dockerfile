@@ -26,7 +26,7 @@ COPY \
 COPY src/e2e/tests /app/tests
 COPY \
     src/docker/test/e2e/run_tests.sh \
-    src/docker/test/e2e/parse_seedsyncarr_status.py \
+    src/docker/test/e2e/parse_status.py \
     /app/
 
 WORKDIR /app

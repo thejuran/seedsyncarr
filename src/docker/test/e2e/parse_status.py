@@ -3,8 +3,8 @@ import json
 
 # Parse seedsyncarr status JSON from stdin
 # Usage:
-#   echo '{"server":{"up":true},...}' | python3 parse_seedsyncarr_status.py server_up
-#   echo '{"controller":{"latest_remote_scan_time":"..."},...}' | python3 parse_seedsyncarr_status.py remote_scan_done
+#   echo '{"server":{"up":true},...}' | python3 parse_status.py server_up
+#   echo '{"controller":{"latest_remote_scan_time":"..."},...}' | python3 parse_status.py remote_scan_done
 
 check_type = sys.argv[1] if len(sys.argv) > 1 else 'server_up'
 
