@@ -1,0 +1,32 @@
+services:
+  tests:
+    image: seedsyncarr/test/e2e
+    container_name: seedsyncarr_test_e2e
+    build:
+      context: ../../../../
+      dockerfile: src/docker/test/e2e/Dockerfile
+      target: seedsyncarr_test_e2e
+    depends_on:
+      - remote
+    # Playwright needs more shared memory for browser
+    shm_size: 1024M
+    environment:
+      - CI=true
+
+  remote:
+    image: seedsyncarr/test/e2e/remote
+    container_name: seedsyncarr_test_e2e_remote
+    # Platform must match myapp so scanfs binary can execute
+    platform: ${SEEDSYNCARR_PLATFORM:-linux/amd64}
+    build:
+      context: ../../../../
+      dockerfile: src/docker/test/e2e/remote/Dockerfile
+
+  configure:
+    image: seedsyncarr/test/e2e/configure
+    container_name: seedsyncarr_test_e2e_configure
+    build:
+      context: ../../../../
+      dockerfile: src/docker/test/e2e/configure/Dockerfile
+    depends_on:
+      - myapp

@@ -1,0 +1,189 @@
+@use '../../common/common' as *;
+
+// ============================================================================
+// Top Navigation Bar
+// ============================================================================
+#top-nav {
+    background-color: var(--app-header-bg);
+    border-bottom: 1px solid $gray-300;
+    position: sticky;
+    top: 0;
+    z-index: $zindex-top-header + 1;
+}
+
+.nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .brand-text {
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: var(--app-logo-color);
+    }
+
+    .brand-version {
+        font-size: 0.75rem;
+        color: var(--app-muted-text);
+    }
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.nav-link {
+    color: var(--app-muted-text);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.15s ease;
+
+    &:hover {
+        color: var(--app-selection-text-emphasis);
+    }
+
+    &.active {
+        color: var(--app-selection-text-emphasis);
+        font-weight: 500;
+    }
+}
+
+// ============================================================================
+// Content Area
+// ============================================================================
+#top-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+#top-header {
+    position: sticky;
+    top: 48px;
+    z-index: $zindex-top-header;
+    background-color: var(--app-top-header-bg);
+}
+
+// ============================================================================
+// Responsive
+// ============================================================================
+
+// Small screens: tighten nav spacing
+@media only screen and (max-width: $small-max-width) {
+    .nav-inner {
+        padding: 0 12px;
+    }
+
+    .nav-links {
+        gap: 12px;
+    }
+
+    .nav-link {
+        font-size: 0.8rem;
+    }
+
+    .nav-brand .brand-text {
+        font-size: 1rem;
+    }
+}
+
+// ============================================================================
+// Toast Notifications — Triggarr-style
+// ============================================================================
+.toast-container {
+    z-index: 1090;
+}
+
+@keyframes toast-slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.moss-toast {
+    background-color: var(--app-header-bg);
+    color: var(--app-selection-text-emphasis);
+    border: 1px solid var(--app-separator-color);
+    border-left: 4px solid var(--app-separator-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    min-width: 280px;
+    max-width: 420px;
+
+    &.toast-enter {
+        animation: toast-slide-in 0.25s ease-out;
+    }
+
+    .toast-inner {
+        display: flex;
+        align-items: center;
+        padding: 10px 12px;
+        gap: 10px;
+    }
+
+    .toast-icon {
+        flex-shrink: 0;
+        font-size: 1rem;
+        width: 20px;
+        text-align: center;
+    }
+
+    .toast-message {
+        flex: 1;
+        font-size: 0.85rem;
+        line-height: 1.35;
+    }
+
+    .toast-dismiss {
+        flex-shrink: 0;
+        background: none;
+        border: none;
+        color: var(--app-muted-text);
+        font-size: 1.2rem;
+        padding: 0 2px;
+        cursor: pointer;
+        opacity: 0.5;
+        line-height: 1;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+
+    &[data-type="success"] {
+        border-left-color: $success;
+        .toast-icon { color: $success; }
+    }
+
+    &[data-type="info"] {
+        border-left-color: $info;
+        .toast-icon { color: $info; }
+    }
+
+    &[data-type="warning"] {
+        border-left-color: $warning;
+        .toast-icon { color: $warning; }
+    }
+
+    &[data-type="danger"] {
+        border-left-color: $danger;
+        .toast-icon { color: $danger; }
+    }
+}

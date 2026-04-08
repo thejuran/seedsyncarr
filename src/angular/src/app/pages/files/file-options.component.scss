@@ -1,0 +1,143 @@
+@use '../../common/common' as *;
+
+#file-options {
+    position: static;
+    z-index: $zindex-file-options;
+    background-color: var(--app-header-bg);
+    border: 1px solid var(--app-file-border-color);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+// ============================================================================
+// Filter Bar — Triggarr-style inline pill toggles
+// ============================================================================
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+}
+
+// Group: label + pills
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.filter-label {
+    font-size: 0.75rem;
+    color: var(--app-muted-text);
+    user-select: none;
+}
+
+// Pill button
+.filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    border: 1px solid var(--app-separator-color);
+    background: transparent;
+    color: var(--app-muted-text);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+    user-select: none;
+
+    &:hover:not(:disabled) {
+        color: var(--app-selection-text-emphasis);
+        border-color: var(--app-selection-border);
+    }
+
+    &:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+    }
+
+    // Active state — generic (sort pills, "All" pill)
+    &.active {
+        background-color: var(--app-selection-bg-alpha);
+        color: var(--app-selection-text-emphasis);
+        border-color: var(--app-selection-border);
+    }
+
+    // Active state — status-colored pills
+    &.pill-downloading.active {
+        background-color: rgba($status-downloading, 0.2);
+        color: $status-downloading;
+        border-color: rgba($status-downloading, 0.4);
+    }
+    &.pill-downloaded.active {
+        background-color: rgba($success, 0.2);
+        color: $success;
+        border-color: rgba($success, 0.4);
+    }
+    &.pill-queued.active {
+        background-color: rgba($warning, 0.2);
+        color: $warning;
+        border-color: rgba($warning, 0.4);
+    }
+    &.pill-stopped.active {
+        background-color: rgba($danger, 0.2);
+        color: $danger;
+        border-color: rgba($danger, 0.4);
+    }
+    &.pill-extracting.active,
+    &.pill-extracted.active {
+        background-color: rgba($info, 0.2);
+        color: $info;
+        border-color: rgba($info, 0.4);
+    }
+
+    // Status dots inside pills
+    .status-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        flex-shrink: 0;
+
+        &.dot-downloading { background-color: $status-downloading; }
+        &.dot-downloaded  { background-color: $success; }
+        &.dot-queued      { background-color: $warning; }
+        &.dot-stopped     { background-color: $danger; }
+        &.dot-extracting  { background-color: $info; }
+        &.dot-extracted   { background-color: $info; }
+    }
+}
+
+// Search input — fills remaining space
+.filter-search {
+    flex: 1;
+    min-width: 150px;
+
+    input {
+        width: 100%;
+        border-radius: 5px;
+        padding: 3px 15px;
+        font-size: 0.85rem;
+    }
+}
+
+// ============================================================================
+// Responsive
+// ============================================================================
+
+// Small screens: stack groups vertically
+@media only screen and (max-width: $small-max-width) {
+    .filter-bar {
+        gap: 8px;
+    }
+
+    .filter-search {
+        flex-basis: 100%;
+        order: -1;
+    }
+}

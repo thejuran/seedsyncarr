@@ -1,0 +1,42 @@
+// Forward Bootstrap variables to components
+@forward 'bootstrap-variables';
+
+// Local access to Bootstrap variables with namespace
+@use 'bootstrap-variables' as bv;
+
+// ============================================================================
+// Bootstrap Semantic Color Variables (for component use)
+// ============================================================================
+// Functional status colors — these stay as semantic colors, not themed
+$warning-text-emphasis: #f0883e;                    // Amber on dark
+$danger-text-emphasis: #f85149;                     // Red on dark
+$warning-bg-subtle: rgba(240, 136, 62, 0.15);       // Subtle amber
+$danger-bg-subtle: rgba(248, 81, 73, 0.15);         // Subtle red
+$warning-border-subtle: rgba(240, 136, 62, 0.4);    // Amber border
+$danger-border-subtle: rgba(248, 81, 73, 0.4);      // Red border
+
+// Bootstrap gray scale — Deep Moss Palette
+$gray-100: #222a20;   // Dark moss — elevated surface
+$gray-300: bv.$moss-border;   // Moss border
+$gray-800: #c8d0be;   // Sage cream — secondary text
+
+// ============================================================================
+// Layout Variables
+// ============================================================================
+$small-max-width: 600px;
+$medium-min-width: 601px;
+$medium-max-width: 992px;
+$large-min-width: 993px;
+$xlarge-min-width: 1200px;
+
+$sidebar-width: 170px;
+$sidebar-collapsed-width: 56px;
+$sidebar-expanded-width: 200px;
+
+// ============================================================================
+// Z-index Variables
+// ============================================================================
+$zindex-sidebar: 300;
+$zindex-top-header: 200;
+$zindex-file-options: 201;
+$zindex-file-search: 100;

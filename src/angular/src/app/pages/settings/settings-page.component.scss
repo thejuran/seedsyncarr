@@ -1,0 +1,231 @@
+@use '../../common/common' as *;
+
+#settings {
+    width: 100%;
+
+    .settings-columns {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        padding: 15px;
+        gap: 0;
+
+        .settings-column {
+            width: 100%;
+
+            .settings-card {
+                background: var(--app-header-bg);
+                border: 1px solid var(--app-file-border-color);
+                border-radius: 6px;
+                margin-bottom: 16px;
+
+                .settings-card-header {
+                    font-weight: 600;
+                    color: var(--app-muted-text);
+                    font-size: 90%;
+                    padding: 12px 16px 0;
+                    margin-bottom: 0;
+                }
+
+                .settings-card-body {
+                    padding: 8px 0 12px;
+
+                    .subsection-header {
+                        font-size: 100%;
+                        font-weight: 600;
+                        margin: 16px 16px 8px;
+                        color: var(--app-muted-text);
+
+                        &:first-child {
+                            margin-top: 4px;
+                        }
+                    }
+                }
+
+                .test-connection {
+                    margin: 8px 20px 0;
+
+                    .btn {
+                        height: 36px;
+                        font-size: 90%;
+                    }
+
+                    .test-result {
+                        margin-top: 6px;
+                        font-size: 85%;
+                    }
+                }
+
+                .webhook-urls {
+                    margin: 0 20px;
+
+                    .webhook-description {
+                        font-size: 85%;
+                        color: var(--bs-secondary);
+                        margin-bottom: 12px;
+
+                        code {
+                            font-size: 95%;
+                        }
+                    }
+
+                    .webhook-url-item {
+                        margin-bottom: 10px;
+
+                        label {
+                            font-size: 90%;
+                            font-weight: 500;
+                            margin-bottom: 2px;
+                        }
+
+                        .webhook-url-display {
+                            code {
+                                display: block;
+                                background: var(--bs-dark);
+                                color: var(--bs-light);
+                                padding: 6px 10px;
+                                border-radius: 4px;
+                                font-size: 85%;
+                                word-break: break-all;
+                                user-select: all;
+                            }
+                        }
+                    }
+                }
+            }
+
+            .pattern-section {
+                margin: 8px 16px 0;
+
+                &.patterns-disabled {
+                    opacity: 0.65;
+                }
+
+                .pattern-description {
+                    font-size: 85%;
+                    color: var(--bs-secondary);
+                    margin-bottom: 8px;
+                }
+
+                .pattern-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 4px 0;
+
+                    .pattern-text {
+                        flex: 1;
+                        font-size: 90%;
+                        word-break: break-all;
+                    }
+
+                    .pattern-remove-btn {
+                        flex-shrink: 0;
+                        width: 28px;
+                        height: 28px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0;
+                        font-size: 120%;
+                        font-weight: 700;
+                    }
+                }
+
+                .pattern-add {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-top: 8px;
+
+                    input {
+                        flex: 1;
+                    }
+
+                    .pattern-add-btn {
+                        flex-shrink: 0;
+                        width: 28px;
+                        height: 28px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0;
+                        font-size: 120%;
+                        font-weight: 700;
+                    }
+                }
+            }
+
+            .token-section {
+                margin: 0 20px;
+
+                label {
+                    font-size: 90%;
+                    font-weight: 500;
+                    margin-bottom: 2px;
+                }
+
+                .token-description {
+                    font-size: 85%;
+                    color: var(--bs-secondary);
+                    margin-bottom: 8px;
+                }
+
+                .token-display {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+
+                    code {
+                        flex: 1;
+                        display: block;
+                        background: var(--bs-dark);
+                        color: var(--bs-light);
+                        padding: 6px 10px;
+                        border-radius: 4px;
+                        font-size: 85%;
+                        word-break: break-all;
+                        user-select: all;
+                    }
+
+                    .btn {
+                        white-space: nowrap;
+                        height: 36px;
+                        font-size: 85%;
+                    }
+                }
+            }
+        }
+    }
+
+    #commands {
+        margin-top: 10px;
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+
+        .btn {
+            padding: 10px 20px;
+            margin-right: 8px;
+            height: 40px;
+            font-size: 100%;
+        }
+    }
+}
+
+
+/* Medium and large screens — two column layout */
+@media only screen and (min-width: $medium-min-width) {
+    #settings {
+        .settings-columns {
+            flex-direction: row;
+            gap: 20px;
+
+            .settings-column {
+                width: 50%;
+            }
+        }
+    }
+}

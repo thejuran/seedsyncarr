@@ -1,0 +1,66 @@
+site_name: SeedSyncarr
+site_description: Fast file syncing from remote servers with a web UI, powered by LFTP
+site_author: thejuran
+
+theme:
+  name: material
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font: false
+  logo: images/logo.png
+  favicon: images/favicon.png
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+  - tables
+  - attr_list
+
+plugins:
+  - search
+
+site_url: https://thejuran.github.io/seedsyncarr
+repo_name: thejuran/seedsyncarr
+repo_url: https://github.com/thejuran/seedsyncarr
+edit_uri: edit/master/src/python/docs/
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/thejuran/seedsyncarr
+    - icon: fontawesome/brands/docker
+      link: https://github.com/thejuran/seedsyncarr/pkgs/container/seedsyncarr
+
+nav:
+  - Home: index.md
+  - Installation: install.md
+  - Usage: usage.md
+  - FAQ: faq.md
+  - Changelog: changelog.md

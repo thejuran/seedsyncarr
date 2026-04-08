@@ -1,0 +1,50 @@
+@if (hasSelection) {
+  <div class="bulk-actions-bar">
+    <div class="bar-left">
+      <span class="selection-label">{{ selectedCount }} {{ selectedCount === 1 ? 'file' : 'files' }} selected</span>
+      <button type="button" class="btn btn-sm clear-btn action-secondary"
+        [disabled]="operationInProgress"
+        (click)="onClearClick()">
+        Clear
+      </button>
+    </div>
+    <div class="actions">
+      @if (operationInProgress) {
+        <span class="progress-indicator">
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          Processing...
+        </span>
+      }
+      <button type="button"
+        class="btn btn-sm action-btn action-primary"
+        [disabled]="actionCounts.queueable === 0 || operationInProgress"
+        (click)="onQueueClick()">
+        Queue ({{ actionCounts.queueable }})
+      </button>
+      <button type="button"
+        class="btn btn-sm action-btn action-danger"
+        [disabled]="actionCounts.stoppable === 0 || operationInProgress"
+        (click)="onStopClick()">
+        Stop ({{ actionCounts.stoppable }})
+      </button>
+      <button type="button"
+        class="btn btn-sm action-btn action-secondary"
+        [disabled]="actionCounts.extractable === 0 || operationInProgress"
+        (click)="onExtractClick()">
+        Extract ({{ actionCounts.extractable }})
+      </button>
+      <button type="button"
+        class="btn btn-sm action-btn action-danger"
+        [disabled]="actionCounts.locallyDeletable === 0 || operationInProgress"
+        (click)="onDeleteLocalClick()">
+        Delete Local ({{ actionCounts.locallyDeletable }})
+      </button>
+      <button type="button"
+        class="btn btn-sm action-btn action-danger"
+        [disabled]="actionCounts.remotelyDeletable === 0 || operationInProgress"
+        (click)="onDeleteRemoteClick()">
+        Delete Remote ({{ actionCounts.remotelyDeletable }})
+      </button>
+    </div>
+  </div>
+}

@@ -1,0 +1,21 @@
+.idea
+*.pyc
+/build
+.venv
+package-lock.json
+src/python/build
+src/python/site
+htmlcov/
+.coverage
+node_modules/
+__pycache__/
+src/python/.pytest_cache/
+src/python/htmlcov/
+src/angular/dist/
+.DS_Store
+.pytest_cache/
+.ruff_cache/
+
+# SSH private keys
+id_rsa
+*.pem

@@ -1,0 +1,283 @@
+<ng-template #optionsList let-header="header" let-options="options" let-id="id">
+  <div class="settings-card">
+    <h3 class="settings-card-header">{{header}}</h3>
+    <div class="settings-card-body">
+      @for (option of options; track option.label) {
+        <div>
+          <app-option
+            [type]="option.type"
+            [label]="option.label"
+            [description]="option.description"
+            [value]="(config | async)?.get(option.valuePath[0]).get(option.valuePath[1])"
+            (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
+          </app-option>
+        </div>
+      }
+    </div>
+  </div>
+</ng-template>
+
+
+<div id="settings">
+  <div class="settings-columns">
+    <div class="settings-column">
+      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
+      <ng-container
+        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_SERVER">
+      </ng-container>
+
+      <div class="settings-card">
+        <h3 class="settings-card-header">AutoQueue</h3>
+        <div class="settings-card-body">
+          @for (option of OPTIONS_CONTEXT_AUTOQUEUE.options; track option.label) {
+            <div>
+              <app-option
+                [type]="option.type"
+                [label]="option.label"
+                [description]="option.description"
+                [value]="(config | async)?.get(option.valuePath[0]).get(option.valuePath[1])"
+                (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
+              </app-option>
+            </div>
+          }
+
+          <!-- Pattern list (only when patterns are enabled) -->
+          <div class="pattern-section" [class.patterns-disabled]="!(autoqueueEnabled && patternsOnly)">
+            <h4 class="subsection-header">Patterns</h4>
+            @if (autoqueueEnabled && patternsOnly) {
+              <p class="pattern-description">Files matching these patterns will be automatically queued. Wildcards (*) are supported.</p>
+            } @else if (autoqueueEnabled && !patternsOnly) {
+              <p class="pattern-description">Patterns are disabled. <strong>All files will be auto-queued.</strong> Enable "Restrict to patterns" above to manage patterns.</p>
+            } @else {
+              <p class="pattern-description">Enable AutoQueue above to manage patterns.</p>
+            }
+
+            @for (pattern of patterns | async; track pattern.pattern) {
+              <div class="pattern-row">
+                <span class="pattern-text">{{pattern.pattern}}</span>
+                <button class="btn btn-sm btn-outline-danger pattern-remove-btn" type="button"
+                  [disabled]="!(commandsEnabled && autoqueueEnabled && patternsOnly)"
+                  (click)="onRemovePattern(pattern)"
+                  aria-label="Remove pattern">
+                  &minus;
+                </button>
+              </div>
+            }
+
+            <div class="pattern-add">
+              <input type="text"
+                class="form-control form-control-sm"
+                placeholder="Add pattern..."
+                maxlength="256"
+                [(ngModel)]="newPattern"
+                [disabled]="!commandsEnabled || !autoqueueEnabled || !patternsOnly"
+                (keyup.enter)="(commandsEnabled && newPattern && autoqueueEnabled && patternsOnly) && onAddPattern()" />
+              <button class="btn btn-sm btn-outline-success pattern-add-btn" type="button"
+                [disabled]="!(commandsEnabled && newPattern && autoqueueEnabled && patternsOnly)"
+                (click)="onAddPattern()"
+                aria-label="Add pattern">
+                &#43;
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
+      <ng-container
+        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_EXTRACT">
+      </ng-container>
+
+      <div class="settings-card">
+        <h3 class="settings-card-header">*arr Integration</h3>
+        <div class="settings-card-body">
+            <h4 class="subsection-header">Sonarr</h4>
+            <div>
+              <app-option
+                [type]="OptionType.Checkbox"
+                [label]="'Enable Sonarr Integration'"
+                [value]="(config | async)?.get('sonarr')?.get('enabled')"
+                (changeEvent)="onSetConfig('sonarr', 'enabled', $event)">
+              </app-option>
+            </div>
+            <fieldset [attr.disabled]="!(config | async)?.get('sonarr')?.get('enabled') ? '' : null">
+              <div>
+                <app-option
+                  [type]="OptionType.Text"
+                  [label]="'Sonarr URL'"
+                  [description]="'e.g. http://localhost:8989'"
+                  [value]="(config | async)?.get('sonarr')?.get('sonarr_url')"
+                  (changeEvent)="onSetConfig('sonarr', 'sonarr_url', $event)">
+                </app-option>
+              </div>
+              <div>
+                <app-option
+                  [type]="OptionType.Password"
+                  [label]="'Sonarr API Key'"
+                  [description]="'Found in Sonarr under Settings \u2192 General \u2192 API Key'"
+                  [value]="(config | async)?.get('sonarr')?.get('sonarr_api_key')"
+                  (changeEvent)="onSetConfig('sonarr', 'sonarr_api_key', $event)">
+                </app-option>
+              </div>
+              <div class="test-connection">
+                <button class="btn btn-secondary" type="button"
+                  [disabled]="testSonarrConnectionLoading"
+                  (click)="onTestSonarrConnection()">
+                  @if (testSonarrConnectionLoading) {
+                    <span>Testing...</span>
+                  } @else {
+                    <span>Test Connection</span>
+                  }
+                </button>
+                @if (testSonarrConnectionResult) {
+                  <div
+                    class="test-result"
+                    [class.text-success]="testSonarrConnectionResult.success"
+                    [class.text-danger]="!testSonarrConnectionResult.success">
+                    {{testSonarrConnectionResult.message}}
+                  </div>
+                }
+              </div>
+            </fieldset>
+            <h4 class="subsection-header">Radarr</h4>
+            <div>
+              <app-option
+                [type]="OptionType.Checkbox"
+                [label]="'Enable Radarr Integration'"
+                [value]="(config | async)?.get('radarr')?.get('enabled')"
+                (changeEvent)="onSetConfig('radarr', 'enabled', $event)">
+              </app-option>
+            </div>
+            <fieldset [attr.disabled]="!(config | async)?.get('radarr')?.get('enabled') ? '' : null">
+              <div>
+                <app-option
+                  [type]="OptionType.Text"
+                  [label]="'Radarr URL'"
+                  [description]="'e.g. http://localhost:7878'"
+                  [value]="(config | async)?.get('radarr')?.get('radarr_url')"
+                  (changeEvent)="onSetConfig('radarr', 'radarr_url', $event)">
+                </app-option>
+              </div>
+              <div>
+                <app-option
+                  [type]="OptionType.Password"
+                  [label]="'Radarr API Key'"
+                  [description]="'Found in Radarr under Settings \u2192 General \u2192 API Key'"
+                  [value]="(config | async)?.get('radarr')?.get('radarr_api_key')"
+                  (changeEvent)="onSetConfig('radarr', 'radarr_api_key', $event)">
+                </app-option>
+              </div>
+              <div class="test-connection">
+                <button class="btn btn-secondary" type="button"
+                  [disabled]="testRadarrConnectionLoading"
+                  (click)="onTestRadarrConnection()">
+                  @if (testRadarrConnectionLoading) {
+                    <span>Testing...</span>
+                  } @else {
+                    <span>Test Connection</span>
+                  }
+                </button>
+                @if (testRadarrConnectionResult) {
+                  <div
+                    class="test-result"
+                    [class.text-success]="testRadarrConnectionResult.success"
+                    [class.text-danger]="!testRadarrConnectionResult.success">
+                    {{testRadarrConnectionResult.message}}
+                  </div>
+                }
+              </div>
+            </fieldset>
+            <h4 class="subsection-header">Webhook URLs</h4>
+            <div class="webhook-urls">
+              <p class="webhook-description">
+                Configure these URLs in your *arr apps under Settings &rarr; Connect &rarr; Add &rarr; Webhook.
+                Replace <code>&lt;seedsyncarr-address&gt;</code> with your SeedSyncarr server's IP or hostname.
+              </p>
+              <div class="webhook-url-item">
+                <label>Sonarr Webhook URL</label>
+                <div class="webhook-url-display">
+                  <code>http://&lt;seedsyncarr-address&gt;:{{(config | async)?.get('web')?.get('port')}}/server/webhook/sonarr</code>
+                </div>
+              </div>
+              <div class="webhook-url-item">
+                <label>Radarr Webhook URL</label>
+                <div class="webhook-url-display">
+                  <code>http://&lt;seedsyncarr-address&gt;:{{(config | async)?.get('web')?.get('port')}}/server/webhook/radarr</code>
+                </div>
+              </div>
+            </div>
+        </div>
+      </div>
+
+      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
+      <ng-container
+        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_AUTODELETE">
+      </ng-container>
+
+    </div>
+    <div class="settings-column">
+      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
+      <ng-container
+        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_CONNECTIONS">
+      </ng-container>
+
+      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
+      <ng-container
+        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_DISCOVERY">
+      </ng-container>
+
+      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
+      <ng-container
+        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_OTHER">
+      </ng-container>
+
+      @if (apiToken) {
+        <div class="settings-card">
+          <h3 class="settings-card-header">Security</h3>
+          <div class="settings-card-body">
+            <div class="token-section">
+              <label>API Token</label>
+              <p class="token-description">
+                Use this token for API access. Include it as a Bearer token in the Authorization header.
+              </p>
+              @if (tokenRevealed) {
+                <div class="token-display">
+                  <code>{{apiToken}}</code>
+                  <button class="btn btn-secondary btn-sm" type="button"
+                    (click)="onCopyToken()">
+                    @if (tokenCopied) {
+                      <span>Copied!</span>
+                    } @else {
+                      <span>Copy</span>
+                    }
+                  </button>
+                  <button class="btn btn-secondary btn-sm" type="button"
+                    (click)="tokenRevealed = false">
+                    Hide
+                  </button>
+                </div>
+              } @else {
+                <div class="token-display">
+                  <code class="token-masked">••••••••••••••••••••</code>
+                  <button class="btn btn-secondary btn-sm" type="button"
+                    (click)="tokenRevealed = true">
+                    Reveal
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+    </div>
+  </div>
+
+  <div id="commands">
+    <button class="btn btn-primary" type="button"
+      [disabled]="!commandsEnabled"
+      (click)="onCommandRestart()">
+      Restart
+    </button>
+  </div>
+</div>

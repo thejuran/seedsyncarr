@@ -1,0 +1,4 @@
+services:
+  myapp:
+    image: ${STAGING_REGISTRY}:${STAGING_VERSION}
+    container_name: seedsyncarr_test_e2e_myapp

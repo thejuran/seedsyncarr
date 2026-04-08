@@ -1,0 +1,119 @@
+@use '../../common/common' as *;
+
+.bulk-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background-color: var(--app-selection-bg);
+    border: 1px solid var(--app-selection-border);
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.selection-label {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--app-selection-text-emphasis);
+}
+
+.clear-btn {
+    font-size: 0.75rem;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.action-btn {
+    white-space: nowrap;
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    transition: background-color 0.15s ease;
+
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+}
+
+.action-primary {
+    background-color: rgba($primary, 0.2);
+    color: $primary;
+    border-color: rgba($primary, 0.3);
+
+    &:hover:not(:disabled) {
+        background-color: rgba($primary, 0.35);
+        color: $primary;
+    }
+}
+
+.action-secondary {
+    background-color: rgba($secondary, 0.15);
+    color: $secondary;
+    border-color: rgba($secondary, 0.25);
+
+    &:hover:not(:disabled) {
+        background-color: rgba($secondary, 0.3);
+        color: $secondary;
+    }
+}
+
+.action-danger {
+    background-color: rgba($danger, 0.15);
+    color: $danger;
+    border-color: rgba($danger, 0.25);
+
+    &:hover:not(:disabled) {
+        background-color: rgba($danger, 0.3);
+        color: $danger;
+    }
+}
+
+.progress-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--app-selection-text-emphasis);
+    font-weight: 500;
+    font-size: 0.8rem;
+    margin-right: 4px;
+}
+
+/* Mobile responsiveness */
+@media only screen and (max-width: $medium-min-width) {
+    .bulk-actions-bar {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+/* Very small screens - stack buttons vertically */
+@media only screen and (max-width: $small-max-width) {
+    .actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .action-btn {
+        width: 100%;
+    }
+}

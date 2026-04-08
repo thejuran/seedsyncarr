@@ -1,0 +1,59 @@
+<nav id="top-nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <span class="brand-text">SeedSyncarr</span>
+      <span class="brand-version">v{{version}}</span>
+    </div>
+    <div class="nav-links">
+      @for (routeInfo of routeInfos; track routeInfo.path) {
+        <a
+          class="nav-link"
+          routerLink="{{routeInfo.path}}"
+          routerLinkActive="active">
+          {{routeInfo.name}}
+        </a>
+      }
+    </div>
+  </div>
+</nav>
+
+<div id="top-content">
+  <div id="top-header">
+    <div #topHeader>
+      <app-header></app-header>
+    </div>
+  </div>
+
+  <router-outlet></router-outlet>
+</div>
+
+<!-- Toast notifications -->
+@if (toasts.length > 0) {
+  <div class="toast-container position-fixed top-0 end-0 p-3">
+    @for (toast of toasts; track toast.id) {
+      <div
+        class="toast show moss-toast toast-enter"
+        [attr.data-type]="toast.type"
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true">
+        <div class="toast-inner">
+          <span class="toast-icon" aria-hidden="true">
+            @switch (toast.type) {
+              @case ('success') { ✓ }
+              @case ('danger') { ✕ }
+              @case ('warning') { ⚠ }
+              @default { ℹ }
+            }
+          </span>
+          <span class="toast-message">{{toast.message}}</span>
+          <button type="button" class="toast-dismiss"
+            (click)="dismissToast(toast)"
+            aria-label="Close">
+            ×
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+}

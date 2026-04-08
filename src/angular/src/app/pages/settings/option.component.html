@@ -1,0 +1,53 @@
+<div class="form-group"
+  [class.error]="value == '<replace me>'">
+
+  <!-- Textbox -->
+  @if (type == OptionType.Text) {
+    <label>
+      <span class="name">{{label}}</span>
+      @if (description) {
+        <span class="description">{{description}}</span>
+      }
+      <input
+        type="text"
+        class="form-control"
+        [disabled]="value == null"
+        [ngModel]="value"
+        (ngModelChange)="onChange($event)" />
+    </label>
+  }
+
+  <!-- Checkbox -->
+  @if (type == OptionType.Checkbox) {
+    <div class="form-check">
+      <input
+        type="checkbox"
+        class="form-check-input"
+        [disabled]="value == null"
+        [ngModel]="value"
+        (ngModelChange)="onChange($event)" />
+      <label class="form-check-label">
+        <span class="name">{{label}}</span>
+        @if (description) {
+          <span class="description">{{description}}</span>
+        }
+      </label>
+    </div>
+  }
+
+  <!-- Password -->
+  @if (type == OptionType.Password) {
+    <label>
+      <span class="name">{{label}}</span>
+      @if (description) {
+        <span class="description">{{description}}</span>
+      }
+      <input
+        type="password"
+        class="form-control"
+        [disabled]="value == null"
+        [ngModel]="value"
+        (ngModelChange)="onChange($event)" />
+    </label>
+  }
+</div>

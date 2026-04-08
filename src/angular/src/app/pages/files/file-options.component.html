@@ -1,0 +1,86 @@
+<div id="file-options"
+  [style.top.px]="headerHeight | async">
+
+  <!-- Filter bar: Triggarr-style inline pill toggles -->
+  <div class="filter-bar">
+
+    <!-- Status filter pills -->
+    <div class="filter-group">
+      <span class="filter-label">Status:</span>
+      <button class="filter-pill"
+        [class.active]="latestOptions?.selectedStatusFilter == null"
+        (click)="onFilterByStatus(null)">
+        All ({{ formatCount(null) }})
+      </button>
+      <button class="filter-pill pill-downloading"
+        [class.active]="latestOptions?.selectedStatusFilter === ViewFile.Status.DOWNLOADING"
+        [disabled]="!isDownloadingStatusEnabled"
+        (click)="onFilterByStatus(ViewFile.Status.DOWNLOADING)">
+        <span class="status-dot dot-downloading"></span>
+        Downloading ({{ formatCount(ViewFile.Status.DOWNLOADING) }})
+      </button>
+      <button class="filter-pill pill-queued"
+        [class.active]="latestOptions?.selectedStatusFilter === ViewFile.Status.QUEUED"
+        [disabled]="!isQueuedStatusEnabled"
+        (click)="onFilterByStatus(ViewFile.Status.QUEUED)">
+        <span class="status-dot dot-queued"></span>
+        Queued ({{ formatCount(ViewFile.Status.QUEUED) }})
+      </button>
+      <button class="filter-pill pill-downloaded"
+        [class.active]="latestOptions?.selectedStatusFilter === ViewFile.Status.DOWNLOADED"
+        [disabled]="!isDownloadedStatusEnabled"
+        (click)="onFilterByStatus(ViewFile.Status.DOWNLOADED)">
+        <span class="status-dot dot-downloaded"></span>
+        Downloaded ({{ formatCount(ViewFile.Status.DOWNLOADED) }})
+      </button>
+      <button class="filter-pill pill-stopped"
+        [class.active]="latestOptions?.selectedStatusFilter === ViewFile.Status.STOPPED"
+        [disabled]="!isStoppedStatusEnabled"
+        (click)="onFilterByStatus(ViewFile.Status.STOPPED)">
+        <span class="status-dot dot-stopped"></span>
+        Stopped ({{ formatCount(ViewFile.Status.STOPPED) }})
+      </button>
+      <button class="filter-pill pill-extracting"
+        [class.active]="latestOptions?.selectedStatusFilter === ViewFile.Status.EXTRACTING"
+        [disabled]="!isExtractingStatusEnabled"
+        (click)="onFilterByStatus(ViewFile.Status.EXTRACTING)">
+        <span class="status-dot dot-extracting"></span>
+        Extracting ({{ formatCount(ViewFile.Status.EXTRACTING) }})
+      </button>
+      <button class="filter-pill pill-extracted"
+        [class.active]="latestOptions?.selectedStatusFilter === ViewFile.Status.EXTRACTED"
+        [disabled]="!isExtractedStatusEnabled"
+        (click)="onFilterByStatus(ViewFile.Status.EXTRACTED)">
+        <span class="status-dot dot-extracted"></span>
+        Extracted ({{ formatCount(ViewFile.Status.EXTRACTED) }})
+      </button>
+    </div>
+
+    <!-- Sort pills -->
+    <div class="filter-group">
+      <span class="filter-label">Sort:</span>
+      <button class="filter-pill"
+        [class.active]="latestOptions?.sortMethod === ViewFileOptions.SortMethod.STATUS"
+        (click)="onSort(ViewFileOptions.SortMethod.STATUS)">
+        Status
+      </button>
+      <button class="filter-pill"
+        [class.active]="latestOptions?.sortMethod === ViewFileOptions.SortMethod.NAME_ASC"
+        (click)="onSort(ViewFileOptions.SortMethod.NAME_ASC)">
+        Name A→Z
+      </button>
+      <button class="filter-pill"
+        [class.active]="latestOptions?.sortMethod === ViewFileOptions.SortMethod.NAME_DESC"
+        (click)="onSort(ViewFileOptions.SortMethod.NAME_DESC)">
+        Name Z→A
+      </button>
+    </div>
+
+    <!-- Search input -->
+    <div class="filter-search">
+      <input class="form-control" placeholder="Filter by name..." type="search"
+        [ngModel]="latestOptions?.nameFilter"
+        (ngModelChange)="onFilterByName($event)">
+    </div>
+  </div>
+</div>

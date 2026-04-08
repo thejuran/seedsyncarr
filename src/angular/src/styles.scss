@@ -1,0 +1,127 @@
+// =============================================================================
+// SECTION 1: Application Modules (@use -- modern Sass module system)
+// =============================================================================
+@use 'app/common/bootstrap-overrides';
+@use 'app/common/common';
+
+// =============================================================================
+// SECTION 2: Bootstrap Core (@import -- required by Bootstrap 5.3)
+// =============================================================================
+
+// 1. Bootstrap functions (required for variable calculations)
+@import '../node_modules/bootstrap/scss/functions';
+
+// 2. Bootstrap variable overrides (our customizations)
+@import 'app/common/bootstrap-variables';
+
+// 3. Bootstrap core variables and maps
+@import '../node_modules/bootstrap/scss/variables';
+@import '../node_modules/bootstrap/scss/variables-dark';
+@import '../node_modules/bootstrap/scss/maps';
+@import '../node_modules/bootstrap/scss/mixins';
+@import '../node_modules/bootstrap/scss/root';
+
+// =============================================================================
+// SECTION 3: Bootstrap Components (@import -- required by Bootstrap 5.3)
+// =============================================================================
+@import '../node_modules/bootstrap/scss/utilities';
+@import '../node_modules/bootstrap/scss/reboot';
+@import '../node_modules/bootstrap/scss/type';
+@import '../node_modules/bootstrap/scss/images';
+@import '../node_modules/bootstrap/scss/containers';
+@import '../node_modules/bootstrap/scss/grid';
+@import '../node_modules/bootstrap/scss/tables';
+@import '../node_modules/bootstrap/scss/forms';
+@import '../node_modules/bootstrap/scss/buttons';
+@import '../node_modules/bootstrap/scss/transitions';
+@import '../node_modules/bootstrap/scss/dropdown';
+@import '../node_modules/bootstrap/scss/button-group';
+@import '../node_modules/bootstrap/scss/nav';
+@import '../node_modules/bootstrap/scss/navbar';
+@import '../node_modules/bootstrap/scss/card';
+@import '../node_modules/bootstrap/scss/accordion';
+@import '../node_modules/bootstrap/scss/breadcrumb';
+@import '../node_modules/bootstrap/scss/pagination';
+@import '../node_modules/bootstrap/scss/badge';
+@import '../node_modules/bootstrap/scss/alert';
+@import '../node_modules/bootstrap/scss/progress';
+@import '../node_modules/bootstrap/scss/list-group';
+@import '../node_modules/bootstrap/scss/close';
+@import '../node_modules/bootstrap/scss/toasts';
+@import '../node_modules/bootstrap/scss/modal';
+@import '../node_modules/bootstrap/scss/tooltip';
+@import '../node_modules/bootstrap/scss/popover';
+@import '../node_modules/bootstrap/scss/carousel';
+@import '../node_modules/bootstrap/scss/spinners';
+@import '../node_modules/bootstrap/scss/offcanvas';
+@import '../node_modules/bootstrap/scss/placeholders';
+@import '../node_modules/bootstrap/scss/helpers';
+
+// 5. Bootstrap utilities API
+@import '../node_modules/bootstrap/scss/utilities/api';
+
+// =============================================================================
+// SECTION 4: Global CSS Rules
+// =============================================================================
+
+html {
+    -ms-text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+}
+
+html, body {
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0;
+    background-color: var(--bs-body-bg, #151a14);
+}
+
+// ============================================================================
+// SECTION 5: App CSS Custom Properties — Deep Moss Palette (dark-only)
+// ============================================================================
+
+:root {
+  // Layout backgrounds
+  --app-header-bg: #222a20;
+  --app-top-header-bg: #151a14;
+
+  // File list
+  --app-file-row-even: rgba(34, 42, 32, 0.5);
+  --app-file-border-color: #{common.$moss-border};
+  --app-bulk-overlay-bg: rgba(21, 26, 20, 0.85);
+
+  // Text
+  --app-logo-color: #c49a4a;
+  --app-muted-text: #9aaa8a;
+  --app-separator-color: #4a5440;
+
+  // Selection/accent — Amber
+  --app-selection-bg: rgba(196, 154, 74, 0.25);
+  --app-selection-bg-subtle: rgba(196, 154, 74, 0.08);
+  --app-selection-bg-alpha: rgba(196, 154, 74, 0.15);
+  --app-selection-border: #c49a4a;
+  --app-selection-text-emphasis: #e0e8d6;
+
+}
+
+/* show the input search cancel button */
+input[type=search]::-webkit-search-cancel-button {
+    -webkit-appearance: searchfield-cancel-button;
+}
+
+div {
+    box-sizing: border-box;
+}
+
+/* Downloading row glow animation */
+@keyframes green-pulse {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(common.$status-downloading, 0.06); }
+}
+
+/* Toast container z-index */
+.toast-container {
+    z-index: 1090;
+}

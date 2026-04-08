@@ -1,0 +1,64 @@
+@use '../../common/common' as *;
+
+.form-group {
+    margin-bottom: 0;
+    padding: 6px 16px;
+}
+
+.error {
+    background-color: $danger-bg-subtle;
+    color: $danger-text-emphasis;
+    border: 1px solid $danger-border-subtle;
+}
+
+label {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+span.name {
+    font-size: 90%;
+    font-weight: 500;
+}
+
+span.description {
+    color: var(--app-muted-text);
+    font-size: 80%;
+    line-height: 1.3;
+    white-space: pre-line;
+}
+
+input[type="text"],
+input[type="password"] {
+    width: 100%;
+    margin-top: 2px;
+}
+
+.form-check {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding-left: 0;
+
+    .form-check-input {
+        margin-left: 0;
+        margin-right: 10px;
+        margin-top: 3px;
+        float: none;
+        flex-shrink: 0;
+    }
+
+    .form-check-label {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        flex: 1;
+
+        .description {
+            width: 100%;
+            margin-left: 0;
+        }
+    }
+}

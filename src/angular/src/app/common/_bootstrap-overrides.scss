@@ -1,0 +1,110 @@
+// Bootstrap post-compilation overrides — Deep Moss Palette
+// These are imported AFTER Bootstrap components are compiled
+
+@use 'bootstrap-variables' as bv;
+@use 'bootstrap/scss/functions' as fn;
+
+// Bootstrap modal customization
+.modal-body {
+    overflow-wrap: normal;
+    hyphens: auto;
+    word-break: break-word;
+}
+
+// Dropdown theme — Deep Moss Palette
+.dropdown-menu {
+  --bs-dropdown-bg: #{bv.$primary-dark-color};
+  --bs-dropdown-border-color: #{bv.$moss-border};
+  --bs-dropdown-box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.4);
+
+  --bs-dropdown-link-color: #{bv.$body-color-dark};
+  --bs-dropdown-link-hover-color: #{bv.$body-color-dark};
+  --bs-dropdown-link-hover-bg: rgba(bv.$primary, 0.25);
+  --bs-dropdown-link-active-color: #{bv.$body-color-dark};
+  --bs-dropdown-link-active-bg: rgba(bv.$primary, 0.25);
+  --bs-dropdown-link-disabled-color: rgba(bv.$body-color-dark, 0.4);
+}
+
+// Toggle button pressed/open state
+.dropdown-toggle.show {
+  background-color: rgba(bv.$primary, 0.25);
+  border-color: bv.$primary;
+}
+
+// Dropdown fade animation
+.dropdown-menu {
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.dropdown-menu.show {
+  opacity: 1;
+}
+
+// Dropdown item hover transition
+.dropdown-item {
+  transition: background-color 0.1s ease-in-out;
+}
+
+// ============================================================================
+// Form Styling — Deep Moss Palette
+// ============================================================================
+.form-control {
+  background-color: bv.$body-bg-dark;
+  color: bv.$body-color-dark;
+  border-color: bv.$moss-border;
+
+  &::placeholder {
+    color: bv.$secondary;
+  }
+
+  &:focus {
+    background-color: bv.$body-bg-dark;
+    color: bv.$body-color-dark;
+  }
+
+  &:disabled {
+    background-color: bv.$primary-dark-color;
+    opacity: 0.65;
+  }
+}
+
+.form-check-input {
+  background-color: bv.$body-bg-dark;
+  border-color: bv.$moss-border;
+
+  &:focus {
+    border-color: bv.$primary;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+// ============================================================================
+// Custom Scrollbars — Deep Moss Palette
+// ============================================================================
+
+// Webkit (Chrome, Safari, Edge)
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: bv.$body-bg-dark;
+}
+::-webkit-scrollbar-thumb {
+  background: bv.$moss-border;
+  border-radius: 4px;
+
+  &:hover {
+    background: bv.$primary;
+  }
+}
+
+// Firefox
+* {
+  scrollbar-color: bv.$moss-border bv.$body-bg-dark;
+  scrollbar-width: thin;
+}

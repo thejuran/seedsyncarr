@@ -1,0 +1,10 @@
+**/*.pyc
+**/__pycache__
+**/node_modules
+**/.venv
+.git
+.idea
+build
+src/angular/dist
+src/python/tests
+src/python/build

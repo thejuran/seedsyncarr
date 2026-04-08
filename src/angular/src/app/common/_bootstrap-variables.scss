@@ -1,0 +1,63 @@
+// Bootstrap variable overrides
+// Override Bootstrap variables here, BEFORE Bootstrap's variables are imported
+// These are imported after functions but before variables in styles.scss
+
+// ============================================================================
+// Font Family Overrides
+// ============================================================================
+// System font stack — no external font dependencies
+$font-family-sans-serif: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+$font-family-monospace: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+$input-btn-font-family: $font-family-sans-serif;
+
+// ============================================================================
+// Dark Body Colors — Deep Moss Palette
+// ============================================================================
+$body-bg-dark: #151a14;       // Deep forest — dark background
+$body-color-dark: #e0e8d6;    // Warm cream — primary text
+
+// ============================================================================
+// Bootstrap Theme Colors — Deep Moss + Functional Status Colors
+// ============================================================================
+$primary: #c49a4a;    // Amber — accent/active
+$secondary: #9aaa8a;  // Sage — muted
+$success: #238636;    // Functional: muted green (status)
+$danger: #f85149;     // Functional: red (status)
+$warning: #f0883e;    // Functional: amber (status)
+$info: #58a6ff;       // Functional: blue (status)
+
+// Active status — brighter variant for downloading glow/speed
+$status-downloading: #3fb950;
+
+// ============================================================================
+// Application-specific color variables — Deep Moss Palette
+// ============================================================================
+$primary-color: $primary;
+$primary-dark-color: #222a20;       // Dark moss — elevated surface
+
+$secondary-color: $secondary;
+
+$logo-color: #c49a4a;              // Amber — readable on dark surfaces
+$logo-font: $font-family-sans-serif;
+
+// ============================================================================
+// Component Active States (forms, checkboxes, buttons)
+// ============================================================================
+$component-active-bg: #c49a4a;       // Amber
+$component-active-color: #151a14;    // Dark bg text on amber
+
+// ============================================================================
+// Form Input Styling
+// ============================================================================
+$moss-border: #3e4a38;              // Moss border
+$input-border-color: $moss-border;
+
+// Focus ring settings
+$focus-ring-width: 0.25rem;
+$focus-ring-opacity: 0.25;
+$input-btn-focus-width: $focus-ring-width;
+
+// ============================================================================
+// Checkbox Styling
+// ============================================================================
+$form-check-input-disabled-opacity: 0.5;

@@ -1,0 +1,76 @@
+@use '../../common/common' as *;
+
+:host {
+    display: block;
+    min-height: 500px;
+    position: relative;
+}
+
+// Progress overlay during bulk operations
+.bulk-progress-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--app-bulk-overlay-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+
+    .progress-text {
+        margin-top: 1rem;
+        font-weight: 500;
+        color: var(--bs-body-color);
+    }
+}
+
+// Results count (Triggarr-style "Showing X of Y results")
+.results-count {
+    font-size: 0.75rem;
+    color: var(--app-muted-text);
+    margin-bottom: 8px;
+}
+
+// Card container for the file list (Triggarr-style)
+.file-card {
+    background-color: var(--app-header-bg);
+    border: 1px solid var(--app-file-border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+// Virtual scroll viewport
+.file-viewport {
+    height: calc(100vh - 240px);
+    width: 100%;
+    min-height: 500px;
+    overflow-y: auto;
+}
+
+// Select-all header row — minimal, inside card
+#header {
+    border-bottom: 1px solid var(--app-file-border-color);
+    padding: 8px 12px;
+
+    .header-inner {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+            accent-color: var(--app-selection-border);
+        }
+
+        .header-label {
+            font-size: 0.75rem;
+            color: var(--app-muted-text);
+            user-select: none;
+        }
+    }
+}

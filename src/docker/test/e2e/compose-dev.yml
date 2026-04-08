@@ -1,0 +1,10 @@
+services:
+  tests:
+    command: /bin/true
+
+  myapp:
+    ports:
+      - target: 8800
+        published: 8800
+        protocol: tcp
+        mode: host

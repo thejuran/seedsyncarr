@@ -1,0 +1,14 @@
+services:
+  tests:
+    image: seedsyncarr/test/angular
+    container_name: seedsyncarr_test_angular
+    tty: true
+    build:
+      context: ../../../../
+      dockerfile: src/docker/test/angular/Dockerfile
+      target: seedsyncarr_test_angular
+    volumes:
+      - type: bind
+        source: ../../../angular/src
+        target: /app/src
+        read_only: true
