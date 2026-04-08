@@ -87,7 +87,11 @@ class TestLftpModel(unittest.TestCase):
 
     def test_add_listener(self):
         listener = DummyModelListener()
+        listener.file_added = MagicMock()
         self.model.add_listener(listener)
+        file = ModelFile("probe", False)
+        self.model.add_file(file)
+        listener.file_added.assert_called_once_with(file)
 
     def test_remove_listener(self):
         listener = DummyModelListener()
