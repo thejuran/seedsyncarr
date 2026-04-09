@@ -32,7 +32,7 @@ services:
 - **AutoQueue** — pattern-based file selection syncs only the files you want
 - **Sonarr and Radarr integration** — webhook-driven import notifications for seamless media library updates
 - **Local and remote file management** — browse, delete, and manage files on both ends from the UI
-- **Docker and pip packaging** — available as Docker images (amd64 and arm64) or install via pip
+- **Docker packaging** — available as Docker images for amd64 and arm64
 - **Dark mode** — full dark theme with earthy palette designed for always-on displays
 
 ## How It Works
@@ -56,15 +56,6 @@ docker run -d \
   -v /path/to/downloads:/downloads \
   ghcr.io/thejuran/seedsyncarr:latest
 ```
-
-### pip
-
-```bash
-pip install seedsyncarr
-seedsyncarr
-```
-
-Requires Python 3.11+ and [LFTP](https://lftp.yar.ru/) installed on the host.
 
 For detailed setup instructions, see the [documentation](https://github.com/thejuran/seedsyncarr/wiki).
 

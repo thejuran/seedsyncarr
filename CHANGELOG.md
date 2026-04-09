@@ -14,7 +14,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - AutoQueue with pattern-based file selection
 - Automatic file extraction after sync completes
 - Docker images for amd64 and arm64
-- Debian package distribution
 - Dark mode UI with Deep Moss and Amber palette
 - API token authentication (Bearer tokens)
 - Security hardening: HMAC webhooks, CSP, DNS rebinding prevention, credential redaction

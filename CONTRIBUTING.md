@@ -14,14 +14,14 @@ Open a [feature request](https://github.com/thejuran/seedsyncarr/issues/new?temp
 
 ### Prerequisites
 
-- Python 3.12+
+- Python 3.11+ (CI runs 3.12)
 - Node.js 22+
 - Docker (for running the full stack and E2E tests)
 
 ### Getting Started
 
 1. Fork and clone the repository
-2. Install Python dependencies: `pip install -r src/python/requirements.txt`
+2. Install Python dependencies: `cd src/python && poetry install`
 3. Install Angular dependencies: `cd src/angular && npm install`
 4. Run Python tests: `make run-tests-python`
 5. Run Angular tests: `make run-tests-angular`
