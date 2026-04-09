@@ -18,7 +18,7 @@ SeedSyncarr stores its configuration in `~/.seedsyncarr/settings.cfg` (INI forma
 |-------|------|-------------|
 | `remote_address` | string | SSH hostname or IP of your seedbox |
 | `remote_username` | string | SSH username |
-| `remote_password` | string | SSH password |
+| `remote_password` | string | SSH password. Required even when `use_ssh_key` is `true` — set to any non-empty placeholder. |
 | `remote_port` | int | SSH port (must be > 0) |
 | `remote_path` | string | Path on the seedbox to sync from |
 | `local_path` | string | Local path to sync files to |

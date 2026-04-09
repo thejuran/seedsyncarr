@@ -349,10 +349,16 @@ class Controller:
             return
         if file.import_status != ModelFile.ImportStatus.IMPORTED:
             new_file = copy.copy(file)
-            new_file._unfreeze()
-            # Fix parent references after shallow copy so children point to new_file
+            new_file._unfreeze()  # intentional protected access: controller owns the freeze lifecycle
+            # Deep-copy children so we don't mutate frozen objects shared with other threads
+            new_children = []
             for child in new_file.get_children():
-                child._ModelFile__parent = new_file
+                new_child = copy.copy(child)
+                new_child._unfreeze()
+                new_child._set_parent(new_file)
+                new_child.freeze()
+                new_children.append(new_child)
+            new_file._replace_children(new_children)
             new_file.import_status = ModelFile.ImportStatus.IMPORTED
             model.update_file(new_file)
 

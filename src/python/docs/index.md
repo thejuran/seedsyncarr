@@ -33,7 +33,7 @@ services:
 docker compose up -d
 ```
 
-Open [http://localhost:8800](http://localhost:8800) to access the dashboard.
+Open [http://localhost:8800](http://localhost:8800) to access the dashboard. See the [Installation Guide](install.md) for more options including pip install.
 
 ## Next Steps
 

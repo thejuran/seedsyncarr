@@ -2,6 +2,8 @@ site_name: SeedSyncarr
 site_description: Fast file syncing from remote servers with a web UI, powered by LFTP
 site_author: thejuran
 
+docs_dir: docs
+
 theme:
   name: material
   language: en
@@ -20,7 +22,7 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
-  font: false
+  font: false  # disable Google Fonts to avoid external requests
   logo: images/logo.png
   favicon: images/favicon.png
   features:
@@ -64,4 +66,4 @@ nav:
   - Configuration: configuration.md
   - Sonarr & Radarr: arr-setup.md
   - FAQ: faq.md
-  - Changelog: changelog.md
+  - Changelog: https://github.com/thejuran/seedsyncarr/releases

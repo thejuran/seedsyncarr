@@ -62,6 +62,11 @@ class SystemScanner:
         self.__lftp_temp_file_suffix = suffix
 
     def scan(self) -> List[SystemFile]:
+        """Scan the path and return a list of SystemFile objects.
+
+        Raises:
+            SystemScannerError: If the path does not exist or is not a directory.
+        """
         if not os.path.exists(self.path_to_scan):
             raise SystemScannerError("Path does not exist: {}".format(self.path_to_scan))
         elif not os.path.isdir(self.path_to_scan):

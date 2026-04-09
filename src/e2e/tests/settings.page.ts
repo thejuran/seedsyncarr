@@ -12,30 +12,39 @@ export class SettingsPage extends App {
     }
 
     async enableSonarr(): Promise<void> {
-        await this.page.request.get(
-            'http://myapp:8800/server/config/set/sonarr/enabled/true'
+        const response = await this.page.request.get(
+            '/server/config/set/sonarr/enabled/true'
         );
+        if (!response.ok()) {
+            throw new Error(`enableSonarr failed: ${response.status()} ${response.statusText()}`);
+        }
     }
 
     async setSonarrUrl(url: string): Promise<void> {
-        await this.page.request.get(
-            `http://myapp:8800/server/config/set/sonarr/sonarr_url/${encodeURIComponent(url)}`
+        const response = await this.page.request.get(
+            `/server/config/set/sonarr/sonarr_url/${encodeURIComponent(url)}`
         );
+        if (!response.ok()) {
+            throw new Error(`setSonarrUrl failed: ${response.status()} ${response.statusText()}`);
+        }
     }
 
     async setSonarrApiKey(key: string): Promise<void> {
-        await this.page.request.get(
-            `http://myapp:8800/server/config/set/sonarr/sonarr_api_key/${encodeURIComponent(key)}`
+        const response = await this.page.request.get(
+            `/server/config/set/sonarr/sonarr_api_key/${encodeURIComponent(key)}`
         );
+        if (!response.ok()) {
+            throw new Error(`setSonarrApiKey failed: ${response.status()} ${response.statusText()}`);
+        }
     }
 
     async clickTestSonarrConnection(): Promise<void> {
-        const sonarrFieldset = this.page.locator('fieldset').filter({ has: this.page.locator('text=Sonarr URL') });
-        await sonarrFieldset.locator('button:has-text("Test Connection")').click();
+        const sonarrFieldset = this.page.locator('fieldset').filter({ has: this.page.getByText('Sonarr URL') });
+        await sonarrFieldset.getByRole('button', { name: 'Test Connection' }).click();
     }
 
     async getSonarrTestResult(): Promise<{ text: string; isDanger: boolean }> {
-        const sonarrFieldset = this.page.locator('fieldset').filter({ has: this.page.locator('text=Sonarr URL') });
+        const sonarrFieldset = this.page.locator('fieldset').filter({ has: this.page.getByText('Sonarr URL') });
         const result = sonarrFieldset.locator('.test-result');
         await result.waitFor({ state: 'visible', timeout: 15000 });
         const text = await result.innerText();
@@ -44,8 +53,11 @@ export class SettingsPage extends App {
     }
 
     async disableSonarr(): Promise<void> {
-        await this.page.request.get(
-            'http://myapp:8800/server/config/set/sonarr/enabled/false'
+        const response = await this.page.request.get(
+            '/server/config/set/sonarr/enabled/false'
         );
+        if (!response.ok()) {
+            throw new Error(`disableSonarr failed: ${response.status()} ${response.statusText()}`);
+        }
     }
 }

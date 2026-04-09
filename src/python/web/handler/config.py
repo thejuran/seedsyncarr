@@ -2,7 +2,7 @@ import json
 import ipaddress
 import socket
 from typing import Optional
-from urllib.parse import urlparse, unquote
+from urllib.parse import urlparse, urljoin, unquote
 
 import requests
 import bottle
@@ -25,8 +25,30 @@ class ConfigHandler(IHandler):
         web_app.add_handler("/server/config/radarr/test-connection", self.__handle_test_radarr_connection)
 
     @staticmethod
+    def _sanitize_redirect_location(raw_location: str, base_url: str) -> str:
+        """Sanitize and resolve a redirect Location header for display.
+
+        Truncates to 200 chars, resolves relative paths against the base URL
+        using urljoin for correct RFC 3986 handling.
+        """
+        if not raw_location:
+            return "unknown"
+        location = raw_location[:200]
+        # Resolve relative Location against the base URL
+        if not location.startswith(("http://", "https://")):
+            if base_url and base_url.startswith(("http://", "https://")):
+                location = urljoin(base_url + "/", location)
+        return location
+
+    @staticmethod
     def _validate_url(url: str) -> Optional[str]:
-        """Validate URL for SSRF protection. Returns error string or None if valid."""
+        """Validate URL for SSRF protection. Returns error string or None if valid.
+
+        Known limitation: DNS rebinding (TOCTOU) — getaddrinfo resolves at validation
+        time while requests.get resolves again at request time. A DNS rebinding attack
+        could bypass this check. Mitigating this requires socket-level interception
+        (e.g., ssrfpy or pysafecurl), which is out of scope for a homelab tool.
+        """
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"}:
             return "Only http and https URLs are allowed"
@@ -70,23 +92,21 @@ class ConfigHandler(IHandler):
         except ConfigError as e:
             return HTTPResponse(body=str(e), status=400)
 
-    def __handle_test_sonarr_connection(self):
-        sonarr_url = self.__config.sonarr.sonarr_url
-        sonarr_api_key = self.__config.sonarr.sonarr_api_key
-
-        if not sonarr_url or not sonarr_url.strip():
+    def _test_arr_connection(self, service_name: str, raw_url: Optional[str], api_key: Optional[str]) -> HTTPResponse:
+        """Shared logic for testing Sonarr/Radarr API connections."""
+        if not raw_url or not raw_url.strip():
             return HTTPResponse(
-                body=json.dumps({"success": False, "error": "Sonarr URL is required"}),
+                body=json.dumps({"success": False, "error": "{} URL is required".format(service_name)}),
                 content_type="application/json"
             )
-        if not sonarr_api_key or not sonarr_api_key.strip():
+        if not api_key or not api_key.strip():
             return HTTPResponse(
-                body=json.dumps({"success": False, "error": "Sonarr API key is required"}),
+                body=json.dumps({"success": False, "error": "{} API key is required".format(service_name)}),
                 content_type="application/json"
             )
 
         # SSRF protection: validate URL before making any outbound request
-        error_msg = ConfigHandler._validate_url(sonarr_url.strip())
+        error_msg = ConfigHandler._validate_url(raw_url.strip())
         if error_msg is not None:
             return HTTPResponse(
                 body=json.dumps({"success": False, "error": error_msg}),
@@ -94,13 +114,14 @@ class ConfigHandler(IHandler):
             )
 
         # Strip trailing slash from URL
-        url = sonarr_url.rstrip("/")
+        url = raw_url.rstrip("/")
 
         try:
             response = requests.get(
                 "{}/api/v3/system/status".format(url),
-                headers={"X-Api-Key": sonarr_api_key},
-                timeout=10
+                headers={"X-Api-Key": api_key},
+                timeout=10,
+                allow_redirects=False
             )
             if response.status_code == 200:
                 data = response.json()
@@ -114,14 +135,20 @@ class ConfigHandler(IHandler):
                     body=json.dumps({"success": False, "error": "Invalid API key"}),
                     content_type="application/json"
                 )
+            elif response.status_code in (301, 302, 307, 308):
+                location = self._sanitize_redirect_location(response.headers.get("Location", ""), url)
+                return HTTPResponse(
+                    body=json.dumps({"success": False, "error": "URL redirects to {}. Update the URL to the final destination.".format(location)}),
+                    content_type="application/json"
+                )
             else:
                 return HTTPResponse(
-                    body=json.dumps({"success": False, "error": "Sonarr returned status {}".format(response.status_code)}),
+                    body=json.dumps({"success": False, "error": "{} returned status {}".format(service_name, response.status_code)}),
                     content_type="application/json"
                 )
         except requests.ConnectionError:
             return HTTPResponse(
-                body=json.dumps({"success": False, "error": "Connection refused - check Sonarr URL"}),
+                body=json.dumps({"success": False, "error": "Connection refused - check {} URL".format(service_name)}),
                 content_type="application/json"
             )
         except requests.Timeout:
@@ -134,68 +161,17 @@ class ConfigHandler(IHandler):
                 body=json.dumps({"success": False, "error": "An unexpected error occurred"}),
                 content_type="application/json"
             )
+
+    def __handle_test_sonarr_connection(self):
+        return self._test_arr_connection(
+            "Sonarr",
+            self.__config.sonarr.sonarr_url,
+            self.__config.sonarr.sonarr_api_key
+        )
 
     def __handle_test_radarr_connection(self):
-        radarr_url = self.__config.radarr.radarr_url
-        radarr_api_key = self.__config.radarr.radarr_api_key
-
-        if not radarr_url or not radarr_url.strip():
-            return HTTPResponse(
-                body=json.dumps({"success": False, "error": "Radarr URL is required"}),
-                content_type="application/json"
-            )
-        if not radarr_api_key or not radarr_api_key.strip():
-            return HTTPResponse(
-                body=json.dumps({"success": False, "error": "Radarr API key is required"}),
-                content_type="application/json"
-            )
-
-        # SSRF protection: validate URL before making any outbound request
-        error_msg = ConfigHandler._validate_url(radarr_url.strip())
-        if error_msg is not None:
-            return HTTPResponse(
-                body=json.dumps({"success": False, "error": error_msg}),
-                content_type="application/json"
-            )
-
-        # Strip trailing slash from URL
-        url = radarr_url.rstrip("/")
-
-        try:
-            response = requests.get(
-                "{}/api/v3/system/status".format(url),
-                headers={"X-Api-Key": radarr_api_key},
-                timeout=10
-            )
-            if response.status_code == 200:
-                data = response.json()
-                version = data.get("version", "unknown")
-                return HTTPResponse(
-                    body=json.dumps({"success": True, "version": version}),
-                    content_type="application/json"
-                )
-            elif response.status_code == 401:
-                return HTTPResponse(
-                    body=json.dumps({"success": False, "error": "Invalid API key"}),
-                    content_type="application/json"
-                )
-            else:
-                return HTTPResponse(
-                    body=json.dumps({"success": False, "error": "Radarr returned status {}".format(response.status_code)}),
-                    content_type="application/json"
-                )
-        except requests.ConnectionError:
-            return HTTPResponse(
-                body=json.dumps({"success": False, "error": "Connection refused - check Radarr URL"}),
-                content_type="application/json"
-            )
-        except requests.Timeout:
-            return HTTPResponse(
-                body=json.dumps({"success": False, "error": "Connection timed out"}),
-                content_type="application/json"
-            )
-        except Exception:
-            return HTTPResponse(
-                body=json.dumps({"success": False, "error": "An unexpected error occurred"}),
-                content_type="application/json"
-            )
+        return self._test_arr_connection(
+            "Radarr",
+            self.__config.radarr.radarr_url,
+            self.__config.radarr.radarr_api_key
+        )

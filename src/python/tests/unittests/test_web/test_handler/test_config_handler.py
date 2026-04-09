@@ -350,7 +350,8 @@ class TestConfigHandlerTestRadarrConnection(unittest.TestCase):
         mock_requests.get.assert_called_once_with(
             "http://radarr.example.com:7878/api/v3/system/status",
             headers={"X-Api-Key": "testapikey123"},
-            timeout=10
+            timeout=10,
+            allow_redirects=False
         )
 
     @patch('web.handler.config.requests')

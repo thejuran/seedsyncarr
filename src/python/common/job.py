@@ -71,6 +71,7 @@ class Job(threading.Thread, ABC):
 
     @abstractmethod
     def setup(self):
+        """Run once when the job starts. Implementations should raise on unrecoverable errors."""
         pass
 
     @abstractmethod
@@ -84,4 +85,5 @@ class Job(threading.Thread, ABC):
 
     @abstractmethod
     def cleanup(self):
+        """Run once when the job is about to terminate. Must not raise; log errors instead."""
         pass

@@ -6,10 +6,11 @@ test.describe('Settings page error states', () => {
 
     test.beforeEach(async ({ page }) => {
         settingsPage = new SettingsPage(page);
+        await settingsPage.disableSonarr();
     });
 
     test.afterEach(async () => {
-        await settingsPage.disableSonarr();
+        await settingsPage.disableSonarr().catch(() => {});
     });
 
     test('should show error when Sonarr connection fails', async ({ page }) => {

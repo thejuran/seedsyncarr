@@ -76,6 +76,10 @@ class ModelFile:
         """Internal: unfreeze this file for copy-then-modify patterns. Not part of the public API."""
         self.__frozen = False
 
+    def _set_parent(self, parent: Optional["ModelFile"]):
+        """Internal: reparent this file after a shallow copy. Not part of the public API."""
+        self.__parent = parent
+
     def _check_frozen(self):
         """Raises an error if the file is frozen"""
         if self.__frozen:
@@ -298,10 +302,15 @@ class ModelFile:
         if child_file.name in (f.name for f in self.__children):
             raise ValueError("Cannot add child more than once")
         self.__children.append(child_file)
-        child_file._ModelFile__parent = self
+        child_file._set_parent(self)
 
     def get_children(self) -> List["ModelFile"]:
         return copy.copy(self.__children)
+
+    def _replace_children(self, children: List["ModelFile"]):
+        """Internal: replace children list after deep-copy reparenting. Not part of the public API."""
+        self._check_frozen()
+        self.__children = children
 
     @property
     def parent(self) -> Optional["ModelFile"]:

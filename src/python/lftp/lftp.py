@@ -377,6 +377,7 @@ class Lftp:
         self.__run_command("kill all")
 
     def exit(self):
+        """Exit the lftp process. The instance cannot be used after this call."""
         self.kill_all()
         self.__process.sendline("exit")
         self.__process.close(force=True)

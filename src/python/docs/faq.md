@@ -17,10 +17,10 @@
 
 **Solutions:**
 
-1. The `webhook_secret` value in SeedSyncarr's `[General]` config must exactly match the secret configured in your *arr app's webhook settings
-2. If you don't need webhook authentication, leave `webhook_secret` empty in both SeedSyncarr and the *arr app
-3. Check for trailing whitespace or newlines in the secret value
-4. See [Sonarr & Radarr Setup](arr-setup.md) for detailed webhook configuration
+1. Sonarr and Radarr do not natively send the `X-Webhook-Signature` header. If `webhook_secret` is set in SeedSyncarr and you connect directly from a *arr app, all webhooks will be rejected with 401.
+2. To fix: leave `webhook_secret` empty in SeedSyncarr's `[General]` config (the default). If your instance is accessible from outside localhost, place the webhook endpoint behind a reverse proxy with network-level access control.
+3. If you use a webhook proxy that adds HMAC signatures, ensure the secret values match exactly — check for trailing whitespace or newlines.
+4. See [Sonarr & Radarr Setup](arr-setup.md) for detailed webhook configuration.
 
 ## arm64 (Apple Silicon) test caveat
 

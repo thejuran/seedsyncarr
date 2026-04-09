@@ -203,7 +203,7 @@ class InnerConfig(ABC):
 
 # Useful aliases
 IC = InnerConfig
-PROP = InnerConfig._create_property
+PROP = InnerConfig._create_property  # intentional protected access: module-level shorthand
 
 class Config(Persist):
     """
