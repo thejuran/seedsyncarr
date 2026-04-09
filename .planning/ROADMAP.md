@@ -327,6 +327,10 @@ Plans:
   2. Major bumps #4 (pytest 7→9), #6 (testfixtures 10→11), #7 (Angular npm bundle) reviewed -- either merged with passing tests or closed with documented reason
   3. `gh api repos/thejuran/seedsyncarr/dependabot/alerts` returns zero open alerts
   4. `make run-tests-python` and `make run-tests-angular` both exit 0 in CI after all merges
+**Plans:** 2 plans
+Plans:
+- [ ] 60-01-PLAN.md -- Merge minor/patch Dependabot PRs (#2, #3, #5) and verify CI green
+- [ ] 60-02-PLAN.md -- Resolve major bumps (pytest 7->9, testfixtures 10->11, Angular npm bundle) and clear all alerts
 
 ### Phase 61: Branding Integration
 **Goal**: The SeedSyncarr arrow-mark branding replaces the legacy leaf icon everywhere -- web app, docs site, GitHub, README -- creating a cohesive visual identity before community launch
@@ -365,10 +369,10 @@ Plans:
 | 57. README & Community Health | v1.0.0 | 2/2 | Complete | 2026-04-09 |
 | 58. Docs Site | v1.0.0 | 2/2 | Complete | 2026-04-09 |
 | 59. Community Launch | v1.0.0 | 2/2 | Complete | 2026-04-09 |
-| 60. Dependency Updates | v1.0.0 | 0/0 | Not started | - |
+| 60. Dependency Updates | v1.0.0 | 0/2 | In progress | - |
 | 61. Branding Integration | v1.0.0 | 0/0 | Not started | - |
 
 ---
 
-*Last updated: 2026-04-09 — Phases 60-61 added (dependency updates + branding)*
+*Last updated: 2026-04-09 — Phase 60 planned (2 plans, dependency updates)*
 *Phases 53-61: v1.0.0 SeedSyncarr Rebrand milestone*
