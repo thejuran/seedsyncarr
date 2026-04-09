@@ -57,7 +57,7 @@ docker run -d \
   ghcr.io/thejuran/seedsyncarr:latest
 ```
 
-For detailed setup instructions, see the [documentation](https://github.com/thejuran/seedsyncarr/wiki).
+For detailed setup instructions, see the [documentation](https://thejuran.github.io/seedsyncarr).
 
 ## Configuration
 
