@@ -206,11 +206,11 @@ See `.planning/milestones/v3.1-ROADMAP.md` for full details.
 
 - [x] **Phase 53: New Repo & Atomic Rename** - Create `thejuran/seedsyncarr`, migrate codebase, rename all 12 layers atomically, CI green, v1.0.0 tagged (completed 2026-04-08)
 - [x] **Phase 54: Archive Old Repo** - Archive `thejuran/seedsync` with forward pointer after new repo confirmed healthy (completed 2026-04-08)
-- [ ] **Phase 55: Code Hardening** - Strip AI artifacts, remove dead code, resolve all Dependabot alerts and lint warnings
-- [ ] **Phase 56: Test Quality** - Close meaningful test coverage gaps, strengthen assertions, add E2E unhappy paths
-- [ ] **Phase 57: README & Community Health** - Value-prop README with badges, community health files, GitHub topic tags
-- [ ] **Phase 58: Docs Site** - MkDocs site live at `thejuran.github.io/seedsyncarr` with installation, config, and Sonarr/Radarr guide
-- [ ] **Phase 59: Community Launch** - r/selfhosted post, staggered *arr community outreach, deferred list submissions gated
+- [x] **Phase 55: Code Hardening** - Strip AI artifacts, remove dead code, resolve all Dependabot alerts and lint warnings (completed 2026-04-08)
+- [x] **Phase 56: Test Quality** - Close meaningful test coverage gaps, strengthen assertions, add E2E unhappy paths (completed 2026-04-08)
+- [x] **Phase 57: README & Community Health** - Value-prop README with badges, community health files, GitHub topic tags (completed 2026-04-09)
+- [x] **Phase 58: Docs Site** - MkDocs site live at `thejuran.github.io/seedsyncarr` with installation, config, and Sonarr/Radarr guide (completed 2026-04-09)
+- [x] **Phase 59: Community Launch** - r/selfhosted post, staggered *arr community outreach, deferred list submissions gated (completed 2026-04-09)
 
 ## Phase Details
 
@@ -345,5 +345,5 @@ Plans:
 
 ---
 
-*Last updated: 2026-04-09 after Phase 59 plans created*
+*Last updated: 2026-04-09 — v1.0.0 milestone complete (all 7 phases executed and UAT-verified)*
 *Phases 53-59: v1.0.0 SeedSyncarr Rebrand milestone*
