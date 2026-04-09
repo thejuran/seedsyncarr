@@ -313,7 +313,8 @@ Plans:
   4. LNCH-04 (Awesomarr PR) is documented as deferred pending 50+ GitHub stars -- not submitted early
 **Plans:** 2 plans
 Plans:
-- [ ] 59-01-PLAN.md -- TBD
+- [ ] 59-01-PLAN.md -- Draft r/selfhosted announcement post, user review
+- [ ] 59-02-PLAN.md -- Follow-up posts (Discord, r/sonarr, r/radarr), deferral documentation
 
 ## Progress
 
@@ -337,12 +338,12 @@ Plans:
 | 53. New Repo & Atomic Rename | v1.0.0 | 2/2 | Complete | 2026-04-08 |
 | 54. Archive Old Repo | v1.0.0 | 1/1 | Complete | 2026-04-08 |
 | 55. Code Hardening | v1.0.0 | 0/2 | Not started | - |
-| 56. Test Quality | v1.0.0 | 0/? | Not started | - |
-| 57. README & Community Health | v1.0.0 | 0/? | Not started | - |
+| 56. Test Quality | v1.0.0 | 0/2 | Not started | - |
+| 57. README & Community Health | v1.0.0 | 0/2 | Not started | - |
 | 58. Docs Site | v1.0.0 | 0/2 | Not started | - |
-| 59. Community Launch | v1.0.0 | 0/? | Not started | - |
+| 59. Community Launch | v1.0.0 | 0/2 | Not started | - |
 
 ---
 
-*Last updated: 2026-04-09 after Phase 58 plans created*
+*Last updated: 2026-04-09 after Phase 59 plans created*
 *Phases 53-59: v1.0.0 SeedSyncarr Rebrand milestone*
