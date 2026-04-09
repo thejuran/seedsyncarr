@@ -211,6 +211,8 @@ See `.planning/milestones/v3.1-ROADMAP.md` for full details.
 - [x] **Phase 57: README & Community Health** - Value-prop README with badges, community health files, GitHub topic tags (completed 2026-04-09)
 - [x] **Phase 58: Docs Site** - MkDocs site live at `thejuran.github.io/seedsyncarr` with installation, config, and Sonarr/Radarr guide (completed 2026-04-09)
 - [x] **Phase 59: Community Launch** - r/selfhosted post, staggered *arr community outreach, deferred list submissions gated (completed 2026-04-09)
+- [ ] **Phase 60: Dependency Updates** - Merge minor/patch Dependabot PRs, review and resolve major version bumps (pytest 7→9, testfixtures 10→11, Angular npm bundle)
+- [ ] **Phase 61: Branding Integration** - Replace leaf favicon/logo with new arrow-mark branding across web app, docs site, GitHub social preview, and README
 
 ## Phase Details
 
@@ -316,6 +318,27 @@ Plans:
 - [ ] 59-01-PLAN.md -- Draft r/selfhosted announcement post, user review
 - [ ] 59-02-PLAN.md -- Follow-up posts (Discord, r/sonarr, r/radarr), deferral documentation
 
+### Phase 60: Dependency Updates
+**Goal**: All dependencies are current with no open Dependabot alerts -- minor/patch PRs merged, major bumps reviewed for breaking changes and resolved
+**Depends on**: Phase 59
+**Requirements**: PLSH-01, PLSH-02, PLSH-03
+**Success Criteria** (what must be TRUE):
+  1. Dependabot PRs #2 (mkdocs-material), #3 (pyinstaller), #5 (pytest-cov) merged to main
+  2. Major bumps #4 (pytest 7→9), #6 (testfixtures 10→11), #7 (Angular npm bundle) reviewed -- either merged with passing tests or closed with documented reason
+  3. `gh api repos/thejuran/seedsyncarr/dependabot/alerts` returns zero open alerts
+  4. `make run-tests-python` and `make run-tests-angular` both exit 0 in CI after all merges
+
+### Phase 61: Branding Integration
+**Goal**: The SeedSyncarr arrow-mark branding replaces the legacy leaf icon everywhere -- web app, docs site, GitHub, README -- creating a cohesive visual identity before community launch
+**Depends on**: Phase 60
+**Requirements**: PLSH-04, PLSH-05, PLSH-06, PLSH-07
+**Success Criteria** (what must be TRUE):
+  1. `src/angular/src/assets/favicon.png` is the new arrow-mark icon (not the green leaf)
+  2. `src/python/docs/images/favicon.png` and `logo.png` are the new branding assets
+  3. GitHub repo social preview is set to the banner with tagline image
+  4. README.md includes the project logo at the top
+  5. Web app browser tab shows the new favicon when loaded
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -337,13 +360,15 @@ Plans:
 | 52. Dependency Fixes & CI | v4.0.3 | 1/1 | Complete | 2026-04-08 |
 | 53. New Repo & Atomic Rename | v1.0.0 | 2/2 | Complete | 2026-04-08 |
 | 54. Archive Old Repo | v1.0.0 | 1/1 | Complete | 2026-04-08 |
-| 55. Code Hardening | v1.0.0 | 0/2 | Not started | - |
-| 56. Test Quality | v1.0.0 | 0/2 | Not started | - |
-| 57. README & Community Health | v1.0.0 | 0/2 | Not started | - |
-| 58. Docs Site | v1.0.0 | 0/2 | Not started | - |
-| 59. Community Launch | v1.0.0 | 0/2 | Not started | - |
+| 55. Code Hardening | v1.0.0 | 2/2 | Complete | 2026-04-08 |
+| 56. Test Quality | v1.0.0 | 1/1 | Complete | 2026-04-08 |
+| 57. README & Community Health | v1.0.0 | 2/2 | Complete | 2026-04-09 |
+| 58. Docs Site | v1.0.0 | 2/2 | Complete | 2026-04-09 |
+| 59. Community Launch | v1.0.0 | 2/2 | Complete | 2026-04-09 |
+| 60. Dependency Updates | v1.0.0 | 0/0 | Not started | - |
+| 61. Branding Integration | v1.0.0 | 0/0 | Not started | - |
 
 ---
 
-*Last updated: 2026-04-09 — v1.0.0 milestone complete (all 7 phases executed and UAT-verified)*
-*Phases 53-59: v1.0.0 SeedSyncarr Rebrand milestone*
+*Last updated: 2026-04-09 — Phases 60-61 added (dependency updates + branding)*
+*Phases 53-61: v1.0.0 SeedSyncarr Rebrand milestone*
