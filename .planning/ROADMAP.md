@@ -293,13 +293,14 @@ Plans:
 **Requirements**: PRES-04, PRES-05, PRES-06
 **Success Criteria** (what must be TRUE):
   1. `https://thejuran.github.io/seedsyncarr` loads the MkDocs Material site and is publicly accessible
-  2. The docs site includes an installation guide covering Docker Compose and Debian package install paths
+  2. The docs site includes an installation guide covering Docker Compose and pip install paths
   3. The docs site includes a configuration reference covering all environment variables and settings fields
   4. The Sonarr/Radarr webhook setup guide exists as a dedicated page with step-by-step instructions for connecting at least one *arr app
   5. A FAQ or troubleshooting page addresses at least three common problems (e.g., connection refused, HMAC mismatch, arm64 test caveat)
 **Plans:** 2 plans
 Plans:
-- [ ] 58-01-PLAN.md -- TBD
+- [ ] 58-01-PLAN.md -- Create all docs content pages (index, install, config reference, arr-setup, FAQ, changelog), fix mkdocs.yml, add image assets
+- [ ] 58-02-PLAN.md -- Update README docs link, enable GitHub Pages, human-verify live site
 
 ### Phase 59: Community Launch
 **Goal**: SeedSyncarr is announced to the self-hosted community in a way that earns genuine engagement -- staggered posts per audience, no spam, deferred submissions respected
@@ -338,10 +339,10 @@ Plans:
 | 55. Code Hardening | v1.0.0 | 0/2 | Not started | - |
 | 56. Test Quality | v1.0.0 | 0/? | Not started | - |
 | 57. README & Community Health | v1.0.0 | 0/? | Not started | - |
-| 58. Docs Site | v1.0.0 | 0/? | Not started | - |
+| 58. Docs Site | v1.0.0 | 0/2 | Not started | - |
 | 59. Community Launch | v1.0.0 | 0/? | Not started | - |
 
 ---
 
-*Last updated: 2026-04-08 after Phase 55 plans created*
+*Last updated: 2026-04-09 after Phase 58 plans created*
 *Phases 53-59: v1.0.0 SeedSyncarr Rebrand milestone*
