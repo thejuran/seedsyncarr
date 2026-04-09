@@ -49,7 +49,7 @@ plugins:
 site_url: https://thejuran.github.io/seedsyncarr
 repo_name: thejuran/seedsyncarr
 repo_url: https://github.com/thejuran/seedsyncarr
-edit_uri: edit/master/src/python/docs/
+edit_uri: edit/main/src/python/docs/
 
 extra:
   social:
@@ -61,6 +61,7 @@ extra:
 nav:
   - Home: index.md
   - Installation: install.md
-  - Usage: usage.md
+  - Configuration: configuration.md
+  - Sonarr & Radarr: arr-setup.md
   - FAQ: faq.md
   - Changelog: changelog.md
