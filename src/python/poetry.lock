@@ -1204,20 +1204,23 @@ files = [
 
 [[package]]
 name = "testfixtures"
-version = "10.0.0"
+version = "11.0.0"
 description = "A collection of helpers and mock objects for unit tests and doc tests."
 optional = false
 python-versions = ">=3.11"
 groups = ["main", "dev"]
 files = [
-    {file = "testfixtures-10.0.0-py3-none-any.whl", hash = "sha256:c54ed5c4cd93ad271a6add94a575a5843964ea3aaf590f4c3cb4df16a261b15f"},
-    {file = "testfixtures-10.0.0.tar.gz", hash = "sha256:2b9829bf7f42f0ca8600250762e6725575da59af18d9a7f82aae2c97b14f0f66"},
+    {file = "testfixtures-11.0.0-py3-none-any.whl", hash = "sha256:371385596e87388469f2635decba00619cc416cd034671ecde8a059f6625634e"},
+    {file = "testfixtures-11.0.0.tar.gz", hash = "sha256:06dfeb3792e06c4ea7217e14114391f6c7735c36e0a57e6f4641c6ae5d790ee7"},
 ]
 
 [package.extras]
-build = ["setuptools-git", "twine", "wheel"]
-docs = ["django", "furo", "sphinx", "sybil (>=6)", "twisted"]
-test = ["django", "django-stubs", "mypy", "mypy-zope", "pytest (>=7.1)", "pytest-cov", "pytest-django", "sybil (>=6)", "twisted", "types-mock"]
+django = ["django (>=4) ; python_version < \"3.13\"", "django (>=5.1.3) ; python_version >= \"3.13\""]
+mock-backport = ["mock (>=4.0.3)"]
+sybil = ["sybil (>=6.0.3)"]
+toml = ["tomlkit (>=0.10.0)"]
+twisted = ["twisted (>=22.1)"]
+yaml = ["pyyaml (>=6.0.3)"]
 
 [[package]]
 name = "timeout-decorator"
@@ -1362,4 +1365,4 @@ dev = ["mkdocs", "mkdocs-material", "parameterized", "pyinstaller", "pytest", "p
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "1c32ac9f01a0539a1aa91fc46cf53e8bc7c59a91a52505edd573fd39ec9f88dc"
+content-hash = "d310ec202d86e3b041b613daaefcab513715456e4fc3e2e6fa796f884901f51e"
