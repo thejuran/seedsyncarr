@@ -1,4 +1,12 @@
 <p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/brand/wordmark-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="doc/brand/wordmark-light.png">
+    <img alt="SeedSyncarr" src="doc/brand/wordmark-dark.png" width="480">
+  </picture>
+</p>
+
+<p align="center">
   <img src="doc/images/screenshot-dashboard.png" alt="SeedSyncarr Dashboard" width="800" />
 </p>
 
