@@ -25,7 +25,7 @@
                   @default { <i class="fa fa-info-circle"></i> }
                 }
               </span>
-              <span class="bell-notif-text">{{ notif.text }}</span>
+              <span class="bell-notif-text" [innerHTML]="notif.text"></span>
               @if (notif.dismissible) {
                 <button class="bell-notif-dismiss" (click)="dismissNotification(notif)" aria-label="Dismiss">
                   <i class="fa fa-times"></i>
