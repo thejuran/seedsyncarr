@@ -39,7 +39,7 @@
             color: var(--app-muted-text);
             border-radius: 6px 6px 0 0;
 
-            i.fa {
+            i.fa, i.ph {
                 font-size: 1rem;
                 color: var(--app-muted-text);
             }
@@ -263,7 +263,7 @@
             background: #1b232e;
             border-bottom-color: #2b3a4a;
 
-            i.fa { color: #00c2ff; }
+            i.fa, i.ph { color: #00c2ff; }
         }
 
         .settings-card-body {
@@ -297,7 +297,7 @@
             background: #2b2210;
             border-bottom-color: #4a3415;
 
-            i.fa { color: #ffc230; }
+            i.fa, i.ph { color: #ffc230; }
         }
 
         .settings-card-body {
