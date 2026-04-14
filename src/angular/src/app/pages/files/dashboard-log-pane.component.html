@@ -1,0 +1,35 @@
+<section class="log-pane">
+  <div class="log-pane__header">
+    <span class="log-pane__title">
+      <i class="fa fa-terminal"></i> System Event Log
+    </span>
+    <div class="log-pane__actions">
+      <button class="log-pane__action-btn" (click)="copyLogs()" title="Copy logs">
+        <i class="fa fa-copy"></i>
+      </button>
+      <a class="log-pane__action-btn" routerLink="/logs" title="Expand logs">
+        <i class="fa fa-expand"></i>
+      </a>
+    </div>
+  </div>
+  <div class="log-pane__body">
+    @if (!streamRegistry.logService.hasReceivedLogs) {
+      <div class="log-pane__spinner">
+        <i class="fa fa-circle-o-notch fa-spin"></i>
+      </div>
+    }
+    @for (entry of entries; track $index) {
+      <div class="log-entry"
+           [class.log-entry--error]="entry.level === LogRecord.Level.ERROR || entry.level === LogRecord.Level.CRITICAL">
+        <span class="log-entry__ts">{{ entry.time | date:'HH:mm:ss.SSS' }}</span>
+        <span class="log-entry__badge"
+              [ngClass]="{
+                'log-entry__badge--info': entry.level === LogRecord.Level.INFO || entry.level === LogRecord.Level.DEBUG,
+                'log-entry__badge--warn': entry.level === LogRecord.Level.WARNING,
+                'log-entry__badge--error': entry.level === LogRecord.Level.ERROR || entry.level === LogRecord.Level.CRITICAL
+              }">{{ levelBadge(entry.level) }}</span>
+        <span class="log-entry__msg">{{ entry.message }}</span>
+      </div>
+    }
+  </div>
+</section>

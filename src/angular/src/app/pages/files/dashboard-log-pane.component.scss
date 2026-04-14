@@ -1,0 +1,126 @@
+@use '../../common/common' as *;
+
+:host {
+  display: block;
+}
+
+.log-pane {
+  background-color: $forest-base;
+  border: 1px solid $forest-border;
+  border-radius: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  height: 160px;
+  flex-shrink: 0;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.log-pane__header {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid $forest-border;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba($forest-card, 0.5);
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.log-pane__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $secondary;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  .fa-terminal {
+    color: $primary;
+  }
+}
+
+.log-pane__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.log-pane__action-btn {
+  color: $secondary;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: none;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: $body-color-dark;
+  }
+}
+
+.log-pane__body {
+  padding: 1rem;
+  font-family: $font-family-monospace;
+  font-size: 11px;
+  line-height: 1.625;
+  overflow-y: auto;
+  width: 100%;
+  color: $secondary;
+}
+
+.log-pane__spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: $secondary;
+}
+
+.log-entry {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0 0.5rem;
+  margin: 0 -0.5rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: $forest-row;
+
+    .log-entry__msg {
+      color: $body-color-dark;
+    }
+  }
+}
+
+.log-entry__ts {
+  color: rgba($primary, 0.8);
+  flex-shrink: 0;
+}
+
+.log-entry__badge {
+  flex-shrink: 0;
+
+  &--info {
+    color: $semantic-success;
+  }
+
+  &--warn {
+    color: $primary;
+  }
+
+  &--error {
+    color: $semantic-error;
+  }
+}
+
+.log-entry__msg {
+  word-break: break-all;
+  transition: color 0.15s ease;
+}
+
+.log-entry--error .log-entry__msg {
+  color: rgba($semantic-error, 0.8);
+}
