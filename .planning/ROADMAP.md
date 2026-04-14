@@ -450,7 +450,7 @@ Plans:
   4. A license badge and copyright footer appear at the bottom of the page
 **Plans:** 2 plans
 Plans:
-- [ ] 67-01-PLAN.md -- [to be planned]
+- [ ] 67-01-PLAN.md -- Rewrite About page component (TS, HTML, SCSS) with identity card, system info, link cards, license footer + unit tests
 - [ ] 67-02-PLAN.md -- [to be planned]
 **UI hint**: yes
 
