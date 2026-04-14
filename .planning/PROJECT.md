@@ -339,4 +339,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-13 after v1.1.0 UI Redesign milestone started*
+*Last updated: 2026-04-14 after Phase 67 (About Page) complete — last phase in v1.1.0 UI Redesign milestone*
