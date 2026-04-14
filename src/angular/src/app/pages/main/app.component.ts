@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, ElementRef, OnInit, OnDestroy, ViewChild} from "@angular/core";
+import {AfterViewInit, Component, ElementRef, HostListener, OnInit, OnDestroy, ViewChild} from "@angular/core";
 import {AsyncPipe} from "@angular/common";
 import {NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet} from "@angular/router";
 
@@ -9,9 +9,12 @@ import {ROUTE_INFOS} from "../../routes";
 declare function require(moduleName: string): { version: string };
 const { version: appVersion } = require("../../../../package.json");
 
+import * as Immutable from "immutable";
 import {DomService} from "../../services/utils/dom.service";
 import {ToastService, Toast} from "../../services/utils/toast.service";
 import {StreamServiceRegistry} from "../../services/base/stream-service.registry";
+import {Notification} from "../../services/utils/notification";
+import {NotificationService} from "../../services/utils/notification.service";
 import {HeaderComponent} from "./header.component";
 
 @Component({
@@ -28,6 +31,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     version: string = appVersion;
     toasts: Toast[] = [];
     connected$!: Observable<boolean>;
+    notifications$!: Observable<Immutable.List<Notification>>;
+    bellOpen = false;
 
     private destroy$ = new Subject<void>();
     private _resizeObserver!: ResizeObserver;
@@ -35,8 +40,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     constructor(private router: Router,
                 private _domService: DomService,
                 private _toastService: ToastService,
-                private _streamServiceRegistry: StreamServiceRegistry) {
+                private _streamServiceRegistry: StreamServiceRegistry,
+                private _notificationService: NotificationService) {
         this.connected$ = this._streamServiceRegistry.connectedService.connected;
+        this.notifications$ = this._notificationService.notifications;
     }
 
     ngOnInit(): void {
@@ -80,6 +87,20 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         if (index >= 0) {
             this.toasts.splice(index, 1);
         }
+    }
+
+    toggleBell(event: Event): void {
+        event.stopPropagation();
+        this.bellOpen = !this.bellOpen;
+    }
+
+    @HostListener('document:click')
+    closeBell(): void {
+        this.bellOpen = false;
+    }
+
+    dismissNotification(notif: Notification): void {
+        this._notificationService.hide(notif);
     }
 
     title = "app";

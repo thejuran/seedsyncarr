@@ -19,6 +19,45 @@
         <span class="status-dot"></span>
         <span class="status-text">{{ (connected$ | async) ? 'Connected' : 'Disconnected' }}</span>
       </div>
+      <div class="bell-wrapper" (click)="toggleBell($event)">
+        <button class="bell-btn" aria-label="Notifications">
+          <i class="fa fa-bell"></i>
+          @if ((notifications$ | async)?.size > 0) {
+            <span class="bell-badge-dot"></span>
+          }
+        </button>
+        @if (bellOpen) {
+          <div class="bell-dropdown" (click)="$event.stopPropagation()">
+            <div class="bell-dropdown-header">
+              <span class="bell-dropdown-title">Notifications</span>
+            </div>
+            <div class="bell-dropdown-body">
+              @if ((notifications$ | async)?.size === 0) {
+                <div class="bell-empty">No notifications</div>
+              } @else {
+                @for (notif of notifications$ | async; track notif.timestamp) {
+                  <div class="bell-notif" [attr.data-level]="notif.level">
+                    <span class="bell-notif-icon" aria-hidden="true">
+                      @switch (notif.level) {
+                        @case ('success') { <i class="fa fa-check-circle"></i> }
+                        @case ('danger') { <i class="fa fa-exclamation-circle"></i> }
+                        @case ('warning') { <i class="fa fa-exclamation-triangle"></i> }
+                        @default { <i class="fa fa-info-circle"></i> }
+                      }
+                    </span>
+                    <span class="bell-notif-text" [innerHTML]="notif.text"></span>
+                    @if (notif.dismissible) {
+                      <button class="bell-notif-dismiss" (click)="dismissNotification(notif)" aria-label="Dismiss">
+                        <i class="fa fa-times"></i>
+                      </button>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        }
+      </div>
     </div>
   </div>
 </nav>
