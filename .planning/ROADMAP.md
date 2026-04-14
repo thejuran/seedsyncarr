@@ -492,12 +492,13 @@ Plans:
 ### Phase 68: UI Polish
 
 **Goal:** Consolidate SCSS palette drift (settings + logs), make version badge clickable linking to changelog (like Triggarr), add brand favicon to dashboard header, update docs site screenshots, migrate remaining declare-require to shared version.ts
-**Requirements**: TBD
+**Requirements**: POLISH-01, POLISH-02, POLISH-03, POLISH-04, POLISH-05
 **Depends on:** Phase 67
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 68 to break down)
+- [ ] 68-01-PLAN.md -- SCSS palette consolidation, nav bar favicon, version.ts migration
+- [ ] 68-02-PLAN.md -- Clickable version badges, docs screenshot update
 
 ---
 
