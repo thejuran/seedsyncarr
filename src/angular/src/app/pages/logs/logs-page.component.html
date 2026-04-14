@@ -1,56 +1,101 @@
-<div id="logs">
-  <!--suppress HtmlUnknownAttribute -->
-  <ng-template #templateRecord let-record="record">
-    <p class="record"
-      [class.debug]="record.level == LogRecord.Level.DEBUG"
-      [class.info]="record.level == LogRecord.Level.INFO"
-      [class.warning]="record.level == LogRecord.Level.WARNING"
-      [class.error]="record.level == LogRecord.Level.ERROR"
-      [class.critical]="record.level == LogRecord.Level.CRITICAL">
-      {{record.time | date: 'yyyy/MM/dd HH:mm:ss'}} -
-      {{record.level}} -
-      {{record.loggerName}} -
-      {{record.message}}
-
-      <!-- Don't break this span into multiple lines, newlines show up -->
-      @if (record.exceptionTraceback) {
-        <span class="traceback">{{record.exceptionTraceback}}</span>
-      }
-    </p>
-  </ng-template>
-
-  <!-- Status message when not connected or waiting for logs -->
-  @if (!hasReceivedLogs) {
-    <div class="status-message">
-      @if (isConnected) {
-        <span>Connected - waiting for logs...</span>
-      } @else {
-        <span>{{Localization.Notification.STATUS_CONNECTION_WAITING}}</span>
+<!-- Toolbar — sticky card-styled -->
+<div class="logs-toolbar">
+  <div class="toolbar-left">
+    <!-- Level filter segmented group -->
+    <div class="level-filter-group">
+      @for (lvl of ['ALL', 'INFO', 'WARN', 'ERROR', 'DEBUG']; track lvl) {
+        <button
+          class="level-btn"
+          [class.level-btn--active]="activeLevel === lvl"
+          [class.level-btn--warn]="lvl === 'WARN'"
+          [class.level-btn--error]="lvl === 'ERROR'"
+          [class.level-btn--debug]="lvl === 'DEBUG'"
+          (click)="setLevel($any(lvl))">
+          {{ lvl }}
+        </button>
       }
     </div>
-  }
 
-  <button id="btn-scroll-top"
-    type="button"
-    class="btn btn-primary btn-scroll"
-    [class.visible]="showScrollToTopButton"
-    [style.top.px]="headerHeight | async"
-    (click)="scrollToTop()">
-    Scroll To Top
-  </button>
+    <!-- Regex search field -->
+    <div class="search-field">
+      <i class="fa fa-search search-icon"></i>
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Grep logs (regex supported)..."
+        [ngModel]="searchInput"
+        (ngModelChange)="searchInput = $event; onSearchInput($event)">
+    </div>
+  </div>
 
-  <div #logHead class="log-marker"></div>
+  <div class="toolbar-right">
+    <!-- Auto-scroll toggle -->
+    <button class="action-btn" [class.action-btn--active]="autoScroll" (click)="toggleAutoScroll()">
+      <i class="fa" [class.fa-check-circle]="autoScroll" [class.fa-circle-o]="!autoScroll"></i>
+      Auto-scroll
+    </button>
 
-  <!-- marks where template should be copied -->
-  <ng-container #container></ng-container>
+    <!-- Divider -->
+    <div class="toolbar-divider"></div>
 
-  <div #logTail class="log-marker"></div>
+    <!-- Clear -->
+    <button class="action-btn action-btn--clear" (click)="clearLogs()">
+      <i class="fa fa-trash"></i> Clear
+    </button>
 
-  <button id="btn-scroll-bottom"
-    type="button"
-    class="btn btn-primary btn-scroll"
-    [class.visible]="showScrollToBottomButton"
-    (click)="scrollToBottom()">
-    Scroll To Bottom
-  </button>
+    <!-- Export -->
+    <button class="action-btn action-btn--export" (click)="exportLogs()">
+      <i class="fa fa-download"></i> Export .log
+    </button>
+  </div>
+</div>
+
+<!-- Terminal viewport -->
+<div class="terminal-container">
+  <div
+    #terminalViewport
+    class="terminal-viewport terminal-scroll"
+    (scroll)="onTerminalScroll($event)">
+    <div class="terminal-content">
+      @for (entry of filteredLogs; track $index) {
+        <div class="log-row" [ngClass]="levelRowClass(entry.level)">
+          <div class="log-gutter" [ngClass]="{'log-gutter--warn': entry.level === LogRecord.Level.WARNING, 'log-gutter--error': entry.level === LogRecord.Level.ERROR || entry.level === LogRecord.Level.CRITICAL}">{{ $index + 1 }}</div>
+          <div class="log-ts" [ngClass]="{'log-ts--warn': entry.level === LogRecord.Level.WARNING, 'log-ts--error': entry.level === LogRecord.Level.ERROR || entry.level === LogRecord.Level.CRITICAL}">{{ formatTimestamp(entry.time) }}</div>
+          <div class="log-level" [ngClass]="levelClass(entry.level)">
+            @if (entry.level === LogRecord.Level.ERROR || entry.level === LogRecord.Level.CRITICAL) {
+              <span class="error-pill">{{ levelLabel(entry.level) }}</span>
+            } @else {
+              {{ levelLabel(entry.level) }}
+            }
+          </div>
+          <div class="log-msg" [ngClass]="{'log-msg--debug': entry.level === LogRecord.Level.DEBUG, 'log-msg--error': entry.level === LogRecord.Level.ERROR || entry.level === LogRecord.Level.CRITICAL, 'log-msg--warn': entry.level === LogRecord.Level.WARNING}">
+            {{ entry.message }}
+            @if (entry.exceptionTraceback) {
+              <span class="traceback">{{ entry.exceptionTraceback }}</span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+    <div class="terminal-spacer"></div>
+  </div>
+  <div class="terminal-fade"></div>
+</div>
+
+<!-- Status Bar Footer -->
+<div class="status-bar">
+  <div class="status-bar__left">
+    <span class="status-dot" [class.status-dot--connected]="isConnected" [class.status-dot--disconnected]="!isConnected"></span>
+    @if (isConnected) {
+      <span>Connected to active seedbox daemon</span>
+    } @else {
+      <span>Disconnected — waiting for connection</span>
+    }
+  </div>
+  <div class="status-bar__right">
+    <span>{{ allLogs.length }} logs indexed</span>
+    <span class="status-bar__divider">|</span>
+    <i class="fa fa-clock-o"></i>
+    <span class="status-bar__timestamp">LAST UPDATED: {{ formatLastUpdated() }}</span>
+  </div>
 </div>

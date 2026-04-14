@@ -1,161 +1,230 @@
 import {
-    AfterContentChecked, AfterViewInit,
-    ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, HostListener,
-    OnDestroy, OnInit, TemplateRef, ViewChild, ViewContainerRef
+    ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef,
+    ElementRef, inject, OnInit, ViewChild
 } from "@angular/core";
-import { DatePipe, AsyncPipe } from "@angular/common";
+import {NgClass} from "@angular/common";
+import {FormsModule} from "@angular/forms";
+import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
+import {debounceTime, distinctUntilChanged, scan} from "rxjs/operators";
+import {Subject} from "rxjs";
 
+import {StreamServiceRegistry} from "../../services/base/stream-service.registry";
 import {LogService} from "../../services/logs/log.service";
 import {LogRecord} from "../../services/logs/log-record";
-import {StreamServiceRegistry} from "../../services/base/stream-service.registry";
 import {ConnectedService} from "../../services/utils/connected.service";
-import {Localization} from "../../common/localization";
-import {DomService} from "../../services/utils/dom.service";
-import {Observable, Subject} from "rxjs";
-import {takeUntil} from "rxjs/operators";
+
+export type LevelFilter = 'ALL' | 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
+
+const MAX_LOG_ENTRIES = 5000;
 
 @Component({
     selector: "app-logs-page",
     templateUrl: "./logs-page.component.html",
     styleUrls: ["./logs-page.component.scss"],
-    providers: [],
-    changeDetection: ChangeDetectionStrategy.OnPush,
     standalone: true,
-    imports: [DatePipe, AsyncPipe]
+    imports: [NgClass, FormsModule],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class LogsPageComponent implements OnInit, AfterViewInit, AfterContentChecked, OnDestroy {
+export class LogsPageComponent implements OnInit {
     public readonly LogRecord = LogRecord;
-    public readonly Localization = Localization;
 
-    public headerHeight: Observable<number>;
+    allLogs: LogRecord[] = [];
+    activeLevel: LevelFilter = 'ALL';
+    searchInput = '';
+    searchQuery = '';
+    autoScroll = true;
+    isConnected = false;
+    lastUpdated: Date | null = null;
 
-    @ViewChild("templateRecord", {static: false}) templateRecord!: TemplateRef<unknown>;
+    private searchQuery$ = new Subject<string>();
+    private destroyRef = inject(DestroyRef);
 
-    // Where to insert the cloned content
-    @ViewChild("container", {static: false, read: ViewContainerRef}) container!: ViewContainerRef;
+    @ViewChild('terminalViewport') terminalViewport!: ElementRef<HTMLDivElement>;
 
-    @ViewChild("logHead", {static: false}) logHead!: ElementRef;
-    @ViewChild("logTail", {static: false}) logTail!: ElementRef;
+    private logService: LogService;
+    private connectedService: ConnectedService;
 
-    public showScrollToTopButton = false;
-    public showScrollToBottomButton = false;
-
-    // Connection and log state
-    public isConnected = false;
-
-    private _logService: LogService;
-    private _connectedService: ConnectedService;
-    private _viewInitialized = false;
-    private _destroy$ = new Subject<void>();
-
-    constructor(private _elementRef: ElementRef,
-                private _changeDetector: ChangeDetectorRef,
-                private _streamRegistry: StreamServiceRegistry,
-                private _domService: DomService) {
-        this._logService = _streamRegistry.logService;
-        this._connectedService = _streamRegistry.connectedService;
-        this.headerHeight = this._domService.headerHeight;
-    }
-
-    /**
-     * Check if we've received any logs (tracked in LogService to persist across navigation)
-     */
-    get hasReceivedLogs(): boolean {
-        return this._logService.hasReceivedLogs;
+    constructor(
+        streamRegistry: StreamServiceRegistry,
+        private cdr: ChangeDetectorRef
+    ) {
+        this.logService = streamRegistry.logService;
+        this.connectedService = streamRegistry.connectedService;
     }
 
     ngOnInit(): void {
-        // Subscribe to connection status (doesn't need ViewChild elements)
-        this._connectedService.connected
-            .pipe(takeUntil(this._destroy$))
-            .subscribe({
-                next: connected => {
-                    this.isConnected = connected;
-                    this._changeDetector.detectChanges();
+        // Accumulate log entries via scan (same pattern as DashboardLogPaneComponent)
+        this.logService.logs
+            .pipe(
+                takeUntilDestroyed(this.destroyRef),
+                scan((acc: LogRecord[], record) => {
+                    const next = [...acc, record];
+                    return next.length > MAX_LOG_ENTRIES ? next.slice(-MAX_LOG_ENTRIES) : next;
+                }, []),
+                debounceTime(0)
+            )
+            .subscribe(entries => {
+                this.allLogs = entries;
+                this.lastUpdated = new Date();
+                this.cdr.markForCheck();
+                if (this.autoScroll) {
+                    setTimeout(() => this.scrollToBottom(), 0);
                 }
+            });
+
+        // Connection status
+        this.connectedService.connected
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(connected => {
+                this.isConnected = connected;
+                this.cdr.markForCheck();
+            });
+
+        // Debounced search
+        this.searchQuery$
+            .pipe(
+                takeUntilDestroyed(this.destroyRef),
+                debounceTime(200),
+                distinctUntilChanged()
+            )
+            .subscribe(q => {
+                this.searchQuery = q;
+                this.cdr.markForCheck();
             });
     }
 
-    ngAfterViewInit(): void {
-        this._viewInitialized = true;
+    get filteredLogs(): LogRecord[] {
+        let result = this.allLogs;
 
-        // Subscribe to logs after view is initialized so ViewChild elements are available
-        this._logService.logs
-            .pipe(takeUntil(this._destroy$))
-            .subscribe({
-                next: record => {
-                    this.insertRecord(record);
-                }
-            });
-    }
-
-    ngOnDestroy(): void {
-        this._destroy$.next();
-        this._destroy$.complete();
-    }
-
-    ngAfterContentChecked(): void {
-        // Refresh button state when tabs is switched away and back
-        // Only run after view is initialized (ViewChild elements are available)
-        if (this._viewInitialized) {
-            this.refreshScrollButtonVisibility();
-        }
-    }
-
-    scrollToTop(): void {
-        window.scrollTo(0, 0);
-    }
-
-    scrollToBottom(): void {
-        window.scrollTo(0, document.body.scrollHeight);
-    }
-
-    @HostListener("window:scroll")
-    checkScroll(): void {
-        this.refreshScrollButtonVisibility();
-    }
-
-    private insertRecord(record: LogRecord): void {
-        // Guard against ViewChild elements not being available
-        if (!this.container || !this.templateRecord || !this.logTail) {
-            return;
+        if (this.activeLevel !== 'ALL') {
+            result = result.filter(r => this.matchesLevel(r.level));
         }
 
-        // Scroll down if the log is visible and already scrolled to the bottom
-        const scrollToBottom = this._elementRef.nativeElement.offsetParent != null &&
-            LogsPageComponent.isElementInViewport(this.logTail.nativeElement);
-        this.container.createEmbeddedView(this.templateRecord, {record: record});
-        this._changeDetector.detectChanges();
+        if (this.searchQuery.trim()) {
+            try {
+                const rx = new RegExp(this.searchQuery, 'i');
+                result = result.filter(r => rx.test(r.message) || rx.test(r.loggerName));
+            } catch {
+                // Invalid regex — show all results
+            }
+        }
 
-        if (scrollToBottom) {
+        return result;
+    }
+
+    setLevel(level: LevelFilter): void {
+        this.activeLevel = level;
+        this.cdr.markForCheck();
+    }
+
+    onSearchInput(value: string): void {
+        this.searchQuery$.next(value);
+    }
+
+    toggleAutoScroll(): void {
+        this.autoScroll = !this.autoScroll;
+        if (this.autoScroll) {
             this.scrollToBottom();
         }
-        this.refreshScrollButtonVisibility();
+        this.cdr.markForCheck();
     }
 
-    private refreshScrollButtonVisibility(): void {
-        // Guard against ViewChild elements not being available
-        if (!this.logHead || !this.logTail) {
-            return;
+    onTerminalScroll(event: Event): void {
+        const el = event.target as HTMLElement;
+        const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 10;
+        if (!isAtBottom && this.autoScroll) {
+            this.autoScroll = false;
+            this.cdr.markForCheck();
         }
-
-        // Show/hide the scroll buttons
-        this.showScrollToTopButton = !LogsPageComponent.isElementInViewport(
-            this.logHead.nativeElement
-        );
-        this.showScrollToBottomButton = !LogsPageComponent.isElementInViewport(
-            this.logTail.nativeElement
-        );
     }
 
-    // Source: https://stackoverflow.com/a/7557433
-    private static isElementInViewport(el: HTMLElement): boolean {
-        const rect = el.getBoundingClientRect();
-        return (
-            rect.top >= 0 &&
-            rect.left >= 0 &&
-            rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) && /* or $(window).height() */
-            rect.right <= (window.innerWidth || document.documentElement.clientWidth) /* or $(window).width() */
-        );
+    clearLogs(): void {
+        this.allLogs = [];
+        this.searchInput = '';
+        this.searchQuery = '';
+        this.cdr.markForCheck();
+    }
+
+    exportLogs(): void {
+        const lines = this.filteredLogs.map(e => {
+            const d = e.time;
+            const date = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+            const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+            return `${date} ${time} - ${e.level} - ${e.loggerName} - ${e.message}`;
+        }).join('\n');
+
+        const blob = new Blob([lines], {type: 'text/plain'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `seedsyncarr-logs-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.log`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    formatTimestamp(date: Date): string {
+        const hh = String(date.getHours()).padStart(2, '0');
+        const mm = String(date.getMinutes()).padStart(2, '0');
+        const ss = String(date.getSeconds()).padStart(2, '0');
+        const ms = String(date.getMilliseconds()).padStart(3, '0');
+        return `${hh}:${mm}:${ss}.${ms}`;
+    }
+
+    formatLastUpdated(): string {
+        if (!this.lastUpdated) return '--:--:-- --';
+        const h = this.lastUpdated.getHours();
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        const mm = String(this.lastUpdated.getMinutes()).padStart(2, '0');
+        const ss = String(this.lastUpdated.getSeconds()).padStart(2, '0');
+        return `${h12}:${mm}:${ss} ${ampm}`;
+    }
+
+    levelLabel(level: LogRecord.Level): string {
+        switch (level) {
+            case LogRecord.Level.DEBUG:    return 'DEBUG';
+            case LogRecord.Level.INFO:     return 'INFO';
+            case LogRecord.Level.WARNING:  return 'WARN';
+            case LogRecord.Level.ERROR:    return 'ERROR';
+            case LogRecord.Level.CRITICAL: return 'CRIT';
+            default:                       return level;
+        }
+    }
+
+    levelRowClass(level: LogRecord.Level): string {
+        switch (level) {
+            case LogRecord.Level.ERROR:
+            case LogRecord.Level.CRITICAL: return 'log-row--error';
+            case LogRecord.Level.WARNING:  return 'log-row--warn';
+            default:                       return '';
+        }
+    }
+
+    levelClass(level: LogRecord.Level): string {
+        switch (level) {
+            case LogRecord.Level.INFO:     return 'log-level--info';
+            case LogRecord.Level.WARNING:  return 'log-level--warn';
+            case LogRecord.Level.DEBUG:    return 'log-level--debug';
+            case LogRecord.Level.ERROR:
+            case LogRecord.Level.CRITICAL: return 'log-level--error-badge';
+            default:                       return '';
+        }
+    }
+
+    private matchesLevel(level: LogRecord.Level): boolean {
+        switch (this.activeLevel) {
+            case 'INFO':  return level === LogRecord.Level.INFO;
+            case 'WARN':  return level === LogRecord.Level.WARNING;
+            case 'ERROR': return level === LogRecord.Level.ERROR || level === LogRecord.Level.CRITICAL;
+            case 'DEBUG': return level === LogRecord.Level.DEBUG;
+            default:      return true;
+        }
+    }
+
+    private scrollToBottom(): void {
+        const el = this.terminalViewport?.nativeElement;
+        if (el) {
+            el.scrollTop = el.scrollHeight;
+        }
     }
 }
