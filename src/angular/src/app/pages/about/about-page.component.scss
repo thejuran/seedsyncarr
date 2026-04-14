@@ -1,76 +1,324 @@
 @use '../../common/common' as *;
 
-#about {
+// Local palette (same values as logs-page.component.scss)
+$amber: #c49a4a;
+$text: #e0e8d6;
+$textsec: #9aaa8a;
+$border: #3e4a38;
+$card: #222a20;
+$base: #151a14;
+$muted: #2c3629;
+$row: #1a2019;
+
+// ============================================================================
+// Page Animation
+// ============================================================================
+
+@keyframes fade-in-up {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+// ============================================================================
+// Host + Main Layout
+// ============================================================================
+
+:host {
     display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.about-main {
+    flex-grow: 1;
+    width: 100%;
+    max-width: 42rem;          // 672px per mockup max-w-2xl
+    margin: 0 auto;
+    padding: 3rem 1.5rem;      // py-12 px-6
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;                 // gap-8
+    opacity: 0;
+    animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+// ============================================================================
+// Identity Card (ABUT-01)
+// ============================================================================
+
+.identity-card {
+    position: relative;
+    overflow: hidden;
+    background: $card;
+    border: 1px solid $border;
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.identity-card-glow {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16rem;
+    height: 8rem;
+    background: rgba(196, 154, 74, 0.05);
+    filter: blur(80px);
+    pointer-events: none;
+    border-radius: 50%;
+}
+
+.identity-icon-container {
+    width: 6rem;
+    height: 6rem;
+    border-radius: 1rem;
+    background: linear-gradient(to bottom, $row, $card);
+    border: 1px solid rgba(196, 154, 74, 0.30);
+    box-shadow: 0 0 20px rgba(196, 154, 74, 0.15);
+    display: flex;
+    align-items: center;
     justify-content: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+    z-index: 10;
+}
 
-    #wrapper {
-        margin-top: 50px;
-        text-align: center;
-        max-width: 500px;
+.brand-favicon {
+    width: 3rem;
+    height: 3rem;
+    object-fit: contain;
+}
 
-        #brand {
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--app-logo-color);
-            margin-bottom: 4px;
-        }
+.identity-title {
+    font-size: 1.875rem;        // text-3xl
+    font-weight: 700;           // font-bold
+    letter-spacing: -0.025em;   // tracking-tight
+    color: $text;
+    margin: 0 0 0.5rem 0;
 
-        #version {
-            font-size: 1.1rem;
-            margin-bottom: 15px;
-            color: var(--app-muted-text);
-        }
+    .brand-arr {
+        color: $amber;
+    }
+}
 
-        #description {
-            margin-bottom: 20px;
-            line-height: 1.5;
-            color: var(--app-muted-text);
-        }
+.identity-tagline {
+    font-size: 0.875rem;        // text-sm
+    color: $textsec;
+    max-width: 28rem;           // max-w-md
+    line-height: 1.625;         // leading-relaxed
+    margin: 0 0 1.5rem 0;
+}
 
-        .info-section {
-            margin-bottom: 20px;
-            text-align: left;
+.identity-version-block {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
 
-            .section-title {
-                font-weight: 600;
-                margin-bottom: 8px;
-                text-align: center;
-                color: var(--app-logo-color);
-            }
+.version-badge {
+    font-size: 0.75rem;
+    font-family: 'JetBrains Mono', var(--bs-font-monospace);
+    color: $textsec;
+    background: $muted;
+    border: 1px solid $border;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+}
 
-            ul {
-                list-style-type: disc;
-                padding-left: 2em;
-                margin: 0;
+// ============================================================================
+// System Info (ABUT-02)
+// ============================================================================
 
-                li {
-                    padding: 3px 0;
-                }
-            }
-        }
+.about-card {
+    background: $card;
+    border: 1px solid $border;
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
 
-        #links {
-            margin: 20px 0;
+.sysinfo-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
 
-            .separator {
-                margin: 0 10px;
-                color: var(--app-separator-color);
-            }
-        }
+    i {
+        font-size: 1.125rem;
+        color: $textsec;
+    }
 
-        #license {
-            margin-bottom: 10px;
-        }
+    span {
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: $textsec;
+    }
+}
 
-        #copyright {
-            margin-bottom: 10px;
-        }
+.sysinfo-table {
+    background: $row;
+    border: 1px solid rgba(62, 74, 56, 0.40);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+}
 
-        #fork-note {
-            font-size: 90%;
-            margin-bottom: 15px;
-            color: var(--app-muted-text);
+.sysinfo-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid rgba(62, 74, 56, 0.40);
+    transition: background-color 150ms;
+
+    &:first-child {
+        border-top: none;
+    }
+
+    &:hover {
+        background: rgba(44, 54, 41, 0.30);
+    }
+}
+
+.sysinfo-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: $textsec;
+    width: 33.333%;
+}
+
+.sysinfo-value {
+    font-size: 0.8125rem;
+    font-family: 'JetBrains Mono', var(--bs-font-monospace);
+    color: $text;
+    width: 66.666%;
+    text-align: right;
+}
+
+// ============================================================================
+// Link Cards (ABUT-03)
+// ============================================================================
+
+.link-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+
+    @media (min-width: 768px) {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.link-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background: $card;
+    border: 1px solid $border;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    text-decoration: none;
+    transition: all 200ms;
+
+    &:hover {
+        border-color: $amber;
+        background: rgba(44, 54, 41, 0.40);
+    }
+
+    i {
+        font-size: 1.25rem;
+        color: $textsec;
+        transition: color 200ms;
+    }
+
+    span {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: $text;
+        transition: color 200ms;
+    }
+
+    &:hover i,
+    &:hover span {
+        color: $amber;
+    }
+}
+
+// ============================================================================
+// License Footer (ABUT-04)
+// ============================================================================
+
+.about-footer {
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.license-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    background: rgba(34, 42, 32, 0.50);
+    border: 1px solid rgba(62, 74, 56, 0.30);
+
+    i {
+        color: rgba(154, 170, 138, 0.60);
+    }
+
+    span {
+        font-size: 0.75rem;
+        font-family: 'JetBrains Mono', var(--bs-font-monospace);
+        color: rgba(154, 170, 138, 0.80);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+}
+
+.copyright-text {
+    font-size: 0.75rem;
+    color: rgba(154, 170, 138, 0.50);
+    margin: 0;
+}
+
+.fork-note {
+    font-size: 0.6875rem;
+    color: rgba(154, 170, 138, 0.40);
+    margin: 0;
+
+    a {
+        color: rgba(154, 170, 138, 0.60);
+        text-decoration: underline;
+        transition: color 200ms;
+
+        &:hover {
+            color: $amber;
         }
     }
 }

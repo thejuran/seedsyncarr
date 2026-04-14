@@ -1,52 +1,84 @@
-<div id="about">
-    <div id="wrapper">
-        <div id="brand">SeedSyncarr</div>
-        <div id="version">v{{version}}</div>
+<main class="about-main">
 
-        <div id="description">
-            A tool to sync files from a remote Linux server (like your seedbox) using
-            <a target="_blank" href="http://lftp.tech/">LFTP</a> for fast transfers.
+    <!-- Identity Card (ABUT-01) -->
+    <section class="identity-card">
+        <div class="identity-card-glow"></div>
+        <div class="identity-icon-container">
+            <img src="assets/favicon-192.png" alt="SeedSyncarr" class="brand-favicon" />
         </div>
-
-        <div class="info-section">
-            <div class="section-title">Features</div>
-            <ul>
-                <li>Built on LFTP, the fastest file transfer program</li>
-                <li>Web UI - track and control transfers from anywhere</li>
-                <li>Automatically extract files after sync</li>
-                <li>Auto-Queue based on pattern matching</li>
-                <li>Delete local and remote files easily</li>
-            </ul>
+        <h2 class="identity-title">SeedSync<span class="brand-arr">arr</span></h2>
+        <p class="identity-tagline">Sync files from your seedbox to your local media server &mdash; fast, automated, and integrated with Sonarr and Radarr.</p>
+        <div class="identity-version-block">
+            <span class="version-badge">Version {{ version }} (Stable)</span>
         </div>
+    </section>
 
-        <div class="info-section">
-            <div class="section-title">Supported Platforms</div>
-            <ul>
-                <li>Linux (amd64 and arm64)</li>
-                <li>Raspberry Pi (v2, v3, v4, v5)</li>
-                <li>Windows (via Docker)</li>
-                <li>macOS (via Docker)</li>
-            </ul>
+    <!-- System Info (ABUT-02) -->
+    <div class="about-card">
+        <div class="sysinfo-header">
+            <i class="ph ph-info"></i>
+            <span>System Information</span>
         </div>
-
-        <div id="links">
-            <a target="_blank" href="https://thejuran.github.io/seedsyncarr/">Documentation</a>
-            <span class="separator">|</span>
-            <a target="_blank" href="https://github.com/thejuran/seedsyncarr">GitHub</a>
-            <span class="separator">|</span>
-            <a target="_blank" href="https://github.com/thejuran/seedsyncarr/issues">Report an Issue</a>
-        </div>
-
-        <div id="license">
-            <a target="_blank" href="https://github.com/thejuran/seedsyncarr/blob/main/LICENSE.txt">Apache License 2.0</a>
-        </div>
-
-        <div id="copyright">Copyright © 2017-2026 Inderpreet Singh, thejuran</div>
-
-        <div id="fork-note">
-            Based on the original
-            <a target="_blank" href="https://github.com/ipsingh06/seedsync">SeedSync</a>
-            by Inderpreet Singh
+        <div class="sysinfo-table">
+            <div class="sysinfo-row">
+                <span class="sysinfo-label">APP VERSION</span>
+                <span class="sysinfo-value">{{ version }} (Stable)</span>
+            </div>
+            <div class="sysinfo-row">
+                <span class="sysinfo-label">FRONTEND CORE</span>
+                <span class="sysinfo-value">Angular {{ angularVersion }}</span>
+            </div>
+            <div class="sysinfo-row">
+                <span class="sysinfo-label">PYTHON VERSION</span>
+                <span class="sysinfo-value">&#x2014;</span>
+            </div>
+            <div class="sysinfo-row">
+                <span class="sysinfo-label">HOST OS</span>
+                <span class="sysinfo-value">&#x2014;</span>
+            </div>
+            <div class="sysinfo-row">
+                <span class="sysinfo-label">UPTIME</span>
+                <span class="sysinfo-value">&#x2014;</span>
+            </div>
+            <div class="sysinfo-row">
+                <span class="sysinfo-label">PROCESS ID</span>
+                <span class="sysinfo-value">&#x2014;</span>
+            </div>
+            <div class="sysinfo-row">
+                <span class="sysinfo-label">CONFIG PATH</span>
+                <span class="sysinfo-value">~/.seedsyncarr</span>
+            </div>
         </div>
     </div>
-</div>
+
+    <!-- Link Cards (ABUT-03) -->
+    <section class="link-cards-grid">
+        <a href="https://github.com/thejuran/seedsyncarr" target="_blank" rel="noopener noreferrer" class="link-card">
+            <i class="ph ph-github-logo"></i>
+            <span>GitHub</span>
+        </a>
+        <a href="https://thejuran.github.io/seedsyncarr/" target="_blank" rel="noopener noreferrer" class="link-card">
+            <i class="ph ph-book"></i>
+            <span>Docs</span>
+        </a>
+        <a href="https://github.com/thejuran/seedsyncarr/issues" target="_blank" rel="noopener noreferrer" class="link-card">
+            <i class="ph ph-bug"></i>
+            <span>Report Issue</span>
+        </a>
+        <a href="https://github.com/thejuran/seedsyncarr/releases" target="_blank" rel="noopener noreferrer" class="link-card">
+            <i class="ph ph-git-commit"></i>
+            <span>Changelog</span>
+        </a>
+    </section>
+
+    <!-- License Footer (ABUT-04) -->
+    <section class="about-footer">
+        <div class="license-badge">
+            <i class="ph-fill ph-scales"></i>
+            <span>Apache License 2.0</span>
+        </div>
+        <p class="copyright-text">&copy; 2017-2026 Inderpreet Singh, thejuran. Open source software.</p>
+        <p class="fork-note">Based on the original <a href="https://github.com/ipsingh06/seedsync" target="_blank" rel="noopener noreferrer">SeedSync</a> by Inderpreet Singh</p>
+    </section>
+
+</main>
