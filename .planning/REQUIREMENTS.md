@@ -1,118 +1,124 @@
-# Requirements: SeedSyncarr v1.0.0 Rebrand
+# Requirements: SeedSyncarr v1.1.0 UI Redesign
 
-**Defined:** 2026-04-08
+**Defined:** 2026-04-13
 **Core Value:** Reliable file sync from seedbox to local with automated media library integration
 
-## v1.0.0 Requirements
+## v1.1.0 Requirements
 
-Requirements for SeedSyncarr rebrand launch.
+Port AIDesigner design artifacts into Angular codebase. Triggarr-level visual polish with earthy Deep Moss palette.
 
-### Rebrand
+### Navigation
 
-- [ ] **RBND-01**: User can pull `ghcr.io/thejuran/seedsyncarr` Docker image and run the app
-- [ ] **RBND-02**: All UI text, page titles, and about page show "SeedSyncarr" (not "SeedSync")
-- [ ] **RBND-03**: CI pipeline runs in new repo with tests, E2E, Docker build all green
-- [ ] **RBND-04**: Debian package installs as `seedsyncarr` with `~/.seedsyncarr` config directory
-- [ ] **RBND-05**: v1.0.0 tag exists on new repo with published Docker images (amd64 + arm64)
-- [ ] **RBND-06**: Old `thejuran/seedsync` repo is archived with pointer to SeedSyncarr
+- [ ] **NAV-01**: Nav bar uses backdrop blur with semi-transparent background
+- [ ] **NAV-02**: Active page link has amber underline indicator
+- [ ] **NAV-03**: Connection status badge in nav with pulse animation
+- [ ] **NAV-04**: Notification bell icon with badge dot in nav
 
-### Hardening
+### Dashboard — Stats Strip
 
-- [ ] **HARD-01**: Zero verbose/unnecessary comments or docstrings in source code
-- [ ] **HARD-02**: No planning docs, modernization reports, or analysis files in repo
-- [ ] **HARD-03**: Test coverage has no meaningful gaps; assertions verify behavior (not just "no crash")
-- [ ] **HARD-04**: E2E tests cover real user workflows including unhappy paths
-- [ ] **HARD-05**: Code reads as hand-written — no generated-looking patterns, consistent style throughout
-- [ ] **HARD-06**: Zero open Dependabot alerts, zero lint warnings (Python + TypeScript)
+- [ ] **DASH-01**: Stats strip displays 4 metric cards in responsive grid
+- [ ] **DASH-02**: Remote Storage card shows free space with progress bar
+- [ ] **DASH-03**: Local Storage card shows free space with progress bar
+- [ ] **DASH-04**: Download Speed card shows current speed with peak stat
+- [ ] **DASH-05**: Active Tasks card shows running count with DL/Queued badges
 
-### Presentation
+### Dashboard — Transfer Table
 
-- [ ] **PRES-01**: README leads with value prop, screenshot, and Docker Compose one-liner install
-- [ ] **PRES-02**: README has CI badge, version badge, Docker pulls badge, license badge
-- [ ] **PRES-03**: README cross-links to Triggarr
-- [ ] **PRES-04**: MkDocs docs site live at `thejuran.github.io/seedsyncarr`
-- [ ] **PRES-05**: Docs include installation guide, configuration reference, FAQ/troubleshooting
-- [ ] **PRES-06**: Docs include Sonarr/Radarr setup guide as flagship page
-- [ ] **PRES-07**: GitHub Discussions enabled with support category
-- [ ] **PRES-08**: Issue templates (YAML forms) for bug report and feature request
-- [ ] **PRES-09**: CONTRIBUTING.md, SECURITY.md, and CHANGELOG.md present
-- [ ] **PRES-10**: Repo has descriptive topic tags (*arr, selfhosted, seedbox, etc.)
+- [ ] **DASH-06**: Transfer table has search/filter input with magnifying glass icon
+- [ ] **DASH-07**: Transfer table has segmented filter buttons (All/Active/Errors)
+- [ ] **DASH-08**: File rows display status badges (Syncing/Queued/Synced/Failed) with semantic colors
+- [ ] **DASH-09**: File rows show animated striped progress bars with percentage
+- [ ] **DASH-10**: File rows display bandwidth and ETA columns
+- [ ] **DASH-11**: Transfer table has pagination footer with page controls
 
-### Launch
+### Dashboard — Log Pane
 
-- [ ] **LNCH-01**: r/selfhosted announcement post published ("I built X to solve Y" format)
-- [ ] **LNCH-02**: *arr community outreach (Servarr Discord, r/sonarr, r/radarr) staggered 24-48h after Reddit
-- [ ] **LNCH-03**: awesome-selfhosted PR submitted (deferred to August 2026 per 4-month rule)
-- [ ] **LNCH-04**: Awesomarr PR submitted (deferred until 50+ stars)
+- [ ] **DASH-12**: Compact terminal log pane at bottom of dashboard
+- [ ] **DASH-13**: Log entries use monospace font with timestamp, level badge, and message
+- [ ] **DASH-14**: Log levels colored by severity (green INFO, amber WARN, red ERROR)
 
-### Polish
+### Settings
 
-- [ ] **PLSH-01**: All minor/patch Dependabot PRs merged (mkdocs-material, pyinstaller, pytest-cov)
-- [ ] **PLSH-02**: Major Dependabot bumps reviewed and resolved (pytest 7→9, testfixtures 10→11, Angular npm bundle)
-- [ ] **PLSH-03**: All dependency updates pass CI with zero test failures
-- [ ] **PLSH-04**: Web app favicon replaced with new branding icon (green/orange arrow mark)
-- [ ] **PLSH-05**: MkDocs docs site logo and favicon replaced with new branding
-- [ ] **PLSH-06**: GitHub repo social preview set to branding banner with tagline
-- [ ] **PLSH-07**: README header includes project logo
+- [ ] **SETT-01**: Settings page uses two-column masonry grid on desktop
+- [ ] **SETT-02**: All 10 settings sections rendered as card components with icon headers
+- [ ] **SETT-03**: Boolean settings use styled toggle switches instead of checkboxes
+- [ ] **SETT-04**: AutoQueue card includes inline pattern list with add/remove
+- [ ] **SETT-05**: Sonarr/Radarr cards show read-only webhook URL with copy button
+- [ ] **SETT-06**: Floating save button bar appears at bottom-right
+
+### Logs Page
+
+- [ ] **LOGS-01**: Log level filter as segmented button group (ALL/INFO/WARN/ERROR/DEBUG)
+- [ ] **LOGS-02**: Search field with regex support for filtering log entries
+- [ ] **LOGS-03**: Auto-scroll toggle, clear, and export .log action buttons
+- [ ] **LOGS-04**: Status bar footer showing connection status, log count, last updated
+
+### About Page
+
+- [ ] **ABUT-01**: App identity card with icon, branded title, version, tagline, build info
+- [ ] **ABUT-02**: System info table with key-value pairs (Python, Angular, OS, Uptime, PID, Config)
+- [ ] **ABUT-03**: Link cards grid (GitHub, Docs, Report Issue, Changelog) with hover-to-amber
+- [ ] **ABUT-04**: License badge and copyright footer
 
 ## Future Requirements
 
-- **LIDARR-01**: Lidarr integration (same *arr webhook pattern as Sonarr/Radarr)
-- **READARR-01**: Readarr integration (same *arr webhook pattern)
+### Enhancements
+
+- **ENH-01**: Full-viewport terminal mode for Logs page (expandable from current layout)
+- **ENH-02**: Lidarr/Readarr integration cards in Settings
+- **ENH-03**: Dark/light theme toggle
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Lidarr/Readarr support | Defer to post-launch milestone |
-| Angular/htmx rewrite | Visual kinship via design patterns, not framework |
-| OAuth/multi-user auth | Single-user self-hosted tool |
-| New logo/favicon design | Moved to Phase 61 (branding assets provided) |
-| Git history migration | Fresh start — no history carries over |
+| Tailwind CSS adoption | Project uses Bootstrap 5 + SCSS; port design tokens, not framework |
+| Google Fonts / Phosphor Icons | Keep system font stack + Font Awesome 4.7 for consistency |
+| New backend API endpoints | UI redesign only — use existing data from current API |
+| Angular→htmx rewrite | Visual kinship via design patterns, not framework change |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RBND-01 | Phase 53 | Pending |
-| RBND-02 | Phase 53 | Pending |
-| RBND-03 | Phase 53 | Pending |
-| RBND-04 | Phase 53 | Pending |
-| RBND-05 | Phase 53 | Pending |
-| RBND-06 | Phase 54 | Pending |
-| HARD-01 | Phase 55 | Pending |
-| HARD-02 | Phase 55 | Pending |
-| HARD-05 | Phase 55 | Pending |
-| HARD-06 | Phase 55 | Pending |
-| HARD-03 | Phase 56 | Pending |
-| HARD-04 | Phase 56 | Pending |
-| PRES-01 | Phase 57 | Pending |
-| PRES-02 | Phase 57 | Pending |
-| PRES-03 | Phase 57 | Pending |
-| PRES-07 | Phase 57 | Pending |
-| PRES-08 | Phase 57 | Pending |
-| PRES-09 | Phase 57 | Pending |
-| PRES-10 | Phase 57 | Pending |
-| PRES-04 | Phase 58 | Pending |
-| PRES-05 | Phase 58 | Pending |
-| PRES-06 | Phase 58 | Pending |
-| LNCH-01 | Phase 59 | Pending |
-| LNCH-02 | Phase 59 | Pending |
-| LNCH-03 | Phase 59 | Pending |
-| LNCH-04 | Phase 59 | Pending |
-| PLSH-01 | Phase 60 | Pending |
-| PLSH-02 | Phase 60 | Pending |
-| PLSH-03 | Phase 60 | Pending |
-| PLSH-04 | Phase 61 | Pending |
-| PLSH-05 | Phase 61 | Pending |
-| PLSH-06 | Phase 61 | Pending |
-| PLSH-07 | Phase 61 | Pending |
+| NAV-01 | — | Pending |
+| NAV-02 | — | Pending |
+| NAV-03 | — | Pending |
+| NAV-04 | — | Pending |
+| DASH-01 | — | Pending |
+| DASH-02 | — | Pending |
+| DASH-03 | — | Pending |
+| DASH-04 | — | Pending |
+| DASH-05 | — | Pending |
+| DASH-06 | — | Pending |
+| DASH-07 | — | Pending |
+| DASH-08 | — | Pending |
+| DASH-09 | — | Pending |
+| DASH-10 | — | Pending |
+| DASH-11 | — | Pending |
+| DASH-12 | — | Pending |
+| DASH-13 | — | Pending |
+| DASH-14 | — | Pending |
+| SETT-01 | — | Pending |
+| SETT-02 | — | Pending |
+| SETT-03 | — | Pending |
+| SETT-04 | — | Pending |
+| SETT-05 | — | Pending |
+| SETT-06 | — | Pending |
+| LOGS-01 | — | Pending |
+| LOGS-02 | — | Pending |
+| LOGS-03 | — | Pending |
+| LOGS-04 | — | Pending |
+| ABUT-01 | — | Pending |
+| ABUT-02 | — | Pending |
+| ABUT-03 | — | Pending |
+| ABUT-04 | — | Pending |
 
 **Coverage:**
-- v1.0.0 requirements: 33 total
-- Mapped to phases: 33
-- Unmapped: 0
+- v1.1.0 requirements: 32 total
+- Mapped to phases: 0
+- Unmapped: 32 ⚠️
 
 ---
-*Requirements defined: 2026-04-08*
-*Last updated: 2026-04-09 — added PLSH-01 to PLSH-07 for Phases 60-61*
+*Requirements defined: 2026-04-13*
+*Last updated: 2026-04-13 after initial definition*
