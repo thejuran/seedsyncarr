@@ -1,6 +1,9 @@
-<ng-template #optionsList let-header="header" let-options="options" let-id="id">
+<ng-template #optionsList let-header="header" let-options="options" let-id="id" let-icon="icon">
   <div class="settings-card">
-    <h3 class="settings-card-header">{{header}}</h3>
+    <div class="settings-card-header">
+      <i class="fa {{icon}}"></i>
+      <span>{{header}}</span>
+    </div>
     <div class="settings-card-body">
       @for (option of options; track option.label) {
         <div>
@@ -8,7 +11,7 @@
             [type]="option.type"
             [label]="option.label"
             [description]="option.description"
-            [value]="(config | async)?.get(option.valuePath[0]).get(option.valuePath[1])"
+            [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
             (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
           </app-option>
         </div>
@@ -21,13 +24,44 @@
 <div id="settings">
   <div class="settings-columns">
     <div class="settings-column">
+
+      <!-- LEFT COLUMN: General Options, Remote Server, File Discovery, Archive Operations, LFTP Connections -->
+
+      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
+      <ng-container
+        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_OTHER">
+      </ng-container>
+
       <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
       <ng-container
         *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_SERVER">
       </ng-container>
 
+      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
+      <ng-container
+        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_DISCOVERY">
+      </ng-container>
+
+      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
+      <ng-container
+        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_EXTRACT">
+      </ng-container>
+
+      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
+      <ng-container
+        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_CONNECTIONS">
+      </ng-container>
+
+    </div>
+    <div class="settings-column">
+
+      <!-- RIGHT COLUMN: AutoQueue, arr cards, Post-Import Pruning, Security -->
+
       <div class="settings-card">
-        <h3 class="settings-card-header">AutoQueue</h3>
+        <div class="settings-card-header">
+          <i class="fa fa-list"></i>
+          <span>AutoQueue Engine</span>
+        </div>
         <div class="settings-card-body">
           @for (option of OPTIONS_CONTEXT_AUTOQUEUE.options; track option.label) {
             <div>
@@ -35,7 +69,7 @@
                 [type]="option.type"
                 [label]="option.label"
                 [description]="option.description"
-                [value]="(config | async)?.get(option.valuePath[0]).get(option.valuePath[1])"
+                [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
                 (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
               </app-option>
             </div>
@@ -83,15 +117,13 @@
         </div>
       </div>
 
-      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
-      <ng-container
-        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_EXTRACT">
-      </ng-container>
-
-      <div class="settings-card">
-        <h3 class="settings-card-header">*arr Integration</h3>
-        <div class="settings-card-body">
-            <h4 class="subsection-header">Sonarr</h4>
+      <div class="arr-cards-grid">
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fa fa-television"></i>
+            <span>SONARR</span>
+          </div>
+          <div class="settings-card-body">
             <div>
               <app-option
                 [type]="OptionType.Checkbox"
@@ -138,8 +170,22 @@
                   </div>
                 }
               </div>
+              <div class="webhook-url-row">
+                <label class="webhook-label">Webhook URL</label>
+                <div class="webhook-url-display">
+                  <code>http://&lt;seedsyncarr-address&gt;:{{(config | async)?.get('web')?.get('port')}}/server/webhook/sonarr</code>
+                </div>
+              </div>
             </fieldset>
-            <h4 class="subsection-header">Radarr</h4>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <i class="fa fa-film"></i>
+            <span>RADARR</span>
+          </div>
+          <div class="settings-card-body">
             <div>
               <app-option
                 [type]="OptionType.Checkbox"
@@ -186,26 +232,14 @@
                   </div>
                 }
               </div>
-            </fieldset>
-            <h4 class="subsection-header">Webhook URLs</h4>
-            <div class="webhook-urls">
-              <p class="webhook-description">
-                Configure these URLs in your *arr apps under Settings &rarr; Connect &rarr; Add &rarr; Webhook.
-                Replace <code>&lt;seedsyncarr-address&gt;</code> with your SeedSyncarr server's IP or hostname.
-              </p>
-              <div class="webhook-url-item">
-                <label>Sonarr Webhook URL</label>
-                <div class="webhook-url-display">
-                  <code>http://&lt;seedsyncarr-address&gt;:{{(config | async)?.get('web')?.get('port')}}/server/webhook/sonarr</code>
-                </div>
-              </div>
-              <div class="webhook-url-item">
-                <label>Radarr Webhook URL</label>
+              <div class="webhook-url-row">
+                <label class="webhook-label">Webhook URL</label>
                 <div class="webhook-url-display">
                   <code>http://&lt;seedsyncarr-address&gt;:{{(config | async)?.get('web')?.get('port')}}/server/webhook/radarr</code>
                 </div>
               </div>
-            </div>
+            </fieldset>
+          </div>
         </div>
       </div>
 
@@ -214,26 +248,12 @@
         *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_AUTODELETE">
       </ng-container>
 
-    </div>
-    <div class="settings-column">
-      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
-      <ng-container
-        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_CONNECTIONS">
-      </ng-container>
-
-      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
-      <ng-container
-        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_DISCOVERY">
-      </ng-container>
-
-      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
-      <ng-container
-        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_OTHER">
-      </ng-container>
-
       @if (apiToken) {
         <div class="settings-card">
-          <h3 class="settings-card-header">Security</h3>
+          <div class="settings-card-header">
+            <i class="fa fa-shield"></i>
+            <span>API &amp; SECURITY</span>
+          </div>
           <div class="settings-card-body">
             <div class="token-section">
               <label>API Token</label>

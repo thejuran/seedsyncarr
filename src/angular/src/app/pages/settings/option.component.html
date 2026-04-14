@@ -17,21 +17,24 @@
     </label>
   }
 
-  <!-- Checkbox -->
+  <!-- Checkbox (Toggle Switch) -->
   @if (type == OptionType.Checkbox) {
-    <div class="form-check">
-      <input
-        type="checkbox"
-        class="form-check-input"
-        [disabled]="value == null"
-        [ngModel]="value"
-        (ngModelChange)="onChange($event)" />
-      <label class="form-check-label">
+    <div class="form-toggle" [class.form-toggle--compact]="compact">
+      <label class="toggle-label">
+        <input
+          type="checkbox"
+          class="toggle-input"
+          [disabled]="value == null"
+          [ngModel]="value"
+          (ngModelChange)="onChange($event)" />
+        <div class="toggle-track"></div>
+      </label>
+      <div class="toggle-text">
         <span class="name">{{label}}</span>
         @if (description) {
           <span class="description">{{description}}</span>
         }
-      </label>
+      </div>
     </div>
   }
 

@@ -18,6 +18,7 @@ export class OptionComponent implements OnInit, OnDestroy {
     @Input() label!: string;
     @Input() value!: string | number | boolean;
     @Input() description!: string;
+    @Input() compact = false;
 
     @Output() changeEvent = new EventEmitter<string | number | boolean>();
 

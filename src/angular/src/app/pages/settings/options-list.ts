@@ -9,12 +9,14 @@ export interface IOption {
 export interface IOptionsContext {
     header: string;
     id: string;
+    icon: string;
     options: IOption[];
 }
 
 export const OPTIONS_CONTEXT_SERVER: IOptionsContext = {
-    header: "Server",
+    header: "Remote Server (LFTP)",
     id: "server",
+    icon: "fa-server",
     options: [
         {
             type: OptionType.Text,
@@ -68,8 +70,9 @@ export const OPTIONS_CONTEXT_SERVER: IOptionsContext = {
 };
 
 export const OPTIONS_CONTEXT_DISCOVERY: IOptionsContext = {
-    header: "File Discovery",
+    header: "File Discovery Polling",
     id: "file-discovery",
+    icon: "fa-search",
     options: [
         {
             type: OptionType.Text,
@@ -93,8 +96,9 @@ export const OPTIONS_CONTEXT_DISCOVERY: IOptionsContext = {
 };
 
 export const OPTIONS_CONTEXT_CONNECTIONS: IOptionsContext = {
-    header: "Connections",
+    header: "LFTP Connection Limits",
     id: "connections",
+    icon: "fa-tachometer",
     options: [
         {
             type: OptionType.Text,
@@ -141,8 +145,9 @@ export const OPTIONS_CONTEXT_CONNECTIONS: IOptionsContext = {
 };
 
 export const OPTIONS_CONTEXT_OTHER: IOptionsContext = {
-    header: "Other Settings",
+    header: "General Options",
     id: "other-settings",
+    icon: "fa-sliders",
     options: [
         {
             type: OptionType.Text,
@@ -160,8 +165,9 @@ export const OPTIONS_CONTEXT_OTHER: IOptionsContext = {
 };
 
 export const OPTIONS_CONTEXT_AUTOQUEUE: IOptionsContext = {
-    header: "AutoQueue",
+    header: "AutoQueue Engine",
     id: "autoqueue",
+    icon: "fa-list",
     options: [
         {
             type: OptionType.Checkbox,
@@ -185,8 +191,9 @@ export const OPTIONS_CONTEXT_AUTOQUEUE: IOptionsContext = {
 };
 
 export const OPTIONS_CONTEXT_AUTODELETE: IOptionsContext = {
-    header: "Auto-Delete After Import",
+    header: "Post-Import Pruning",
     id: "autodelete",
+    icon: "fa-trash",
     options: [
         {
             type: OptionType.Checkbox,
@@ -210,8 +217,9 @@ export const OPTIONS_CONTEXT_AUTODELETE: IOptionsContext = {
 };
 
 export const OPTIONS_CONTEXT_EXTRACT: IOptionsContext = {
-    header: "Archive Extraction",
+    header: "Archive Operations",
     id: "extraction",
+    icon: "fa-file-archive-o",
     options: [
         {
             type: OptionType.Checkbox,
