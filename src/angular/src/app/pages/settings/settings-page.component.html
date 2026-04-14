@@ -32,10 +32,56 @@
         *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_OTHER">
       </ng-container>
 
-      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
-      <ng-container
-        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_SERVER">
-      </ng-container>
+      <div class="settings-card">
+        <div class="settings-card-header settings-card-header--server">
+          <div class="settings-card-header-left">
+            <i class="fa fa-server"></i>
+            <span>Remote Server (LFTP)</span>
+          </div>
+          @if (commandsEnabled) {
+            <div class="connected-badge">
+              <span class="connected-dot"></span>
+              Connected
+            </div>
+          }
+        </div>
+        <div class="settings-card-body settings-card-body--grid-2col">
+          <!-- Server Address — full width -->
+          <div class="grid-span-2">
+            <app-option [type]="OptionType.Text" [label]="'Server Address'" [value]="(config | async)?.get('lftp')?.get('remote_address')" (changeEvent)="onSetConfig('lftp', 'remote_address', $event)"></app-option>
+          </div>
+          <!-- Username -->
+          <div>
+            <app-option [type]="OptionType.Text" [label]="'Server User'" [value]="(config | async)?.get('lftp')?.get('remote_username')" (changeEvent)="onSetConfig('lftp', 'remote_username', $event)"></app-option>
+          </div>
+          <!-- Password -->
+          <div>
+            <app-option [type]="OptionType.Password" [label]="'Server Password'" [value]="(config | async)?.get('lftp')?.get('remote_password')" (changeEvent)="onSetConfig('lftp', 'remote_password', $event)"></app-option>
+          </div>
+          <!-- SSH Key Auth — compact toggle, full width -->
+          <div class="grid-span-2">
+            <app-option [type]="OptionType.Checkbox" [label]="'Use password-less key-based authentication'" [compact]="true" [value]="(config | async)?.get('lftp')?.get('use_ssh_key')" (changeEvent)="onSetConfig('lftp', 'use_ssh_key', $event)"></app-option>
+          </div>
+          <!-- Remote Port -->
+          <div>
+            <app-option [type]="OptionType.Text" [label]="'Remote SSH Port'" [value]="(config | async)?.get('lftp')?.get('remote_port')" (changeEvent)="onSetConfig('lftp', 'remote_port', $event)"></app-option>
+          </div>
+          <!-- empty cell to maintain grid -->
+          <div></div>
+          <!-- Server Directory — full width -->
+          <div class="grid-span-2">
+            <app-option [type]="OptionType.Text" [label]="'Server Directory'" [description]="'Path to your files on the remote server'" [value]="(config | async)?.get('lftp')?.get('remote_path')" (changeEvent)="onSetConfig('lftp', 'remote_path', $event)"></app-option>
+          </div>
+          <!-- Local Directory — full width -->
+          <div class="grid-span-2">
+            <app-option [type]="OptionType.Text" [label]="'Local Directory'" [description]="'Downloaded files are placed here'" [value]="(config | async)?.get('lftp')?.get('local_path')" (changeEvent)="onSetConfig('lftp', 'local_path', $event)"></app-option>
+          </div>
+          <!-- Server Script Path — full width -->
+          <div class="grid-span-2">
+            <app-option [type]="OptionType.Text" [label]="'Server Script Path'" [description]="'Where to install scanner script on remote server'" [value]="(config | async)?.get('lftp')?.get('remote_path_to_scan_script')" (changeEvent)="onSetConfig('lftp', 'remote_path_to_scan_script', $event)"></app-option>
+          </div>
+        </div>
+      </div>
 
       <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
       <ng-container

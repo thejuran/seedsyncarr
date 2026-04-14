@@ -124,6 +124,37 @@
         }
     }
 
+    .settings-card-header--server {
+        justify-content: space-between;
+
+        .settings-card-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    }
+
+    .connected-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.7rem;
+        color: #59a362;
+        padding: 2px 8px;
+        background: rgba(89, 163, 98, 0.10);
+        border: 1px solid rgba(89, 163, 98, 0.20);
+        border-radius: 4px;
+
+        .connected-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #59a362;
+            box-shadow: 0 0 8px rgba(89, 163, 98, 0.6);
+        }
+    }
+
     // Sonarr brand card (D-09)
     .settings-card--sonarr {
         border-color: #2b3a4a;
