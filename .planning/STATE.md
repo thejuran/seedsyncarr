@@ -45,6 +45,10 @@ Progress: [░░░░░░░░░░] 0%
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 68 added: UI Polish — palette consolidation, clickable version, dashboard favicon, docs visuals
+
 ### Decisions
 
 - Design artifacts in `.aidesigner/runs/` — 4 HTML mockups (Dashboard, Settings v2, Logs, About) approved as visual spec

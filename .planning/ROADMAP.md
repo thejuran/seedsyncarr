@@ -489,6 +489,16 @@ Plans:
 | 66. Logs Page | v1.1.0 | 2/2 | Complete | 2026-04-14 |
 | 67. About Page | v1.1.0 | 2/2 | Complete    | 2026-04-14 |
 
+### Phase 68: UI Polish
+
+**Goal:** Consolidate SCSS palette drift (settings + logs), make version badge clickable linking to changelog (like Triggarr), add brand favicon to dashboard header, update docs site screenshots, migrate remaining declare-require to shared version.ts
+**Requirements**: TBD
+**Depends on:** Phase 67
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 68 to break down)
+
 ---
 
 *Last updated: 2026-04-14 — All phases 62-67 complete, milestone audit in progress*
