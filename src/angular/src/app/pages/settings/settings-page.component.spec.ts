@@ -52,4 +52,24 @@ describe('SettingsPageComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  describe('pending save state', () => {
+    it('should initialize hasPendingChanges as false', () => {
+      expect(component.hasPendingChanges).toBe(false);
+    });
+
+    it('should initialize saveConfirmed as false', () => {
+      expect(component.saveConfirmed).toBe(false);
+    });
+  });
+
+  describe('webhook copy state', () => {
+    it('should initialize sonarrWebhookCopied as false', () => {
+      expect(component.sonarrWebhookCopied).toBe(false);
+    });
+
+    it('should initialize radarrWebhookCopied as false', () => {
+      expect(component.radarrWebhookCopied).toBe(false);
+    });
+  });
 });

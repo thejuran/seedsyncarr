@@ -66,6 +66,15 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
     public tokenCopied = false;
     public tokenRevealed = false;
 
+    // Webhook copy state
+    public sonarrWebhookCopied = false;
+    public radarrWebhookCopied = false;
+
+    // Floating save bar state
+    public hasPendingChanges = false;
+    public saveConfirmed = false;
+    private saveConfirmedTimer: ReturnType<typeof setTimeout> | null = null;
+
     // AutoQueue pattern management
     public patterns: Observable<Immutable.List<AutoQueuePattern>>;
     public newPattern = "";
@@ -129,6 +138,9 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
     }
 
     onSetConfig(section: string, option: string, value: string | number | boolean): void {
+        this.hasPendingChanges = true;
+        this._cdr.markForCheck();
+
         this._configService.set(section, option, value).pipe(takeUntil(this.destroy$)).subscribe({
             next: reaction => {
                 const notifKey = section + "." + option;
@@ -143,6 +155,9 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
 
                     // Show the restart notification
                     this._notifService.show(this._configRestartNotif);
+
+                    // Show save confirmation in floating bar
+                    this.onSaveComplete();
                 } else {
                     // Show bad value notification
                     const notif = new Notification({
@@ -157,9 +172,25 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
                     this._badValueNotifs.set(notifKey, notif);
 
                     this._logger.error(reaction.errorMessage);
+
+                    this.hasPendingChanges = false;
+                    this._cdr.markForCheck();
                 }
             }
         });
+    }
+
+    private onSaveComplete(): void {
+        this.hasPendingChanges = false;
+        this.saveConfirmed = true;
+        this._cdr.markForCheck();
+        if (this.saveConfirmedTimer) {
+            clearTimeout(this.saveConfirmedTimer);
+        }
+        this.saveConfirmedTimer = setTimeout(() => {
+            this.saveConfirmed = false;
+            this._cdr.markForCheck();
+        }, 2500);
     }
 
     onCopyToken(): void {
@@ -173,6 +204,27 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
                 }, 2000);
             }).catch(() => { /* clipboard unavailable (non-HTTPS or permissions) */ });
         }
+    }
+
+    onCopyWebhookFromInput(input: HTMLInputElement): void {
+        navigator.clipboard.writeText(input.value).then(() => {
+            // Determine which webhook was copied based on URL content
+            if (input.value.includes('/webhook/sonarr')) {
+                this.sonarrWebhookCopied = true;
+                this._cdr.markForCheck();
+                setTimeout(() => {
+                    this.sonarrWebhookCopied = false;
+                    this._cdr.markForCheck();
+                }, 2000);
+            } else if (input.value.includes('/webhook/radarr')) {
+                this.radarrWebhookCopied = true;
+                this._cdr.markForCheck();
+                setTimeout(() => {
+                    this.radarrWebhookCopied = false;
+                    this._cdr.markForCheck();
+                }, 2000);
+            }
+        }).catch(() => { /* clipboard unavailable */ });
     }
 
     onAddPattern(): void {

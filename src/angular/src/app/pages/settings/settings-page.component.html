@@ -118,7 +118,7 @@
       </div>
 
       <div class="arr-cards-grid">
-        <div class="settings-card">
+        <div class="settings-card settings-card--sonarr">
           <div class="settings-card-header">
             <i class="fa fa-television"></i>
             <span>SONARR</span>
@@ -172,15 +172,22 @@
               </div>
               <div class="webhook-url-row">
                 <label class="webhook-label">Webhook URL</label>
-                <div class="webhook-url-display">
-                  <code>http://&lt;seedsyncarr-address&gt;:{{(config | async)?.get('web')?.get('port')}}/server/webhook/sonarr</code>
+                <div class="webhook-url-copy">
+                  <input #sonarrWebhookInput type="text" readonly
+                    class="form-control form-control-sm webhook-url-input"
+                    [value]="'http://<seedsyncarr-address>:' + ((config | async)?.get('web')?.get('port')) + '/server/webhook/sonarr'" />
+                  <button class="btn btn-sm btn-secondary webhook-copy-btn" type="button"
+                    (click)="onCopyWebhookFromInput(sonarrWebhookInput)"
+                    [title]="sonarrWebhookCopied ? 'Copied!' : 'Copy URL'">
+                    <i class="fa" [class.fa-check]="sonarrWebhookCopied" [class.fa-copy]="!sonarrWebhookCopied"></i>
+                  </button>
                 </div>
               </div>
             </fieldset>
           </div>
         </div>
 
-        <div class="settings-card">
+        <div class="settings-card settings-card--radarr">
           <div class="settings-card-header">
             <i class="fa fa-film"></i>
             <span>RADARR</span>
@@ -234,8 +241,15 @@
               </div>
               <div class="webhook-url-row">
                 <label class="webhook-label">Webhook URL</label>
-                <div class="webhook-url-display">
-                  <code>http://&lt;seedsyncarr-address&gt;:{{(config | async)?.get('web')?.get('port')}}/server/webhook/radarr</code>
+                <div class="webhook-url-copy">
+                  <input #radarrWebhookInput type="text" readonly
+                    class="form-control form-control-sm webhook-url-input"
+                    [value]="'http://<seedsyncarr-address>:' + ((config | async)?.get('web')?.get('port')) + '/server/webhook/radarr'" />
+                  <button class="btn btn-sm btn-secondary webhook-copy-btn" type="button"
+                    (click)="onCopyWebhookFromInput(radarrWebhookInput)"
+                    [title]="radarrWebhookCopied ? 'Copied!' : 'Copy URL'">
+                    <i class="fa" [class.fa-check]="radarrWebhookCopied" [class.fa-copy]="!radarrWebhookCopied"></i>
+                  </button>
                 </div>
               </div>
             </fieldset>
@@ -243,10 +257,42 @@
         </div>
       </div>
 
-      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
-      <ng-container
-        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_AUTODELETE">
-      </ng-container>
+      <div class="settings-card settings-card--autodelete">
+        <div class="settings-card-header">
+          <i class="fa fa-trash"></i>
+          <span>Post-Import Pruning</span>
+        </div>
+        <div class="settings-card-body">
+          <!-- Enable toggle always interactive -->
+          @if (OPTIONS_CONTEXT_AUTODELETE.options[0]; as enableOption) {
+            <div>
+              <app-option
+                [type]="enableOption.type"
+                [label]="enableOption.label"
+                [description]="enableOption.description"
+                [value]="(config | async)?.get(enableOption.valuePath[0])?.get(enableOption.valuePath[1])"
+                (changeEvent)="onSetConfig(enableOption.valuePath[0], enableOption.valuePath[1], $event)">
+              </app-option>
+            </div>
+          }
+          <!-- Remaining options disabled when autodelete is off -->
+          <div class="settings-card-body--disabled-zone" [class.settings-card-body--disabled]="!(config | async)?.get('autodelete')?.get('enabled')">
+            @for (option of OPTIONS_CONTEXT_AUTODELETE.options; track option.label; let i = $index) {
+              @if (i > 0) {
+                <div>
+                  <app-option
+                    [type]="option.type"
+                    [label]="option.label"
+                    [description]="option.description"
+                    [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                    (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
+                  </app-option>
+                </div>
+              }
+            }
+          </div>
+        </div>
+      </div>
 
       @if (apiToken) {
         <div class="settings-card">
@@ -293,11 +339,24 @@
     </div>
   </div>
 
-  <div id="commands">
-    <button class="btn btn-primary" type="button"
-      [disabled]="!commandsEnabled"
-      (click)="onCommandRestart()">
-      Restart
-    </button>
-  </div>
+  @if (hasPendingChanges || saveConfirmed) {
+    <div class="floating-save-bar">
+      <div class="floating-save-inner">
+        <div class="floating-save-text">
+          @if (saveConfirmed) {
+            <i class="fa fa-check-circle floating-save-icon--success"></i>
+            <span class="save-status-label">Changes saved</span>
+          } @else {
+            <i class="fa fa-circle-o-notch fa-spin floating-save-icon--pending"></i>
+            <span class="save-status-label">Saving...</span>
+          }
+        </div>
+        <button class="btn btn-primary floating-save-btn"
+          [disabled]="!commandsEnabled"
+          (click)="onCommandRestart()">
+          <i class="fa fa-refresh"></i> Restart
+        </button>
+      </div>
+    </div>
+  }
 </div>

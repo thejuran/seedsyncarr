@@ -80,18 +80,99 @@
                 margin-bottom: 2px;
             }
 
-            .webhook-url-display {
-                code {
-                    display: block;
+            .webhook-url-copy {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+
+                .webhook-url-input {
+                    flex: 1;
+                    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+                    font-size: 0.8rem;
                     background: var(--bs-dark);
                     color: var(--bs-light);
-                    padding: 6px 10px;
-                    border-radius: 4px;
-                    font-size: 85%;
-                    word-break: break-all;
+                    border-color: var(--app-file-border-color);
                     user-select: all;
                 }
+
+                .webhook-copy-btn {
+                    flex-shrink: 0;
+                    width: 36px;
+                    height: 36px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0;
+
+                    .fa-check { color: #5cb85c; }
+                }
             }
+        }
+    }
+
+    // Sonarr brand card (D-09)
+    .settings-card--sonarr {
+        border-color: #2b3a4a;
+        border-left: 2px solid rgba(0, 194, 255, 0.30);
+
+        .settings-card-header {
+            background: #1b232e;
+            border-bottom-color: #2b3a4a;
+
+            i.fa { color: #00c2ff; }
+        }
+
+        .toggle-input:checked + .toggle-track {
+            background: rgba(0, 194, 255, 0.10);
+            border-color: rgba(0, 194, 255, 0.50);
+
+            &::after {
+                background: #00c2ff;
+            }
+        }
+    }
+
+    // Radarr brand card (D-10)
+    .settings-card--radarr {
+        border-color: #4a3415;
+        border-left: 2px solid rgba(255, 194, 48, 0.30);
+
+        .settings-card-header {
+            background: #2b2210;
+            border-bottom-color: #4a3415;
+
+            i.fa { color: #ffc230; }
+        }
+
+        .toggle-input:checked + .toggle-track {
+            background: rgba(255, 194, 48, 0.10);
+            border-color: rgba(255, 194, 48, 0.50);
+
+            &::after {
+                background: #ffc230;
+            }
+        }
+    }
+
+    // Auto-Delete danger card (D-12)
+    .settings-card--autodelete {
+        .settings-card-header {
+            i.fa { color: #c45b5b; }
+            span { color: rgba(196, 91, 91, 0.90); }
+        }
+
+        .toggle-input:checked + .toggle-track {
+            background: rgba(196, 91, 91, 0.10);
+            border-color: rgba(196, 91, 91, 0.50);
+
+            &::after {
+                background: #c45b5b;
+            }
+        }
+
+        .settings-card-body--disabled {
+            opacity: 0.60;
+            pointer-events: none;
         }
     }
 
@@ -207,19 +288,52 @@
         }
     }
 
-    #commands {
-        margin-top: 10px;
-        width: 100%;
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-end;
-        flex-wrap: wrap;
+    .floating-save-bar {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 1050;
+        animation: fadeInUp 0.2s ease-out;
 
-        .btn {
-            padding: 10px 20px;
-            margin-right: 8px;
-            height: 40px;
-            font-size: 100%;
+        .floating-save-inner {
+            background: rgba(34, 42, 32, 0.90);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid #3e4a38;
+            border-radius: 12px;
+            padding: 12px 16px 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .floating-save-text {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .floating-save-icon--success {
+            color: #5cb85c;
+            font-size: 1.1rem;
+        }
+
+        .floating-save-icon--pending {
+            color: var(--app-muted-text);
+            font-size: 1rem;
+        }
+
+        .save-status-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .floating-save-btn {
+            font-weight: 700;
+            padding: 8px 20px;
+            white-space: nowrap;
         }
     }
 }
@@ -231,5 +345,16 @@
         .settings-columns {
             grid-template-columns: repeat(2, 1fr);
         }
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
