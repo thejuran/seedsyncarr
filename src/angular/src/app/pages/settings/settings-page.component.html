@@ -25,7 +25,7 @@
   <div class="settings-columns">
     <div class="settings-column">
 
-      <!-- LEFT COLUMN: General Options, Remote Server, File Discovery, Archive Operations, LFTP Connections -->
+      <!-- LEFT COLUMN: General Options, Remote Server, File Discovery, Archive Operations -->
 
       <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
       <ng-container
@@ -47,15 +47,43 @@
         *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_EXTRACT">
       </ng-container>
 
-      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
-      <ng-container
-        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_CONNECTIONS">
-      </ng-container>
-
     </div>
     <div class="settings-column">
 
-      <!-- RIGHT COLUMN: AutoQueue, arr cards, Post-Import Pruning, Security -->
+      <!-- RIGHT COLUMN: LFTP Connection Limits, AutoQueue, arr cards, Post-Import Pruning, Security -->
+
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <i class="fa fa-tachometer"></i>
+          <span>LFTP Connection Limits</span>
+        </div>
+        <div class="settings-card-body settings-card-body--grid-2col">
+          @for (option of OPTIONS_CONTEXT_CONNECTIONS.options; track option.label) {
+            @if (option.type === OptionType.Checkbox) {
+              <div class="grid-span-2">
+                <app-option
+                  [type]="option.type"
+                  [label]="option.label"
+                  [description]="option.description"
+                  [compact]="true"
+                  [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                  (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
+                </app-option>
+              </div>
+            } @else {
+              <div>
+                <app-option
+                  [type]="option.type"
+                  [label]="option.label"
+                  [description]="option.description"
+                  [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                  (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
+                </app-option>
+              </div>
+            }
+          }
+        </div>
+      </div>
 
       <div class="settings-card">
         <div class="settings-card-header">
