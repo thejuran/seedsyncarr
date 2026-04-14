@@ -435,8 +435,8 @@ Plans:
   4. A status bar footer shows the current connection status, total log entry count, and last-updated time
 **Plans:** 2 plans
 Plans:
-- [ ] 65-01-PLAN.md -- Masonry grid layout, card header restructure with icons, toggle switch restyle
-- [ ] 65-02-PLAN.md -- Brand-colored Sonarr/Radarr/AutoDelete cards, webhook copy buttons, floating save bar
+- [ ] 66-01-PLAN.md -- Terminal log viewer rewrite with toolbar, level filter, regex search, auto-scroll, clear, export
+- [ ] 66-02-PLAN.md -- Status bar footer (connection status, log count, last updated) and unit tests
 **UI hint**: yes
 
 ### Phase 67: About Page
@@ -450,8 +450,8 @@ Plans:
   4. A license badge and copyright footer appear at the bottom of the page
 **Plans:** 2 plans
 Plans:
-- [ ] 65-01-PLAN.md -- Masonry grid layout, card header restructure with icons, toggle switch restyle
-- [ ] 65-02-PLAN.md -- Brand-colored Sonarr/Radarr/AutoDelete cards, webhook copy buttons, floating save bar
+- [ ] 67-01-PLAN.md -- [to be planned]
+- [ ] 67-02-PLAN.md -- [to be planned]
 **UI hint**: yes
 
 ## Progress
@@ -486,7 +486,7 @@ Plans:
 | 63. Dashboard — Stats Strip & Transfer Table | v1.1.0 | 0/2 | Not started | - |
 | 64. Dashboard — Log Pane | v1.1.0 | 0/1 | Not started | - |
 | 65. Settings Page | v1.1.0 | 0/2 | Not started | - |
-| 66. Logs Page | v1.1.0 | 0/? | Not started | - |
+| 66. Logs Page | v1.1.0 | 0/2 | Not started | - |
 | 67. About Page | v1.1.0 | 0/? | Not started | - |
 
 ---
