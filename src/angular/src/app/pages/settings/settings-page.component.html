@@ -88,15 +88,15 @@
           <div></div>
           <!-- Server Directory — full width -->
           <div class="grid-span-2">
-            <app-option [type]="OptionType.Text" [label]="'Server Directory'" [description]="'Path to your files on the remote server'" [value]="(config | async)?.get('lftp')?.get('remote_path')" (changeEvent)="onSetConfig('lftp', 'remote_path', $event)"></app-option>
+            <app-option [type]="OptionType.Text" [label]="'Server Directory'" [description]="'Path to your files on the remote server'" [icon]="'fa-folder-open-o'" [value]="(config | async)?.get('lftp')?.get('remote_path')" (changeEvent)="onSetConfig('lftp', 'remote_path', $event)"></app-option>
           </div>
           <!-- Local Directory — full width -->
           <div class="grid-span-2">
-            <app-option [type]="OptionType.Text" [label]="'Local Directory'" [description]="'Downloaded files are placed here'" [value]="(config | async)?.get('lftp')?.get('local_path')" (changeEvent)="onSetConfig('lftp', 'local_path', $event)"></app-option>
+            <app-option [type]="OptionType.Text" [label]="'Local Directory'" [description]="'Downloaded files are placed here'" [icon]="'fa-hdd-o'" [value]="(config | async)?.get('lftp')?.get('local_path')" (changeEvent)="onSetConfig('lftp', 'local_path', $event)"></app-option>
           </div>
           <!-- Server Script Path — full width -->
           <div class="grid-span-2">
-            <app-option [type]="OptionType.Text" [label]="'Server Script Path'" [description]="'Where to install scanner script on remote server'" [value]="(config | async)?.get('lftp')?.get('remote_path_to_scan_script')" (changeEvent)="onSetConfig('lftp', 'remote_path_to_scan_script', $event)"></app-option>
+            <app-option [type]="OptionType.Text" [label]="'Server Script Path'" [description]="'Where to install scanner script on remote server'" [icon]="'fa-file-code-o'" [value]="(config | async)?.get('lftp')?.get('remote_path_to_scan_script')" (changeEvent)="onSetConfig('lftp', 'remote_path_to_scan_script', $event)"></app-option>
           </div>
         </div>
       </div>
@@ -211,31 +211,32 @@
               <p class="pattern-description">Enable AutoQueue above to manage patterns.</p>
             }
 
-            @for (pattern of patterns | async; track pattern.pattern) {
-              <div class="pattern-row">
-                <span class="pattern-text">{{pattern.pattern}}</span>
-                <button class="btn btn-sm btn-outline-danger pattern-remove-btn" type="button"
-                  [disabled]="!(commandsEnabled && autoqueueEnabled && patternsOnly)"
-                  (click)="onRemovePattern(pattern)"
-                  aria-label="Remove pattern">
-                  &minus;
-                </button>
-              </div>
-            }
+            <div class="pattern-list">
+              @for (pattern of patterns | async; track pattern.pattern) {
+                <div class="pattern-chip">
+                  <span class="pattern-chip-text">{{pattern.pattern}}</span>
+                  <button class="pattern-chip-remove" type="button"
+                    [disabled]="!(commandsEnabled && autoqueueEnabled && patternsOnly)"
+                    (click)="onRemovePattern(pattern)"
+                    aria-label="Remove pattern">
+                    <i class="fa fa-times"></i>
+                  </button>
+                </div>
+              }
+            </div>
 
             <div class="pattern-add">
               <input type="text"
                 class="form-control form-control-sm"
-                placeholder="Add pattern..."
+                placeholder="(e.g. Movies/*)"
                 maxlength="256"
                 [(ngModel)]="newPattern"
                 [disabled]="!commandsEnabled || !autoqueueEnabled || !patternsOnly"
                 (keyup.enter)="(commandsEnabled && newPattern && autoqueueEnabled && patternsOnly) && onAddPattern()" />
-              <button class="btn btn-sm btn-outline-success pattern-add-btn" type="button"
+              <button class="btn-pattern-add" type="button"
                 [disabled]="!(commandsEnabled && newPattern && autoqueueEnabled && patternsOnly)"
-                (click)="onAddPattern()"
-                aria-label="Add pattern">
-                &#43;
+                (click)="onAddPattern()">
+                <i class="fa fa-plus-circle"></i> Add
               </button>
             </div>
           </div>
@@ -415,42 +416,32 @@
       </div>
 
       @if (apiToken) {
-        <div class="settings-card">
+        <div class="settings-card settings-card--security">
           <div class="settings-card-header">
             <i class="fa fa-shield"></i>
-            <span>API &amp; SECURITY</span>
+            <span>API &amp; Security</span>
           </div>
           <div class="settings-card-body">
             <div class="token-section">
-              <label>API Token</label>
-              <p class="token-description">
-                Use this token for API access. Include it as a Bearer token in the Authorization header.
-              </p>
-              @if (tokenRevealed) {
-                <div class="token-display">
-                  <code>{{apiToken}}</code>
-                  <button class="btn btn-secondary btn-sm" type="button"
+              <label class="token-label">Global API Token</label>
+              <div class="token-display">
+                <input type="password" readonly [value]="apiToken"
+                  class="form-control token-input"
+                  [type]="tokenRevealed ? 'text' : 'password'" />
+                <div class="token-actions">
+                  <button type="button" class="token-action-btn"
+                    (click)="tokenRevealed = !tokenRevealed">
+                    <i class="fa" [class.fa-eye]="!tokenRevealed" [class.fa-eye-slash]="tokenRevealed"></i>
+                  </button>
+                  <button type="button" class="token-action-btn"
                     (click)="onCopyToken()">
-                    @if (tokenCopied) {
-                      <span>Copied!</span>
-                    } @else {
-                      <span>Copy</span>
-                    }
-                  </button>
-                  <button class="btn btn-secondary btn-sm" type="button"
-                    (click)="tokenRevealed = false">
-                    Hide
+                    <i class="fa" [class.fa-check]="tokenCopied" [class.fa-copy]="!tokenCopied"></i>
                   </button>
                 </div>
-              } @else {
-                <div class="token-display">
-                  <code class="token-masked">••••••••••••••••••••</code>
-                  <button class="btn btn-secondary btn-sm" type="button"
-                    (click)="tokenRevealed = true">
-                    Reveal
-                  </button>
-                </div>
-              }
+              </div>
+              <button class="btn-regenerate" type="button">
+                <i class="fa fa-refresh"></i> Regenerate Token
+              </button>
             </div>
           </div>
         </div>
@@ -459,24 +450,26 @@
     </div>
   </div>
 
-  @if (hasPendingChanges || saveConfirmed) {
-    <div class="floating-save-bar">
-      <div class="floating-save-inner">
-        <div class="floating-save-text">
-          @if (saveConfirmed) {
-            <i class="fa fa-check-circle floating-save-icon--success"></i>
-            <span class="save-status-label">Changes saved</span>
-          } @else {
-            <i class="fa fa-circle-o-notch fa-spin floating-save-icon--pending"></i>
-            <span class="save-status-label">Saving...</span>
-          }
-        </div>
-        <button class="btn btn-primary floating-save-btn"
-          [disabled]="!commandsEnabled"
-          (click)="onCommandRestart()">
-          <i class="fa fa-refresh"></i> Restart
-        </button>
+  <div class="floating-save-bar">
+    <div class="floating-save-inner">
+      <div class="floating-save-text">
+        @if (saveConfirmed) {
+          <i class="fa fa-check-circle floating-save-icon--success"></i>
+          <div class="floating-save-labels">
+            <span class="save-status-label">Changes Saved</span>
+          </div>
+        } @else {
+          <div class="floating-save-labels">
+            <span class="save-status-label">Unsaved Changes</span>
+            <span class="save-status-sub">Modify settings to enable sync</span>
+          </div>
+        }
       </div>
+      <button class="btn-save-settings"
+        [disabled]="!commandsEnabled"
+        (click)="onCommandRestart()">
+        <i class="fa fa-floppy-o"></i> Save Settings
+      </button>
     </div>
-  }
+  </div>
 </div>
