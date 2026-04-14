@@ -21,6 +21,20 @@ $gray-300: bv.$moss-border;   // Moss border
 $gray-800: #c8d0be;   // Sage cream — secondary text
 
 // ============================================================================
+// Component Palette Aliases (shorthand for forest palette)
+// ============================================================================
+// These re-export Bootstrap variables under short names for component SCSS.
+// Use these instead of redeclaring hex values in each component.
+$amber: bv.$primary;              // #c49a4a — accent
+$text: bv.$body-color-dark;       // #e0e8d6 — primary text
+$textsec: bv.$secondary;          // #9aaa8a — secondary text
+$border: bv.$forest-border;       // #3e4a38
+$card: bv.$forest-card;           // #222a20
+$base: bv.$forest-base;           // #151a14
+$muted: bv.$forest-muted;         // #2c3629
+$row: bv.$forest-row;             // #1a2019
+
+// ============================================================================
 // Layout Variables
 // ============================================================================
 $small-max-width: 600px;

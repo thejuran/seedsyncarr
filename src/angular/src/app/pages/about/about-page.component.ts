@@ -1,22 +1,15 @@
-import { Component, VERSION } from "@angular/core";
-
-declare function require(moduleName: string): { version: string };
-const { version: appVersion } = require("../../../../package.json");
+import { ChangeDetectionStrategy, Component, VERSION } from "@angular/core";
+import { APP_VERSION } from "../../common/version";
 
 @Component({
     selector: "app-about-page",
     templateUrl: "./about-page.component.html",
     styleUrls: ["./about-page.component.scss"],
-    providers: [],
+    changeDetection: ChangeDetectionStrategy.OnPush,
     standalone: true
 })
 export class AboutPageComponent {
 
-    public version: string;
-    public angularVersion: string;
-
-    constructor() {
-        this.version = appVersion;
-        this.angularVersion = VERSION.full;
-    }
+    readonly version: string = APP_VERSION;
+    readonly angularVersion: string = VERSION.full;
 }

@@ -6,8 +6,7 @@ import {Observable, Subject} from "rxjs";
 import {takeUntil} from "rxjs/operators";
 import {ROUTE_INFOS} from "../../routes";
 
-declare function require(moduleName: string): { version: string };
-const { version: appVersion } = require("../../../../package.json");
+import {APP_VERSION} from "../../common/version";
 
 import {DomService} from "../../services/utils/dom.service";
 import {ToastService, Toast} from "../../services/utils/toast.service";
@@ -26,7 +25,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild("topHeader", {static: false}) topHeader!: ElementRef;
 
     routeInfos = ROUTE_INFOS;
-    version: string = appVersion;
+    version: string = APP_VERSION;
     toasts: Toast[] = [];
     connected$: Observable<boolean>;
 

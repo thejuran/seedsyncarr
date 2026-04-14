@@ -1,17 +1,9 @@
 @use '../../common/common' as *;
 
 $term-bg: #0a0d09;
-$amber: #c49a4a;
 $success: #59a362;
 $warning: #d18c34;
 $error: #c45b5b;
-$text: #e0e8d6;
-$textsec: #9aaa8a;
-$border: #3e4a38;
-$card: #222a20;
-$base: #151a14;
-$muted: #2c3629;
-$row: #1a2019;
 
 :host {
     display: flex;

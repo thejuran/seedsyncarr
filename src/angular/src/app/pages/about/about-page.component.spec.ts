@@ -19,29 +19,30 @@ describe("AboutPageComponent", () => {
     // ABUT-01: Identity card
     it("should display brand title with amber arr span", () => {
         const title = el.querySelector(".identity-title");
-        expect(title).toBeTruthy();
+        expect(title).withContext(".identity-title not found").not.toBeNull();
         expect(title!.textContent).toContain("SeedSync");
         const arrSpan = title!.querySelector(".brand-arr");
-        expect(arrSpan).toBeTruthy();
+        expect(arrSpan).withContext(".brand-arr not found").not.toBeNull();
         expect(arrSpan!.textContent).toBe("arr");
     });
 
     it("should display app version with Stable suffix", () => {
         const badge = el.querySelector(".version-badge");
-        expect(badge).toBeTruthy();
+        expect(badge).withContext(".version-badge not found").not.toBeNull();
         expect(badge!.textContent).toContain(component.version);
         expect(badge!.textContent).toContain("(Stable)");
     });
 
     it("should display brand favicon image", () => {
-        const img = el.querySelector(".brand-favicon") as HTMLImageElement;
-        expect(img).toBeTruthy();
-        expect(img.src).toContain("favicon");
+        const img = el.querySelector(".brand-favicon");
+        expect(img).withContext(".brand-favicon not found").not.toBeNull();
+        expect(img).toBeInstanceOf(HTMLImageElement);
+        expect((img as HTMLImageElement).src).toContain("favicon");
     });
 
     it("should display tagline text", () => {
         const tagline = el.querySelector(".identity-tagline");
-        expect(tagline).toBeTruthy();
+        expect(tagline).withContext(".identity-tagline not found").not.toBeNull();
         expect(tagline!.textContent).toContain("Sync files from your seedbox");
     });
 
@@ -53,30 +54,38 @@ describe("AboutPageComponent", () => {
 
     it("should display App Version row with live value", () => {
         const rows = el.querySelectorAll(".sysinfo-row");
-        const firstLabel = rows[0].querySelector(".sysinfo-label");
-        const firstValue = rows[0].querySelector(".sysinfo-value");
+        expect(rows.length).withContext("sysinfo rows").toBeGreaterThanOrEqual(7);
+        const firstLabel = rows[0]?.querySelector(".sysinfo-label");
+        const firstValue = rows[0]?.querySelector(".sysinfo-value");
+        expect(firstLabel).withContext("first .sysinfo-label").not.toBeNull();
         expect(firstLabel!.textContent!.trim()).toBe("APP VERSION");
         expect(firstValue!.textContent).toContain(component.version);
     });
 
     it("should display Angular version in Frontend Core row", () => {
         const rows = el.querySelectorAll(".sysinfo-row");
-        const secondValue = rows[1].querySelector(".sysinfo-value");
+        expect(rows.length).withContext("sysinfo rows").toBeGreaterThanOrEqual(2);
+        const secondValue = rows[1]?.querySelector(".sysinfo-value");
+        expect(secondValue).withContext("second .sysinfo-value").not.toBeNull();
         expect(secondValue!.textContent).toContain(component.angularVersion);
     });
 
     it("should show placeholder dashes for unavailable system info", () => {
         const rows = el.querySelectorAll(".sysinfo-row");
+        expect(rows.length).withContext("sysinfo rows").toBeGreaterThanOrEqual(6);
         // Python Version (index 2), Host OS (3), Uptime (4), Process ID (5)
         for (const idx of [2, 3, 4, 5]) {
-            const value = rows[idx].querySelector(".sysinfo-value");
-            expect(value!.textContent!.trim()).toBe("\u2014");
+            const value = rows[idx]?.querySelector(".sysinfo-value");
+            expect(value).withContext(`row ${idx} .sysinfo-value`).not.toBeNull();
+            expect(value!.textContent!.trim()).toMatch(/^(\u2014|—)$/);
         }
     });
 
     it("should show config path as ~/.seedsyncarr", () => {
         const rows = el.querySelectorAll(".sysinfo-row");
-        const configValue = rows[6].querySelector(".sysinfo-value");
+        expect(rows.length).withContext("sysinfo rows").toBeGreaterThanOrEqual(7);
+        const configValue = rows[6]?.querySelector(".sysinfo-value");
+        expect(configValue).withContext("config row .sysinfo-value").not.toBeNull();
         expect(configValue!.textContent!.trim()).toBe("~/.seedsyncarr");
     });
 
@@ -87,30 +96,33 @@ describe("AboutPageComponent", () => {
     });
 
     it("should have correct hrefs on link cards", () => {
-        const cards = el.querySelectorAll(".link-card") as NodeListOf<HTMLAnchorElement>;
-        expect(cards[0].href).toBe("https://github.com/thejuran/seedsyncarr");
-        expect(cards[1].href).toBe("https://thejuran.github.io/seedsyncarr/");
-        expect(cards[2].href).toBe("https://github.com/thejuran/seedsyncarr/issues");
-        expect(cards[3].href).toBe("https://github.com/thejuran/seedsyncarr/releases");
+        const cards = el.querySelectorAll(".link-card");
+        expect(cards.length).toBe(4);
+        cards.forEach(card => expect(card).toBeInstanceOf(HTMLAnchorElement));
+        expect((cards[0] as HTMLAnchorElement).href).toBe("https://github.com/thejuran/seedsyncarr");
+        expect((cards[1] as HTMLAnchorElement).href).toBe("https://thejuran.github.io/seedsyncarr/");
+        expect((cards[2] as HTMLAnchorElement).href).toBe("https://github.com/thejuran/seedsyncarr/issues");
+        expect((cards[3] as HTMLAnchorElement).href).toBe("https://github.com/thejuran/seedsyncarr/releases");
     });
 
     it("should open all link cards in new tabs", () => {
-        const cards = el.querySelectorAll(".link-card") as NodeListOf<HTMLAnchorElement>;
+        const cards = el.querySelectorAll(".link-card");
         cards.forEach(card => {
-            expect(card.target).toBe("_blank");
+            expect(card).toBeInstanceOf(HTMLAnchorElement);
+            expect((card as HTMLAnchorElement).target).toBe("_blank");
         });
     });
 
     // ABUT-04: License and copyright
     it("should display Apache License 2.0 badge", () => {
         const badge = el.querySelector(".license-badge");
-        expect(badge).toBeTruthy();
+        expect(badge).withContext(".license-badge not found").not.toBeNull();
         expect(badge!.textContent).toContain("Apache License 2.0");
     });
 
     it("should display copyright text", () => {
         const copyright = el.querySelector(".copyright-text");
-        expect(copyright).toBeTruthy();
+        expect(copyright).withContext(".copyright-text not found").not.toBeNull();
         expect(copyright!.textContent).toContain("2017");
         expect(copyright!.textContent).toContain("Inderpreet Singh");
         expect(copyright!.textContent).toContain("thejuran");
@@ -118,9 +130,11 @@ describe("AboutPageComponent", () => {
 
     it("should display fork attribution note", () => {
         const forkNote = el.querySelector(".fork-note");
-        expect(forkNote).toBeTruthy();
+        expect(forkNote).withContext(".fork-note not found").not.toBeNull();
         expect(forkNote!.textContent).toContain("SeedSync");
-        const link = forkNote!.querySelector("a") as HTMLAnchorElement;
-        expect(link.href).toBe("https://github.com/ipsingh06/seedsync");
+        const link = forkNote!.querySelector("a");
+        expect(link).withContext("fork-note anchor not found").not.toBeNull();
+        expect(link).toBeInstanceOf(HTMLAnchorElement);
+        expect((link as HTMLAnchorElement).href).toBe("https://github.com/ipsingh06/seedsync");
     });
 });
