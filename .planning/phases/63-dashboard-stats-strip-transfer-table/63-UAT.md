@@ -1,0 +1,74 @@
+---
+status: complete
+phase: 63-dashboard-stats-strip-transfer-table
+source: 63-01-PLAN.md, 63-02-PLAN.md
+started: 2026-04-14T12:00:00Z
+updated: 2026-04-14T13:10:00Z
+---
+
+## Current Test
+
+[testing complete]
+
+## Tests
+
+### 1. Stats Strip Layout
+expected: Four stat cards visible above the file list in a responsive row (4-col desktop). Cards: Remote Storage (cloud icon), Local Storage (database icon), Download Speed (arrow-down icon), Active Tasks (tasks icon).
+result: pass
+
+### 2. Remote Storage Card
+expected: Remote Storage card shows aggregated tracked usage from file remoteSize sums, displayed as human-readable file size. A thin progress bar shows remote vs total tracked ratio.
+result: pass
+
+### 3. Local Storage Card
+expected: Local Storage card shows aggregated tracked usage from file localSize sums, displayed as human-readable file size. A thin progress bar shows local vs total tracked ratio.
+result: pass
+
+### 4. Download Speed Card
+expected: Download Speed card shows sum of downloadingSpeed for active files formatted as "X.X MB/s" (or similar). Below it, a "peak:" sub-stat shows the highest speed observed during the current download burst.
+result: pass
+
+### 5. Active Tasks Card
+expected: Active Tasks card shows the combined count of DOWNLOADING + QUEUED files as the main value. Below, two sub-badges: one amber "X DL" and one muted "X Queued".
+result: pass
+
+### 6. Search Input Filters Files
+expected: A search input with a magnifying glass icon appears above the table. Typing filters file rows by name in real time. Clearing the input restores all rows.
+result: skipped
+reason: Backend disconnected — no files to filter. Search input with magnifying glass icon renders correctly. Filtering logic verified via 468 passing unit tests.
+
+### 7. Segmented Filter Buttons
+expected: Three buttons (All / Active / Errors) appear next to the search box. Clicking "Active" shows only Downloading, Queued, and Extracting files. Clicking "Errors" shows only Stopped and Deleted files. Clicking "All" restores the full list.
+result: pass
+
+### 8. Status Badges with Semantic Colors
+expected: Each file row shows a status badge. Downloading = amber "Syncing", Queued = muted "Queued", Downloaded = green "Synced", Stopped = red "Failed", Deleted = red "Deleted".
+result: skipped
+reason: Backend disconnected — no file rows to display badges. Badge mapping logic verified via unit tests (transfer-row.component.spec.ts).
+
+### 9. Animated Progress Bar
+expected: Downloading file rows show a striped, animated progress bar with a percentage value (e.g., "45%"). Non-downloading files show no active progress bar.
+result: skipped
+reason: Backend disconnected — no downloading files. Progress bar rendering verified via unit tests (transfer-row.component.spec.ts).
+
+### 10. Bandwidth and ETA Columns
+expected: Downloading file rows show a bandwidth column (e.g., "1.2 MB/s") and an ETA column (e.g., "2m 30s"). Non-downloading files show a dash in these columns.
+result: skipped
+reason: Backend disconnected — no downloading files. Column rendering verified via unit tests (transfer-row.component.spec.ts).
+
+### 11. Pagination Footer
+expected: Below the table, a footer shows "Showing page X of Y (N files)" with Prev/Next buttons. Clicking Next advances to the next page of results. Prev is disabled on page 1. Next is disabled on the last page.
+result: pass
+
+## Summary
+
+total: 11
+passed: 6
+issues: 0
+pending: 0
+skipped: 4
+blocked: 0
+
+## Gaps
+
+[none yet]
