@@ -225,7 +225,7 @@ See `.planning/milestones/v3.1-ROADMAP.md` for full details.
 - [ ] **Phase 64: Dashboard — Log Pane** - Compact terminal log pane at dashboard bottom with colored severity levels
 - [ ] **Phase 65: Settings Page** - Two-column masonry layout, 10 card sections, toggle switches, floating save button
 - [ ] **Phase 66: Logs Page** - Full-viewport terminal log viewer with level filters, search, auto-scroll, export, and status bar
-- [ ] **Phase 67: About Page** - Centered identity card, system info table, link cards grid, license footer
+- [x] **Phase 67: About Page** - Centered identity card, system info table, link cards grid, license footer (completed 2026-04-14)
 
 ## Phase Details
 
@@ -448,10 +448,10 @@ Plans:
   2. A system info table displays key-value rows for Python version, Angular version, OS, uptime, PID, and config path
   3. A grid of link cards (GitHub, Docs, Report Issue, Changelog) renders with hover-to-amber color transitions
   4. A license badge and copyright footer appear at the bottom of the page
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
-- [ ] 67-01-PLAN.md -- Rewrite About page component (TS, HTML, SCSS) with identity card, system info, link cards, license footer + unit tests
-- [ ] 67-02-PLAN.md -- [to be planned]
+- [x] 67-01-PLAN.md -- Rewrite About page component (TS, HTML, SCSS) with identity card, system info, link cards, license footer + unit tests
+- [x] 67-02-PLAN.md -- [to be planned]
 **UI hint**: yes
 
 ## Progress
@@ -487,7 +487,7 @@ Plans:
 | 64. Dashboard — Log Pane | v1.1.0 | 0/1 | Not started | - |
 | 65. Settings Page | v1.1.0 | 0/2 | Not started | - |
 | 66. Logs Page | v1.1.0 | 0/2 | Not started | - |
-| 67. About Page | v1.1.0 | 0/? | Not started | - |
+| 67. About Page | v1.1.0 | 2/2 | Complete    | 2026-04-14 |
 
 ---
 
