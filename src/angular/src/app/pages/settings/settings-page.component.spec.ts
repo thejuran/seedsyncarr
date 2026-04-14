@@ -47,6 +47,7 @@ describe('SettingsPageComponent', () => {
 
     fixture = TestBed.createComponent(SettingsPageComponent);
     component = fixture.componentInstance;
+    fixture.detectChanges();
   });
 
   it('should create', () => {

@@ -133,6 +133,10 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy(): void {
+        if (this.saveConfirmedTimer) {
+            clearTimeout(this.saveConfirmedTimer);
+            this.saveConfirmedTimer = null;
+        }
         this.destroy$.next();
         this.destroy$.complete();
     }
@@ -206,24 +210,16 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
         }
     }
 
-    onCopyWebhookFromInput(input: HTMLInputElement): void {
+    onCopyWebhookFromInput(input: HTMLInputElement, target: 'sonarr' | 'radarr'): void {
         navigator.clipboard.writeText(input.value).then(() => {
-            // Determine which webhook was copied based on URL content
-            if (input.value.includes('/webhook/sonarr')) {
-                this.sonarrWebhookCopied = true;
+            if (target === 'sonarr') { this.sonarrWebhookCopied = true; }
+            else { this.radarrWebhookCopied = true; }
+            this._cdr.markForCheck();
+            setTimeout(() => {
+                if (target === 'sonarr') { this.sonarrWebhookCopied = false; }
+                else { this.radarrWebhookCopied = false; }
                 this._cdr.markForCheck();
-                setTimeout(() => {
-                    this.sonarrWebhookCopied = false;
-                    this._cdr.markForCheck();
-                }, 2000);
-            } else if (input.value.includes('/webhook/radarr')) {
-                this.radarrWebhookCopied = true;
-                this._cdr.markForCheck();
-                setTimeout(() => {
-                    this.radarrWebhookCopied = false;
-                    this._cdr.markForCheck();
-                }, 2000);
-            }
+            }, 2000);
         }).catch(() => { /* clipboard unavailable */ });
     }
 

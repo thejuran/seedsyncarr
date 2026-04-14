@@ -22,6 +22,7 @@ describe('OptionComponent', () => {
     beforeEach(() => {
       component.type = OptionType.Checkbox;
       component.label = 'Test Toggle';
+      component.description = '';
       component.value = false;
       fixture.detectChanges();
     });

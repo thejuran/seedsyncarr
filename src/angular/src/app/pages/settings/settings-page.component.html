@@ -177,7 +177,7 @@
                     class="form-control form-control-sm webhook-url-input"
                     [value]="'http://<seedsyncarr-address>:' + ((config | async)?.get('web')?.get('port')) + '/server/webhook/sonarr'" />
                   <button class="btn btn-sm btn-secondary webhook-copy-btn" type="button"
-                    (click)="onCopyWebhookFromInput(sonarrWebhookInput)"
+                    (click)="onCopyWebhookFromInput(sonarrWebhookInput, 'sonarr')"
                     [title]="sonarrWebhookCopied ? 'Copied!' : 'Copy URL'">
                     <i class="fa" [class.fa-check]="sonarrWebhookCopied" [class.fa-copy]="!sonarrWebhookCopied"></i>
                   </button>
@@ -246,7 +246,7 @@
                     class="form-control form-control-sm webhook-url-input"
                     [value]="'http://<seedsyncarr-address>:' + ((config | async)?.get('web')?.get('port')) + '/server/webhook/radarr'" />
                   <button class="btn btn-sm btn-secondary webhook-copy-btn" type="button"
-                    (click)="onCopyWebhookFromInput(radarrWebhookInput)"
+                    (click)="onCopyWebhookFromInput(radarrWebhookInput, 'radarr')"
                     [title]="radarrWebhookCopied ? 'Copied!' : 'Copy URL'">
                     <i class="fa" [class.fa-check]="radarrWebhookCopied" [class.fa-copy]="!radarrWebhookCopied"></i>
                   </button>
@@ -276,7 +276,7 @@
             </div>
           }
           <!-- Remaining options disabled when autodelete is off -->
-          <div class="settings-card-body--disabled-zone" [class.settings-card-body--disabled]="!(config | async)?.get('autodelete')?.get('enabled')">
+          <div class="settings-card-body--disabled-zone" [class.settings-card-body--disabled]="!(config | async)?.get('autodelete')?.get('enabled')" [attr.inert]="!(config | async)?.get('autodelete')?.get('enabled') ? '' : null">
             @for (option of OPTIONS_CONTEXT_AUTODELETE.options; track option.label; let i = $index) {
               @if (i > 0) {
                 <div>
