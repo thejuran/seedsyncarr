@@ -8,12 +8,24 @@
       @if (description) {
         <span class="description">{{description}}</span>
       }
-      <input
-        type="text"
-        class="form-control"
-        [disabled]="value == null"
-        [ngModel]="value"
-        (ngModelChange)="onChange($event)" />
+      @if (icon) {
+        <div class="input-with-icon">
+          <span class="input-icon"><i class="fa {{icon}}"></i></span>
+          <input
+            type="text"
+            class="form-control"
+            [disabled]="value == null"
+            [ngModel]="value"
+            (ngModelChange)="onChange($event)" />
+        </div>
+      } @else {
+        <input
+          type="text"
+          class="form-control"
+          [disabled]="value == null"
+          [ngModel]="value"
+          (ngModelChange)="onChange($event)" />
+      }
     </label>
   }
 
@@ -45,12 +57,17 @@
       @if (description) {
         <span class="description">{{description}}</span>
       }
-      <input
-        type="password"
-        class="form-control"
-        [disabled]="value == null"
-        [ngModel]="value"
-        (ngModelChange)="onChange($event)" />
+      <div class="password-wrapper">
+        <input
+          [type]="passwordVisible ? 'text' : 'password'"
+          class="form-control"
+          [disabled]="value == null"
+          [ngModel]="value"
+          (ngModelChange)="onChange($event)" />
+        <button type="button" class="password-toggle" (click)="passwordVisible = !passwordVisible" tabindex="-1">
+          <i class="fa" [class.fa-eye]="!passwordVisible" [class.fa-eye-slash]="passwordVisible"></i>
+        </button>
+      </div>
     </label>
   }
 </div>

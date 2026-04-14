@@ -19,11 +19,13 @@ export class OptionComponent implements OnInit, OnDestroy {
     @Input() value!: string | number | boolean;
     @Input() description!: string;
     @Input() compact = false;
+    @Input() icon: string | null = null;
 
     @Output() changeEvent = new EventEmitter<string | number | boolean>();
 
     // expose to template
     public OptionType = OptionType;
+    public passwordVisible = false;
 
     private readonly DEBOUNCE_TIME_MS: number = 1000;
 
