@@ -1,0 +1,479 @@
+================================================================================
+                    SEEDSYNC DEPENDENCY GRAPH
+================================================================================
+
+LEGEND:
+  → imports/depends on
+  └─ sub-module or contained file
+
+================================================================================
+                        PYTHON BACKEND GRAPH
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         APPLICATION ENTRY POINT                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+seedsync.py (MAIN ENTRY)
+├── common (FOUNDATION - no imports)
+│   ├── app_process
+│   ├── config
+│   ├── context
+│   ├── error
+│   ├── job
+│   ├── localization
+│   ├── multiprocessing_logger
+│   ├── persist
+│   ├── status
+│   ├── types
+│   ├── constants
+│   └── bounded_ordered_set
+├── controller (CORE ORCHESTRATION)
+│   ├── common
+│   ├── model
+│   ├── lftp
+│   ├── system
+│   ├── ssh
+│   ├── controller.py
+│   │   ├── scan_manager
+│   │   ├── lftp_manager
+│   │   ├── file_operation_manager
+│   │   ├── webhook_manager
+│   │   ├── extract/
+│   │   ├── model_builder
+│   │   ├── scan/
+│   │   ├── memory_monitor
+│   │   └── controller_persist
+│   ├── controller_job
+│   ├── auto_queue
+│   └── scan_manager
+│
+├── controller.webhook_manager
+│   └── common
+│
+└── web (REST API & WEBSOCKETS)
+    ├── common
+    ├── controller
+    ├── model
+    ├── web_app.py
+    ├── web_app_builder.py
+    ├── web_app_job.py
+    ├── auth.py
+    ├── utils.py
+    ├── handler/
+    │   ├── server.py
+    │   ├── controller.py
+    │   ├── status.py
+    │   ├── stream_status.py
+    │   ├── stream_log.py
+    │   ├── stream_model.py
+    │   ├── stream_heartbeat.py
+    │   ├── config.py
+    │   ├── auto_queue.py
+    │   └── webhook.py
+    └── serialize/
+        ├── serialize.py
+        ├── serialize_status.py
+        ├── serialize_config.py
+        ├── serialize_model.py
+        ├── serialize_auto_queue.py
+        └── serialize_log_record.py
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    CONTROLLER SUBSYSTEM DETAIL                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+controller/
+│
+├── CORE ORCHESTRATOR
+│   └── controller.py
+│       ├── model/
+│       │   ├── model.py (main model)
+│       │   ├── file.py
+│       │   └── diff.py
+│       ├── scan/
+│       │   ├── scanner_process.py
+│       │   ├── active_scanner.py
+│       │   ├── local_scanner.py
+│       │   ├── remote_scanner.py
+│       │   │   └── ssh
+│       │   └── scan_manager.py
+│       ├── lftp/
+│       │   ├── lftp.py
+│       │   ├── job_status.py
+│       │   └── job_status_parser.py
+│       ├── extract/
+│       │   ├── extract.py
+│       │   ├── extract_process.py
+│       │   ├── dispatch.py
+│       │   └── extract_manager
+│       ├── delete/
+│       │   └── delete_process.py
+│       │       └── ssh
+│       ├── model_builder.py
+│       │   ├── system/
+│       │   │   ├── scanner.py
+│       │   │   └── file.py
+│       │   └── lftp/
+│       ├── lftp_manager.py
+│       ├── file_operation_manager.py
+│       │   ├── extract/
+│       │   └── delete/
+│       ├── auto_queue.py
+│       ├── webhook_manager.py
+│       ├── memory_monitor.py
+│       ├── controller_job.py
+│       └── controller_persist.py
+│
+└── SUPPORT
+    ├── scan_manager.py → scan/
+    ├── lftp_manager.py → lftp/
+    ├── model_builder.py → model/, system/, lftp/
+    └── auto_queue.py → model/
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                   TRANSFER MANAGEMENT (LFTP)                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+lftp/
+├── lftp.py
+│   ├── common/
+│   └── [runs subprocess for actual transfers]
+├── job_status.py
+│   └── [data class]
+└── job_status_parser.py
+    ├── common/
+    └── job_status.py
+
+USED BY:
+├── controller/lftp_manager.py
+├── controller/model_builder.py
+└── web/handlers/* (for status reporting)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     REMOTE ACCESS (SSH)                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+ssh/
+├── sshcp.py
+│   └── common/
+└── [provides SSH/SFTP primitives]
+
+USED BY:
+├── controller/scan/remote_scanner.py
+└── controller/delete/delete_process.py
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                   FILE SYSTEM SCANNING (SYSTEM)                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+system/
+├── scanner.py
+│   └── [no internal imports]
+└── file.py
+    └── [no internal imports]
+
+USED BY:
+├── controller/scan/*
+├── controller/model_builder.py
+└── scan_fs.py (utility)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    DATA MODELS (MODEL)                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+model/
+├── model.py
+│   ├── common/
+│   └── file.py
+├── file.py
+│   └── [no internal imports]
+└── diff.py
+    ├── file.py
+    └── model.py
+
+USED BY:
+├── controller/*
+├── controller/extract/*
+├── controller/auto_queue.py
+├── web/handlers/*
+└── web/serialize/*
+
+
+================================================================================
+                        ANGULAR FRONTEND GRAPH
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         APPLICATION SHELL                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+main.ts (ENTRY POINT)
+│
+└── bootstrapApplication(AppComponent, AppConfig)
+    │
+    └── AppComponent (pages/main/app.component.ts)
+        │
+        ├── Router (routes.ts)
+        │   ├── files-page
+        │   ├── logs-page
+        │   ├── settings-page
+        │   └── about-page
+        │
+        ├── HeaderComponent
+        │   └── server-status.service
+        │       └── rest.service
+        │
+        └── Page Components
+            └── Page-specific services
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      SERVICE LAYER ORGANIZATION                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+BASE SERVICES (Abstractions)
+│
+├── base/base-web.service.ts
+│   └── rest.service.ts
+│       └── HttpClient
+│
+├── base/base-stream.service.ts
+│   └── [WebSocket/EventSource abstractions]
+│
+└── base/stream-service.registry.ts
+    └── [discovers & manages stream services]
+
+
+SERVER COMMUNICATION LAYER
+│
+├── rest.service.ts
+│   └── [HTTP client wrapper]
+│
+├── server/server-status.service.ts
+│   ├── rest.service
+│   └── [fetches /api/status]
+│
+├── server/server-command.service.ts
+│   ├── rest.service
+│   └── [executes /api/command]
+│
+└── server/bulk-command.service.ts
+    ├── rest.service
+    └── [batch operations]
+
+
+DOMAIN SERVICES (Business Logic)
+│
+├── FILE MANAGEMENT
+│   ├── files/model-file.service.ts
+│   │   └── [file model representation]
+│   ├── files/view-file.service.ts
+│   │   ├── model-file.service
+│   │   └── server-status.service (for data)
+│   ├── files/view-file-filter.service.ts
+│   │   └── [filtering logic]
+│   ├── files/view-file-sort.service.ts
+│   │   └── [sorting logic]
+│   ├── files/view-file-options.service.ts
+│   │   └── [display options]
+│   └── files/file-selection.service.ts
+│       └── [multi-select tracking]
+│
+├── LOGGING
+│   └── logs/log.service.ts
+│       ├── rest.service
+│       └── [log retrieval/caching]
+│
+├── AUTO-QUEUE
+│   └── autoqueue/autoqueue.service.ts
+│       ├── rest.service
+│       └── [queue management]
+│
+└── SETTINGS
+    └── settings/config.service.ts
+        ├── rest.service
+        └── local-storage.service
+
+
+UTILITY SERVICES
+│
+├── utils/rest.service.ts (HTTP wrapper)
+├── utils/notification.service.ts (user notifications)
+├── utils/toast.service.ts (toast messages)
+├── utils/logger.service.ts (client logging)
+├── utils/connected.service.ts (connection status)
+├── utils/local-storage.service.ts (persistent storage)
+├── utils/dom.service.ts (DOM helpers)
+├── utils/confirm-modal.service.ts (confirmation dialogs)
+└── utils/version-check.service.ts (version compatibility)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      PAGE COMPONENT HIERARCHY                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+app.component.ts (ROOT)
+│
+├── header.component.ts
+│   └── → server-status.service
+│
+└── Router Outlet
+    │
+    ├── files-page.component.ts
+    │   └── file-list.component.ts
+    │       ├── file.component.ts (repeated for each file)
+    │       │   ├── file-actions-bar.component.ts
+    │       │   └── file-options.component.ts
+    │       │       └── server-command.service
+    │       ├── bulk-actions-bar.component.ts
+    │       │   └── bulk-command.service
+    │       ├── view-file.service
+    │       ├── view-file-filter.service
+    │       ├── view-file-sort.service
+    │       ├── file-selection.service
+    │       ├── model-file.service
+    │       └── server-status.service
+    │
+    ├── logs-page.component.ts
+    │   └── log.service
+    │
+    ├── settings-page.component.ts
+    │   └── option.component.ts (repeated for each setting)
+    │       └── config.service
+    │
+    └── about-page.component.ts
+        └── [static content]
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         COMMUNICATION FLOW                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+User Interaction
+    │
+    ├─→ Component Event
+    │   └─→ Service Method
+    │       └─→ REST API Call
+    │           └─→ Backend Handler
+    │               └─→ Controller Business Logic
+    │                   └─→ Return Response
+    │
+    └─→ WebSocket Stream
+        └─→ Base Stream Service
+            └─→ Stream Service Registry
+                └─→ Update Service State
+                    └─→ Component Bindings Update
+
+
+================================================================================
+                           MODULE DEPENDENCY LEVELS
+================================================================================
+
+LEVEL 0: FOUNDATION (No internal imports)
+├── common/ (except status which imports common)
+├── system/
+├── ssh/
+├── lftp/ (except job_status_parser)
+└── Frontend: Utils & Base Services
+
+LEVEL 1: LEAF COMPONENTS (Import Level 0)
+├── model/
+├── lftp/job_status_parser.py
+├── frontend: Domain services
+
+LEVEL 2: ORCHESTRATION (Import Level 0-1)
+├── controller/ (main modules)
+├── web/ (API handlers)
+└── frontend: Page components
+
+LEVEL 3: APPLICATION (Import all)
+├── seedsync.py
+└── frontend: App bootstrap
+
+
+================================================================================
+                    DEPENDENCY STATISTICS
+================================================================================
+
+PYTHON:
+  Total Files:              74 source + 90 test = 164
+  Entry Points:             1 (seedsync.py)
+  Core Modules:             7 (common, controller, model, web, lftp, ssh, system)
+  Submodules:               4 (controller/scan, controller/extract, controller/delete, web/handler)
+  Serializers:              6 (web/serialize/*)
+  Test Coverage:            90 test files (55 unit, 35 integration)
+
+TYPESCRIPT/ANGULAR:
+  Total Files:              102 source + 30 test = 132
+  Entry Points:             3 (main.ts, routes.ts, index.html)
+  Components:               12 pages + 12 sub-components = 24
+  Services:                 30 total
+    - Base/Abstract:        3
+    - Domain:               6 categories (server, files, logs, autoqueue, settings, lftp)
+    - Utilities:            14
+    - Mocks:                6
+  Decorators/Pipes:         5 (directives + pipes)
+
+
+================================================================================
+                    CRITICAL DEPENDENCIES
+================================================================================
+
+MOST IMPORTED MODULES (Core to System):
+  1. common/        - Used by 100% of modules
+  2. controller/    - Used by web, seedsync, auto_queue
+  3. model/         - Used by controller, web, extract
+  4. web/           - Public API boundary
+  5. lftp/          - Used by controller, model_builder
+
+MOST IMPORTED SERVICES (Frontend):
+  1. rest.service.ts           - Used by all HTTP-based services
+  2. server-status.service.ts  - Used by all components
+  3. local-storage.service.ts  - Persistent state
+  4. notification.service.ts   - User feedback
+
+
+================================================================================
+                    KNOWN ARCHITECTURAL PATTERNS
+================================================================================
+
+1. LAYERED ARCHITECTURE
+   Foundation (common/system/lftp/ssh)
+       ↓
+   Domain Layer (model/)
+       ↓
+   Business Logic (controller/)
+       ↓
+   Application Layer (web/seedsync.py)
+
+2. SERVICE PATTERN (Angular)
+   Base Services (rest, stream)
+       ↓
+   Domain Services (files, logs, settings)
+       ↓
+   Components (pages, page elements)
+
+3. HANDLER PATTERN (Web)
+   request → handler → serializer → response
+
+4. MANAGER PATTERN (Controller)
+   controller → *_manager → subsystem
+
+5. PROCESS PATTERN (Background Work)
+   job → process → subprocess → external tool
+
+
+================================================================================
+                    NO CIRCULAR DEPENDENCIES DETECTED
+================================================================================
+✓ Clean layered dependency flow
+✓ All modules have clear single responsibility
+✓ Test infrastructure isolated from main code
+✓ Clear separation of concerns
+
