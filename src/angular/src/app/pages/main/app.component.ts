@@ -32,6 +32,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
     private destroy$ = new Subject<void>();
     private _resizeObserver!: ResizeObserver;
+    private _toastTimers: ReturnType<typeof setTimeout>[] = [];
 
     constructor(private router: Router,
                 private _domService: DomService,
@@ -53,12 +54,13 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         this._toastService.toasts$.pipe(takeUntil(this.destroy$)).subscribe(toast => {
             this.toasts.push(toast);
             if (toast.autohide) {
-                setTimeout(() => {
-                    const index = this.toasts.findIndex(t => t.id === toast.id);
-                    if (index >= 0) {
-                        this.toasts.splice(index, 1);
-                    }
+                const handle = setTimeout(() => {
+                    const toastIdx = this.toasts.findIndex(t => t.id === toast.id);
+                    if (toastIdx >= 0) { this.toasts.splice(toastIdx, 1); }
+                    const timerIdx = this._toastTimers.indexOf(handle);
+                    if (timerIdx >= 0) { this._toastTimers.splice(timerIdx, 1); }
                 }, toast.delay);
+                this._toastTimers.push(handle);
             }
         });
     }
@@ -71,6 +73,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     ngOnDestroy(): void {
+        this._toastTimers.forEach(clearTimeout);
         this._resizeObserver?.disconnect();
         this.destroy$.next();
         this.destroy$.complete();

@@ -1,9 +1,6 @@
 import {Component, OnInit, OnDestroy} from "@angular/core";
-import { AsyncPipe } from "@angular/common";
-import {Observable, Subject} from "rxjs";
+import {Subject} from "rxjs";
 import {takeUntil} from "rxjs/operators";
-
-import * as Immutable from "immutable";
 
 import {LoggerService} from "../../services/utils/logger.service";
 import {ServerStatusService} from "../../services/server/server-status.service";
@@ -16,16 +13,10 @@ import {Localization} from "../../common/localization";
     selector: "app-header",
     templateUrl: "./header.component.html",
     standalone: true,
-    imports: [AsyncPipe],
     styleUrls: ["./header.component.scss"],
 })
 
 export class HeaderComponent implements OnInit, OnDestroy {
-    // expose Notification type to template
-    public Notification = Notification;
-
-    public notifications: Observable<Immutable.List<Notification>>;
-
     private _serverStatusService: ServerStatusService;
 
     private _prevServerNotification: Notification | null;
@@ -37,13 +28,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
                 _streamServiceRegistry: StreamServiceRegistry,
                 private _notificationService: NotificationService) {
         this._serverStatusService = _streamServiceRegistry.serverStatusService;
-        this.notifications = this._notificationService.notifications;
         this._prevServerNotification = null;
         this._prevWaitingForRemoteScanNotification = null;
-    }
-
-    public dismiss(notif: Notification): void {
-        this._notificationService.hide(notif);
     }
 
     ngOnInit(): void {

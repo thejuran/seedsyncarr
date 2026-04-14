@@ -13,36 +13,34 @@ export class Localization {
         public static readonly STATUS_CONNECTION_WAITING = "Waiting for SeedSyncarr service to respond...";
         public static readonly STATUS_REMOTE_SCAN_WAITING = "Waiting for remote server to respond...";
         public static readonly STATUS_REMOTE_SERVER_ERROR = (error: string): string =>
-            `Lost connection to remote server. Retrying automatically. \
-             ${error ? "<br />" + error : ""}`;
+            `Lost connection to remote server. Retrying automatically.${error ? " " + error : ""}`;
 
         public static readonly NEW_VERSION_AVAILABLE = (url: string): string =>
-            `A new version of SeedSyncarr is available! \
-             Click <a href="${url}" target="blank">here</a> to grab the latest version.`;
+            `A new version of SeedSyncarr is available! Visit ${url} to grab the latest version.`;
     };
 
     static Modal = class {
         public static readonly DELETE_LOCAL_TITLE = "Delete Local File";
         public static readonly DELETE_LOCAL_MESSAGE =
-            (name: string): string => `Are you sure you want to delete <b>${name}</b> from the local server?`;
+            (name: string): string => `Are you sure you want to delete "${name}" from the local server?`;
 
         public static readonly DELETE_REMOTE_TITLE = "Delete Remote File";
         public static readonly DELETE_REMOTE_MESSAGE =
-            (name: string): string => `Are you sure you want to delete <b>${name}</b> from the remote server?`;
+            (name: string): string => `Are you sure you want to delete "${name}" from the remote server?`;
 
         // Bulk action confirmations
         public static readonly BULK_DELETE_LOCAL_TITLE = "Delete Local Files";
         public static readonly BULK_DELETE_LOCAL_MESSAGE =
             (count: number): string => {
                 const plural = count === 1 ? "" : "s";
-                return `Are you sure you want to delete <b>${count}</b> file${plural} from the local server?`;
+                return `Are you sure you want to delete ${count} file${plural} from the local server?`;
             };
 
         public static readonly BULK_DELETE_REMOTE_TITLE = "Delete Remote Files";
         public static readonly BULK_DELETE_REMOTE_MESSAGE =
             (count: number): string => {
                 const plural = count === 1 ? "" : "s";
-                return `Are you sure you want to delete <b>${count}</b> file${plural} ` +
+                return `Are you sure you want to delete ${count} file${plural} ` +
                     `from the remote server? This cannot be undone.`;
             };
     };

@@ -18,3 +18,5 @@ src/angular/dist/
 # SSH private keys
 id_rsa
 *.pem
+.aidesigner/*
+!.aidesigner/.gitkeep

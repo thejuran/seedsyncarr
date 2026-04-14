@@ -15,9 +15,10 @@ import {ViewFile} from "../../services/files/view-file";
 })
 export class TransferRowComponent {
 
+    public readonly ViewFile = ViewFile;
     @Input({ required: true }) file!: ViewFile;
 
-    private static readonly BADGE_LABELS: Record<string, string> = {
+    private static readonly BADGE_LABELS: Record<ViewFile.Status, string> = {
         [ViewFile.Status.DOWNLOADING]: "Syncing",
         [ViewFile.Status.QUEUED]: "Queued",
         [ViewFile.Status.DOWNLOADED]: "Synced",
@@ -28,7 +29,7 @@ export class TransferRowComponent {
         [ViewFile.Status.DELETED]: "Deleted",
     };
 
-    private static readonly BADGE_CLASSES: Record<string, string> = {
+    private static readonly BADGE_CLASSES: Record<ViewFile.Status, string> = {
         [ViewFile.Status.DOWNLOADING]: "badge bg-warning text-dark",
         [ViewFile.Status.QUEUED]: "badge bg-secondary",
         [ViewFile.Status.DOWNLOADED]: "badge bg-success",
@@ -40,11 +41,13 @@ export class TransferRowComponent {
     };
 
     get badgeLabel(): string {
-        return TransferRowComponent.BADGE_LABELS[this.file.status ?? ""] ?? "\u2014";
+        const status = this.file.status ?? ViewFile.Status.DEFAULT;
+        return TransferRowComponent.BADGE_LABELS[status] ?? "\u2014";
     }
 
     get badgeClass(): string {
-        return TransferRowComponent.BADGE_CLASSES[this.file.status ?? ""] ?? "badge bg-dark";
+        const status = this.file.status ?? ViewFile.Status.DEFAULT;
+        return TransferRowComponent.BADGE_CLASSES[status] ?? "badge bg-dark";
     }
 
     get isDownloading(): boolean {

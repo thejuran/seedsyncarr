@@ -42,17 +42,36 @@ export class VersionCheckService implements OnDestroy {
                     let jsonResponse;
                     let latestVersion;
                     let url;
+                    if (!reaction.data) {
+                        this._logger.warn("GitHub response had no data body");
+                        return;
+                    }
                     try {
-                        jsonResponse = JSON.parse(reaction.data!);
+                        jsonResponse = JSON.parse(reaction.data);
                         latestVersion = jsonResponse.tag_name;
                         url = jsonResponse.html_url;
                     } catch (e) {
                         this._logger.error("Unable to parse github response: %O", e);
                         return;
                     }
+                    if (typeof latestVersion !== "string" || !latestVersion) {
+                        this._logger.warn("Unexpected tag_name in GitHub response: %O", latestVersion);
+                        return;
+                    }
+                    if (typeof url !== "string" || !/^https:\/\/github\.com\//.test(url)) {
+                        this._logger.warn("Unexpected html_url in GitHub response: %O", url);
+                        return;
+                    }
                     const message = Localization.Notification.NEW_VERSION_AVAILABLE(url);
                     this._logger.debug("Latest version: ", message);
-                    if (VersionCheckService.isVersionNewer(latestVersion)) {
+                    let isNewer: boolean;
+                    try {
+                        isNewer = VersionCheckService.isVersionNewer(latestVersion);
+                    } catch (e) {
+                        this._logger.warn("tag_name is not a valid semver string: %O", latestVersion);
+                        return;
+                    }
+                    if (isNewer) {
                         const notif = new Notification({
                             level: Notification.Level.INFO,
                             dismissible: true,

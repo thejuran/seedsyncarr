@@ -29,7 +29,7 @@ export class FileSizePipe implements PipeTransform {
 
     let unit = 0;
 
-    while ( bytes >= 1024 ) {
+    while ( bytes >= 1024 && unit < this.units.length - 1 ) {
       bytes /= 1024;
       unit ++;
     }

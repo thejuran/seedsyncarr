@@ -2,8 +2,10 @@ import {Component, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, injec
 import {DatePipe, NgClass} from "@angular/common";
 import {RouterLink} from "@angular/router";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
+import {debounceTime, scan} from "rxjs/operators";
 
 import {StreamServiceRegistry} from "../../services/base/stream-service.registry";
+import {LogService} from "../../services/logs/log.service";
 import {LogRecord} from "../../services/logs/log-record";
 
 const MAX_PANE_ENTRIES = 50;
@@ -19,22 +21,29 @@ const MAX_PANE_ENTRIES = 50;
 export class DashboardLogPaneComponent implements OnInit {
     public readonly LogRecord = LogRecord;
     entries: LogRecord[] = [];
+    readonly logService: LogService;
 
     private destroyRef = inject(DestroyRef);
 
     constructor(
-        public streamRegistry: StreamServiceRegistry,
+        streamRegistry: StreamServiceRegistry,
         private cdr: ChangeDetectorRef
-    ) {}
+    ) {
+        this.logService = streamRegistry.logService;
+    }
 
     ngOnInit(): void {
-        this.streamRegistry.logService.logs
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe(record => {
-                this.entries.push(record);
-                if (this.entries.length > MAX_PANE_ENTRIES) {
-                    this.entries.shift();
-                }
+        this.logService.logs
+            .pipe(
+                takeUntilDestroyed(this.destroyRef),
+                scan((acc: LogRecord[], record) => {
+                    const next = [...acc, record];
+                    return next.length > MAX_PANE_ENTRIES ? next.slice(-MAX_PANE_ENTRIES) : next;
+                }, []),
+                debounceTime(0)
+            )
+            .subscribe(entries => {
+                this.entries = entries;
                 this.cdr.markForCheck();
             });
     }
@@ -60,10 +69,8 @@ export class DashboardLogPaneComponent implements OnInit {
             return `${hh}:${mm}:${ss}.${ms} ${this.levelBadge(e.level)} ${e.message}`;
         }).join("\n");
 
-        try {
-            navigator.clipboard.writeText(text);
-        } catch (err) {
+        void navigator.clipboard.writeText(text).catch(err => {
             console.warn("Failed to copy logs to clipboard:", err);
-        }
+        });
     }
 }

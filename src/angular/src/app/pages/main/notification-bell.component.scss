@@ -1,0 +1,132 @@
+@use '../../common/common' as *;
+
+// ============================================================================
+// Notification Bell
+// ============================================================================
+.bell-wrapper {
+    position: relative;
+}
+
+.bell-btn {
+    background: none;
+    border: none;
+    color: var(--app-muted-text);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px;
+    position: relative;
+    transition: color 0.15s ease;
+    line-height: 1;
+
+    &:hover {
+        color: var(--app-logo-color);
+    }
+}
+
+.bell-badge-dot {
+    position: absolute;
+    top: 2px;
+    right: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--app-logo-color);
+}
+
+.bell-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 320px;
+    background: var(--app-header-bg);
+    border: 1px solid var(--app-separator-color);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 500;
+    overflow: hidden;
+}
+
+.bell-dropdown-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--app-separator-color);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--app-selection-text-emphasis);
+}
+
+.bell-dropdown-body {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.bell-empty {
+    padding: 20px 14px;
+    text-align: center;
+    color: var(--app-muted-text);
+    font-size: 0.8rem;
+}
+
+.bell-notif {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--app-separator-color);
+    font-size: 0.8rem;
+    color: var(--app-selection-text-emphasis);
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    &[data-level="danger"] .bell-notif-icon {
+        color: $danger;
+    }
+
+    &[data-level="warning"] .bell-notif-icon {
+        color: $warning-text-emphasis;
+    }
+
+    &[data-level="info"] .bell-notif-icon {
+        color: var(--app-muted-text);
+    }
+
+    &[data-level="success"] .bell-notif-icon {
+        color: $success;
+    }
+}
+
+.bell-notif-icon {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.bell-notif-text {
+    flex: 1;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.bell-notif-dismiss {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--app-muted-text);
+    cursor: pointer;
+    padding: 0 2px;
+    opacity: 0.5;
+    font-size: 0.75rem;
+
+    &:hover {
+        opacity: 1;
+        color: var(--app-logo-color);
+    }
+}
+
+// Responsive adjustments below 640px
+@media (max-width: 640px) {
+    .bell-dropdown {
+        width: 280px;
+        right: -8px;
+    }
+}

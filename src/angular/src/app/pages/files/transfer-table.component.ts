@@ -3,7 +3,7 @@ import {AsyncPipe} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {Observable, BehaviorSubject, combineLatest} from "rxjs";
-import {map} from "rxjs/operators";
+import {distinctUntilChanged, map} from "rxjs/operators";
 
 import {List} from "immutable";
 
@@ -32,18 +32,20 @@ export class TransferTableComponent {
     totalPages$: Observable<number>;
     totalCount$: Observable<number>;
 
-    private segmentFilter$ = new BehaviorSubject<"all" | "active" | "errors">("all");
-    private pageSubject = new BehaviorSubject<number>(1);
+    private filterState$ = new BehaviorSubject<{segment: "all" | "active" | "errors", page: number}>({segment: "all", page: 1});
     private destroyRef = inject(DestroyRef);
 
     constructor(
         private viewFileService: ViewFileService,
         private viewFileOptionsService: ViewFileOptionsService,
     ) {
-        // Derive segmented files from filteredFiles + segment filter
+        // Derive segmented files from filteredFiles + segment (distinctUntilChanged avoids re-filtering on page-only changes)
         const segmentedFiles$ = combineLatest([
             this.viewFileService.filteredFiles,
-            this.segmentFilter$
+            this.filterState$.pipe(
+                map(s => s.segment),
+                distinctUntilChanged()
+            )
         ]).pipe(
             map(([files, segment]) => {
                 if (segment === "all") { return files; }
@@ -63,9 +65,9 @@ export class TransferTableComponent {
         );
 
         // Paged files derived from segmented + page
-        this.pagedFiles$ = combineLatest([segmentedFiles$, this.pageSubject]).pipe(
-            map(([files, page]) => {
-                const start = (page - 1) * this.pageSize;
+        this.pagedFiles$ = combineLatest([segmentedFiles$, this.filterState$]).pipe(
+            map(([files, state]) => {
+                const start = (state.page - 1) * this.pageSize;
                 return files.slice(start, start + this.pageSize).toArray();
             })
         );
@@ -93,15 +95,13 @@ export class TransferTableComponent {
 
     onSegmentChange(segment: "all" | "active" | "errors"): void {
         this.activeSegment = segment;
-        // Reset page before emitting segment to avoid stale-page intermediate slice
         this.currentPage = 1;
-        this.pageSubject.next(1);
-        this.segmentFilter$.next(segment);
+        this.filterState$.next({segment, page: 1});
     }
 
     goToPage(page: number): void {
         this.currentPage = page;
-        this.pageSubject.next(page);
+        this.filterState$.next({...this.filterState$.value, page});
     }
 
     onPrevPage(): void {

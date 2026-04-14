@@ -25,7 +25,7 @@
         <div class="progress-fill"
              [class.progress-fill--active]="isDownloading"
              [class.progress-fill--success]="file.percentDownloaded === 100"
-             [class.progress-fill--error]="file.status === 'stopped' || file.status === 'deleted'"
+             [class.progress-fill--error]="file.status === ViewFile.Status.STOPPED || file.status === ViewFile.Status.DELETED"
              [style.width.%]="file.percentDownloaded">
         </div>
       </div>

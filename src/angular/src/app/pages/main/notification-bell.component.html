@@ -1,0 +1,40 @@
+@let notifs = notifications$ | async;
+<div class="bell-wrapper">
+  <button class="bell-btn" aria-label="Notifications" (click)="toggleBell()">
+    <i class="fa fa-bell"></i>
+    @if (notifs?.size > 0) {
+      <span class="bell-badge-dot"></span>
+    }
+  </button>
+  @if (bellOpen) {
+    <div class="bell-dropdown">
+      <div class="bell-dropdown-header">
+        <span class="bell-dropdown-title">Notifications</span>
+      </div>
+      <div class="bell-dropdown-body">
+        @if (notifs?.size === 0) {
+          <div class="bell-empty">No notifications</div>
+        } @else {
+          @for (notif of (notifs ?? []); track $index) {
+            <div class="bell-notif" [attr.data-level]="notif.level">
+              <span class="bell-notif-icon" aria-hidden="true">
+                @switch (notif.level) {
+                  @case ('success') { <i class="fa fa-check-circle"></i> }
+                  @case ('danger') { <i class="fa fa-exclamation-circle"></i> }
+                  @case ('warning') { <i class="fa fa-exclamation-triangle"></i> }
+                  @default { <i class="fa fa-info-circle"></i> }
+                }
+              </span>
+              <span class="bell-notif-text">{{ notif.text }}</span>
+              @if (notif.dismissible) {
+                <button class="bell-notif-dismiss" (click)="dismissNotification(notif)" aria-label="Dismiss">
+                  <i class="fa fa-times"></i>
+                </button>
+              }
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

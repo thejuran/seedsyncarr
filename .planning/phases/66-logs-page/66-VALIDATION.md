@@ -1,9 +1,9 @@
 ---
 phase: 66
 slug: logs-page
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: verified
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-14
 ---
 
@@ -22,6 +22,8 @@ created: 2026-04-14
 | **Quick run command** | `cd src/angular && npx ng test --watch=false --browsers=ChromeHeadless` |
 | **Full suite command** | `cd src/angular && npx ng test --watch=false --browsers=ChromeHeadless` |
 | **Estimated runtime** | ~30 seconds |
+| **Test file** | `src/angular/src/app/tests/unittests/pages/logs/logs-page.component.spec.ts` |
+| **Test count** | 40 tests |
 
 ---
 
@@ -38,10 +40,10 @@ created: 2026-04-14
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 66-01-01 | 01 | 1 | LOGS-01 | — | N/A | manual | Visual inspection of segmented button group | N/A | ⬜ pending |
-| 66-01-02 | 01 | 1 | LOGS-02 | T-66-01 | Regex input sanitized before use | unit | `ng test --include=**/logs*` | ❌ W0 | ⬜ pending |
-| 66-01-03 | 01 | 1 | LOGS-03 | — | N/A | manual | Auto-scroll toggle, clear, export buttons functional | N/A | ⬜ pending |
-| 66-01-04 | 01 | 1 | LOGS-04 | — | N/A | manual | Status bar shows connection status, count, timestamp | N/A | ⬜ pending |
+| 66-01-01 | 01 | 1 | LOGS-01 | — | N/A | unit | `ng test` — tests 4-8 (level filtering ALL/INFO/WARN/ERROR/DEBUG) + levelLabel/levelRowClass/levelClass coverage | ✅ | ✅ green |
+| 66-01-02 | 01 | 1 | LOGS-02 | T-66-01 | ReDoS mitigated: try/catch + hasNestedQuantifiers + MAX_SEARCH_LENGTH=200 | unit | `ng test` — tests 9-10 (regex match, invalid regex) | ✅ | ✅ green |
+| 66-01-03 | 01 | 1 | LOGS-03 | — | Export sanitizes newlines | unit | `ng test` — tests 11-13 (clearLogs empties + resets accumulator, exportLogs blob + sanitization, toggleAutoScroll, onTerminalScroll) | ✅ | ✅ green |
+| 66-01-04 | 02 | 2 | LOGS-04 | T-66-04 | N/A (accepted) | unit | `ng test` — tests 14-16 (isConnected, lastUpdated, formatLastUpdated with 3 cases) | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -49,30 +51,36 @@ created: 2026-04-14
 
 ## Wave 0 Requirements
 
-- Existing infrastructure covers all phase requirements. Angular test framework already configured.
+- All requirements covered by existing test infrastructure. No Wave 0 additions needed.
 
 ---
 
 ## Manual-Only Verifications
 
-| Behavior | Requirement | Why Manual | Test Instructions |
-|----------|-------------|------------|-------------------|
-| Segmented button group filters log entries | LOGS-01 | Visual UI interaction | Click each level button, verify filtered display |
-| Regex search filters in real time | LOGS-02 | Visual + regex behavior | Type regex patterns, verify matching entries shown |
-| Auto-scroll toggle behavior | LOGS-03 | Scroll interaction | Toggle auto-scroll, verify behavior on new logs |
-| Clear button resets display | LOGS-03 | Visual state reset | Click clear, verify logs removed and line counter resets |
-| Export downloads .log file | LOGS-03 | Browser download trigger | Click export, verify file downloads with correct format |
-| Status bar live updates | LOGS-04 | Real-time data display | Observe status bar during active log streaming |
+*No manual-only verifications — all requirements have automated unit test coverage.*
+
+---
+
+## Validation Audit 2026-04-14
+
+| Metric | Count |
+|--------|-------|
+| Requirements | 4 (LOGS-01 through LOGS-04) |
+| Automated tests | 40 |
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+| Full suite | 534/534 green |
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** verified 2026-04-14

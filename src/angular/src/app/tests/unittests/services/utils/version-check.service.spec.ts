@@ -86,10 +86,53 @@ describe("Testing version check service", () => {
 
         // Recreate the service
         versionCheckService = createVersionCheckService();
-        subject.next(new WebReaction(true, JSON.stringify({"tag_name": "v0.0-0"}), null));
+        subject.next(new WebReaction(true, JSON.stringify({
+            "tag_name": "v0.0-0",
+            "html_url": "https://github.com/thejuran/seedsyncarr/releases/tag/v0.0-0"
+        }), null));
         tick();
 
         expect(notifService.show).toHaveBeenCalled();
+    }));
+
+    it("should not fire a notification when html_url is not a GitHub URL", fakeAsync(() => {
+        const subject = new Subject<WebReaction>();
+        sendRequestSpy!.and.returnValue(subject);
+
+        versionCheckService = createVersionCheckService();
+        subject.next(new WebReaction(true, JSON.stringify({
+            "tag_name": "v99.0.0",
+            "html_url": "https://evil.com/malicious"
+        }), null));
+        tick();
+
+        expect(notifService.show).not.toHaveBeenCalled();
+    }));
+
+    it("should not fire a notification when html_url is missing", fakeAsync(() => {
+        const subject = new Subject<WebReaction>();
+        sendRequestSpy!.and.returnValue(subject);
+
+        versionCheckService = createVersionCheckService();
+        subject.next(new WebReaction(true, JSON.stringify({
+            "tag_name": "v99.0.0"
+        }), null));
+        tick();
+
+        expect(notifService.show).not.toHaveBeenCalled();
+    }));
+
+    it("should not fire a notification when tag_name is missing", fakeAsync(() => {
+        const subject = new Subject<WebReaction>();
+        sendRequestSpy!.and.returnValue(subject);
+
+        versionCheckService = createVersionCheckService();
+        subject.next(new WebReaction(true, JSON.stringify({
+            "html_url": "https://github.com/thejuran/seedsyncarr/releases/tag/v0.0-0"
+        }), null));
+        tick();
+
+        expect(notifService.show).not.toHaveBeenCalled();
     }));
 
     it("should not fire a notification on old version", fakeAsync(() => {
@@ -101,7 +144,10 @@ describe("Testing version check service", () => {
 
         // Recreate the service
         versionCheckService = createVersionCheckService();
-        subject.next(new WebReaction(true, JSON.stringify({"tag_name": "v0.0-0"}), null));
+        subject.next(new WebReaction(true, JSON.stringify({
+            "tag_name": "v0.0-0",
+            "html_url": "https://github.com/thejuran/seedsyncarr/releases/tag/v0.0-0"
+        }), null));
         tick();
 
         expect(notifService.show).not.toHaveBeenCalled();

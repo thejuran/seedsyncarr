@@ -24,7 +24,7 @@ const LOG_PANE_TEMPLATE = `
     </div>
   </div>
   <div class="log-pane__body">
-    @if (!streamRegistry.logService.hasReceivedLogs) {
+    @if (!logService.hasReceivedLogs) {
       <div class="log-pane__spinner">
         <i class="fa fa-circle-o-notch fa-spin"></i>
       </div>

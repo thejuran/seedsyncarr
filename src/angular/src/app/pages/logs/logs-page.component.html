@@ -3,14 +3,14 @@
   <div class="toolbar-left">
     <!-- Level filter segmented group -->
     <div class="level-filter-group">
-      @for (lvl of ['ALL', 'INFO', 'WARN', 'ERROR', 'DEBUG']; track lvl) {
+      @for (lvl of LEVEL_FILTERS; track lvl) {
         <button
           class="level-btn"
           [class.level-btn--active]="activeLevel === lvl"
           [class.level-btn--warn]="lvl === 'WARN'"
           [class.level-btn--error]="lvl === 'ERROR'"
           [class.level-btn--debug]="lvl === 'DEBUG'"
-          (click)="setLevel($any(lvl))">
+          (click)="setLevel(lvl)">
           {{ lvl }}
         </button>
       }
@@ -22,6 +22,7 @@
       <input
         type="text"
         class="search-input"
+        maxlength="200"
         placeholder="Grep logs (regex supported)..."
         [ngModel]="searchInput"
         (ngModelChange)="searchInput = $event; onSearchInput($event)">
@@ -57,7 +58,7 @@
     class="terminal-viewport terminal-scroll"
     (scroll)="onTerminalScroll($event)">
     <div class="terminal-content">
-      @for (entry of filteredLogs; track $index) {
+      @for (entry of filteredLogs; track entry) {
         <div class="log-row" [ngClass]="levelRowClass(entry.level)">
           <div class="log-gutter" [ngClass]="{'log-gutter--warn': entry.level === LogRecord.Level.WARNING, 'log-gutter--error': entry.level === LogRecord.Level.ERROR || entry.level === LogRecord.Level.CRITICAL}">{{ $index + 1 }}</div>
           <div class="log-ts" [ngClass]="{'log-ts--warn': entry.level === LogRecord.Level.WARNING, 'log-ts--error': entry.level === LogRecord.Level.ERROR || entry.level === LogRecord.Level.CRITICAL}">{{ formatTimestamp(entry.time) }}</div>

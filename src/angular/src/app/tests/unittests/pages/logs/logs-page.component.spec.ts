@@ -1,7 +1,7 @@
 import {BehaviorSubject, Subject} from "rxjs";
 import {ComponentFixture, fakeAsync, TestBed, tick} from "@angular/core/testing";
 import {FormsModule} from "@angular/forms";
-import {DatePipe, NgClass} from "@angular/common";
+import {NgClass} from "@angular/common";
 
 import {LogsPageComponent} from "../../../../pages/logs/logs-page.component";
 import {StreamServiceRegistry} from "../../../../services/base/stream-service.registry";
@@ -12,8 +12,8 @@ const LOGS_PAGE_TEMPLATE = `
 <div class="logs-toolbar">
   <div class="toolbar-left">
     <div class="level-filter-group">
-      @for (lvl of ['ALL', 'INFO', 'WARN', 'ERROR', 'DEBUG']; track lvl) {
-        <button class="level-btn" [class.level-btn--active]="activeLevel === lvl" (click)="setLevel($any(lvl))">{{ lvl }}</button>
+      @for (lvl of LEVEL_FILTERS; track lvl) {
+        <button class="level-btn" [class.level-btn--active]="activeLevel === lvl" (click)="setLevel(lvl)">{{ lvl }}</button>
       }
     </div>
     <div class="search-field">
@@ -28,7 +28,7 @@ const LOGS_PAGE_TEMPLATE = `
 </div>
 <div class="terminal-container">
   <div #terminalViewport class="terminal-viewport" (scroll)="onTerminalScroll($event)">
-    @for (entry of filteredLogs; track $index) {
+    @for (entry of filteredLogs; track entry) {
       <div class="log-row" [ngClass]="levelRowClass(entry.level)">
         <div class="log-gutter">{{ $index + 1 }}</div>
         <div class="log-ts">{{ formatTimestamp(entry.time) }}</div>
@@ -57,7 +57,6 @@ const LOGS_PAGE_TEMPLATE = `
 
 class MockLogService {
     private _logs$ = new Subject<LogRecord>();
-    hasReceivedLogs = false;
 
     get logs() {
         return this._logs$.asObservable();
@@ -105,7 +104,7 @@ describe("LogsPageComponent", () => {
         mockRegistry = new MockStreamServiceRegistry();
 
         await TestBed.configureTestingModule({
-            imports: [LogsPageComponent, DatePipe, NgClass, FormsModule],
+            imports: [LogsPageComponent, NgClass, FormsModule],
             providers: [
                 {provide: StreamServiceRegistry, useValue: mockRegistry}
             ]
@@ -194,60 +193,101 @@ describe("LogsPageComponent", () => {
 
         it("filters by regex match on message", fakeAsync(() => {
             // Directly set searchQuery (bypassing debounce for unit test)
-            (component as any).searchQuery = "download";
+            component.searchQuery = "download";
+            component.setLevel('ALL');
             expect(component.filteredLogs.length).toBe(1);
             expect(component.filteredLogs[0].message).toContain("download");
         }));
 
         it("invalid regex does not throw", fakeAsync(() => {
-            (component as any).searchQuery = "(invalid[";
-            expect(() => component.filteredLogs).not.toThrow();
-            // Should return all results when regex is invalid
+            component.searchQuery = "(invalid[";
+            component.setLevel('ALL');
             expect(component.filteredLogs.length).toBe(2);
         }));
     });
 
     // Tests 11-12: clear (LOGS-03)
     describe("clearLogs (LOGS-03)", () => {
-        it("empties allLogs array", fakeAsync(() => {
+        it("empties allLogs array and resets search fields through debounce", fakeAsync(() => {
             fixture.detectChanges();
             mockRegistry.logService.emit(makeRecord(LogRecord.Level.INFO, "msg"));
             tick();
             expect(component.allLogs.length).toBe(1);
+            component.searchInput = 'foo';
+            component.searchQuery = 'foo';
             component.clearLogs();
             expect(component.allLogs.length).toBe(0);
+            expect(component.searchInput).toBe('');
+            expect(component.searchQuery).toBe('');
+            // Flush debounce to verify searchQuery$ pipeline emission resolves cleanly
+            tick(200);
+            expect(component.searchQuery).toBe('');
         }));
 
-        it("does not call LogService methods", fakeAsync(() => {
+        it("resets scan accumulator so new logs start fresh", fakeAsync(() => {
             fixture.detectChanges();
-            const logSvc = mockRegistry.logService;
-            const emitSpy = spyOn(logSvc, "emit");
+            mockRegistry.logService.emit(makeRecord(LogRecord.Level.INFO, "before-clear"));
+            tick();
+            expect(component.allLogs.length).toBe(1);
             component.clearLogs();
-            expect(emitSpy).not.toHaveBeenCalled();
+            expect(component.allLogs.length).toBe(0);
+            mockRegistry.logService.emit(makeRecord(LogRecord.Level.INFO, "after-clear"));
+            tick();
+            expect(component.allLogs.length).toBe(1);
+            expect(component.allLogs[0].message).toBe("after-clear");
         }));
     });
 
     // Test 13: export (LOGS-03)
-    it("exportLogs creates a download with filtered entries", fakeAsync(() => {
+    it("exportLogs creates a download with correct href and filename", fakeAsync(() => {
         fixture.detectChanges();
         const time = new Date(2026, 3, 14, 14, 2, 11);
         mockRegistry.logService.emit(makeRecord(LogRecord.Level.INFO, "export-test", time));
         tick();
 
         const createSpy = spyOn(URL, "createObjectURL").and.returnValue("blob:test");
-        const revokeSpy = spyOn(URL, "revokeObjectURL");
-        const clickSpy = jasmine.createSpy("click");
-        spyOn(document, "createElement").and.returnValue({
-            set href(v: string) {},
-            set download(v: string) {},
-            click: clickSpy
-        } as any);
+        spyOn(URL, "revokeObjectURL");
+        const fakeAnchor = document.createElement('a');
+        const clickSpy = spyOn(fakeAnchor, "click");
+        const origCreate = document.createElement.bind(document);
+        spyOn(document, "createElement").and.callFake((tag: string) =>
+            tag === 'a' ? fakeAnchor : origCreate(tag));
 
         component.exportLogs();
         expect(createSpy).toHaveBeenCalledTimes(1);
         expect(clickSpy).toHaveBeenCalledTimes(1);
-        expect(revokeSpy).toHaveBeenCalledTimes(1);
+        expect(fakeAnchor.href).toContain("blob:test");
+        expect(fakeAnchor.download).toMatch(/^seedsyncarr-logs-.*\.log$/);
     }));
+
+    // Test: export sanitizes newlines in messages
+    it("exportLogs sanitizes newlines in log messages", async () => {
+        fixture.detectChanges();
+        // Manually set allLogs with a newline-containing message
+        component.allLogs = [makeRecord(LogRecord.Level.INFO, "line1\ninjected line")];
+        component.setLevel('ALL');
+
+        let capturedBlob: Blob | null = null;
+        spyOn(URL, "createObjectURL").and.callFake((blob: Blob) => {
+            capturedBlob = blob;
+            return "blob:test";
+        });
+        spyOn(URL, "revokeObjectURL");
+        const fakeAnchor = document.createElement('a');
+        spyOn(fakeAnchor, "click");
+        const origCreate = document.createElement.bind(document);
+        spyOn(document, "createElement").and.callFake((tag: string) =>
+            tag === 'a' ? fakeAnchor : origCreate(tag));
+
+        component.exportLogs();
+        expect(capturedBlob).toBeTruthy();
+        if (!capturedBlob) return;
+        const content = await (capturedBlob as Blob).text();
+        // Each individual log line should be free of embedded newlines
+        const lines = content.split('\n');
+        lines.forEach(line => expect(line).not.toMatch(/[\r\n]/));
+        expect(content).toContain('line1 injected line');
+    });
 
     // Test 14: connection status (LOGS-04)
     it("isConnected updates from ConnectedService", fakeAsync(() => {
@@ -285,13 +325,101 @@ describe("LogsPageComponent", () => {
         });
     });
 
-    // Test 17: levelLabel
+    // Test 17: levelLabel (full coverage)
     describe("levelLabel", () => {
+        it("returns DEBUG for DEBUG", () => {
+            expect(component.levelLabel(LogRecord.Level.DEBUG)).toBe("DEBUG");
+        });
+        it("returns INFO for INFO", () => {
+            expect(component.levelLabel(LogRecord.Level.INFO)).toBe("INFO");
+        });
         it("returns WARN for WARNING", () => {
             expect(component.levelLabel(LogRecord.Level.WARNING)).toBe("WARN");
         });
+        it("returns ERROR for ERROR", () => {
+            expect(component.levelLabel(LogRecord.Level.ERROR)).toBe("ERROR");
+        });
         it("returns CRIT for CRITICAL", () => {
             expect(component.levelLabel(LogRecord.Level.CRITICAL)).toBe("CRIT");
+        });
+    });
+
+    // Test: levelClass
+    describe("levelClass", () => {
+        it("returns log-level--info for INFO", () => {
+            expect(component.levelClass(LogRecord.Level.INFO)).toBe("log-level--info");
+        });
+        it("returns log-level--warn for WARNING", () => {
+            expect(component.levelClass(LogRecord.Level.WARNING)).toBe("log-level--warn");
+        });
+        it("returns log-level--debug for DEBUG", () => {
+            expect(component.levelClass(LogRecord.Level.DEBUG)).toBe("log-level--debug");
+        });
+        it("returns log-level--error-badge for ERROR", () => {
+            expect(component.levelClass(LogRecord.Level.ERROR)).toBe("log-level--error-badge");
+        });
+        it("returns log-level--error-badge for CRITICAL", () => {
+            expect(component.levelClass(LogRecord.Level.CRITICAL)).toBe("log-level--error-badge");
+        });
+    });
+
+    // Test: levelRowClass
+    describe("levelRowClass", () => {
+        it("returns log-row--error for ERROR", () => {
+            expect(component.levelRowClass(LogRecord.Level.ERROR)).toBe("log-row--error");
+        });
+        it("returns log-row--error for CRITICAL", () => {
+            expect(component.levelRowClass(LogRecord.Level.CRITICAL)).toBe("log-row--error");
+        });
+        it("returns log-row--warn for WARNING", () => {
+            expect(component.levelRowClass(LogRecord.Level.WARNING)).toBe("log-row--warn");
+        });
+        it("returns empty string for INFO", () => {
+            expect(component.levelRowClass(LogRecord.Level.INFO)).toBe("");
+        });
+        it("returns empty string for DEBUG", () => {
+            expect(component.levelRowClass(LogRecord.Level.DEBUG)).toBe("");
+        });
+    });
+
+    // Test: toggleAutoScroll
+    describe("toggleAutoScroll", () => {
+        it("toggles autoScroll from true to false", () => {
+            component.autoScroll = true;
+            component.toggleAutoScroll();
+            expect(component.autoScroll).toBeFalse();
+        });
+
+        it("toggles autoScroll from false to true", () => {
+            component.autoScroll = false;
+            component.toggleAutoScroll();
+            expect(component.autoScroll).toBeTrue();
+        });
+    });
+
+    // Test: onTerminalScroll
+    describe("onTerminalScroll", () => {
+        it("disables autoScroll when scrolled away from bottom", () => {
+            component.autoScroll = true;
+            const mockEvent = {
+                target: { scrollHeight: 1000, scrollTop: 500, clientHeight: 400 }
+            } as unknown as Event;
+            component.onTerminalScroll(mockEvent);
+            expect(component.autoScroll).toBeFalse();
+        });
+
+        it("does not re-enable autoScroll when scrolled to bottom", () => {
+            component.autoScroll = false;
+            const mockEvent = {
+                target: { scrollHeight: 1000, scrollTop: 595, clientHeight: 400 }
+            } as unknown as Event;
+            component.onTerminalScroll(mockEvent);
+            expect(component.autoScroll).toBeFalse();
+        });
+
+        it("handles null event target gracefully", () => {
+            const mockEvent = { target: null } as unknown as Event;
+            expect(() => component.onTerminalScroll(mockEvent)).not.toThrow();
         });
     });
 

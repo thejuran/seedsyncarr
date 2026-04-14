@@ -16,6 +16,7 @@ import {ConnectedService} from "../../services/utils/connected.service";
 export type LevelFilter = 'ALL' | 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
 
 const MAX_LOG_ENTRIES = 5000;
+const MAX_SEARCH_LENGTH = 200;
 
 @Component({
     selector: "app-logs-page",
@@ -27,6 +28,7 @@ const MAX_LOG_ENTRIES = 5000;
 })
 export class LogsPageComponent implements OnInit {
     public readonly LogRecord = LogRecord;
+    readonly LEVEL_FILTERS: LevelFilter[] = ['ALL', 'INFO', 'WARN', 'ERROR', 'DEBUG'];
 
     allLogs: LogRecord[] = [];
     activeLevel: LevelFilter = 'ALL';
@@ -36,8 +38,12 @@ export class LogsPageComponent implements OnInit {
     isConnected = false;
     lastUpdated: Date | null = null;
 
+    private _filteredLogs: LogRecord[] = [];
     private searchQuery$ = new Subject<string>();
     private destroyRef = inject(DestroyRef);
+    private clearEpoch = 0;
+    private scanEpoch = 0;
+    private scrollTimer: ReturnType<typeof setTimeout> | null = null;
 
     @ViewChild('terminalViewport') terminalViewport!: ElementRef<HTMLDivElement>;
 
@@ -53,11 +59,19 @@ export class LogsPageComponent implements OnInit {
     }
 
     ngOnInit(): void {
-        // Accumulate log entries via scan (same pattern as DashboardLogPaneComponent)
+        this.destroyRef.onDestroy(() => {
+            if (this.scrollTimer) clearTimeout(this.scrollTimer);
+        });
+
+        // Accumulate log entries via scan; clearEpoch resets accumulator on clear
         this.logService.logs
             .pipe(
                 takeUntilDestroyed(this.destroyRef),
                 scan((acc: LogRecord[], record) => {
+                    if (this.clearEpoch !== this.scanEpoch) {
+                        this.scanEpoch = this.clearEpoch;
+                        return [record];
+                    }
                     const next = [...acc, record];
                     return next.length > MAX_LOG_ENTRIES ? next.slice(-MAX_LOG_ENTRIES) : next;
                 }, []),
@@ -66,9 +80,11 @@ export class LogsPageComponent implements OnInit {
             .subscribe(entries => {
                 this.allLogs = entries;
                 this.lastUpdated = new Date();
+                this.recomputeFilteredLogs();
                 this.cdr.markForCheck();
                 if (this.autoScroll) {
-                    setTimeout(() => this.scrollToBottom(), 0);
+                    if (this.scrollTimer) clearTimeout(this.scrollTimer);
+                    this.scrollTimer = setTimeout(() => this.scrollToBottom(), 0);
                 }
             });
 
@@ -89,31 +105,18 @@ export class LogsPageComponent implements OnInit {
             )
             .subscribe(q => {
                 this.searchQuery = q;
+                this.recomputeFilteredLogs();
                 this.cdr.markForCheck();
             });
     }
 
     get filteredLogs(): LogRecord[] {
-        let result = this.allLogs;
-
-        if (this.activeLevel !== 'ALL') {
-            result = result.filter(r => this.matchesLevel(r.level));
-        }
-
-        if (this.searchQuery.trim()) {
-            try {
-                const rx = new RegExp(this.searchQuery, 'i');
-                result = result.filter(r => rx.test(r.message) || rx.test(r.loggerName));
-            } catch {
-                // Invalid regex — show all results
-            }
-        }
-
-        return result;
+        return this._filteredLogs;
     }
 
     setLevel(level: LevelFilter): void {
         this.activeLevel = level;
+        this.recomputeFilteredLogs();
         this.cdr.markForCheck();
     }
 
@@ -130,27 +133,32 @@ export class LogsPageComponent implements OnInit {
     }
 
     onTerminalScroll(event: Event): void {
-        const el = event.target as HTMLElement;
+        const el = event.target as HTMLElement | null;
+        if (!el) return;
         const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 10;
-        if (!isAtBottom && this.autoScroll) {
+        if (this.autoScroll && !isAtBottom) {
             this.autoScroll = false;
             this.cdr.markForCheck();
         }
     }
 
     clearLogs(): void {
+        this.clearEpoch++;
         this.allLogs = [];
         this.searchInput = '';
         this.searchQuery = '';
+        this.searchQuery$.next('');
+        this.recomputeFilteredLogs();
         this.cdr.markForCheck();
     }
 
     exportLogs(): void {
+        const sanitize = (s: string) => s.replace(/[\r\n]/g, ' ');
         const lines = this.filteredLogs.map(e => {
             const d = e.time;
             const date = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
             const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
-            return `${date} ${time} - ${e.level} - ${e.loggerName} - ${e.message}`;
+            return `${date} ${time} - ${sanitize(e.level)} - ${sanitize(e.loggerName)} - ${sanitize(e.message)}`;
         }).join('\n');
 
         const blob = new Blob([lines], {type: 'text/plain'});
@@ -158,8 +166,10 @@ export class LogsPageComponent implements OnInit {
         const a = document.createElement('a');
         a.href = url;
         a.download = `seedsyncarr-logs-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.log`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
     }
 
     formatTimestamp(date: Date): string {
@@ -219,6 +229,43 @@ export class LogsPageComponent implements OnInit {
             case 'DEBUG': return level === LogRecord.Level.DEBUG;
             default:      return true;
         }
+    }
+
+    private recomputeFilteredLogs(): void {
+        let result = this.allLogs;
+
+        if (this.activeLevel !== 'ALL') {
+            result = result.filter(r => this.matchesLevel(r.level));
+        }
+
+        if (this.searchQuery.trim()) {
+            const safe = this.searchQuery.slice(0, MAX_SEARCH_LENGTH);
+            if (this.hasNestedQuantifiers(safe)) {
+                // Reject catastrophic patterns — fall back to plain string search
+                const lower = safe.toLowerCase();
+                result = result.filter(r =>
+                    r.message.toLowerCase().includes(lower) ||
+                    r.loggerName.toLowerCase().includes(lower));
+            } else {
+                try {
+                    const rx = new RegExp(safe, 'i');
+                    result = result.filter(r => rx.test(r.message) || rx.test(r.loggerName));
+                } catch {
+                    // Invalid regex — show all results
+                }
+            }
+        }
+
+        this._filteredLogs = result;
+    }
+
+    private hasNestedQuantifiers(pattern: string): boolean {
+        // Detect patterns like (x+)+, (x*)+, (x+)*, (x{n})+, (a|b+)+, ((a+))+ that cause catastrophic backtracking
+        if (/\([^)]*[+*}][^)]*\)\s*[+*{]/.test(pattern)) { return true; }
+        if (/[+*]\s*[+*]/.test(pattern)) { return true; }
+        // Deeply nested groups with inner quantifier: ((a+))+
+        if (/\((?:[^()]*\([^)]*[+*}][^)]*\)[^()]*)+\)\s*[+*{]/.test(pattern)) { return true; }
+        return false;
     }
 
     private scrollToBottom(): void {
