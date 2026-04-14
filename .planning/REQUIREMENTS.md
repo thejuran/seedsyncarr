@@ -81,44 +81,44 @@ Port AIDesigner design artifacts into Angular codebase. Triggarr-level visual po
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NAV-01 | — | Pending |
-| NAV-02 | — | Pending |
-| NAV-03 | — | Pending |
-| NAV-04 | — | Pending |
-| DASH-01 | — | Pending |
-| DASH-02 | — | Pending |
-| DASH-03 | — | Pending |
-| DASH-04 | — | Pending |
-| DASH-05 | — | Pending |
-| DASH-06 | — | Pending |
-| DASH-07 | — | Pending |
-| DASH-08 | — | Pending |
-| DASH-09 | — | Pending |
-| DASH-10 | — | Pending |
-| DASH-11 | — | Pending |
-| DASH-12 | — | Pending |
-| DASH-13 | — | Pending |
-| DASH-14 | — | Pending |
-| SETT-01 | — | Pending |
-| SETT-02 | — | Pending |
-| SETT-03 | — | Pending |
-| SETT-04 | — | Pending |
-| SETT-05 | — | Pending |
-| SETT-06 | — | Pending |
-| LOGS-01 | — | Pending |
-| LOGS-02 | — | Pending |
-| LOGS-03 | — | Pending |
-| LOGS-04 | — | Pending |
-| ABUT-01 | — | Pending |
-| ABUT-02 | — | Pending |
-| ABUT-03 | — | Pending |
-| ABUT-04 | — | Pending |
+| NAV-01 | Phase 62 | Pending |
+| NAV-02 | Phase 62 | Pending |
+| NAV-03 | Phase 62 | Pending |
+| NAV-04 | Phase 62 | Pending |
+| DASH-01 | Phase 63 | Pending |
+| DASH-02 | Phase 63 | Pending |
+| DASH-03 | Phase 63 | Pending |
+| DASH-04 | Phase 63 | Pending |
+| DASH-05 | Phase 63 | Pending |
+| DASH-06 | Phase 63 | Pending |
+| DASH-07 | Phase 63 | Pending |
+| DASH-08 | Phase 63 | Pending |
+| DASH-09 | Phase 63 | Pending |
+| DASH-10 | Phase 63 | Pending |
+| DASH-11 | Phase 63 | Pending |
+| DASH-12 | Phase 64 | Pending |
+| DASH-13 | Phase 64 | Pending |
+| DASH-14 | Phase 64 | Pending |
+| SETT-01 | Phase 65 | Pending |
+| SETT-02 | Phase 65 | Pending |
+| SETT-03 | Phase 65 | Pending |
+| SETT-04 | Phase 65 | Pending |
+| SETT-05 | Phase 65 | Pending |
+| SETT-06 | Phase 65 | Pending |
+| LOGS-01 | Phase 66 | Pending |
+| LOGS-02 | Phase 66 | Pending |
+| LOGS-03 | Phase 66 | Pending |
+| LOGS-04 | Phase 66 | Pending |
+| ABUT-01 | Phase 67 | Pending |
+| ABUT-02 | Phase 67 | Pending |
+| ABUT-03 | Phase 67 | Pending |
+| ABUT-04 | Phase 67 | Pending |
 
 **Coverage:**
 - v1.1.0 requirements: 32 total
-- Mapped to phases: 0
-- Unmapped: 32 ⚠️
+- Mapped to phases: 32
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-13*
-*Last updated: 2026-04-13 after initial definition*
+*Last updated: 2026-04-13 after roadmap creation — all 32 requirements mapped to Phases 62-67*
