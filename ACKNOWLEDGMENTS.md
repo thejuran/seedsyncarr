@@ -21,7 +21,7 @@ The application icons are from [Icons8](https://icons8.com/):
 
 ### Open Source Libraries
 
-SeedSyncarr is built with many excellent open source projects. See `package.json` and `pyproject.toml` for the full list of dependencies.
+SeedSyncarr is built with many excellent open source projects. See `package.json` and `src/python/pyproject.toml` for the full list of dependencies.
 
 Key technologies:
 - [Angular](https://angular.io/) - Frontend framework
@@ -31,4 +31,4 @@ Key technologies:
 
 ## License
 
-SeedSyncarr is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+SeedSyncarr is licensed under the Apache License 2.0. See the [LICENSE](LICENSE.txt) file for details.

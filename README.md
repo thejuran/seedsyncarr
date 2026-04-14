@@ -99,3 +99,39 @@ See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 ## License
 
 Apache License 2.0 — see [LICENSE.txt](LICENSE.txt).
+
+## Usage Examples
+
+**Sync only TV shows and movies using AutoQueue patterns**
+
+In Settings, enable AutoQueue and turn on "Restrict to patterns". Add glob patterns to match
+only the directories you want synced automatically:
+
+```
+TV Shows/*
+Movies/*
+```
+
+Any new file on the remote server whose path matches a pattern is queued for sync without
+manual intervention. Files that do not match are left on the remote server untouched.
+
+**Trigger a Sonarr import after a completed download**
+
+In Settings, enable Sonarr and enter your Sonarr URL and API key. SeedSyncarr displays a
+webhook URL in the form:
+
+```
+http://<seedsyncarr-address>:8800/server/webhook/sonarr
+```
+
+Add this URL as a webhook in Sonarr (Settings > Connect > Webhook) with the "On Import"
+event selected. When SeedSyncarr finishes transferring a file that Sonarr is tracking,
+Sonarr receives the webhook and imports the episode into your library automatically.
+The same pattern applies to Radarr using the `/server/webhook/radarr` endpoint.
+
+**Automatically clean up after import**
+
+Enable Post-Import Pruning in Settings. Once Sonarr or Radarr confirms an import, SeedSyncarr
+waits for the configured safety delay (default: 60 seconds) and then deletes the local copy
+from the downloads directory. Enable dry-run mode first to verify which files would be removed
+before committing to automatic deletion.
