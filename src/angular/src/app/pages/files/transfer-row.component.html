@@ -1,0 +1,45 @@
+<td class="cell-name" [title]="file.name">
+  <span class="file-name">{{ file.name }}</span>
+</td>
+<td class="cell-status">
+  <span [class]="badgeClass">{{ badgeLabel }}</span>
+</td>
+<td class="cell-progress">
+  @if (file.percentDownloaded != null && file.percentDownloaded < 100) {
+    <div class="d-flex align-items-center gap-2">
+      <div class="progress flex-grow-1" style="height: 6px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated"
+             [class.bg-warning]="isDownloading"
+             [class.bg-secondary]="!isDownloading"
+             role="progressbar"
+             [style.width.%]="file.percentDownloaded"
+             [attr.aria-valuenow]="file.percentDownloaded"
+             aria-valuemin="0"
+             aria-valuemax="100">
+        </div>
+      </div>
+      <span class="progress-pct">{{ file.percentDownloaded }}%</span>
+    </div>
+  } @else if (file.percentDownloaded === 100) {
+    <span class="text-muted-soft">Complete</span>
+  } @else {
+    <span class="text-muted-soft">&mdash;</span>
+  }
+</td>
+<td class="cell-speed">
+  @if (isDownloading && file.downloadingSpeed) {
+    {{ file.downloadingSpeed | fileSize:1 }}/s
+  } @else {
+    <span class="text-muted-soft">&mdash;</span>
+  }
+</td>
+<td class="cell-eta">
+  @if (isDownloading && file.eta) {
+    {{ file.eta | eta }}
+  } @else {
+    <span class="text-muted-soft">&mdash;</span>
+  }
+</td>
+<td class="cell-size">
+  {{ file.remoteSize | fileSize:1 }}
+</td>

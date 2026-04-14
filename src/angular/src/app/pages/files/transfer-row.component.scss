@@ -1,0 +1,61 @@
+@use '../../common/common' as *;
+
+:host {
+  display: table-row;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba($primary, 0.04);
+  }
+}
+
+td {
+  padding: 0.55rem 0.75rem;
+  vertical-align: middle;
+  border: none;
+  font-size: 0.85rem;
+}
+
+.cell-name {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-name {
+  color: $body-color-dark;
+}
+
+.cell-status {
+  .badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.25em 0.6em;
+    letter-spacing: 0.02em;
+  }
+}
+
+.progress {
+  border-radius: 3px;
+  background: rgba($secondary, 0.1);
+}
+
+.progress-pct {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: $secondary;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.cell-speed,
+.cell-eta,
+.cell-size {
+  white-space: nowrap;
+  color: rgba($body-color-dark, 0.75);
+}
+
+.text-muted-soft {
+  color: rgba($secondary, 0.4);
+}
