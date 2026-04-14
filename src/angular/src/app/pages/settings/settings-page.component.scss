@@ -60,6 +60,12 @@
             }
         }
 
+        .option-separator {
+            height: 1px;
+            background: rgba(62, 74, 56, 0.50);
+            margin: 0 16px;
+        }
+
         .settings-card-body--grid-2col {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -422,6 +428,26 @@
                 font-size: 120%;
                 font-weight: 700;
             }
+        }
+    }
+
+    .option-with-hint {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+
+        .option-with-hint-field {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .option-hint-label {
+            flex-shrink: 0;
+            width: 60px;
+            text-align: right;
+            padding-top: 28px;
+            font-size: 0.85rem;
+            color: var(--app-muted-text);
         }
     }
 

@@ -27,10 +27,28 @@
 
       <!-- LEFT COLUMN: General Options, Remote Server, File Discovery, Archive Operations -->
 
-      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
-      <ng-container
-        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_OTHER">
-      </ng-container>
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <i class="fa fa-sliders"></i>
+          <span>General Options</span>
+        </div>
+        <div class="settings-card-body settings-card-body--separated">
+          @for (option of OPTIONS_CONTEXT_OTHER.options; track option.label; let last = $last) {
+            <div>
+              <app-option
+                [type]="option.type"
+                [label]="option.label"
+                [description]="option.description"
+                [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
+              </app-option>
+            </div>
+            @if (!last) {
+              <div class="option-separator"></div>
+            }
+          }
+        </div>
+      </div>
 
       <div class="settings-card">
         <div class="settings-card-header settings-card-header--server">
@@ -83,10 +101,30 @@
         </div>
       </div>
 
-      <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
-      <ng-container
-        *ngTemplateOutlet="optionsList;context:OPTIONS_CONTEXT_DISCOVERY">
-      </ng-container>
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <i class="fa fa-search"></i>
+          <span>File Discovery Polling</span>
+        </div>
+        <div class="settings-card-body">
+          @for (option of OPTIONS_CONTEXT_DISCOVERY.options; track option.label) {
+            <div class="option-with-hint">
+              <div class="option-with-hint-field">
+                <app-option
+                  [type]="option.type"
+                  [label]="option.label"
+                  [description]="option.description"
+                  [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                  (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
+                </app-option>
+              </div>
+              <div class="option-hint-label">
+                {{formatMs((config | async)?.get(option.valuePath[0])?.get(option.valuePath[1]))}}
+              </div>
+            </div>
+          }
+        </div>
+      </div>
 
       <!--suppress HtmlUnknownAttribute, UnnecessaryLabelJS -->
       <ng-container
