@@ -1,7 +1,7 @@
 <nav id="top-nav">
   <div class="nav-inner">
     <div class="nav-brand">
-      <span class="brand-text">SeedSyncarr</span>
+      <span class="brand-text">SeedSync<span class="brand-arr">arr</span></span>
       <span class="brand-version">v{{version}}</span>
     </div>
     <div class="nav-links">
@@ -13,6 +13,12 @@
           {{routeInfo.name}}
         </a>
       }
+    </div>
+    <div class="nav-right">
+      <div class="connection-badge" [class.connected]="connected$ | async" [class.disconnected]="!(connected$ | async)">
+        <span class="status-dot"></span>
+        <span class="status-text">{{ (connected$ | async) ? 'Connected' : 'Disconnected' }}</span>
+      </div>
     </div>
   </div>
 </nav>

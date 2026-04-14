@@ -1,7 +1,8 @@
 import {AfterViewInit, Component, ElementRef, OnInit, OnDestroy, ViewChild} from "@angular/core";
+import {AsyncPipe} from "@angular/common";
 import {NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet} from "@angular/router";
 
-import {Subject} from "rxjs";
+import {Observable, Subject} from "rxjs";
 import {takeUntil} from "rxjs/operators";
 import {ROUTE_INFOS} from "../../routes";
 
@@ -10,6 +11,7 @@ const { version: appVersion } = require("../../../../package.json");
 
 import {DomService} from "../../services/utils/dom.service";
 import {ToastService, Toast} from "../../services/utils/toast.service";
+import {StreamServiceRegistry} from "../../services/base/stream-service.registry";
 import {HeaderComponent} from "./header.component";
 
 @Component({
@@ -17,7 +19,7 @@ import {HeaderComponent} from "./header.component";
     templateUrl: "./app.component.html",
     styleUrls: ["./app.component.scss"],
     standalone: true,
-    imports: [RouterOutlet, RouterLink, RouterLinkActive, HeaderComponent]
+    imports: [RouterOutlet, RouterLink, RouterLinkActive, HeaderComponent, AsyncPipe]
 })
 export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild("topHeader", {static: false}) topHeader!: ElementRef;
@@ -25,13 +27,16 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     routeInfos = ROUTE_INFOS;
     version: string = appVersion;
     toasts: Toast[] = [];
+    connected$!: Observable<boolean>;
 
     private destroy$ = new Subject<void>();
     private _resizeObserver!: ResizeObserver;
 
     constructor(private router: Router,
                 private _domService: DomService,
-                private _toastService: ToastService) {
+                private _toastService: ToastService,
+                private _streamServiceRegistry: StreamServiceRegistry) {
+        this.connected$ = this._streamServiceRegistry.connectedService.connected;
     }
 
     ngOnInit(): void {
