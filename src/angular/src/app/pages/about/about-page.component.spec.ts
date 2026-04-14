@@ -55,9 +55,10 @@ describe("AboutPageComponent", () => {
     it("should display App Version row with live value", () => {
         const rows = el.querySelectorAll(".sysinfo-row");
         expect(rows.length).withContext("sysinfo rows").toBeGreaterThanOrEqual(7);
-        const firstLabel = rows[0]?.querySelector(".sysinfo-label");
-        const firstValue = rows[0]?.querySelector(".sysinfo-value");
+        const firstLabel = rows[0].querySelector(".sysinfo-label");
+        const firstValue = rows[0].querySelector(".sysinfo-value");
         expect(firstLabel).withContext("first .sysinfo-label").not.toBeNull();
+        expect(firstValue).withContext("first .sysinfo-value").not.toBeNull();
         expect(firstLabel!.textContent!.trim()).toBe("APP VERSION");
         expect(firstValue!.textContent).toContain(component.version);
     });
@@ -65,7 +66,7 @@ describe("AboutPageComponent", () => {
     it("should display Angular version in Frontend Core row", () => {
         const rows = el.querySelectorAll(".sysinfo-row");
         expect(rows.length).withContext("sysinfo rows").toBeGreaterThanOrEqual(2);
-        const secondValue = rows[1]?.querySelector(".sysinfo-value");
+        const secondValue = rows[1].querySelector(".sysinfo-value");
         expect(secondValue).withContext("second .sysinfo-value").not.toBeNull();
         expect(secondValue!.textContent).toContain(component.angularVersion);
     });
@@ -75,7 +76,7 @@ describe("AboutPageComponent", () => {
         expect(rows.length).withContext("sysinfo rows").toBeGreaterThanOrEqual(6);
         // Python Version (index 2), Host OS (3), Uptime (4), Process ID (5)
         for (const idx of [2, 3, 4, 5]) {
-            const value = rows[idx]?.querySelector(".sysinfo-value");
+            const value = rows[idx].querySelector(".sysinfo-value");
             expect(value).withContext(`row ${idx} .sysinfo-value`).not.toBeNull();
             expect(value!.textContent!.trim()).toMatch(/^(\u2014|—)$/);
         }
@@ -84,7 +85,7 @@ describe("AboutPageComponent", () => {
     it("should show config path as ~/.seedsyncarr", () => {
         const rows = el.querySelectorAll(".sysinfo-row");
         expect(rows.length).withContext("sysinfo rows").toBeGreaterThanOrEqual(7);
-        const configValue = rows[6]?.querySelector(".sysinfo-value");
+        const configValue = rows[6].querySelector(".sysinfo-value");
         expect(configValue).withContext("config row .sysinfo-value").not.toBeNull();
         expect(configValue!.textContent!.trim()).toBe("~/.seedsyncarr");
     });

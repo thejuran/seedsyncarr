@@ -25,7 +25,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild("topHeader", {static: false}) topHeader!: ElementRef;
 
     routeInfos = ROUTE_INFOS;
-    version: string = APP_VERSION;
+    readonly version: string = APP_VERSION;
     toasts: Toast[] = [];
     connected$: Observable<boolean>;
 
