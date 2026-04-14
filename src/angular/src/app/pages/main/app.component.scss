@@ -55,12 +55,12 @@
     font-size: 1.25rem;
     font-weight: 600;
     letter-spacing: -0.025em;
-    color: #e0e8d6;
+    color: var(--app-selection-text-emphasis);
     margin: 0;
     line-height: 1;
 
     .brand-arr {
-        color: #c49a4a;
+        color: var(--app-logo-color);
     }
 }
 
@@ -99,11 +99,26 @@
     align-items: center;
     gap: 8px;
     padding: 8px 0;
+    position: relative;
     transition: color 0.15s ease;
 
     i {
         font-size: 1.125rem;
         transition: color 0.15s ease;
+    }
+
+    // Active underline indicator — fades in/out via opacity transition
+    &::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: var(--app-logo-color);
+        border-radius: 2px 2px 0 0;
+        opacity: 0;
+        transition: opacity 0.15s ease;
     }
 
     &:hover {
@@ -113,16 +128,8 @@
     &.active {
         color: #e0e8d6;
 
-        // Active underline indicator
         &::after {
-            content: '';
-            position: absolute;
-            bottom: -13px;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: #c49a4a;
-            border-radius: 2px 2px 0 0;
+            opacity: 1;
         }
     }
 }
@@ -168,7 +175,7 @@
 
     .connected & {
         background: #59a362;
-        animation: status-pulse 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1);
+        animation: status-pulse 2s infinite;
     }
 
     .disconnected & {
