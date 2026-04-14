@@ -61,7 +61,7 @@ describe("AppComponent", () => {
                        [class.connected]="connected"
                        [class.disconnected]="!connected">
                     <span class="status-dot"></span>
-                    <span class="status-text">{{ connected ? 'Connected' : 'Disconnected' }}</span>
+                    <span class="status-text">{{ connected ? 'Connection Stable' : 'Disconnected' }}</span>
                   </div>
                 </div>
               </div>
@@ -100,7 +100,7 @@ describe("AppComponent", () => {
             expect(statusText.textContent.trim()).toBe("Disconnected");
         });
 
-        it("should show 'Connected' when server is connected", () => {
+        it("should show 'Connection Stable' when server is connected", () => {
             connectedSubject.next(true);
             fixture.detectChanges();
 
@@ -110,7 +110,7 @@ describe("AppComponent", () => {
             expect(badge.classList.contains("disconnected")).toBeFalse();
 
             const statusText = fixture.nativeElement.querySelector(".status-text");
-            expect(statusText.textContent.trim()).toBe("Connected");
+            expect(statusText.textContent.trim()).toBe("Connection Stable");
         });
 
         it("should render status dot element", () => {
