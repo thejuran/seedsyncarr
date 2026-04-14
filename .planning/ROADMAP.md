@@ -418,7 +418,10 @@ Plans:
   4. The AutoQueue card shows the existing pattern list inline with working add and remove controls
   5. Sonarr and Radarr cards display a read-only webhook URL field with a working copy-to-clipboard button
   6. A floating save button appears fixed at the bottom-right of the viewport and submits all pending changes
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 65-01-PLAN.md -- Masonry grid layout, card header restructure with icons, toggle switch restyle
+- [ ] 65-02-PLAN.md -- Brand-colored Sonarr/Radarr/AutoDelete cards, webhook copy buttons, floating save bar
 **UI hint**: yes
 
 ### Phase 66: Logs Page
@@ -430,7 +433,10 @@ Plans:
   2. A search field accepts regex input and filters visible log entries in real time
   3. Auto-scroll toggle, clear, and export-as-.log buttons are present and functional
   4. A status bar footer shows the current connection status, total log entry count, and last-updated time
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 65-01-PLAN.md -- Masonry grid layout, card header restructure with icons, toggle switch restyle
+- [ ] 65-02-PLAN.md -- Brand-colored Sonarr/Radarr/AutoDelete cards, webhook copy buttons, floating save bar
 **UI hint**: yes
 
 ### Phase 67: About Page
@@ -442,7 +448,10 @@ Plans:
   2. A system info table displays key-value rows for Python version, Angular version, OS, uptime, PID, and config path
   3. A grid of link cards (GitHub, Docs, Report Issue, Changelog) renders with hover-to-amber color transitions
   4. A license badge and copyright footer appear at the bottom of the page
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 65-01-PLAN.md -- Masonry grid layout, card header restructure with icons, toggle switch restyle
+- [ ] 65-02-PLAN.md -- Brand-colored Sonarr/Radarr/AutoDelete cards, webhook copy buttons, floating save bar
 **UI hint**: yes
 
 ## Progress
@@ -476,11 +485,11 @@ Plans:
 | 62. Nav Bar Foundation | v1.1.0 | 0/2 | Not started | - |
 | 63. Dashboard — Stats Strip & Transfer Table | v1.1.0 | 0/2 | Not started | - |
 | 64. Dashboard — Log Pane | v1.1.0 | 0/1 | Not started | - |
-| 65. Settings Page | v1.1.0 | 0/? | Not started | - |
+| 65. Settings Page | v1.1.0 | 0/2 | Not started | - |
 | 66. Logs Page | v1.1.0 | 0/? | Not started | - |
 | 67. About Page | v1.1.0 | 0/? | Not started | - |
 
 ---
 
-*Last updated: 2026-04-14 — Phase 64 plan created (1 plan in 1 wave)*
+*Last updated: 2026-04-14 — Phase 65 plan created (2 plans in 2 waves)*
 *Phases 62-67: v1.1.0 UI Redesign — Triggarr Style*
