@@ -38,9 +38,18 @@ input[type="password"] {
 
 .form-toggle {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
+    justify-content: space-between;
     gap: 10px;
     padding: 6px 16px;
+
+    .toggle-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+        min-width: 0;
+    }
 
     .toggle-label {
         position: relative;
@@ -48,7 +57,7 @@ input[type="password"] {
         align-items: center;
         cursor: pointer;
         flex-shrink: 0;
-        margin-top: 2px;
+        width: auto;
         margin-bottom: 0;
     }
 
@@ -98,12 +107,6 @@ input[type="password"] {
     .toggle-input:disabled + .toggle-track {
         opacity: 0.5;
         cursor: not-allowed;
-    }
-
-    .toggle-text {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
     }
 }
 

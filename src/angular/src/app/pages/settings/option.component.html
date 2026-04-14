@@ -20,6 +20,12 @@
   <!-- Checkbox (Toggle Switch) -->
   @if (type == OptionType.Checkbox) {
     <div class="form-toggle" [class.form-toggle--compact]="compact">
+      <div class="toggle-text">
+        <span class="name">{{label}}</span>
+        @if (description) {
+          <span class="description">{{description}}</span>
+        }
+      </div>
       <label class="toggle-label">
         <input
           type="checkbox"
@@ -29,12 +35,6 @@
           (ngModelChange)="onChange($event)" />
         <div class="toggle-track"></div>
       </label>
-      <div class="toggle-text">
-        <span class="name">{{label}}</span>
-        @if (description) {
-          <span class="description">{{description}}</span>
-        }
-      </div>
     </div>
   }
 
