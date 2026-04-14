@@ -262,6 +262,17 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
         });
     }
 
+    formatMs(val: unknown): string {
+        const ms = Number(val);
+        if (!ms || isNaN(ms)) return '';
+        if (ms >= 60000) {
+            const mins = Math.round(ms / 60000);
+            return mins === 1 ? '1 min' : `${mins} mins`;
+        }
+        const secs = Math.round(ms / 1000);
+        return secs === 1 ? '1 sec' : `${secs} sec`;
+    }
+
     onCommandRestart(): void {
         this._commandService.restart().pipe(takeUntil(this.destroy$)).subscribe({
             next: reaction => {
