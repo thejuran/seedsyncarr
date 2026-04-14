@@ -1,68 +1,182 @@
 @use '../../common/common' as *;
 
+// ============================================================================
+// Stats Strip — 4-column grid matching design spec
+// ============================================================================
 .stats-strip {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 16px;
   padding: 0;
-}
 
-.stat-card {
-  background: rgba($primary-dark-color, 0.6);
-  border: 1px solid rgba($secondary, 0.15);
-  border-radius: 0.75rem;
-  padding: 1rem 1.25rem;
-  height: 100%;
-  transition: border-color 0.2s ease;
-
-  &:hover {
-    border-color: rgba($primary, 0.3);
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
+// ============================================================================
+// Stat Card
+// ============================================================================
+.stat-card {
+  background: #222a20;
+  border: 1px solid #3e4a38;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-color: rgba(62, 74, 56, 0.8);
+  }
+}
+
+// Watermark icon — large faded icon in top-right
+.stat-watermark {
+  position: absolute;
+  right: -16px;
+  top: -16px;
+  font-size: 7rem;
+  color: rgba(44, 54, 41, 0.2);
+  pointer-events: none;
+  transition: color 0.2s ease;
+  line-height: 1;
+
+  .stat-card:hover & {
+    color: rgba(44, 54, 41, 0.3);
+  }
+}
+
+// ============================================================================
+// Header row: icon + label
+// ============================================================================
 .stat-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: 8px;
+  position: relative;
 }
 
 .stat-icon {
-  color: $primary;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
+
+  &--amber {
+    color: #c49a4a;
+  }
+
+  &--success {
+    color: #59a362;
+  }
+
+  &--secondary {
+    color: #9aaa8a;
+  }
 }
 
 .stat-label {
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: $secondary;
+  letter-spacing: 0.06em;
+  color: #9aaa8a;
+}
+
+// ============================================================================
+// Value row: large number + unit
+// ============================================================================
+.stat-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+  position: relative;
 }
 
 .stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: $body-color-dark;
+  font-size: 1.875rem;
+  font-weight: 300;
+  color: #e0e8d6;
   line-height: 1.2;
 }
 
+.stat-unit {
+  font-size: 0.875rem;
+  color: #9aaa8a;
+  font-family: 'JetBrains Mono', $font-family-monospace;
+}
+
+// ============================================================================
+// Progress bar (Remote/Local storage cards)
+// ============================================================================
+.stat-progress-wrap {
+  margin-top: 8px;
+  position: relative;
+}
+
+.stat-progress-track {
+  width: 100%;
+  height: 4px;
+  background: #151a14;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.stat-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+
+  &--amber {
+    background: #c49a4a;
+  }
+
+  &--secondary {
+    background: #9aaa8a;
+  }
+}
+
+// ============================================================================
+// Sub text (Download Speed: Peak line)
+// ============================================================================
 .stat-sub {
-  font-size: 0.75rem;
-  color: rgba($secondary, 0.7);
-  margin-top: 0.125rem;
+  font-size: 10px;
+  color: #9aaa8a;
+  font-family: 'JetBrains Mono', $font-family-monospace;
+  margin-top: auto;
+  position: relative;
 }
 
-.stat-progress {
-  border-radius: 2px;
-  background: rgba($secondary, 0.1);
-}
-
+// ============================================================================
+// Badges (Active Tasks card)
+// ============================================================================
 .stat-badges {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 8px;
+  margin-top: auto;
+  position: relative;
 
   .badge {
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 0.25em 0.5em;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .badge-dl {
+    background: rgba(209, 140, 52, 0.1);
+    border: 1px solid rgba(209, 140, 52, 0.2);
+    color: #d18c34;
+  }
+
+  .badge-queued {
+    background: #2c3629;
+    border: 1px solid #3e4a38;
+    color: #9aaa8a;
   }
 }

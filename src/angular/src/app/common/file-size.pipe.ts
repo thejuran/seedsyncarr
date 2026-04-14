@@ -23,7 +23,7 @@ export class FileSizePipe implements PipeTransform {
     "PB"
   ];
 
-  transform(bytes: number | null | undefined = 0, precision: number = 2 ): string {
+  transform(bytes: number | null | undefined = 0, precision: number = 2, part?: "value" | "unit" ): string {
     if (bytes == null) { bytes = 0; }
     if ( isNaN( parseFloat( String(bytes) )) || ! isFinite( bytes ) ) { return "?"; }
 
@@ -34,6 +34,10 @@ export class FileSizePipe implements PipeTransform {
       unit ++;
     }
 
-    return Number(bytes.toPrecision( + precision )) + " " + this.units[ unit ];
+    const safePrecision = Math.max(1, +precision);
+    const val = Number(bytes.toPrecision(safePrecision));
+    if (part === "value") { return String(val); }
+    if (part === "unit") { return this.units[ unit ]; }
+    return val + " " + this.units[ unit ];
   }
 }

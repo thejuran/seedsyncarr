@@ -52,7 +52,12 @@ export class DashboardStatsService implements OnDestroy {
                 const totalSpeed = downloading.reduce(
                     (sum, f) => sum + (f.downloadingSpeed ?? 0), 0
                 );
-                this._peakSpeed = Math.max(this._peakSpeed, totalSpeed);
+                // Reset peak only when no files are actively downloading (not on transient stalls)
+                if (downloading.size === 0) {
+                    this._peakSpeed = 0;
+                } else {
+                    this._peakSpeed = Math.max(this._peakSpeed, totalSpeed);
+                }
 
                 const remoteTrackedBytes = files.reduce(
                     (sum, f) => sum + (f.remoteSize ?? 0), 0

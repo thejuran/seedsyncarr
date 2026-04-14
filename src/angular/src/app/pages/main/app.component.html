@@ -1,63 +1,39 @@
 <nav id="top-nav">
   <div class="nav-inner">
-    <div class="nav-brand">
-      <span class="brand-text">SeedSync<span class="brand-arr">arr</span></span>
-      <span class="brand-version">v{{version}}</span>
-    </div>
-    <div class="nav-links">
-      @for (routeInfo of routeInfos; track routeInfo.path) {
-        <a
-          class="nav-link"
-          routerLink="{{routeInfo.path}}"
-          routerLinkActive="active">
-          {{routeInfo.name}}
-        </a>
-      }
-    </div>
-    <div class="nav-right">
-      <div class="connection-badge" [class.connected]="connected$ | async" [class.disconnected]="!(connected$ | async)">
-        <span class="status-dot"></span>
-        <span class="status-text">{{ (connected$ | async) ? 'Connected' : 'Disconnected' }}</span>
+    <div class="nav-left">
+      <div class="nav-brand">
+        <div class="brand-icon-box">
+          <i class="fa fa-exchange"></i>
+        </div>
+        <h1 class="brand-text">SeedSync<span class="brand-arr">arr</span></h1>
+        <span class="brand-version">v{{version}}</span>
       </div>
-      <div class="bell-wrapper" (click)="toggleBell($event)">
-        <button class="bell-btn" aria-label="Notifications">
-          <i class="fa fa-bell"></i>
-          @if ((notifications$ | async)?.size > 0) {
-            <span class="bell-badge-dot"></span>
-          }
-        </button>
-        @if (bellOpen) {
-          <div class="bell-dropdown" (click)="$event.stopPropagation()">
-            <div class="bell-dropdown-header">
-              <span class="bell-dropdown-title">Notifications</span>
-            </div>
-            <div class="bell-dropdown-body">
-              @if ((notifications$ | async)?.size === 0) {
-                <div class="bell-empty">No notifications</div>
-              } @else {
-                @for (notif of notifications$ | async; track notif.timestamp) {
-                  <div class="bell-notif" [attr.data-level]="notif.level">
-                    <span class="bell-notif-icon" aria-hidden="true">
-                      @switch (notif.level) {
-                        @case ('success') { <i class="fa fa-check-circle"></i> }
-                        @case ('danger') { <i class="fa fa-exclamation-circle"></i> }
-                        @case ('warning') { <i class="fa fa-exclamation-triangle"></i> }
-                        @default { <i class="fa fa-info-circle"></i> }
-                      }
-                    </span>
-                    <span class="bell-notif-text" [innerHTML]="notif.text"></span>
-                    @if (notif.dismissible) {
-                      <button class="bell-notif-dismiss" (click)="dismissNotification(notif)" aria-label="Dismiss">
-                        <i class="fa fa-times"></i>
-                      </button>
-                    }
-                  </div>
-                }
-              }
-            </div>
-          </div>
+
+      <ul class="nav-links">
+        @for (routeInfo of routeInfos; track routeInfo.path) {
+          <li class="nav-link-item">
+            <a
+              class="nav-link"
+              [routerLink]="routeInfo.path"
+              routerLinkActive="active">
+              <i class="fa" [ngClass]="navIcon(routeInfo.path)"></i>
+              {{routeInfo.name}}
+            </a>
+          </li>
         }
+      </ul>
+    </div>
+
+    <div class="nav-right">
+      @let connected = connected$ | async;
+      <div class="connection-badge" [class.connected]="connected" [class.disconnected]="!connected">
+        <span class="status-dot"></span>
+        <span class="status-text">{{ connected ? 'Connection Stable' : 'Disconnected' }}</span>
       </div>
+      <app-notification-bell></app-notification-bell>
+      <a class="nav-icon-btn" routerLink="settings" routerLinkActive="active" aria-label="Settings">
+        <i class="fa fa-cog"></i>
+      </a>
     </div>
   </div>
 </nav>

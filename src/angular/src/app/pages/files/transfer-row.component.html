@@ -1,43 +1,53 @@
 <td class="cell-name" [title]="file.name">
-  <span class="file-name">{{ file.name }}</span>
+  <div class="file-name">{{ file.name }}</div>
+  <div class="file-meta">
+    <span class="file-path">{{ file.fullPath || '/' }}</span>
+    <span class="file-meta-dot">&bull;</span>
+    <span>{{ file.remoteSize | fileSize:1 }}</span>
+  </div>
 </td>
 <td class="cell-status">
-  <span [class]="badgeClass">{{ badgeLabel }}</span>
+  <span class="status-badge" [class]="badgeClass">
+    @if (isDownloading) {
+      <i class="fa fa-arrow-down"></i>
+    }
+    {{ badgeLabel }}
+  </span>
 </td>
 <td class="cell-progress">
-  @if (file.percentDownloaded != null && file.percentDownloaded < 100) {
-    <div class="d-flex align-items-center gap-2">
-      <div class="progress flex-grow-1" style="height: 6px;">
-        <div class="progress-bar progress-bar-striped progress-bar-animated"
-             [class.bg-warning]="isDownloading"
-             [class.bg-secondary]="!isDownloading"
-             role="progressbar"
-             [style.width.%]="file.percentDownloaded"
-             [attr.aria-valuenow]="file.percentDownloaded"
-             aria-valuemin="0"
-             aria-valuemax="100">
+  @if (file.percentDownloaded != null) {
+    <div class="progress-cell">
+      <div class="progress-labels">
+        <span>{{ file.localSize | fileSize:1 }}</span>
+        <span>{{ file.percentDownloaded }}%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill"
+             [class.progress-fill--active]="isDownloading"
+             [class.progress-fill--success]="file.percentDownloaded === 100"
+             [class.progress-fill--error]="file.status === 'stopped' || file.status === 'deleted'"
+             [style.width.%]="file.percentDownloaded">
         </div>
       </div>
-      <span class="progress-pct">{{ file.percentDownloaded }}%</span>
     </div>
-  } @else if (file.percentDownloaded === 100) {
-    <span class="text-muted-soft">Complete</span>
   } @else {
     <span class="text-muted-soft">&mdash;</span>
   }
 </td>
 <td class="cell-speed">
   @if (isDownloading && file.downloadingSpeed) {
-    {{ file.downloadingSpeed | fileSize:1 }}/s
+    <span class="speed-value">{{ file.downloadingSpeed | fileSize:1 }}/s</span>
   } @else {
-    <span class="text-muted-soft">&mdash;</span>
+    <span class="text-muted-soft">-</span>
   }
 </td>
 <td class="cell-eta">
   @if (isDownloading && file.eta) {
     {{ file.eta | eta }}
+  } @else if (file.percentDownloaded === 100) {
+    <span class="text-muted-soft">Done</span>
   } @else {
-    <span class="text-muted-soft">&mdash;</span>
+    <span class="text-muted-soft">-</span>
   }
 </td>
 <td class="cell-size">

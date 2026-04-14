@@ -1,10 +1,11 @@
-import {Component, ChangeDetectionStrategy, ChangeDetectorRef, OnDestroy} from "@angular/core";
+import {Component, ChangeDetectionStrategy, DestroyRef, inject} from "@angular/core";
 import {AsyncPipe} from "@angular/common";
 import {FormsModule} from "@angular/forms";
-import {Observable, BehaviorSubject, Subject, combineLatest} from "rxjs";
-import {map, takeUntil} from "rxjs/operators";
+import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
+import {Observable, BehaviorSubject, combineLatest} from "rxjs";
+import {map} from "rxjs/operators";
 
-import * as Immutable from "immutable";
+import {List} from "immutable";
 
 import {ViewFileService} from "../../services/files/view-file.service";
 import {ViewFileOptionsService} from "../../services/files/view-file-options.service";
@@ -20,7 +21,7 @@ import {TransferRowComponent} from "./transfer-row.component";
     imports: [AsyncPipe, FormsModule, TransferRowComponent],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TransferTableComponent implements OnDestroy {
+export class TransferTableComponent {
 
     activeSegment: "all" | "active" | "errors" = "all";
     nameFilter = "";
@@ -33,12 +34,11 @@ export class TransferTableComponent implements OnDestroy {
 
     private segmentFilter$ = new BehaviorSubject<"all" | "active" | "errors">("all");
     private pageSubject = new BehaviorSubject<number>(1);
-    private destroy$ = new Subject<void>();
+    private destroyRef = inject(DestroyRef);
 
     constructor(
         private viewFileService: ViewFileService,
         private viewFileOptionsService: ViewFileOptionsService,
-        private _cdr: ChangeDetectorRef
     ) {
         // Derive segmented files from filteredFiles + segment filter
         const segmentedFiles$ = combineLatest([
@@ -52,13 +52,13 @@ export class TransferTableComponent implements OnDestroy {
                         f.status === ViewFile.Status.DOWNLOADING ||
                         f.status === ViewFile.Status.QUEUED ||
                         f.status === ViewFile.Status.EXTRACTING
-                    ) as Immutable.List<ViewFile>;
+                    ).toList();
                 }
                 // errors
                 return files.filter(f =>
                     f.status === ViewFile.Status.STOPPED ||
                     f.status === ViewFile.Status.DELETED
-                ) as Immutable.List<ViewFile>;
+                ).toList();
             })
         );
 
@@ -80,15 +80,10 @@ export class TransferTableComponent implements OnDestroy {
 
         // Reset page when filter options change
         this.viewFileOptionsService.options
-            .pipe(takeUntil(this.destroy$))
+            .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe(() => {
                 this.goToPage(1);
             });
-    }
-
-    ngOnDestroy(): void {
-        this.destroy$.next();
-        this.destroy$.complete();
     }
 
     onSearchInput(value: string): void {
@@ -98,14 +93,15 @@ export class TransferTableComponent implements OnDestroy {
 
     onSegmentChange(segment: "all" | "active" | "errors"): void {
         this.activeSegment = segment;
+        // Reset page before emitting segment to avoid stale-page intermediate slice
+        this.currentPage = 1;
+        this.pageSubject.next(1);
         this.segmentFilter$.next(segment);
-        this.goToPage(1);
     }
 
     goToPage(page: number): void {
         this.currentPage = page;
         this.pageSubject.next(page);
-        this._cdr.markForCheck();
     }
 
     onPrevPage(): void {
@@ -120,7 +116,11 @@ export class TransferTableComponent implements OnDestroy {
         }
     }
 
-    trackByName(_index: number, file: ViewFile): string {
-        return file.name!;
+    getPageNumbers(totalPages: number): number[] {
+        return Array.from({length: totalPages}, (_, i) => i + 1);
+    }
+
+    trackByName(index: number, file: ViewFile): string {
+        return file.name ?? `__row_${index}`;
     }
 }

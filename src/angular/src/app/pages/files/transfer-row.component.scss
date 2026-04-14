@@ -1,61 +1,238 @@
 @use '../../common/common' as *;
 
+// ============================================================================
+// Transfer Row — matches design spec exactly
+// ============================================================================
 :host {
   display: table-row;
   transition: background 0.15s ease;
 
   &:hover {
-    background: rgba($primary, 0.04);
+    background: rgba(41, 51, 38, 0.4);
+  }
+
+  &:nth-child(odd) {
+    background: #1a2019;
+
+    &:hover {
+      background: rgba(41, 51, 38, 0.4);
+    }
   }
 }
 
 td {
-  padding: 0.55rem 0.75rem;
-  vertical-align: middle;
+  padding: 12px 16px;
+  vertical-align: top;
   border: none;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
+  font-family: 'JetBrains Mono', $font-family-monospace;
 }
 
+// ============================================================================
+// Cell: Name
+// ============================================================================
 .cell-name {
   max-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 300px;
 }
 
 .file-name {
-  color: $body-color-dark;
+  color: #e0e8d6;
+  font-family: 'Inter', $font-family-sans-serif;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 400px;
 }
 
+.file-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #9aaa8a;
+  letter-spacing: -0.01em;
+}
+
+.file-path {
+  color: #c49a4a;
+}
+
+.file-meta-dot {
+  color: #9aaa8a;
+}
+
+// ============================================================================
+// Cell: Status badge
+// ============================================================================
 .cell-status {
-  .badge {
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 0.25em 0.6em;
-    letter-spacing: 0.02em;
+  padding-top: 16px;
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: 'Inter', $font-family-sans-serif;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    i {
+      font-size: 0.55rem;
+    }
   }
 }
 
-.progress {
-  border-radius: 3px;
-  background: rgba($secondary, 0.1);
+// Badge variants — using design spec semantic colors
+.badge.bg-warning {
+  background: rgba(209, 140, 52, 0.1) !important;
+  border: 1px solid rgba(209, 140, 52, 0.3);
+  color: #d18c34 !important;
 }
 
-.progress-pct {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: $secondary;
-  min-width: 2.5rem;
+.badge.bg-secondary {
+  background: #2c3629 !important;
+  border: 1px solid #3e4a38;
+  color: #9aaa8a !important;
+}
+
+.badge.bg-success {
+  background: rgba(89, 163, 98, 0.1) !important;
+  border: 1px solid rgba(89, 163, 98, 0.3);
+  color: #59a362 !important;
+}
+
+.badge.bg-danger {
+  background: rgba(196, 91, 91, 0.1) !important;
+  border: 1px solid rgba(196, 91, 91, 0.3);
+  color: #c45b5b !important;
+}
+
+.badge.bg-info {
+  background: rgba(88, 166, 255, 0.1) !important;
+  border: 1px solid rgba(88, 166, 255, 0.3);
+  color: #58a6ff !important;
+}
+
+.badge.bg-dark {
+  background: #2c3629 !important;
+  border: 1px solid #3e4a38;
+  color: #9aaa8a !important;
+}
+
+.badge.text-dark {
+  color: #d18c34 !important;
+}
+
+// ============================================================================
+// Cell: Progress
+// ============================================================================
+.cell-progress {
+  padding-top: 16px;
+  width: 200px;
+}
+
+.progress-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #9aaa8a;
+}
+
+.progress-track {
+  height: 6px;
+  width: 100%;
+  background: #151a14;
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid #3e4a38;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: #9aaa8a;
+  transition: width 0.3s ease;
+
+  &--active {
+    background: #c49a4a;
+    background-image: linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.15) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.15) 50%,
+      rgba(255, 255, 255, 0.15) 75%,
+      transparent 75%,
+      transparent
+    );
+    background-size: 20px 20px;
+    animation: stripe 1s linear infinite;
+    box-shadow: 0 0 8px rgba(196, 154, 74, 0.6);
+  }
+
+  &--success {
+    background: #59a362;
+    box-shadow: 0 0 8px rgba(89, 163, 98, 0.5);
+  }
+
+  &--error {
+    background: #c45b5b;
+  }
+}
+
+@keyframes stripe {
+  0% { background-position: 0 0; }
+  100% { background-position: 20px 0; }
+}
+
+// ============================================================================
+// Cell: Speed
+// ============================================================================
+.cell-speed {
+  padding-top: 16px;
   text-align: right;
-}
-
-.cell-speed,
-.cell-eta,
-.cell-size {
   white-space: nowrap;
-  color: rgba($body-color-dark, 0.75);
 }
 
+.speed-value {
+  color: #c49a4a;
+}
+
+// ============================================================================
+// Cell: ETA
+// ============================================================================
+.cell-eta {
+  padding-top: 16px;
+  text-align: right;
+  white-space: nowrap;
+  color: #9aaa8a;
+}
+
+// ============================================================================
+// Cell: Size
+// ============================================================================
+.cell-size {
+  text-align: right;
+  white-space: nowrap;
+  color: rgba(224, 232, 214, 0.75);
+}
+
+// ============================================================================
+// Muted dash placeholder
+// ============================================================================
 .text-muted-soft {
-  color: rgba($secondary, 0.4);
+  color: rgba(154, 170, 138, 0.4);
 }

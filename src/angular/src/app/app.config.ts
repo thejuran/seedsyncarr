@@ -94,11 +94,5 @@ export const appConfig: ApplicationConfig = {
             deps: [VersionCheckService],
             multi: true
         },
-        {
-            provide: APP_INITIALIZER,
-            useFactory: dummyFactory,
-            deps: [DashboardStatsService],
-            multi: true
-        },
     ]
 };

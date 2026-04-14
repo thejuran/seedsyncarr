@@ -1,119 +1,162 @@
 @use '../../common/common' as *;
 
 // ============================================================================
-// Top Navigation Bar
+// Top Navigation Bar — matches design spec exactly
 // ============================================================================
 #top-nav {
-    background: rgba(21, 26, 20, 0.80);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid #3e4a38;
     position: sticky;
     top: 0;
     z-index: $zindex-top-header + 1;
+    width: 100%;
+    border-bottom: 1px solid #3e4a38;
+    background: rgba(21, 26, 20, 0.80);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 12px 24px;
 }
 
 .nav-inner {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 16px;
+    width: 100%;
     display: flex;
     align-items: center;
-    gap: 24px;
-    height: 48px;
+    justify-content: space-between;
 }
 
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+// ============================================================================
+// Brand: icon box + name + version badge
+// ============================================================================
 .nav-brand {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
+}
 
-    .brand-text {
-        font-weight: 700;
-        font-size: 1.15rem;
-        color: var(--app-selection-text-emphasis);
+.brand-icon-box {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    border: 1px solid #c49a4a;
+    background: rgba(196, 154, 74, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #c49a4a;
+    font-size: 1rem;
+    box-shadow: 0 0 15px rgba(196, 154, 74, 0.2);
+}
 
-        .brand-arr {
-            color: var(--app-logo-color);
-        }
-    }
+.brand-text {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    color: #e0e8d6;
+    margin: 0;
+    line-height: 1;
 
-    .brand-version {
-        font-size: 0.75rem;
-        color: var(--app-muted-text);
+    .brand-arr {
+        color: #c49a4a;
     }
 }
 
+.brand-version {
+    font-size: 0.75rem;
+    font-family: 'JetBrains Mono', $font-family-monospace;
+    color: #9aaa8a;
+    background: #2c3629;
+    border: 1px solid #3e4a38;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+// ============================================================================
+// Nav Links
+// ============================================================================
 .nav-links {
     display: flex;
     align-items: center;
     gap: 24px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-link-item {
+    position: relative;
 }
 
 .nav-link {
-    color: var(--app-muted-text);
+    color: #9aaa8a;
     text-decoration: none;
     font-size: 0.875rem;
-    position: relative;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
     transition: color 0.15s ease;
 
-    &::after {
-        content: '';
-        position: absolute;
-        bottom: -1px;
-        left: 0;
-        width: 100%;
-        height: 2px;
-        background: var(--app-logo-color);
-        opacity: 0;
-        transition: opacity 0.15s ease;
+    i {
+        font-size: 1.125rem;
+        transition: color 0.15s ease;
     }
 
     &:hover {
-        color: var(--app-selection-text-emphasis);
+        color: #e0e8d6;
     }
 
     &.active {
-        color: var(--app-selection-text-emphasis);
-        font-weight: 500;
+        color: #e0e8d6;
 
+        // Active underline indicator
         &::after {
-            opacity: 1;
+            content: '';
+            position: absolute;
+            bottom: -13px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #c49a4a;
+            border-radius: 2px 2px 0 0;
         }
     }
 }
 
 // ============================================================================
-// Nav Right Controls (connection badge + bell)
+// Nav Right Controls
 // ============================================================================
 .nav-right {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-left: auto;
+    gap: 16px;
 }
 
 .connection-badge {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 12px;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 4px;
     font-size: 0.75rem;
-    font-family: $font-family-monospace;
+    font-family: 'JetBrains Mono', $font-family-monospace;
     font-weight: 500;
     white-space: nowrap;
 
     &.connected {
-        background: rgba(35, 134, 54, 0.15);
-        border: 1px solid rgba(35, 134, 54, 0.3);
-        color: $success;
+        background: rgba(89, 163, 98, 0.1);
+        border: 1px solid rgba(89, 163, 98, 0.3);
+        color: #59a362;
     }
 
     &.disconnected {
-        background: rgba(248, 81, 73, 0.15);
-        border: 1px solid rgba(248, 81, 73, 0.3);
-        color: $danger;
+        background: rgba(196, 91, 91, 0.15);
+        border: 1px solid rgba(196, 91, 91, 0.3);
+        color: #c45b5b;
     }
 }
 
@@ -124,140 +167,44 @@
     flex-shrink: 0;
 
     .connected & {
-        background: $success;
-        animation: status-pulse 2s infinite;
+        background: #59a362;
+        animation: status-pulse 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1);
     }
 
     .disconnected & {
-        background: $danger;
+        background: #c45b5b;
     }
 }
 
 @keyframes status-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(35, 134, 54, 0.5); }
-    50% { box-shadow: 0 0 0 4px rgba(35, 134, 54, 0); }
-}
-
-// ============================================================================
-// Notification Bell
-// ============================================================================
-.bell-wrapper {
-    position: relative;
-}
-
-.bell-btn {
-    background: none;
-    border: none;
-    color: var(--app-muted-text);
-    font-size: 1.1rem;
-    cursor: pointer;
-    padding: 4px;
-    position: relative;
-    transition: color 0.15s ease;
-    line-height: 1;
-
-    &:hover {
-        color: var(--app-logo-color);
-    }
-}
-
-.bell-badge-dot {
-    position: absolute;
-    top: 2px;
-    right: 0;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--app-logo-color);
-}
-
-.bell-dropdown {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    width: 320px;
-    background: var(--app-header-bg);
-    border: 1px solid var(--app-separator-color);
-    border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    z-index: 500;
-    overflow: hidden;
-}
-
-.bell-dropdown-header {
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--app-separator-color);
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--app-selection-text-emphasis);
-}
-
-.bell-dropdown-body {
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.bell-empty {
-    padding: 20px 14px;
-    text-align: center;
-    color: var(--app-muted-text);
-    font-size: 0.8rem;
-}
-
-.bell-notif {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--app-separator-color);
-    font-size: 0.8rem;
-    color: var(--app-selection-text-emphasis);
-
-    &:last-child {
-        border-bottom: none;
-    }
-
-    &[data-level="danger"] .bell-notif-icon {
-        color: $danger;
-    }
-
-    &[data-level="warning"] .bell-notif-icon {
-        color: $warning-text-emphasis;
-    }
-
-    &[data-level="info"] .bell-notif-icon {
-        color: var(--app-muted-text);
-    }
-
-    &[data-level="success"] .bell-notif-icon {
-        color: $success;
-    }
-}
-
-.bell-notif-icon {
-    flex-shrink: 0;
-    margin-top: 1px;
-}
-
-.bell-notif-text {
-    flex: 1;
-    line-height: 1.4;
-    word-break: break-word;
-}
-
-.bell-notif-dismiss {
-    flex-shrink: 0;
-    background: none;
-    border: none;
-    color: var(--app-muted-text);
-    cursor: pointer;
-    padding: 0 2px;
-    opacity: 0.5;
-    font-size: 0.75rem;
-
-    &:hover {
+    0%, 100% {
         opacity: 1;
-        color: var(--app-logo-color);
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(89, 163, 98, 0.4);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.1);
+        box-shadow: 0 0 0 4px rgba(89, 163, 98, 0);
+    }
+}
+
+// Gear / settings icon button in nav
+.nav-icon-btn {
+    padding: 8px;
+    color: #9aaa8a;
+    font-size: 1.25rem;
+    border-radius: 4px;
+    transition: color 0.15s ease, background 0.15s ease;
+    text-decoration: none;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+        color: #c49a4a;
+        background: #2c3629;
     }
 }
 
@@ -265,9 +212,11 @@
 // Content Area
 // ============================================================================
 #top-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 16px;
+    width: 100%;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
 }
 
 #top-header {
@@ -280,11 +229,13 @@
 // ============================================================================
 // Responsive
 // ============================================================================
-
-// Small screens: tighten nav spacing
 @media only screen and (max-width: $small-max-width) {
-    .nav-inner {
-        padding: 0 12px;
+    #top-nav {
+        padding: 12px 12px;
+    }
+
+    .nav-left {
+        gap: 12px;
     }
 
     .nav-links {
@@ -295,19 +246,19 @@
         font-size: 0.8rem;
     }
 
-    .nav-brand .brand-text {
+    .brand-text {
         font-size: 1rem;
     }
 }
 
-// Connection badge + bell: responsive adjustments below 640px
 @media (max-width: 640px) {
     .connection-badge .status-text { display: none; }
-    .connection-badge { padding: 4px 6px; }
+    .connection-badge { padding: 6px; }
+}
 
-    .bell-dropdown {
-        width: 280px;
-        right: -8px;
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
     }
 }
 

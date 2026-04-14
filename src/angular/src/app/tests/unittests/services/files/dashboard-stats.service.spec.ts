@@ -211,6 +211,41 @@ describe("Testing dashboard stats service", () => {
         expect(latestStats!.totalTrackedBytes).toBe(14000);
     }));
 
+    it("should reset peak speed when all downloads stop", fakeAsync(() => {
+        let latestStats: DashboardStats | null = null;
+        statsService.stats$.subscribe(stats => {
+            latestStats = stats;
+        });
+        tick();
+
+        // First: active download at speed 500
+        let model = Immutable.Map<string, ModelFile>();
+        model = model.set("a", new ModelFile({
+            name: "a",
+            state: ModelFile.State.DOWNLOADING,
+            remote_size: 1000,
+            local_size: 500,
+            downloading_speed: 500
+        }));
+        mockModelService._files.next(model);
+        tick();
+
+        expect(latestStats!.peakSpeedBps).toBe(500);
+
+        // Second: download finishes — totalSpeed becomes 0
+        model = model.set("a", new ModelFile({
+            name: "a",
+            state: ModelFile.State.DOWNLOADED,
+            remote_size: 1000,
+            local_size: 1000,
+            downloading_speed: 0
+        }));
+        mockModelService._files.next(model);
+        tick();
+
+        expect(latestStats!.peakSpeedBps).toBe(0);
+    }));
+
     it("should handle zero sizes gracefully", fakeAsync(() => {
         let model = Immutable.Map<string, ModelFile>();
         model = model.set("a", new ModelFile({

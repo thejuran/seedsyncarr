@@ -29,7 +29,7 @@ const TEST_TEMPLATE = `
     <th>Name</th><th>Status</th><th>Progress</th><th>Speed</th><th>ETA</th><th>Size</th>
   </tr></thead>
   <tbody>
-    @for (file of vm.paged; track file.name) {
+    @for (file of (vm.paged ?? []); track file.name) {
       <tr class="file-row">{{ file.name }}</tr>
     }
   </tbody>

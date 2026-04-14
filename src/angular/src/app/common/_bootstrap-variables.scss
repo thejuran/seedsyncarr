@@ -5,9 +5,9 @@
 // ============================================================================
 // Font Family Overrides
 // ============================================================================
-// System font stack — no external font dependencies
-$font-family-sans-serif: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-$font-family-monospace: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+// Inter for UI, JetBrains Mono for data/monospace
+$font-family-sans-serif: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+$font-family-monospace: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 $input-btn-font-family: $font-family-sans-serif;
 
 // ============================================================================
@@ -21,13 +21,30 @@ $body-color-dark: #e0e8d6;    // Warm cream — primary text
 // ============================================================================
 $primary: #c49a4a;    // Amber — accent/active
 $secondary: #9aaa8a;  // Sage — muted
-$success: #238636;    // Functional: muted green (status)
-$danger: #f85149;     // Functional: red (status)
-$warning: #f0883e;    // Functional: amber (status)
+$success: #59a362;    // Semantic success (design spec)
+$danger: #c45b5b;     // Semantic error (design spec)
+$warning: #d18c34;    // Semantic warning (design spec)
 $info: #58a6ff;       // Functional: blue (status)
 
 // Active status — brighter variant for downloading glow/speed
 $status-downloading: #3fb950;
+
+// ============================================================================
+// Design-spec semantic colors
+// ============================================================================
+$semantic-success: #59a362;
+$semantic-warning: #d18c34;
+$semantic-error: #c45b5b;
+
+// ============================================================================
+// Forest palette extras (from design spec)
+// ============================================================================
+$forest-base: #151a14;
+$forest-card: #222a20;
+$forest-row: #1a2019;
+$forest-border: #3e4a38;
+$forest-muted: #2c3629;
+$forest-hover: #293326;
 
 // ============================================================================
 // Application-specific color variables — Deep Moss Palette

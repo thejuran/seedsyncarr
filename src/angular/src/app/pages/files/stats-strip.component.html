@@ -1,69 +1,73 @@
 @if (stats$ | async; as stats) {
-<div class="stats-strip row g-3 mb-4">
-  <!-- DASH-02: Remote Storage -->
-  <div class="col-12 col-sm-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-header">
-        <i class="fa fa-cloud stat-icon"></i>
-        <span class="stat-label">Remote Storage</span>
-      </div>
-      <div class="stat-value">{{ stats.remoteTrackedBytes | fileSize:2 }}</div>
-      <div class="stat-sub">tracked usage</div>
-      <div class="progress stat-progress mt-2" style="height: 4px;">
-        <div class="progress-bar bg-warning"
-             role="progressbar"
-             [style.width.%]="stats.totalTrackedBytes > 0 ? (stats.remoteTrackedBytes / stats.totalTrackedBytes * 100) : 0"
-             [attr.aria-valuenow]="stats.remoteTrackedBytes"
-             aria-valuemin="0"
-             [attr.aria-valuemax]="stats.totalTrackedBytes"></div>
+<div class="stats-strip">
+  <!-- Remote Storage -->
+  <div class="stat-card">
+    <div class="stat-watermark"><i class="fa fa-cloud"></i></div>
+    <div class="stat-header">
+      <i class="fa fa-cloud stat-icon stat-icon--amber"></i>
+      <span class="stat-label">Remote Storage</span>
+    </div>
+    <div class="stat-value-row">
+      <span class="stat-value">{{ stats.remoteTrackedBytes | fileSize:2:'value' }}</span>
+      <span class="stat-unit">{{ stats.remoteTrackedBytes | fileSize:2:'unit' }} Free</span>
+    </div>
+    <div class="stat-progress-wrap">
+      <div class="stat-progress-track">
+        <div class="stat-progress-fill stat-progress-fill--amber"
+             [style.width.%]="stats.totalTrackedBytes > 0 ? (stats.remoteTrackedBytes / stats.totalTrackedBytes * 100) : 0">
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- DASH-03: Local Storage -->
-  <div class="col-12 col-sm-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-header">
-        <i class="fa fa-database stat-icon"></i>
-        <span class="stat-label">Local Storage</span>
-      </div>
-      <div class="stat-value">{{ stats.localTrackedBytes | fileSize:2 }}</div>
-      <div class="stat-sub">tracked usage</div>
-      <div class="progress stat-progress mt-2" style="height: 4px;">
-        <div class="progress-bar bg-info"
-             role="progressbar"
-             [style.width.%]="stats.totalTrackedBytes > 0 ? (stats.localTrackedBytes / stats.totalTrackedBytes * 100) : 0"
-             [attr.aria-valuenow]="stats.localTrackedBytes"
-             aria-valuemin="0"
-             [attr.aria-valuemax]="stats.totalTrackedBytes"></div>
+  <!-- Local Storage -->
+  <div class="stat-card">
+    <div class="stat-watermark"><i class="fa fa-database"></i></div>
+    <div class="stat-header">
+      <i class="fa fa-database stat-icon stat-icon--amber"></i>
+      <span class="stat-label">Local Storage</span>
+    </div>
+    <div class="stat-value-row">
+      <span class="stat-value">{{ stats.localTrackedBytes | fileSize:2:'value' }}</span>
+      <span class="stat-unit">{{ stats.localTrackedBytes | fileSize:2:'unit' }} Free</span>
+    </div>
+    <div class="stat-progress-wrap">
+      <div class="stat-progress-track">
+        <div class="stat-progress-fill stat-progress-fill--secondary"
+             [style.width.%]="stats.totalTrackedBytes > 0 ? (stats.localTrackedBytes / stats.totalTrackedBytes * 100) : 0">
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- DASH-04: Download Speed -->
-  <div class="col-12 col-sm-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-header">
-        <i class="fa fa-arrow-down stat-icon"></i>
-        <span class="stat-label">Download Speed</span>
-      </div>
-      <div class="stat-value">{{ stats.totalSpeedBps | fileSize:1 }}/s</div>
-      <div class="stat-sub">peak: {{ stats.peakSpeedBps | fileSize:1 }}/s</div>
+  <!-- Download Speed -->
+  <div class="stat-card">
+    <div class="stat-watermark"><i class="fa fa-arrow-down"></i></div>
+    <div class="stat-header">
+      <i class="fa fa-arrow-down stat-icon stat-icon--success"></i>
+      <span class="stat-label">Download Speed</span>
     </div>
+    <div class="stat-value-row">
+      <span class="stat-value">{{ stats.totalSpeedBps | fileSize:1:'value' }}</span>
+      <span class="stat-unit">{{ stats.totalSpeedBps | fileSize:1:'unit' }}/s</span>
+    </div>
+    <div class="stat-sub">Peak: {{ stats.peakSpeedBps | fileSize:1 }}/s</div>
   </div>
 
-  <!-- DASH-05: Active Tasks -->
-  <div class="col-12 col-sm-6 col-lg-3">
-    <div class="stat-card">
-      <div class="stat-header">
-        <i class="fa fa-tasks stat-icon"></i>
-        <span class="stat-label">Active Tasks</span>
-      </div>
-      <div class="stat-value">{{ stats.downloadingCount + stats.queuedCount }}</div>
-      <div class="stat-badges">
-        <span class="badge bg-warning text-dark">{{ stats.downloadingCount }} DL</span>
-        <span class="badge bg-secondary">{{ stats.queuedCount }} Queued</span>
-      </div>
+  <!-- Active Tasks -->
+  <div class="stat-card">
+    <div class="stat-watermark"><i class="fa fa-tasks"></i></div>
+    <div class="stat-header">
+      <i class="fa fa-tasks stat-icon stat-icon--secondary"></i>
+      <span class="stat-label">Active Tasks</span>
+    </div>
+    <div class="stat-value-row">
+      <span class="stat-value">{{ stats.downloadingCount + stats.queuedCount }}</span>
+      <span class="stat-unit">Running</span>
+    </div>
+    <div class="stat-badges">
+      <span class="badge badge-dl">{{ stats.downloadingCount }} DL</span>
+      <span class="badge badge-queued">{{ stats.queuedCount }} Queued</span>
     </div>
   </div>
 </div>

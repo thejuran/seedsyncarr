@@ -15,7 +15,7 @@ import {ViewFile} from "../../services/files/view-file";
 })
 export class TransferRowComponent {
 
-    @Input() file!: ViewFile;
+    @Input({ required: true }) file!: ViewFile;
 
     private static readonly BADGE_LABELS: Record<string, string> = {
         [ViewFile.Status.DOWNLOADING]: "Syncing",
@@ -40,14 +40,14 @@ export class TransferRowComponent {
     };
 
     get badgeLabel(): string {
-        return TransferRowComponent.BADGE_LABELS[this.file?.status ?? ""] ?? "\u2014";
+        return TransferRowComponent.BADGE_LABELS[this.file.status ?? ""] ?? "\u2014";
     }
 
     get badgeClass(): string {
-        return TransferRowComponent.BADGE_CLASSES[this.file?.status ?? ""] ?? "badge bg-dark";
+        return TransferRowComponent.BADGE_CLASSES[this.file.status ?? ""] ?? "badge bg-dark";
     }
 
     get isDownloading(): boolean {
-        return this.file?.status === ViewFile.Status.DOWNLOADING;
+        return this.file.status === ViewFile.Status.DOWNLOADING;
     }
 }

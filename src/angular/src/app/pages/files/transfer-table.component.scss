@@ -1,147 +1,264 @@
 @use '../../common/common' as *;
 
-.table-header {
+:host {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+// ============================================================================
+// Transfer Card — main container
+// ============================================================================
+.transfer-card {
+  background: #222a20;
+  border: 1px solid #3e4a38;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+// ============================================================================
+// Card Header
+// ============================================================================
+.card-header {
+  padding: 16px;
+  border-bottom: 1px solid #3e4a38;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  background: transparent;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.card-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #e0e8d6;
+  margin: 0;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.card-subtitle {
+  font-size: 0.75rem;
+  color: #9aaa8a;
+  margin: 0;
+}
+
+// ============================================================================
+// Card Controls: search + segment filter
+// ============================================================================
+.card-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+
+  @media (min-width: 640px) {
+    width: auto;
+  }
 }
 
 .search-box {
   position: relative;
-  flex: 1;
-  min-width: 200px;
-  max-width: 320px;
+  width: 100%;
+
+  @media (min-width: 640px) {
+    width: 16rem;
+  }
 }
 
 .search-icon {
   position: absolute;
-  left: 0.75rem;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: $secondary;
-  font-size: 0.875rem;
+  color: #9aaa8a;
+  font-size: 0.8rem;
   pointer-events: none;
+  transition: color 0.15s ease;
 }
 
 .search-input {
-  padding-left: 2.25rem;
-  background: rgba($primary-dark-color, 0.5);
-  border: 1px solid rgba($secondary, 0.2);
-  color: $body-color-dark;
+  width: 100%;
+  padding: 6px 12px 6px 36px;
+  background: #151a14;
+  border: 1px solid #3e4a38;
+  color: #e0e8d6;
   font-size: 0.875rem;
+  font-family: 'Inter', $font-family-sans-serif;
+  border-radius: 4px;
 
   &::placeholder {
-    color: rgba($secondary, 0.5);
+    color: rgba(154, 170, 138, 0.5);
   }
 
   &:focus {
-    background: rgba($primary-dark-color, 0.7);
-    border-color: rgba($primary, 0.4);
-    box-shadow: 0 0 0 0.2rem rgba($primary, 0.15);
+    outline: none;
+    background: #151a14;
+    border-color: rgba(196, 154, 74, 0.5);
+    box-shadow: 0 0 0 1px rgba(196, 154, 74, 0.5);
+  }
+
+  &:focus ~ .search-icon {
+    color: #c49a4a;
   }
 }
 
+// ============================================================================
+// Segment Filters (All / Active / Errors)
+// ============================================================================
 .segment-filters {
-  .btn-segment {
-    background: transparent;
-    border: 1px solid rgba($secondary, 0.25);
-    color: $secondary;
-    font-size: 0.8rem;
-    font-weight: 600;
-    padding: 0.35rem 0.85rem;
-    transition: all 0.15s ease;
+  display: none;
+  background: #151a14;
+  border: 1px solid #3e4a38;
+  border-radius: 4px;
+  padding: 2px;
 
-    &:hover {
-      background: rgba($secondary, 0.1);
-      color: $body-color-dark;
-    }
-
-    &.active {
-      background: rgba($primary, 0.15);
-      border-color: $primary;
-      color: $primary;
-    }
+  @media (min-width: 768px) {
+    display: flex;
   }
 }
 
+.btn-segment {
+  background: transparent;
+  border: none;
+  color: #9aaa8a;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #293326;
+    color: #e0e8d6;
+  }
+
+  &.active {
+    background: #222a20;
+    border: 1px solid #3e4a38;
+    color: #e0e8d6;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+  }
+}
+
+// ============================================================================
+// Table
+// ============================================================================
 .transfer-table-wrap {
-  border-radius: 0.75rem;
-  overflow: hidden;
-  border: 1px solid rgba($secondary, 0.12);
+  overflow-x: auto;
 }
 
 .transfer-table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+  white-space: nowrap;
   margin-bottom: 0;
-  color: $body-color-dark;
+  color: #e0e8d6;
   font-size: 0.875rem;
+  font-family: 'JetBrains Mono', $font-family-monospace;
 
   thead {
-    background: rgba($primary-dark-color, 0.5);
+    background: rgba(21, 26, 20, 0.5);
+
+    tr {
+      border-bottom: 1px solid #3e4a38;
+    }
 
     th {
-      border-bottom: 1px solid rgba($secondary, 0.15);
-      color: $secondary;
+      color: #9aaa8a;
       font-size: 0.75rem;
-      font-weight: 600;
+      font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      padding: 0.6rem 0.75rem;
+      letter-spacing: 0.05em;
+      padding: 12px 16px;
       white-space: nowrap;
+      border: none;
     }
   }
 
   tbody {
     tr:not(.empty-row) {
-      border-bottom: 1px solid rgba($secondary, 0.06);
+      border-bottom: 1px solid rgba(62, 74, 56, 0.5);
     }
   }
 
-  .col-name { width: 40%; }
-  .col-status { width: 12%; }
-  .col-progress { width: 20%; }
-  .col-speed { width: 12%; }
-  .col-eta { width: 8%; }
-  .col-size { width: 8%; }
+  .col-name { min-width: 300px; }
+  .col-status { }
+  .col-progress { width: 200px; }
+  .col-speed { text-align: right; }
+  .col-eta { text-align: right; }
+  .col-size { text-align: right; }
 }
 
+// ============================================================================
+// Pagination Footer
+// ============================================================================
 .pagination-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 0;
-  font-size: 0.8rem;
-  color: $secondary;
+  padding: 12px 16px;
+  border-top: 1px solid #3e4a38;
+  font-size: 0.75rem;
+  color: #9aaa8a;
+  background: rgba(21, 26, 20, 0.3);
+  border-radius: 0 0 8px 8px;
 }
 
 .page-info {
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 .page-controls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 4px;
+}
 
-  .btn {
-    font-size: 0.75rem;
-    border-color: rgba($secondary, 0.25);
-    color: $secondary;
+.btn-page {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  color: #9aaa8a;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
 
-    &:hover:not(:disabled) {
-      background: rgba($secondary, 0.1);
-      color: $body-color-dark;
-    }
-
-    &:disabled {
-      opacity: 0.3;
-    }
+  &:hover:not(:disabled):not(.active) {
+    background: #293326;
+    border-color: #3e4a38;
+    color: #e0e8d6;
   }
 
-  .page-number {
-    font-weight: 600;
-    padding: 0 0.25rem;
-    color: $body-color-dark;
+  &.active {
+    background: #222a20;
+    border-color: #3e4a38;
+    color: #e0e8d6;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }

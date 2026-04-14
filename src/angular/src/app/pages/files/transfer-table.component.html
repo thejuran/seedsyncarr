@@ -1,73 +1,83 @@
 @if ({paged: pagedFiles$ | async, totalPages: totalPages$ | async, totalCount: totalCount$ | async}; as vm) {
 
-<!-- Table Header: Search + Segment Filters -->
-<div class="table-header">
-  <div class="search-box">
-    <i class="fa fa-search search-icon"></i>
-    <input type="search"
-           class="form-control search-input"
-           placeholder="Search files..."
-           [ngModel]="nameFilter"
-           (ngModelChange)="onSearchInput($event)">
-  </div>
-  <div class="btn-group btn-group-sm segment-filters" role="group" aria-label="File status filter">
-    <button type="button" class="btn btn-segment"
-            [class.active]="activeSegment === 'all'"
-            (click)="onSegmentChange('all')">All</button>
-    <button type="button" class="btn btn-segment"
-            [class.active]="activeSegment === 'active'"
-            (click)="onSegmentChange('active')">Active</button>
-    <button type="button" class="btn btn-segment"
-            [class.active]="activeSegment === 'errors'"
-            (click)="onSegmentChange('errors')">Errors</button>
-  </div>
-</div>
+<div class="transfer-card">
 
-<!-- Table -->
-<div class="transfer-table-wrap">
-  <table class="table transfer-table">
-    <thead>
-      <tr>
-        <th class="col-name">Name</th>
-        <th class="col-status">Status</th>
-        <th class="col-progress">Progress</th>
-        <th class="col-speed">Speed</th>
-        <th class="col-eta">ETA</th>
-        <th class="col-size">Size</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (file of vm.paged; track trackByName($index, file)) {
-        <app-transfer-row [file]="file"></app-transfer-row>
-      } @empty {
-        <tr class="empty-row">
-          <td colspan="6" class="text-center text-muted py-4">
-            No files match the current filter
-          </td>
+  <!-- Card Header: Title + Search + Segment Filters -->
+  <div class="card-header">
+    <div class="card-title-group">
+      <h2 class="card-title">Transfer Queue</h2>
+      <p class="card-subtitle">Managing synchronization between Seedbox and Local Array.</p>
+    </div>
+    <div class="card-controls">
+      <div class="search-box">
+        <i class="fa fa-search search-icon"></i>
+        <input type="search"
+               class="search-input"
+               placeholder="Filter transfers..."
+               [ngModel]="nameFilter"
+               (ngModelChange)="onSearchInput($event)">
+      </div>
+      <div class="segment-filters" role="group" aria-label="File status filter">
+        <button type="button" class="btn-segment"
+                [class.active]="activeSegment === 'all'"
+                (click)="onSegmentChange('all')">All</button>
+        <button type="button" class="btn-segment"
+                [class.active]="activeSegment === 'active'"
+                (click)="onSegmentChange('active')">Active</button>
+        <button type="button" class="btn-segment"
+                [class.active]="activeSegment === 'errors'"
+                (click)="onSegmentChange('errors')">Errors</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="transfer-table-wrap">
+    <table class="transfer-table">
+      <thead>
+        <tr>
+          <th class="col-name">Data Content</th>
+          <th class="col-status">Status</th>
+          <th class="col-progress">Progress</th>
+          <th class="col-speed">Bandwidth</th>
+          <th class="col-eta">ETA</th>
+          <th class="col-size">Size</th>
         </tr>
-      }
-    </tbody>
-  </table>
-</div>
-
-<!-- Pagination Footer (DASH-11) -->
-<div class="pagination-footer">
-  <span class="page-info">
-    Showing page {{ currentPage }} of {{ vm.totalPages }} ({{ vm.totalCount }} files)
-  </span>
-  <div class="page-controls">
-    <button class="btn btn-sm btn-outline-secondary"
-            [disabled]="currentPage <= 1"
-            (click)="onPrevPage()">
-      <i class="fa fa-chevron-left"></i> Prev
-    </button>
-    <span class="page-number">{{ currentPage }}</span>
-    <button class="btn btn-sm btn-outline-secondary"
-            [disabled]="currentPage >= (vm.totalPages ?? 1)"
-            (click)="onNextPage(vm.totalPages ?? 1)">
-      Next <i class="fa fa-chevron-right"></i>
-    </button>
+      </thead>
+      <tbody>
+        @for (file of (vm.paged ?? []); track trackByName($index, file)) {
+          <app-transfer-row [file]="file"></app-transfer-row>
+        } @empty {
+          <tr class="empty-row">
+            <td colspan="6" class="text-center text-muted py-4">
+              No files match the current filter
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
   </div>
+
+  <!-- Pagination Footer -->
+  <div class="pagination-footer">
+    <span class="page-info">
+      Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ currentPage * pageSize > (vm.totalCount ?? 0) ? (vm.totalCount ?? 0) : currentPage * pageSize }} of {{ vm.totalCount }} active tasks
+    </span>
+    <div class="page-controls">
+      <button class="btn-page"
+              [disabled]="currentPage <= 1"
+              (click)="onPrevPage()">Prev</button>
+      @for (p of getPageNumbers(vm.totalPages ?? 1); track p) {
+        <button class="btn-page"
+                [class.active]="p === currentPage"
+                (click)="goToPage(p)">{{ p }}</button>
+      }
+      <button class="btn-page"
+              [disabled]="currentPage >= (vm.totalPages ?? 1)"
+              (click)="onNextPage(vm.totalPages ?? 1)">Next</button>
+    </div>
+  </div>
+
 </div>
 
 }
