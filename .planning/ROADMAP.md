@@ -388,7 +388,10 @@ Plans:
   3. File rows in the transfer table show status badges (Syncing, Queued, Synced, Failed) with semantically appropriate colors and animated striped progress bars with a percentage value
   4. The transfer table has a working search/filter input and segmented filter buttons (All/Active/Errors) that visibly narrow the displayed rows
   5. The table footer shows pagination controls that update the displayed rows
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 63-01-PLAN.md -- DashboardStatsService + StatsStripComponent (4 metric cards with progress bars)
+- [ ] 63-02-PLAN.md -- TransferTableComponent + TransferRowComponent (search, filters, badges, progress, pagination)
 **UI hint**: yes
 
 ### Phase 64: Dashboard — Log Pane
@@ -469,7 +472,7 @@ Plans:
 | 60. Dependency Updates | v1.0.0 | 2/2 | Complete | 2026-04-09 |
 | 61. Branding Integration | v1.0.0 | 0/0 | Complete | 2026-04-13 |
 | 62. Nav Bar Foundation | v1.1.0 | 0/2 | Not started | - |
-| 63. Dashboard — Stats Strip & Transfer Table | v1.1.0 | 0/? | Not started | - |
+| 63. Dashboard — Stats Strip & Transfer Table | v1.1.0 | 0/2 | Not started | - |
 | 64. Dashboard — Log Pane | v1.1.0 | 0/? | Not started | - |
 | 65. Settings Page | v1.1.0 | 0/? | Not started | - |
 | 66. Logs Page | v1.1.0 | 0/? | Not started | - |
@@ -477,5 +480,5 @@ Plans:
 
 ---
 
-*Last updated: 2026-04-14 — Phase 62 plans created (2 plans in 2 waves)*
+*Last updated: 2026-04-14 — Phase 63 plans created (2 plans in 2 waves)*
 *Phases 62-67: v1.1.0 UI Redesign — Triggarr Style*
