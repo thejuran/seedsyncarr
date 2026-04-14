@@ -372,7 +372,10 @@ Plans:
   2. The active page link shows an amber underline indicator that updates when navigating between pages
   3. A connection status badge in the nav shows live server state with a pulse animation when connected
   4. A notification bell with a badge dot appears in the nav (badge visible when notifications are present)
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 62-01-PLAN.md -- Backdrop blur nav, amber brand split, active link indicator, connection status badge
+- [ ] 62-02-PLAN.md -- Notification bell with dropdown panel, remove old alert bar, visual verification
 **UI hint**: yes
 
 ### Phase 63: Dashboard — Stats Strip & Transfer Table
@@ -465,7 +468,7 @@ Plans:
 | 59. Community Launch | v1.0.0 | 2/2 | Complete | 2026-04-09 |
 | 60. Dependency Updates | v1.0.0 | 2/2 | Complete | 2026-04-09 |
 | 61. Branding Integration | v1.0.0 | 0/0 | Complete | 2026-04-13 |
-| 62. Nav Bar Foundation | v1.1.0 | 0/? | Not started | - |
+| 62. Nav Bar Foundation | v1.1.0 | 0/2 | Not started | - |
 | 63. Dashboard — Stats Strip & Transfer Table | v1.1.0 | 0/? | Not started | - |
 | 64. Dashboard — Log Pane | v1.1.0 | 0/? | Not started | - |
 | 65. Settings Page | v1.1.0 | 0/? | Not started | - |
@@ -474,5 +477,5 @@ Plans:
 
 ---
 
-*Last updated: 2026-04-13 — v1.1.0 UI Redesign roadmap created (Phases 62-67)*
+*Last updated: 2026-04-14 — Phase 62 plans created (2 plans in 2 waves)*
 *Phases 62-67: v1.1.0 UI Redesign — Triggarr Style*
