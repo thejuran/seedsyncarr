@@ -402,7 +402,9 @@ Plans:
   1. A compact log pane is visible at the bottom of the dashboard page
   2. Each log entry shows a timestamp, a level badge, and the message text in monospace font
   3. Log entry levels are visually distinct by color: green for INFO, amber for WARN, red for ERROR
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 64-01-PLAN.md -- DashboardLogPaneComponent: create component, wire into dashboard, unit tests
 **UI hint**: yes
 
 ### Phase 65: Settings Page
@@ -473,12 +475,12 @@ Plans:
 | 61. Branding Integration | v1.0.0 | 0/0 | Complete | 2026-04-13 |
 | 62. Nav Bar Foundation | v1.1.0 | 0/2 | Not started | - |
 | 63. Dashboard — Stats Strip & Transfer Table | v1.1.0 | 0/2 | Not started | - |
-| 64. Dashboard — Log Pane | v1.1.0 | 0/? | Not started | - |
+| 64. Dashboard — Log Pane | v1.1.0 | 0/1 | Not started | - |
 | 65. Settings Page | v1.1.0 | 0/? | Not started | - |
 | 66. Logs Page | v1.1.0 | 0/? | Not started | - |
 | 67. About Page | v1.1.0 | 0/? | Not started | - |
 
 ---
 
-*Last updated: 2026-04-14 — Phase 63 plans created (2 plans in 2 waves)*
+*Last updated: 2026-04-14 — Phase 64 plan created (1 plan in 1 wave)*
 *Phases 62-67: v1.1.0 UI Redesign — Triggarr Style*
