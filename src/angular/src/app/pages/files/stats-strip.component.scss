@@ -1,0 +1,68 @@
+@use '../../common/common' as *;
+
+.stats-strip {
+  padding: 0;
+}
+
+.stat-card {
+  background: rgba($primary-dark-color, 0.6);
+  border: 1px solid rgba($secondary, 0.15);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  height: 100%;
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-color: rgba($primary, 0.3);
+  }
+}
+
+.stat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.stat-icon {
+  color: $primary;
+  font-size: 0.875rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $secondary;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: $body-color-dark;
+  line-height: 1.2;
+}
+
+.stat-sub {
+  font-size: 0.75rem;
+  color: rgba($secondary, 0.7);
+  margin-top: 0.125rem;
+}
+
+.stat-progress {
+  border-radius: 2px;
+  background: rgba($secondary, 0.1);
+}
+
+.stat-badges {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+
+  .badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.25em 0.5em;
+  }
+}

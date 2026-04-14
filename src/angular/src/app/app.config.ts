@@ -13,6 +13,7 @@ import {ViewFileService} from "./services/files/view-file.service";
 import {ViewFileFilterService} from "./services/files/view-file-filter.service";
 import {ViewFileSortService} from "./services/files/view-file-sort.service";
 import {ViewFileOptionsService} from "./services/files/view-file-options.service";
+import {DashboardStatsService} from "./services/files/dashboard-stats.service";
 import {DomService} from "./services/utils/dom.service";
 import {VersionCheckService} from "./services/utils/version-check.service";
 import {StreamDispatchService, StreamServiceRegistryProvider} from "./services/base/stream-service.registry";
@@ -51,6 +52,7 @@ export const appConfig: ApplicationConfig = {
         ViewFileFilterService,
         ViewFileSortService,
         ViewFileOptionsService,
+        DashboardStatsService,
         DomService,
         VersionCheckService,
 
@@ -90,6 +92,12 @@ export const appConfig: ApplicationConfig = {
             provide: APP_INITIALIZER,
             useFactory: dummyFactory,
             deps: [VersionCheckService],
+            multi: true
+        },
+        {
+            provide: APP_INITIALIZER,
+            useFactory: dummyFactory,
+            deps: [DashboardStatsService],
             multi: true
         },
     ]
