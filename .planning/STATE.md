@@ -1,36 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0.0
-milestone_name: SeedSyncarr Rebrand
+milestone: v1.1.0
+milestone_name: UI Redesign — Triggarr Style
 status: planning
-stopped_at: Phase 61 planned — 5 plans in 2 waves, ready to execute
-last_updated: "2026-04-10T17:44:06.979Z"
-last_activity: 2026-04-09 -- Phase 60 complete, all Dependabot PRs resolved
+stopped_at: Defining requirements
+last_updated: "2026-04-13T00:00:00.000Z"
+last_activity: 2026-04-13 -- Milestone v1.1.0 started
 progress:
-  total_phases: 9
-  completed_phases: 8
-  total_plans: 19
-  completed_plans: 14
-  percent: 74
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-08)
+See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 61 — Branding Integration
+**Current focus:** Defining requirements for UI Redesign
 
 ## Current Position
 
-Phase: 61 of 61 (Branding Integration)
-Plan: Not yet planned
-Status: Ready to plan
-Last activity: 2026-04-09 -- Phase 60 complete, all Dependabot PRs resolved
-
-Progress: [████████░░] 78% (this milestone)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-13 — Milestone v1.1.0 started
 
 ## Milestones Shipped
 
@@ -41,33 +39,16 @@ Progress: [████████░░] 78% (this milestone)
 | v3.0–v3.2 | Phases 33-51 | 2026-02-17 to 2026-03-22 |
 | M001-M010 | 29 slices | 2026-03-21 to 2026-03-28 |
 | v4.0.3 | Phase 52 | 2026-04-08 |
-
-## Performance Metrics
-
-**Total Project (pre-rebrand):**
-
-- 24 milestones shipped
-- 52 phases + 29 slices complete
-- ~2 months (2026-02-03 to 2026-04-08)
-
-**This Milestone:**
-
-- Plans completed: 12
-- Phases completed: 7/7
+| v1.0.0 Rebrand | Phases 53-61 | 2026-04-08 to 2026-04-13 |
 
 ## Accumulated Context
 
 ### Decisions
 
-See PROJECT.md Key Decisions table for full list.
-
-Key decisions for this milestone:
-
-- Atomic rename across all 12 layers in a single commit — partial renames break Docker build
-- Archive old repo LAST (Phase 54) after new repo CI is confirmed healthy
-- Hardening (Phases 55-56) must complete BEFORE any presentation work (Phases 57-58)
-- awesome-selfhosted PR deferred to August 2026 (4-month rule from v1.0.0 tag date)
-- Awesomarr PR deferred until 50+ GitHub stars — no early submission
+- Design artifacts in `.aidesigner/runs/` — 4 HTML mockups (Dashboard, Settings v2, Logs, About) approved as visual spec
+- Port into Angular 21 + Bootstrap 5 + SCSS (no Tailwind) — translate Tailwind classes to Bootstrap/SCSS equivalents
+- Preserve existing Deep Moss + Amber palette tokens already in `_bootstrap-variables.scss`
+- Visual kinship with Triggarr: backdrop blur nav, card borders, monospace data, status badges
 
 ### Todos
 
@@ -85,9 +66,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-10T17:44:06.975Z
-Stopped at: Phase 61 planned — 5 plans in 2 waves, ready to execute
-Next action: `/gsd-plan-phase 61`
+Last session: 2026-04-13
+Stopped at: Defining requirements for v1.1.0
+Next action: Define requirements then create roadmap
 
 ---
-*v1.0.0 SeedSyncarr Rebrand — roadmap defined, 7 phases, 26 requirements*
+*v1.1.0 UI Redesign — Triggarr Style*
