@@ -1,4 +1,4 @@
-import {Component} from "@angular/core";
+import { Component, VERSION } from "@angular/core";
 
 declare function require(moduleName: string): { version: string };
 const { version: appVersion } = require("../../../../package.json");
@@ -13,8 +13,10 @@ const { version: appVersion } = require("../../../../package.json");
 export class AboutPageComponent {
 
     public version: string;
+    public angularVersion: string;
 
     constructor() {
         this.version = appVersion;
+        this.angularVersion = VERSION.full;
     }
 }
