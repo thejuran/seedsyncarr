@@ -155,16 +155,122 @@
         }
     }
 
+    .settings-card-header--toggle {
+        justify-content: space-between;
+
+        .settings-card-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    }
+
+    .header-toggle {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        cursor: pointer;
+        flex-shrink: 0;
+
+        .toggle-input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-track {
+            width: 36px;
+            height: 20px;
+            background: #2c3629;
+            border: 1px solid #3e4a38;
+            border-radius: 9999px;
+            position: relative;
+            transition: background 0.2s, border-color 0.2s;
+
+            &::after {
+                content: '';
+                position: absolute;
+                top: 2px;
+                left: 2px;
+                width: 14px;
+                height: 14px;
+                background: #9aaa8a;
+                border-radius: 50%;
+                transition: transform 0.2s, background 0.2s;
+            }
+        }
+
+        .toggle-input:checked + .toggle-track {
+            background: rgba(196, 154, 74, 0.10);
+            border-color: rgba(196, 154, 74, 0.50);
+
+            &::after {
+                transform: translateX(16px);
+                background: #c49a4a;
+            }
+        }
+    }
+
+    .header-toggle--compact {
+        .toggle-track {
+            width: 28px;
+            height: 16px;
+
+            &::after {
+                width: 12px;
+                height: 12px;
+            }
+        }
+
+        .toggle-input:checked + .toggle-track {
+            &::after {
+                transform: translateX(10px);
+            }
+        }
+    }
+
+    .settings-card-body--accent-amber {
+        border-left: 2px solid rgba(196, 154, 74, 0.50);
+        margin-left: 2px;
+    }
+
+    .sub-toggles-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        padding: 12px 16px 0;
+
+        .sub-toggle-pill {
+            background: rgba(44, 54, 41, 0.40);
+            border: 1px solid var(--app-file-border-color);
+            border-radius: 4px;
+            padding: 2px 0;
+        }
+    }
+
     // Sonarr brand card (D-09)
     .settings-card--sonarr {
         border-color: #2b3a4a;
-        border-left: 2px solid rgba(0, 194, 255, 0.30);
 
         .settings-card-header {
             background: #1b232e;
             border-bottom-color: #2b3a4a;
 
             i.fa { color: #00c2ff; }
+        }
+
+        .settings-card-body {
+            border-left: 2px solid rgba(0, 194, 255, 0.30);
+        }
+
+        .header-toggle .toggle-input:checked + .toggle-track {
+            background: rgba(0, 194, 255, 0.20);
+            border-color: #00c2ff;
+
+            &::after {
+                background: #00c2ff;
+            }
         }
 
         .toggle-input:checked + .toggle-track {
@@ -180,13 +286,25 @@
     // Radarr brand card (D-10)
     .settings-card--radarr {
         border-color: #4a3415;
-        border-left: 2px solid rgba(255, 194, 48, 0.30);
 
         .settings-card-header {
             background: #2b2210;
             border-bottom-color: #4a3415;
 
             i.fa { color: #ffc230; }
+        }
+
+        .settings-card-body {
+            border-left: 2px solid rgba(255, 194, 48, 0.30);
+        }
+
+        .header-toggle .toggle-input:checked + .toggle-track {
+            background: rgba(255, 194, 48, 0.20);
+            border-color: #ffc230;
+
+            &::after {
+                background: #ffc230;
+            }
         }
 
         .toggle-input:checked + .toggle-track {
@@ -204,6 +322,20 @@
         .settings-card-header {
             i.fa { color: #c45b5b; }
             span { color: rgba(196, 91, 91, 0.90); }
+        }
+
+        .settings-card-body {
+            border-left: 2px solid rgba(196, 91, 91, 0.30);
+            margin-left: 2px;
+        }
+
+        .header-toggle .toggle-input:checked + .toggle-track {
+            background: rgba(196, 91, 91, 0.20);
+            border-color: #c45b5b;
+
+            &::after {
+                background: #c45b5b;
+            }
         }
 
         .toggle-input:checked + .toggle-track {

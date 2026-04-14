@@ -132,22 +132,35 @@
       </div>
 
       <div class="settings-card">
-        <div class="settings-card-header">
-          <i class="fa fa-list"></i>
-          <span>AutoQueue Engine</span>
+        <div class="settings-card-header settings-card-header--toggle">
+          <div class="settings-card-header-left">
+            <i class="fa fa-list"></i>
+            <span>AutoQueue Engine</span>
+          </div>
+          <label class="header-toggle">
+            <input type="checkbox" class="toggle-input"
+              [ngModel]="(config | async)?.get('autoqueue')?.get('enabled')"
+              (ngModelChange)="onSetConfig('autoqueue', 'enabled', $event)" />
+            <div class="toggle-track"></div>
+          </label>
         </div>
-        <div class="settings-card-body">
-          @for (option of OPTIONS_CONTEXT_AUTOQUEUE.options; track option.label) {
-            <div>
-              <app-option
-                [type]="option.type"
-                [label]="option.label"
-                [description]="option.description"
-                [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
-                (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
-              </app-option>
-            </div>
-          }
+        <div class="settings-card-body" [class.settings-card-body--accent-amber]="autoqueueEnabled">
+          <div class="sub-toggles-grid">
+            @for (option of OPTIONS_CONTEXT_AUTOQUEUE.options; track option.label; let i = $index) {
+              @if (i > 0) {
+                <div class="sub-toggle-pill">
+                  <app-option
+                    [type]="option.type"
+                    [label]="option.label"
+                    [description]="option.description"
+                    [compact]="true"
+                    [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                    (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
+                  </app-option>
+                </div>
+              }
+            }
+          </div>
 
           <!-- Pattern list (only when patterns are enabled) -->
           <div class="pattern-section" [class.patterns-disabled]="!(autoqueueEnabled && patternsOnly)">
@@ -193,19 +206,19 @@
 
       <div class="arr-cards-grid">
         <div class="settings-card settings-card--sonarr">
-          <div class="settings-card-header">
-            <i class="fa fa-television"></i>
-            <span>SONARR</span>
+          <div class="settings-card-header settings-card-header--toggle">
+            <div class="settings-card-header-left">
+              <i class="fa fa-television"></i>
+              <span>SONARR</span>
+            </div>
+            <label class="header-toggle header-toggle--compact">
+              <input type="checkbox" class="toggle-input"
+                [ngModel]="(config | async)?.get('sonarr')?.get('enabled')"
+                (ngModelChange)="onSetConfig('sonarr', 'enabled', $event)" />
+              <div class="toggle-track"></div>
+            </label>
           </div>
           <div class="settings-card-body">
-            <div>
-              <app-option
-                [type]="OptionType.Checkbox"
-                [label]="'Enable Sonarr Integration'"
-                [value]="(config | async)?.get('sonarr')?.get('enabled')"
-                (changeEvent)="onSetConfig('sonarr', 'enabled', $event)">
-              </app-option>
-            </div>
             <fieldset [attr.disabled]="!(config | async)?.get('sonarr')?.get('enabled') ? '' : null">
               <div>
                 <app-option
@@ -262,19 +275,19 @@
         </div>
 
         <div class="settings-card settings-card--radarr">
-          <div class="settings-card-header">
-            <i class="fa fa-film"></i>
-            <span>RADARR</span>
+          <div class="settings-card-header settings-card-header--toggle">
+            <div class="settings-card-header-left">
+              <i class="fa fa-film"></i>
+              <span>RADARR</span>
+            </div>
+            <label class="header-toggle header-toggle--compact">
+              <input type="checkbox" class="toggle-input"
+                [ngModel]="(config | async)?.get('radarr')?.get('enabled')"
+                (ngModelChange)="onSetConfig('radarr', 'enabled', $event)" />
+              <div class="toggle-track"></div>
+            </label>
           </div>
           <div class="settings-card-body">
-            <div>
-              <app-option
-                [type]="OptionType.Checkbox"
-                [label]="'Enable Radarr Integration'"
-                [value]="(config | async)?.get('radarr')?.get('enabled')"
-                (changeEvent)="onSetConfig('radarr', 'enabled', $event)">
-              </app-option>
-            </div>
             <fieldset [attr.disabled]="!(config | async)?.get('radarr')?.get('enabled') ? '' : null">
               <div>
                 <app-option
@@ -332,39 +345,34 @@
       </div>
 
       <div class="settings-card settings-card--autodelete">
-        <div class="settings-card-header">
-          <i class="fa fa-trash"></i>
-          <span>Post-Import Pruning</span>
-        </div>
-        <div class="settings-card-body">
-          <!-- Enable toggle always interactive -->
-          @if (OPTIONS_CONTEXT_AUTODELETE.options[0]; as enableOption) {
-            <div>
-              <app-option
-                [type]="enableOption.type"
-                [label]="enableOption.label"
-                [description]="enableOption.description"
-                [value]="(config | async)?.get(enableOption.valuePath[0])?.get(enableOption.valuePath[1])"
-                (changeEvent)="onSetConfig(enableOption.valuePath[0], enableOption.valuePath[1], $event)">
-              </app-option>
-            </div>
-          }
-          <!-- Remaining options disabled when autodelete is off -->
-          <div class="settings-card-body--disabled-zone" [class.settings-card-body--disabled]="!(config | async)?.get('autodelete')?.get('enabled')" [attr.inert]="!(config | async)?.get('autodelete')?.get('enabled') ? '' : null">
-            @for (option of OPTIONS_CONTEXT_AUTODELETE.options; track option.label; let i = $index) {
-              @if (i > 0) {
-                <div>
-                  <app-option
-                    [type]="option.type"
-                    [label]="option.label"
-                    [description]="option.description"
-                    [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
-                    (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
-                  </app-option>
-                </div>
-              }
-            }
+        <div class="settings-card-header settings-card-header--toggle">
+          <div class="settings-card-header-left">
+            <i class="fa fa-trash"></i>
+            <span>Post-Import Pruning</span>
           </div>
+          <label class="header-toggle header-toggle--compact">
+            <input type="checkbox" class="toggle-input"
+              [ngModel]="(config | async)?.get('autodelete')?.get('enabled')"
+              (ngModelChange)="onSetConfig('autodelete', 'enabled', $event)" />
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+        <div class="settings-card-body"
+          [class.settings-card-body--disabled]="!(config | async)?.get('autodelete')?.get('enabled')"
+          [attr.inert]="!(config | async)?.get('autodelete')?.get('enabled') ? '' : null">
+          @for (option of OPTIONS_CONTEXT_AUTODELETE.options; track option.label; let i = $index) {
+            @if (i > 0) {
+              <div>
+                <app-option
+                  [type]="option.type"
+                  [label]="option.label"
+                  [description]="option.description"
+                  [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                  (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
+                </app-option>
+              </div>
+            }
+          }
         </div>
       </div>
 
