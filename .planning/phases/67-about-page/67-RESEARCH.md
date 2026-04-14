@@ -8,7 +8,7 @@
 
 Phase 67 is a complete rewrite of `AboutPageComponent` to match the AIDesigner mockup at pixel-exact fidelity. The mockup is a Tailwind HTML artifact; all Tailwind classes must be converted to literal CSS values in Bootstrap 5 + SCSS. No new Angular services, routing changes, or backend endpoints are needed. The component already exists and reads `appVersion` from package.json — that wiring is preserved.
 
-The page has four distinct visual sections: (1) an identity card with brand favicon, "SeedSync**arr**" branded title, version badge, tagline, and optional build info; (2) a system info key-value table with divider rows and hover highlight; (3) a 2×2 / 4-column responsive grid of link cards with hover-to-amber transitions; (4) a license badge and copyright footer.
+The page has four distinct visual sections: (1) an identity card with brand favicon, "SeedSync**arr**" branded title, version badge, tagline, and optional build info; (2) a system info key-value table with divider rows and hover highlight; (3) a 2x2 / 4-column responsive grid of link cards with hover-to-amber transitions; (4) a license badge and copyright footer.
 
 The critical constraint is **exact value porting** — the user memory feedback record explicitly flags that "close enough" Bootstrap approximations have caused rework. Use literal hex colors, px padding, and exact spacing values extracted from the mockup's Tailwind config, not Bootstrap utility class approximations.
 
@@ -34,7 +34,7 @@ The critical constraint is **exact value porting** — the user memory feedback 
 
 **Link Cards**
 - D-08: Four link cards in a responsive grid: GitHub, Docs, Report Issue, Changelog.
-- D-09: URLs: GitHub → `https://github.com/thejuran/seedsyncarr`, Docs → `https://thejuran.github.io/seedsyncarr/`, Report Issue → `https://github.com/thejuran/seedsyncarr/issues`, Changelog → `https://github.com/thejuran/seedsyncarr/releases`.
+- D-09: URLs: GitHub -> `https://github.com/thejuran/seedsyncarr`, Docs -> `https://thejuran.github.io/seedsyncarr/`, Report Issue -> `https://github.com/thejuran/seedsyncarr/issues`, Changelog -> `https://github.com/thejuran/seedsyncarr/releases`.
 - D-10: All links open in new tabs (`target="_blank"`).
 - D-11: Each card uses a Phosphor icon (ph-github-logo, ph-book, ph-bug, ph-git-commit) with hover-to-amber color transition on both icon and text.
 
@@ -62,9 +62,9 @@ The critical constraint is **exact value porting** — the user memory feedback 
 | ID | Description | Research Support |
 |----|-------------|------------------|
 | ABUT-01 | App identity card with icon, branded title, version, tagline, build info | Identity card section with brand favicon asset at `src/angular/src/assets/favicon.png`; version from existing `appVersion` field; brand text pattern from Phase 62 D-03 |
-| ABUT-02 | System info table with key-value pairs (Python, Angular, OS, Uptime, PID, Config) | All rows present per mockup; Python/OS/Uptime/PID show `—` placeholder; Angular version as build-time constant; Config path as `~/.seedsyncarr` |
+| ABUT-02 | System info table with key-value pairs (Python, Angular, OS, Uptime, PID, Config) | All rows present per mockup; Python/OS/Uptime/PID show `---` placeholder; Angular version as build-time constant; Config path as `~/.seedsyncarr` |
 | ABUT-03 | Link cards grid (GitHub, Docs, Report Issue, Changelog) with hover-to-amber | 4-card grid in 2-col / 4-col responsive layout; Phosphor icons confirmed available; hover pattern extracted from mockup |
-| ABUT-04 | License badge and copyright footer | Apache License 2.0 per D-12; copyright from current `about-page.component.html`: "Copyright © 2017-2026 Inderpreet Singh, thejuran" |
+| ABUT-04 | License badge and copyright footer | Apache License 2.0 per D-12; copyright from current `about-page.component.html`: "Copyright (c) 2017-2026 Inderpreet Singh, thejuran" |
 </phase_requirements>
 
 ---
@@ -100,9 +100,9 @@ The critical constraint is **exact value porting** — the user memory feedback 
 
 ```
 src/angular/src/app/pages/about/
-├── about-page.component.ts    # Rewrite: add angularVersion constant, keep appVersion
-├── about-page.component.html  # Full rewrite: 4-section layout
-└── about-page.component.scss  # Full rewrite: literal design-spec values
+|- about-page.component.ts    # Rewrite: add angularVersion constant, keep appVersion
+|- about-page.component.html  # Full rewrite: 4-section layout
++- about-page.component.scss  # Full rewrite: literal design-spec values
 ```
 
 ### Pattern 1: Centered Scrollable Page Layout
@@ -111,7 +111,7 @@ src/angular/src/app/pages/about/
 
 **When to use:** This page is a static content page — no viewport-filling tricks like the Logs page. Scrolling is normal document scroll.
 
-**Mockup source values (Tailwind → CSS):**
+**Mockup source values (Tailwind -> CSS):**
 ```scss
 // Source: design.html main element
 // Tailwind: max-w-2xl mx-auto px-6 py-12 flex flex-col gap-8
@@ -501,19 +501,19 @@ export class AboutPageComponent {
   </div>
   <div class="sysinfo-row">
     <span class="sysinfo-label">Python Version</span>
-    <span class="sysinfo-value">—</span>
+    <span class="sysinfo-value">---</span>
   </div>
   <div class="sysinfo-row">
     <span class="sysinfo-label">Host OS</span>
-    <span class="sysinfo-value">—</span>
+    <span class="sysinfo-value">---</span>
   </div>
   <div class="sysinfo-row">
     <span class="sysinfo-label">Uptime</span>
-    <span class="sysinfo-value">—</span>
+    <span class="sysinfo-value">---</span>
   </div>
   <div class="sysinfo-row">
     <span class="sysinfo-label">Process ID</span>
-    <span class="sysinfo-value">—</span>
+    <span class="sysinfo-value">---</span>
   </div>
   <div class="sysinfo-row">
     <span class="sysinfo-label">Config Path</span>
@@ -617,15 +617,15 @@ export class AboutPageComponent {
 |---|-------|---------|---------------|
 | A1 | `VERSION.full` from `@angular/core` returns the full semver string (e.g., "21.2.8") | Code Examples / TS | If wrong, `angularVersion` would be undefined or partial; display would show blank/error in system info row |
 | A2 | Phosphor `ph-fill ph-scales` class syntax works with the unpkg CDN version loaded in index.html | Pitfalls / License badge | If fill variant class syntax differs, the scales icon renders as outline or not at all |
-| A3 | `assets/favicon.png` is visually appropriate for the 6rem × 6rem icon container (not too low-res) | Identity card | favicon.png is 32px; at 96px display size it may appear blurry; `favicon-192.png` would be sharper |
+| A3 | `assets/favicon.png` is visually appropriate for the 6rem x 6rem icon container (not too low-res) | Identity card | favicon.png is 32px; at 96px display size it may appear blurry; `favicon-192.png` would be sharper |
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Brand favicon resolution for 96px display**
    - What we know: `assets/favicon.png` exists (32px source). `assets/favicon-192.png` also exists (192px).
-   - What's unclear: Which asset looks better at 6rem × 6rem in the identity card?
+   - What's unclear: Which asset looks better at 6rem x 6rem in the identity card?
    - Recommendation: Use `assets/favicon-192.png` for the identity card icon container — higher resolution at display size. CLAUDE's discretion applies here (D-04 says "brand favicon asset from doc/brand/" — closest match in assets/ is favicon-192.png for quality).
 
 2. **Fork attribution note placement**
@@ -654,14 +654,14 @@ Step 2.6: SKIPPED — Phase 67 is a pure Angular component rewrite (HTML/TS/SCSS
 | Quick run command | `cd src/angular && ng test --watch=false --browsers ChromeHeadless --include='**/about-page.component.spec.ts'` |
 | Full suite command | `cd src/angular && ng test --watch=false --browsers ChromeHeadless` |
 
-### Phase Requirements → Test Map
+### Phase Requirements -> Test Map
 
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
-| ABUT-01 | Identity card renders brand title, version, tagline | Unit | `ng test --include='**/about-page.component.spec.ts'` | ❌ Wave 0 |
-| ABUT-02 | System info table renders all 7 rows including placeholder dashes | Unit | `ng test --include='**/about-page.component.spec.ts'` | ❌ Wave 0 |
-| ABUT-03 | Link cards render with correct hrefs and target="_blank" | Unit | `ng test --include='**/about-page.component.spec.ts'` | ❌ Wave 0 |
-| ABUT-04 | License badge shows "Apache License 2.0", copyright text present | Unit | `ng test --include='**/about-page.component.spec.ts'` | ❌ Wave 0 |
+| ABUT-01 | Identity card renders brand title, version, tagline | Unit | `ng test --include='**/about-page.component.spec.ts'` | Created by Plan 01 Task 1 (Wave 1) |
+| ABUT-02 | System info table renders all 7 rows including placeholder dashes | Unit | `ng test --include='**/about-page.component.spec.ts'` | Created by Plan 01 Task 1 (Wave 1) |
+| ABUT-03 | Link cards render with correct hrefs and target="_blank" | Unit | `ng test --include='**/about-page.component.spec.ts'` | Created by Plan 01 Task 1 (Wave 1) |
+| ABUT-04 | License badge shows "Apache License 2.0", copyright text present | Unit | `ng test --include='**/about-page.component.spec.ts'` | Created by Plan 01 Task 1 (Wave 1) |
 
 ### Sampling Rate
 - **Per task commit:** Quick run (about-page spec only)
@@ -669,8 +669,8 @@ Step 2.6: SKIPPED — Phase 67 is a pure Angular component rewrite (HTML/TS/SCSS
 - **Phase gate:** Full suite green before `/gsd-verify-work`
 
 ### Wave 0 Gaps
-- [ ] `src/angular/src/app/pages/about/about-page.component.spec.ts` — covers ABUT-01 through ABUT-04
-- [ ] Framework install: None — Karma/Jasmine already configured in project
+
+None — spec file is created inline by Plan 01 Task 1 (Wave 1). Karma/Jasmine already configured in project.
 
 ---
 
