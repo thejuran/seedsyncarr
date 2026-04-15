@@ -433,10 +433,10 @@ Plans:
   2. A search field accepts regex input and filters visible log entries in real time
   3. Auto-scroll toggle, clear, and export-as-.log buttons are present and functional
   4. A status bar footer shows the current connection status, total log entry count, and last-updated time
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
-- [ ] 66-01-PLAN.md -- Terminal log viewer rewrite with toolbar, level filter, regex search, auto-scroll, clear, export
-- [ ] 66-02-PLAN.md -- Status bar footer (connection status, log count, last updated) and unit tests
+- [x] 66-01-PLAN.md -- Terminal log viewer rewrite with toolbar, level filter, regex search, auto-scroll, clear, export
+- [x] 66-02-PLAN.md -- Status bar footer (connection status, log count, last updated) and unit tests
 **UI hint**: yes
 
 ### Phase 67: About Page
@@ -486,7 +486,7 @@ Plans:
 | 63. Dashboard — Stats Strip & Transfer Table | v1.1.0 | 2/2 | Complete    | 2026-04-15 |
 | 64. Dashboard — Log Pane | v1.1.0 | 1/1 | Complete | 2026-04-14 |
 | 65. Settings Page | v1.1.0 | 2/2 | Complete   | 2026-04-15 |
-| 66. Logs Page | v1.1.0 | 2/2 | Complete | 2026-04-14 |
+| 66. Logs Page | v1.1.0 | 2/2 | Complete   | 2026-04-15 |
 | 67. About Page | v1.1.0 | 2/2 | Complete    | 2026-04-14 |
 
 ### Phase 68: UI Polish
