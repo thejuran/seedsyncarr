@@ -39,12 +39,12 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.59.1",
     "@types/jasmine": "^6.0.0",
-    "@types/node": "^25.5.2",
-    "@typescript-eslint/eslint-plugin": "^8.58.1",
-    "@typescript-eslint/parser": "^8.58.1",
+    "@types/node": "^25.6.0",
+    "@typescript-eslint/eslint-plugin": "^8.58.2",
+    "@typescript-eslint/parser": "^8.58.2",
     "eslint": "^10.2.0",
-    "globals": "^17.4.0",
-    "jasmine-core": "^6.1.0",
+    "globals": "^17.5.0",
+    "jasmine-core": "^6.2.0",
     "jasmine-spec-reporter": "~7.0.0",
     "karma": "^6.4.4",
     "karma-chrome-launcher": "^3.2.0",
@@ -57,7 +57,7 @@
     "sass": "^1.99.0",
     "ts-node": "~10.9.0",
     "typescript": "~6.0.2",
-    "typescript-eslint": "^8.58.1"
+    "typescript-eslint": "^8.58.2"
   },
   "overrides": {
     "undici": "^7.24.0",
