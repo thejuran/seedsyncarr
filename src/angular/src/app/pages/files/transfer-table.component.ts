@@ -3,7 +3,7 @@ import {AsyncPipe} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {Observable, BehaviorSubject, Subject, combineLatest} from "rxjs";
-import {debounceTime, distinctUntilChanged, map} from "rxjs/operators";
+import {debounceTime, distinctUntilChanged, map, shareReplay} from "rxjs/operators";
 
 import {ViewFileService} from "../../services/files/view-file.service";
 import {ViewFileOptionsService} from "../../services/files/view-file-options.service";
@@ -70,7 +70,8 @@ export class TransferTableComponent {
                     ).toList();
                 }
                 return files;
-            })
+            }),
+            shareReplay(1)
         );
 
         // Paged files derived from segmented + page
