@@ -515,11 +515,11 @@ Plans:
 **Goal:** Replace flat All/Active/Errors segment filter with two-level drill-down — clicking Active or Errors expands inline sub-buttons for individual statuses (Syncing/Queued/Extracting and Failed/Deleted)
 **Requirements**: UI-DRILL-01
 **Depends on:** Phase 69
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 70-01-PLAN.md — Drill-down component logic, template, and SCSS styles
-- [ ] 70-02-PLAN.md — Unit test updates and new drill-down test cases
+- [x] 70-01-PLAN.md — Drill-down component logic, template, and SCSS styles
+- [x] 70-02-PLAN.md — Unit test updates and new drill-down test cases
 
 ---
 

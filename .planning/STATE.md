@@ -4,13 +4,13 @@ milestone: v1.1.0
 milestone_name: UI Redesign — Triggarr Style
 status: executing
 stopped_at: Phase 67 context gathered
-last_updated: "2026-04-15T18:26:37.747Z"
+last_updated: "2026-04-15T21:00:00.385Z"
 last_activity: 2026-04-15
 progress:
-  total_phases: 17
-  completed_phases: 8
-  total_plans: 14
-  completed_plans: 14
+  total_phases: 18
+  completed_phases: 9
+  total_plans: 16
+  completed_plans: 16
   percent: 100
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 68 — ui-polish
+**Current focus:** Phase 70 — drilldown-segment-filters
 
 ## Current Position
 
-Phase: 69
+Phase: 70
 Plan: Not started
-Status: Executing Phase 68
+Status: Executing Phase 70
 Last activity: 2026-04-15
 
 Progress: [░░░░░░░░░░] 0%
@@ -49,6 +49,7 @@ Progress: [░░░░░░░░░░] 0%
 
 - Phase 68 added: UI Polish — palette consolidation, clickable version, dashboard favicon, docs visuals
 - Phase 69 added: E2E Selector Update — update Playwright page objects for redesigned dashboard transfer-table and bulk-actions
+- Phase 70 added: Drilldown Segment Filters — two-level drill-down for Active/Errors segment buttons with individual status sub-buttons
 
 ### Decisions
 
