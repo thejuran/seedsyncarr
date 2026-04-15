@@ -12,10 +12,10 @@
         <span class="bell-dropdown-title">Notifications</span>
       </div>
       <div class="bell-dropdown-body">
-        @if (notifs?.size === 0) {
+        @if (!notifs || notifs.size === 0) {
           <div class="bell-empty">No notifications</div>
         } @else {
-          @for (notif of (notifs ?? []); track $index) {
+          @for (notif of notifs; track notif.text + notif.timestamp) {
             <div class="bell-notif" [attr.data-level]="notif.level">
               <span class="bell-notif-icon" aria-hidden="true">
                 @switch (notif.level) {
@@ -27,7 +27,7 @@
               </span>
               <span class="bell-notif-text">{{ notif.text }}</span>
               @if (notif.dismissible) {
-                <button class="bell-notif-dismiss" (click)="dismissNotification(notif)" aria-label="Dismiss">
+                <button class="bell-notif-dismiss" (click)="dismissNotification(notif); $event.stopPropagation()" aria-label="Dismiss">
                   <i class="fa fa-times"></i>
                 </button>
               }

@@ -60,6 +60,7 @@ export class NotificationService implements OnDestroy {
     }
 
     ngOnDestroy(): void {
+        this._notificationsSubject.complete();
         this.destroy$.next();
         this.destroy$.complete();
     }

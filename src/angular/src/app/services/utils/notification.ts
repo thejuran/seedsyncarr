@@ -22,9 +22,7 @@ export class Notification extends NotificationRecord implements INotification {
     dismissible!: boolean;
 
     constructor(props: Partial<Notification>) {
-        props.timestamp = Date.now();
-
-        super(props);
+        super({...props, timestamp: Date.now()});
     }
 }
 

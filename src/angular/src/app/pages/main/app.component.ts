@@ -31,7 +31,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
     private destroy$ = new Subject<void>();
     private _resizeObserver!: ResizeObserver;
-    private _toastTimerMap = new Map<string, ReturnType<typeof setTimeout>>();
+    private _toastTimerMap = new Map<number, ReturnType<typeof setTimeout>>();
 
     constructor(private router: Router,
                 private _domService: DomService,
