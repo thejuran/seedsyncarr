@@ -3,7 +3,7 @@ status: complete
 phase: 62-nav-bar-foundation
 source: 62-01-PLAN.md, 62-02-PLAN.md
 started: 2026-04-14T11:45:00Z
-updated: 2026-04-14T11:55:00Z
+updated: 2026-04-15T19:35:00Z
 ---
 
 ## Current Test
@@ -14,8 +14,8 @@ updated: 2026-04-14T11:55:00Z
 
 ### 1. Nav Bar Backdrop Blur
 expected: When scrolling, the nav bar stays sticky at top with visible frosted-glass blur — page content behind it is blurred and partially visible through the semi-transparent dark background.
-result: skipped
-reason: No data/content on page to scroll — blur effect cannot be visually verified without content behind the nav
+result: pass
+reason: Verified on live instance (maguffynas:8800) — scrolled with content behind nav, frosted-glass blur visible
 
 ### 2. Brand Text Styling
 expected: The nav brand reads "SeedSync" in a light/primary color, with "arr" in amber — two distinct colors in one word.
@@ -27,8 +27,8 @@ result: pass
 
 ### 4. Connection Badge — Connected State
 expected: When the backend server is running and reachable, the badge shows a green pulsing dot with "Connected" text in a pill badge.
-result: skipped
-reason: Backend server not running — cannot test connected state
+result: pass
+reason: Verified on live instance — badge shows green dot with "Connection Stable" text in pill badge
 
 ### 5. Connection Badge — Disconnected State
 expected: When the backend server is not running, the badge shows a red static dot with "Disconnected" text in a red-tinted pill.
@@ -65,10 +65,10 @@ result: pass
 ## Summary
 
 total: 12
-passed: 10
+passed: 12
 issues: 0
 pending: 0
-skipped: 2
+skipped: 0
 blocked: 0
 
 ## Gaps
