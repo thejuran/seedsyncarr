@@ -1,4 +1,4 @@
-import {BehaviorSubject, Subject} from "rxjs";
+import {BehaviorSubject, Observable, Subject} from "rxjs";
 import {ComponentFixture, fakeAsync, TestBed, tick} from "@angular/core/testing";
 import {FormsModule} from "@angular/forms";
 import {NgClass} from "@angular/common";
@@ -58,7 +58,7 @@ const LOGS_PAGE_TEMPLATE = `
 class MockLogService {
     private _logs$ = new Subject<LogRecord>();
 
-    get logs() {
+    get logs(): Observable<LogRecord> {
         return this._logs$.asObservable();
     }
 
@@ -70,7 +70,7 @@ class MockLogService {
 class MockConnectedService {
     private _connected$ = new BehaviorSubject<boolean>(false);
 
-    get connected() {
+    get connected(): Observable<boolean> {
         return this._connected$.asObservable();
     }
 

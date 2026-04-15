@@ -1,7 +1,7 @@
 import {ComponentFixture, fakeAsync, TestBed, tick} from "@angular/core/testing";
 import {DatePipe, NgClass} from "@angular/common";
 import {RouterModule} from "@angular/router";
-import {Subject} from "rxjs";
+import {Observable, Subject} from "rxjs";
 
 import {DashboardLogPaneComponent} from "../../../../pages/files/dashboard-log-pane.component";
 import {StreamServiceRegistry} from "../../../../services/base/stream-service.registry";
@@ -51,7 +51,7 @@ class MockLogService {
     private _logs$ = new Subject<LogRecord>();
     hasReceivedLogs = false;
 
-    get logs() {
+    get logs(): Observable<LogRecord> {
         return this._logs$.asObservable();
     }
 

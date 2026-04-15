@@ -153,7 +153,7 @@ export class LogsPageComponent implements OnInit {
     }
 
     exportLogs(): void {
-        const sanitize = (s: string) => s.replace(/[\r\n]/g, " ");
+        const sanitize = (s: string): string => s.replace(/[\r\n]/g, " ");
         const lines = this.filteredLogs.map(e => {
             const d = e.time;
             const date = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;

@@ -1,5 +1,5 @@
 import {ComponentFixture, fakeAsync, TestBed, tick} from "@angular/core/testing";
-import {BehaviorSubject} from "rxjs";
+import {BehaviorSubject, Observable} from "rxjs";
 
 import {StatsStripComponent} from "../../../../pages/files/stats-strip.component";
 import {DashboardStats, DashboardStatsService} from "../../../../services/files/dashboard-stats.service";
@@ -75,7 +75,7 @@ class MockDashboardStatsService {
         totalTrackedBytes: 0,
     });
 
-    get stats$() {
+    get stats$(): Observable<DashboardStats> {
         return this._stats$.asObservable();
     }
 

@@ -1,5 +1,5 @@
 import {ComponentFixture, fakeAsync, TestBed, tick} from "@angular/core/testing";
-import {BehaviorSubject} from "rxjs";
+import {BehaviorSubject, Observable} from "rxjs";
 
 import * as Immutable from "immutable";
 
@@ -46,7 +46,7 @@ const TEST_TEMPLATE = `
 class MockViewFileService {
     private _filteredFiles$ = new BehaviorSubject<Immutable.List<ViewFile>>(Immutable.List([]));
 
-    get filteredFiles() {
+    get filteredFiles(): Observable<Immutable.List<ViewFile>> {
         return this._filteredFiles$.asObservable();
     }
 
@@ -58,7 +58,7 @@ class MockViewFileService {
 class MockViewFileOptionsService {
     private _options$ = new BehaviorSubject<ViewFileOptions>(new ViewFileOptions({}));
 
-    get options() {
+    get options(): Observable<ViewFileOptions> {
         return this._options$.asObservable();
     }
 
