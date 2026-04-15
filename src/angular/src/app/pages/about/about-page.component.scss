@@ -117,6 +117,19 @@
     gap: 0.75rem;
 }
 
+.version-link {
+    text-decoration: none;
+    transition: opacity 200ms;
+
+    &:hover {
+        opacity: 0.8;
+    }
+
+    &:hover .version-badge {
+        border-color: $amber;
+    }
+}
+
 .version-badge {
     font-size: 0.75rem;
     font-family: 'JetBrains Mono', var(--bs-font-monospace);

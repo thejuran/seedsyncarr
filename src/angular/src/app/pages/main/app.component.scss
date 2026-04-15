@@ -68,6 +68,20 @@
     }
 }
 
+.brand-version-link {
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+
+    &:hover {
+        opacity: 0.8;
+    }
+
+    &:hover .brand-version {
+        border-color: $amber;
+        color: $text;
+    }
+}
+
 .brand-version {
     font-size: 0.75rem;
     font-family: 'JetBrains Mono', $font-family-monospace;
