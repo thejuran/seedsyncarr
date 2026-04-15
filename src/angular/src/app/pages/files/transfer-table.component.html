@@ -64,7 +64,7 @@
       @if ((vm.totalCount ?? 0) === 0) {
         No files to display
       } @else {
-        Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ currentPage * pageSize > vm.totalCount ? vm.totalCount : currentPage * pageSize }} of {{ vm.totalCount }} files
+        Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ currentPage * pageSize > (vm.totalCount ?? 0) ? (vm.totalCount ?? 0) : currentPage * pageSize }} of {{ vm.totalCount ?? 0 }} files
       }
     </span>
     <div class="page-controls">
