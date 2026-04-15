@@ -12,6 +12,9 @@ export class AboutPage extends App {
     }
 
     async getVersion(): Promise<string> {
-        return this.page.locator('#version').textContent() || '';
+        const text = await this.page.locator('.version-badge').textContent() || '';
+        // Extract version from "Version X.Y.Z (Stable)" format
+        const match = text.match(/Version\s+([\d.]+)/);
+        return match ? `v${match[1]}` : '';
     }
 }

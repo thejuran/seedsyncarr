@@ -16,7 +16,7 @@ export class AutoQueuePage extends App {
     async waitForPatternsToLoad(expectedCount: number) {
         if (expectedCount > 0) {
             await this.page.waitForFunction(
-                (expected) => document.querySelectorAll('.pattern-section .pattern-row').length >= expected,
+                (expected) => document.querySelectorAll('.pattern-section .pattern-chip').length >= expected,
                 expectedCount,
                 { timeout: 5000 }
             );
@@ -24,28 +24,28 @@ export class AutoQueuePage extends App {
     }
 
     async getPatterns(): Promise<string[]> {
-        const elements = await this.page.locator('.pattern-section .pattern-row .pattern-text').all();
+        const elements = await this.page.locator('.pattern-section .pattern-chip .pattern-chip-text').all();
         return Promise.all(elements.map(elm => elm.innerHTML()));
     }
 
     async addPattern(pattern: string) {
         await this.page.locator('.pattern-add input').fill(pattern);
-        await this.page.locator('.pattern-add .pattern-add-btn').click();
+        await this.page.locator('.pattern-add .btn-pattern-add').click();
         // Wait for the pattern to appear in the list
-        await this.page.locator(`.pattern-section .pattern-text:has-text("${pattern}")`).waitFor({ state: 'visible' });
+        await this.page.locator(`.pattern-section .pattern-chip-text:has-text("${pattern}")`).waitFor({ state: 'visible' });
     }
 
     async removePattern(index: number) {
-        const countBefore = await this.page.locator('.pattern-section .pattern-row').count();
-        await this.page.locator('.pattern-section .pattern-row').nth(index).locator('.pattern-remove-btn').click();
+        const countBefore = await this.page.locator('.pattern-section .pattern-chip').count();
+        await this.page.locator('.pattern-section .pattern-chip').nth(index).locator('.pattern-chip-remove').click();
         await this.page.waitForFunction(
-            (expected) => document.querySelectorAll('.pattern-section .pattern-row').length === expected,
+            (expected) => document.querySelectorAll('.pattern-section .pattern-chip').length === expected,
             countBefore - 1
         );
     }
 
     async removeAllPatterns() {
-        while ((await this.page.locator('.pattern-section .pattern-row').count()) > 0) {
+        while ((await this.page.locator('.pattern-section .pattern-chip').count()) > 0) {
             await this.removePattern(0);
         }
     }
