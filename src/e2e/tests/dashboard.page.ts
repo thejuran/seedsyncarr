@@ -15,7 +15,9 @@ export class DashboardPage extends App {
 
     async navigateTo() {
         await this.page.goto(Paths.DASHBOARD);
-        // Wait for the transfer table to render at least one row
+        // Wait for the transfer table container first (distinguishes "page not loaded" from "no data")
+        await this.page.locator('.transfer-table').waitFor({ state: 'visible', timeout: 30000 });
+        // Then wait for at least one row to render
         await this.page.locator('.transfer-table tbody app-transfer-row').first()
             .waitFor({ state: 'visible', timeout: 30000 });
     }
