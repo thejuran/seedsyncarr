@@ -48,6 +48,7 @@ Progress: [░░░░░░░░░░] 0%
 ### Roadmap Evolution
 
 - Phase 68 added: UI Polish — palette consolidation, clickable version, dashboard favicon, docs visuals
+- Phase 69 added: E2E Selector Update — update Playwright page objects for redesigned dashboard transfer-table and bulk-actions
 
 ### Decisions
 
