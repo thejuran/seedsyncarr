@@ -1,0 +1,5 @@
+[allowlist]
+  description = "False positives in test fixtures"
+  paths = [
+    '''src/python/tests/'''
+  ]
