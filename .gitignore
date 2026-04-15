@@ -18,5 +18,12 @@ src/angular/dist/
 # SSH private keys
 id_rsa
 *.pem
+# AI tooling (local only)
+.agents/
 .aidesigner/*
 !.aidesigner/.gitkeep
+.claude/
+.mcp.json
+.planning/tmp/
+docs/superpowers/
+shield-claude-skill/
