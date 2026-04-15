@@ -302,4 +302,176 @@ describe("TransferTableComponent", () => {
         const info = fixture.nativeElement.querySelector(".page-info");
         expect(info!.textContent).toContain("Page 1");
     }));
+
+    // --- Sub-status defaults ---
+
+    it("should have default activeSubStatus of null", () => {
+        expect(component.activeSubStatus).toBeNull();
+    });
+
+    // --- Sub-status filtering (one test per status) ---
+
+    it("should filter to DOWNLOADING only when Syncing sub-status selected", fakeAsync(() => {
+        const files = [
+            makeFile("dl-1", ViewFile.Status.DOWNLOADING),
+            makeFile("queued-1", ViewFile.Status.QUEUED),
+            makeFile("extract-1", ViewFile.Status.EXTRACTING),
+        ];
+        mockFileService.pushFiles(files);
+        tick();
+
+        component.onSegmentChange("active");
+        component.onSubStatusChange(ViewFile.Status.DOWNLOADING);
+        fixture.detectChanges();
+        tick();
+
+        let pagedFiles: ViewFile[] = [];
+        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        tick();
+
+        expect(pagedFiles.length).toBe(1);
+        expect(pagedFiles[0].name).toBe("dl-1");
+    }));
+
+    it("should filter to QUEUED only when Queued sub-status selected", fakeAsync(() => {
+        const files = [
+            makeFile("dl-1", ViewFile.Status.DOWNLOADING),
+            makeFile("queued-1", ViewFile.Status.QUEUED),
+            makeFile("extract-1", ViewFile.Status.EXTRACTING),
+        ];
+        mockFileService.pushFiles(files);
+        tick();
+
+        component.onSegmentChange("active");
+        component.onSubStatusChange(ViewFile.Status.QUEUED);
+        fixture.detectChanges();
+        tick();
+
+        let pagedFiles: ViewFile[] = [];
+        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        tick();
+
+        expect(pagedFiles.length).toBe(1);
+        expect(pagedFiles[0].name).toBe("queued-1");
+    }));
+
+    it("should filter to EXTRACTING only when Extracting sub-status selected", fakeAsync(() => {
+        const files = [
+            makeFile("dl-1", ViewFile.Status.DOWNLOADING),
+            makeFile("queued-1", ViewFile.Status.QUEUED),
+            makeFile("extract-1", ViewFile.Status.EXTRACTING),
+        ];
+        mockFileService.pushFiles(files);
+        tick();
+
+        component.onSegmentChange("active");
+        component.onSubStatusChange(ViewFile.Status.EXTRACTING);
+        fixture.detectChanges();
+        tick();
+
+        let pagedFiles: ViewFile[] = [];
+        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        tick();
+
+        expect(pagedFiles.length).toBe(1);
+        expect(pagedFiles[0].name).toBe("extract-1");
+    }));
+
+    it("should filter to STOPPED only when Failed sub-status selected", fakeAsync(() => {
+        const files = [
+            makeFile("stopped-1", ViewFile.Status.STOPPED),
+            makeFile("deleted-1", ViewFile.Status.DELETED),
+            makeFile("dl-1", ViewFile.Status.DOWNLOADING),
+        ];
+        mockFileService.pushFiles(files);
+        tick();
+
+        component.onSegmentChange("errors");
+        component.onSubStatusChange(ViewFile.Status.STOPPED);
+        fixture.detectChanges();
+        tick();
+
+        let pagedFiles: ViewFile[] = [];
+        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        tick();
+
+        expect(pagedFiles.length).toBe(1);
+        expect(pagedFiles[0].name).toBe("stopped-1");
+    }));
+
+    it("should filter to DELETED only when Deleted sub-status selected", fakeAsync(() => {
+        const files = [
+            makeFile("stopped-1", ViewFile.Status.STOPPED),
+            makeFile("deleted-1", ViewFile.Status.DELETED),
+            makeFile("dl-1", ViewFile.Status.DOWNLOADING),
+        ];
+        mockFileService.pushFiles(files);
+        tick();
+
+        component.onSegmentChange("errors");
+        component.onSubStatusChange(ViewFile.Status.DELETED);
+        fixture.detectChanges();
+        tick();
+
+        let pagedFiles: ViewFile[] = [];
+        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        tick();
+
+        expect(pagedFiles.length).toBe(1);
+        expect(pagedFiles[0].name).toBe("deleted-1");
+    }));
+
+    // --- Sub-status switching and state management ---
+
+    it("should switch sub-status within same segment", fakeAsync(() => {
+        const files = [
+            makeFile("dl-1", ViewFile.Status.DOWNLOADING),
+            makeFile("queued-1", ViewFile.Status.QUEUED),
+        ];
+        mockFileService.pushFiles(files);
+        tick();
+
+        component.onSegmentChange("active");
+        component.onSubStatusChange(ViewFile.Status.DOWNLOADING);
+        tick();
+
+        component.onSubStatusChange(ViewFile.Status.QUEUED);
+        fixture.detectChanges();
+        tick();
+
+        let pagedFiles: ViewFile[] = [];
+        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        tick();
+
+        expect(pagedFiles.length).toBe(1);
+        expect(pagedFiles[0].name).toBe("queued-1");
+        expect(component.activeSubStatus).toBe(ViewFile.Status.QUEUED);
+    }));
+
+    it("should clear subStatus when switching parent segment", fakeAsync(() => {
+        component.onSegmentChange("active");
+        component.onSubStatusChange(ViewFile.Status.DOWNLOADING);
+        expect(component.activeSubStatus).toBe(ViewFile.Status.DOWNLOADING);
+
+        component.onSegmentChange("errors");
+        expect(component.activeSegment).toBe("errors");
+        expect(component.activeSubStatus).toBeNull();
+    }));
+
+    it("should clear subStatus and collapse to All when clicking expanded parent", () => {
+        component.onSegmentChange("active");
+        component.onSubStatusChange(ViewFile.Status.DOWNLOADING);
+        expect(component.activeSubStatus).toBe(ViewFile.Status.DOWNLOADING);
+
+        component.onSegmentChange("active"); // second click — collapse
+        expect(component.activeSegment).toBe("all");
+        expect(component.activeSubStatus).toBeNull();
+    });
+
+    it("should reset page to 1 on sub-status change", () => {
+        component.currentPage = 3;
+        component.onSegmentChange("active");
+        component.onSubStatusChange(ViewFile.Status.DOWNLOADING);
+        expect(component.currentPage).toBe(1);
+    });
 });
