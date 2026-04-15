@@ -24,9 +24,10 @@ export class DashboardPage extends App {
 
     async waitForAtLeastFileCount(count: number, timeout: number = 10000) {
         await this.page.waitForFunction(
-            (expectedCount) => {
+            (expectedCount: number) => {
                 const rows = document.querySelectorAll('.transfer-table tbody app-transfer-row');
-                return rows.length >= expectedCount;
+                return rows.length >= expectedCount &&
+                    [...rows].every(r => r.querySelector('td.cell-name .file-name')?.textContent?.trim());
             },
             count,
             { timeout }
