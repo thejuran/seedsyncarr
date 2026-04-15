@@ -115,9 +115,10 @@
     box-shadow: 0 0 0 1px rgba(196, 154, 74, 0.5);
   }
 
-  &:focus ~ .search-icon {
-    color: #c49a4a;
-  }
+}
+
+.search-box:has(.search-input:focus) .search-icon {
+  color: #c49a4a;
 }
 
 // ============================================================================
