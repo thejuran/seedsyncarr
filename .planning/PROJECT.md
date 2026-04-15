@@ -10,7 +10,14 @@ Reliable file sync from seedbox to local with automated media library integratio
 
 ## Previous State
 
-**v4.0.3 (released 2026-04-08)** — Dependency security fixes (hono/node-server overrides) and CI verification.
+**v1.1.0-dev (2026-04-15)** — UI Redesign — Triggarr Style. All 4 pages ported from AIDesigner mockups: nav bar with backdrop blur, dashboard stats+table+log pane, settings masonry layout with toggle switches, terminal log viewer, about page. SCSS palette consolidated, clickable version badges, brand favicon.
+
+<details>
+<summary>v4.0.3 (released 2026-04-08)</summary>
+
+Dependency security fixes (hono/node-server overrides) and CI verification.
+
+</details>
 
 <details>
 <summary>v4.0.3 Dependency Fixes & CI (2026-04-08)</summary>
@@ -222,17 +229,19 @@ Reliable file sync from seedbox to local with automated media library integratio
 - ✓ Selection highlighting unified with teal palette — v1.0
 - ✓ All buttons standardized to Bootstrap semantic variants — v1.0
 
+**v1.1.0-dev (2026-04-15):**
+
+- ✓ Nav bar with backdrop blur, amber active indicator, connection badge, notification bell — v1.1.0
+- ✓ Dashboard stats strip (4 metric cards), transfer table (search, filters, progress, pagination) — v1.1.0
+- ✓ Dashboard compact terminal log pane with severity coloring — v1.1.0
+- ✓ Settings masonry layout, toggle switches, brand Sonarr/Radarr cards, floating save bar — v1.1.0
+- ✓ Terminal log viewer with level filter, regex search, auto-scroll, export, status bar — v1.1.0
+- ✓ About page identity card, system info, link cards, license footer — v1.1.0
+- ✓ SCSS palette consolidated to shared aliases, brand favicon, clickable version badges — v1.1.0
+
 ### Active
 
-## Current Milestone: v1.1.0 UI Redesign — Triggarr Style
-
-**Goal:** Port AIDesigner design artifacts into the Angular codebase, bringing all 4 pages to Triggarr-level visual polish with the earthy Deep Moss palette.
-
-**Target features:**
-- Dashboard: Stats strip cards (Remote/Local Storage, Download Speed, Active Tasks), redesigned transfer table with progress bars and status badges, compact terminal log pane
-- Settings: Two-column masonry layout with all 10 card sections, pattern CRUD, Sonarr/Radarr webhook display, floating save button
-- Logs: Full-viewport terminal log viewer with level filters, search, auto-scroll, export, status bar
-- About: Centered narrow column with app identity, system info table, link cards, license
+(Next milestone TBD)
 
 ### Out of Scope
 
@@ -249,7 +258,7 @@ Reliable file sync from seedbox to local with automated media library integratio
 **Codebase state:**
 - ~32,871 Python LOC, ~15,472 TypeScript LOC
 - 1,133 Python tests, 84% coverage (fail_under enforced)
-- 403 Angular unit tests passing
+- 552 Angular unit tests passing
 - Zero TypeScript lint errors
 - Angular 21.x, TypeScript 6, Python 3.12+ compatible
 
@@ -317,9 +326,9 @@ Reliable file sync from seedbox to local with automated media library integratio
 
 ## Project Status
 
-**Status:** v1.0.0 SeedSyncarr Rebrand in progress
+**Status:** v1.1.0-dev complete — UI Redesign shipped, pending stable release
 
-24 milestones shipped as SeedSync (v1.0 through v4.0.3). Now rebranding to SeedSyncarr as standalone *arr ecosystem project.
+25 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign as SeedSyncarr).
 
 ## Evolution
 
@@ -339,4 +348,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 after Phase 67 (About Page) complete — last phase in v1.1.0 UI Redesign milestone*
+*Last updated: 2026-04-15 after v1.1.0-dev milestone (UI Redesign — Triggarr Style)*

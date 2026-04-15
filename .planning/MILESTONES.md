@@ -1,5 +1,24 @@
 # Project Milestones: SeedSync
 
+## v1.1.0 UI Redesign — Triggarr Style (Shipped: 2026-04-15)
+
+**Phases completed:** 7 phases, 13 plans, 12 tasks
+
+**Key accomplishments:**
+
+- Notification bell dropdown with amber badge dot and dismiss support replacing inline Bootstrap alert bar (NAV-04), using standalone NotificationBellComponent with innerHTML text binding
+- Triggarr-style transfer table with search input, All/Active/Errors segment filters, animated striped progress bars, status badges (Syncing/Queued/Synced/Failed), bandwidth/ETA columns, and client-side pagination wired into the dashboard page shell
+- CSS Grid two-column masonry layout with 10 icon-headed dark cards and pill-shaped toggle switches replacing all checkboxes
+- Sonarr/Radarr/AutoDelete brand-colored cards, webhook copy buttons, and floating save confirmation bar completing the settings page redesign
+- Full-viewport terminal log viewer with level filtering, regex search, auto-scroll, clear, and export
+- Status bar footer with live connection indicator, log count, timestamp, plus 21 unit tests covering all LOGS requirements
+- One-liner:
+- Human-approved About page visual fidelity — all 4 sections match AIDesigner mockup, 552/552 tests green
+- Task 1 — SCSS palette consolidation:
+- Task 1 — Clickable version badges:
+
+---
+
 ## v2.0.1 Hotfix: Webhook Child File Matching (Shipped: 2026-02-14)
 
 **Delivered:** Fixed webhook import matching to work with child files (episodes inside show directories), not just root-level model names.
@@ -294,7 +313,6 @@
 
 ---
 
-
 ## v3.0 Terminal UI Overhaul (Shipped: 2026-02-17)
 
 **Delivered:** Complete Terminal/Hacker aesthetic redesign — dark-only UI with Fira Code + IBM Plex Sans fonts, matrix-green accents, ASCII progress bars, collapsible icon-rail sidebar, CRT scan-line overlay, and theme system cleanup.
@@ -321,7 +339,6 @@
 **What's next:** Run `/gsd:new-milestone` to start next milestone (Lidarr/Readarr support, or other features).
 
 ---
-
 
 ## v3.1 Harden & Fix (Shipped: 2026-02-24)
 
@@ -545,4 +562,3 @@
 **Tag:** v4.0.2
 
 ---
-
