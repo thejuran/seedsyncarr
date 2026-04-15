@@ -46,9 +46,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #c49a4a;
-    font-size: 1rem;
     box-shadow: 0 0 15px rgba(196, 154, 74, 0.2);
+}
+
+.brand-favicon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
 }
 
 .brand-text {

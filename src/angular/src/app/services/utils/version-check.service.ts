@@ -10,8 +10,7 @@ import {NotificationService} from "./notification.service";
 import {Notification} from "./notification";
 import {Localization} from "../../common/localization";
 
-declare function require(moduleName: string): { version: string };
-const { version: appVersion } = require("../../../../package.json");
+import { APP_VERSION } from "../../common/version";
 
 
 /**
@@ -91,6 +90,6 @@ export class VersionCheckService implements OnDestroy {
         version = version.replace(/^v/, "");
         // Replace - with .
         version = version.replace(/-/g, ".");
-        return compare(version, appVersion, ">");
+        return compare(version, APP_VERSION, ">");
     }
 }
