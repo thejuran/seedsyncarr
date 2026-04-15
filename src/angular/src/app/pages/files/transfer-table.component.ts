@@ -47,7 +47,10 @@ export class TransferTableComponent {
         // Derive segmented files from filteredFiles + filter state (segment + optional sub-status)
         const segmentedFiles$ = combineLatest([
             this.viewFileService.filteredFiles,
-            this.filterState$
+            this.filterState$.pipe(
+                map(s => ({ segment: s.segment, subStatus: s.subStatus })),
+                distinctUntilChanged((a, b) => a.segment === b.segment && a.subStatus === b.subStatus)
+            )
         ]).pipe(
             map(([files, state]) => {
                 if (state.subStatus != null) {
@@ -126,6 +129,13 @@ export class TransferTableComponent {
     }
 
     onSubStatusChange(status: ViewFile.Status): void {
+        if (this.activeSubStatus === status) {
+            // Second click — deselect, show full parent segment
+            this.activeSubStatus = null;
+            this.currentPage = 1;
+            this.filterState$.next({ segment: this.activeSegment, subStatus: null, page: 1 });
+            return;
+        }
         this.activeSubStatus = status;
         this.currentPage = 1;
         this.filterState$.next({
