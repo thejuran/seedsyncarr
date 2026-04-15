@@ -9,14 +9,12 @@ test.describe('Testing dashboard page', () => {
         await dashboardPage.navigateTo();
     });
 
-    test('should have Dashboard nav link active', async ({ page }) => {
-        dashboardPage = new DashboardPage(page);
+    test('should have Dashboard nav link active', async () => {
         const activeLink = await dashboardPage.getActiveNavLink();
         expect(activeLink).toBe('Dashboard');
     });
 
-    test('should have a list of files', async ({ page }) => {
-        dashboardPage = new DashboardPage(page);
+    test('should have a list of files', async () => {
         const golden: FileInfo[] = [
             { name: 'áßç déÀ.mp4', status: '', size: '840 KB' },
             { name: 'clients.jpg', status: '', size: '36.5 KB' },
