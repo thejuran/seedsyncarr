@@ -24,17 +24,22 @@ const TEST_TEMPLATE = `
             [class.btn-segment--parent-expanded]="activeSegment === 'active' && activeSubStatus !== null"
             (click)="onSegmentChange('active')">Active</button>
     @if (activeSegment === 'active') {
-      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.DOWNLOADING" (click)="onSubStatusChange(ViewFileStatus.DOWNLOADING)">Syncing</button>
-      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.QUEUED" (click)="onSubStatusChange(ViewFileStatus.QUEUED)">Queued</button>
-      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.EXTRACTING" (click)="onSubStatusChange(ViewFileStatus.EXTRACTING)">Extracting</button>
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.DOWNLOADING"
+              (click)="onSubStatusChange(ViewFileStatus.DOWNLOADING)">Syncing</button>
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.QUEUED"
+              (click)="onSubStatusChange(ViewFileStatus.QUEUED)">Queued</button>
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.EXTRACTING"
+              (click)="onSubStatusChange(ViewFileStatus.EXTRACTING)">Extracting</button>
     }
     <button class="btn-segment"
             [class.btn-segment--parent-active]="activeSegment === 'errors' && activeSubStatus === null"
             [class.btn-segment--parent-expanded]="activeSegment === 'errors' && activeSubStatus !== null"
             (click)="onSegmentChange('errors')">Errors</button>
     @if (activeSegment === 'errors') {
-      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.STOPPED" (click)="onSubStatusChange(ViewFileStatus.STOPPED)">Failed</button>
-      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.DELETED" (click)="onSubStatusChange(ViewFileStatus.DELETED)">Deleted</button>
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.STOPPED"
+              (click)="onSubStatusChange(ViewFileStatus.STOPPED)">Failed</button>
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.DELETED"
+              (click)="onSubStatusChange(ViewFileStatus.DELETED)">Deleted</button>
     }
   </div>
 </div>

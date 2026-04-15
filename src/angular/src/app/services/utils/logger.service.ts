@@ -20,7 +20,7 @@ export class LoggerService {
 
     get info(): (...args: unknown[]) => void {
         if (this.level >= LoggerService.Level.INFO) {
-            return console.log.bind(console);
+            return console.debug.bind(console);
         } else {
             // No-op when info logging is disabled
             return (): void => { /* Logging disabled at this level */ };

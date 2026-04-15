@@ -13,7 +13,7 @@ class TestBaseStreamService extends BaseStreamService {
     }
 
     protected onEvent(eventName: string, data: string): void {
-        console.log(eventName, data);
+        console.debug(eventName, data);
         this.eventList.push([eventName, data]);
     }
 
