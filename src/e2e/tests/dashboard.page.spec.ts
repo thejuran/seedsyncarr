@@ -16,15 +16,15 @@ test.describe('Testing dashboard page', () => {
 
     test('should have a list of files', async () => {
         const golden: FileInfo[] = [
-            { name: 'áßç déÀ.mp4', status: '', size: '840 KB' },
-            { name: 'clients.jpg', status: '', size: '36.5 KB' },
-            { name: 'crispycat', status: '', size: '1.53 MB' },
-            { name: 'documentation.png', status: '', size: '8.88 KB' },
-            { name: 'goose', status: '', size: '2.78 MB' },
-            { name: 'illusion.jpg', status: '', size: '81.5 KB' },
-            { name: 'joke', status: '', size: '168 KB' },
-            { name: 'testing.gif', status: '', size: '8.95 MB' },
-            { name: 'üæÒ', status: '', size: '70.8 KB' },
+            { name: 'áßç déÀ.mp4', status: '', size: '800 KB' },
+            { name: 'clients.jpg', status: '', size: '40 KB' },
+            { name: 'crispycat', status: '', size: '2 MB' },
+            { name: 'documentation.png', status: '', size: '9 KB' },
+            { name: 'goose', status: '', size: '3 MB' },
+            { name: 'illusion.jpg', status: '', size: '80 KB' },
+            { name: 'joke', status: '', size: '200 KB' },
+            { name: 'testing.gif', status: '', size: '9 MB' },
+            { name: 'üæÒ', status: '', size: '70 KB' },
         ];
         await dashboardPage.waitForAtLeastFileCount(golden.length);
         const files = await dashboardPage.getFiles();
