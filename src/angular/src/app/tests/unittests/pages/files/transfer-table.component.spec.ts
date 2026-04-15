@@ -19,8 +19,23 @@ const TEST_TEMPLATE = `
   </div>
   <div class="segment-filters">
     <button class="btn-segment" [class.active]="activeSegment === 'all'" (click)="onSegmentChange('all')">All</button>
-    <button class="btn-segment" [class.active]="activeSegment === 'active'" (click)="onSegmentChange('active')">Active</button>
-    <button class="btn-segment" [class.active]="activeSegment === 'errors'" (click)="onSegmentChange('errors')">Errors</button>
+    <button class="btn-segment"
+            [class.btn-segment--parent-active]="activeSegment === 'active' && activeSubStatus === null"
+            [class.btn-segment--parent-expanded]="activeSegment === 'active' && activeSubStatus !== null"
+            (click)="onSegmentChange('active')">Active</button>
+    @if (activeSegment === 'active') {
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.DOWNLOADING" (click)="onSubStatusChange(ViewFileStatus.DOWNLOADING)">Syncing</button>
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.QUEUED" (click)="onSubStatusChange(ViewFileStatus.QUEUED)">Queued</button>
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.EXTRACTING" (click)="onSubStatusChange(ViewFileStatus.EXTRACTING)">Extracting</button>
+    }
+    <button class="btn-segment"
+            [class.btn-segment--parent-active]="activeSegment === 'errors' && activeSubStatus === null"
+            [class.btn-segment--parent-expanded]="activeSegment === 'errors' && activeSubStatus !== null"
+            (click)="onSegmentChange('errors')">Errors</button>
+    @if (activeSegment === 'errors') {
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.STOPPED" (click)="onSubStatusChange(ViewFileStatus.STOPPED)">Failed</button>
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.DELETED" (click)="onSubStatusChange(ViewFileStatus.DELETED)">Deleted</button>
+    }
   </div>
 </div>
 @if ({paged: pagedFiles$ | async, totalPages: totalPages$ | async, totalCount: totalCount$ | async}; as vm) {
@@ -123,7 +138,7 @@ describe("TransferTableComponent", () => {
         expect(input).toBeTruthy();
     });
 
-    it("should render 3 segment filter buttons", () => {
+    it("should render 3 parent segment filter buttons", () => {
         const buttons = fixture.nativeElement.querySelectorAll(".btn-segment");
         expect(buttons.length).toBe(3);
         expect(buttons[0].textContent).toContain("All");
@@ -141,6 +156,11 @@ describe("TransferTableComponent", () => {
     it("should set activeSegment when segment button clicked", () => {
         component.onSegmentChange("active");
         expect(component.activeSegment).toBe("active");
+
+        // Second click on same segment collapses to all
+        component.onSegmentChange("active");
+        expect(component.activeSegment).toBe("all");
+        expect(component.activeSubStatus).toBeNull();
 
         component.onSegmentChange("errors");
         expect(component.activeSegment).toBe("errors");
