@@ -22,6 +22,8 @@ import {TransferRowComponent} from "./transfer-row.component";
 export class TransferTableComponent {
 
     activeSegment: "all" | "active" | "errors" = "all";
+    activeSubStatus: ViewFile.Status | null = null;
+    readonly ViewFileStatus = ViewFile.Status;
     nameFilter = "";
     currentPage = 1;
     readonly pageSize = 15;
@@ -30,7 +32,11 @@ export class TransferTableComponent {
     totalPages$: Observable<number>;
     totalCount$: Observable<number>;
 
-    private filterState$ = new BehaviorSubject<{segment: "all" | "active" | "errors", page: number}>({segment: "all", page: 1});
+    private filterState$ = new BehaviorSubject<{
+        segment: "all" | "active" | "errors";
+        subStatus: ViewFile.Status | null;
+        page: number;
+    }>({ segment: "all", subStatus: null, page: 1 });
     private searchInput$ = new Subject<string>();
     private destroyRef = inject(DestroyRef);
 
@@ -38,28 +44,29 @@ export class TransferTableComponent {
         private viewFileService: ViewFileService,
         private viewFileOptionsService: ViewFileOptionsService,
     ) {
-        // Derive segmented files from filteredFiles + segment (distinctUntilChanged avoids re-filtering on page-only changes)
+        // Derive segmented files from filteredFiles + filter state (segment + optional sub-status)
         const segmentedFiles$ = combineLatest([
             this.viewFileService.filteredFiles,
-            this.filterState$.pipe(
-                map(s => s.segment),
-                distinctUntilChanged()
-            )
+            this.filterState$
         ]).pipe(
-            map(([files, segment]) => {
-                if (segment === "all") { return files; }
-                if (segment === "active") {
+            map(([files, state]) => {
+                if (state.subStatus != null) {
+                    return files.filter(f => f.status === state.subStatus).toList();
+                }
+                if (state.segment === "active") {
                     return files.filter(f =>
                         f.status === ViewFile.Status.DOWNLOADING ||
                         f.status === ViewFile.Status.QUEUED ||
                         f.status === ViewFile.Status.EXTRACTING
                     ).toList();
                 }
-                // errors
-                return files.filter(f =>
-                    f.status === ViewFile.Status.STOPPED ||
-                    f.status === ViewFile.Status.DELETED
-                ).toList();
+                if (state.segment === "errors") {
+                    return files.filter(f =>
+                        f.status === ViewFile.Status.STOPPED ||
+                        f.status === ViewFile.Status.DELETED
+                    ).toList();
+                }
+                return files;
             })
         );
 
@@ -104,9 +111,28 @@ export class TransferTableComponent {
     }
 
     onSegmentChange(segment: "all" | "active" | "errors"): void {
-        this.activeSegment = segment;
+        if (segment !== "all" && this.activeSegment === segment) {
+            // Second click on same expandable parent — collapse to All
+            this.activeSegment = "all";
+            this.activeSubStatus = null;
+            this.currentPage = 1;
+            this.filterState$.next({ segment: "all", subStatus: null, page: 1 });
+        } else {
+            this.activeSegment = segment;
+            this.activeSubStatus = null;
+            this.currentPage = 1;
+            this.filterState$.next({ segment, subStatus: null, page: 1 });
+        }
+    }
+
+    onSubStatusChange(status: ViewFile.Status): void {
+        this.activeSubStatus = status;
         this.currentPage = 1;
-        this.filterState$.next({segment, page: 1});
+        this.filterState$.next({
+            segment: this.activeSegment,
+            subStatus: status,
+            page: 1
+        });
     }
 
     goToPage(page: number): void {
