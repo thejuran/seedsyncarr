@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 - Phase 68 added: UI Polish — palette consolidation, clickable version, dashboard favicon, docs visuals
 - Phase 69 added: E2E Selector Update — update Playwright page objects for redesigned dashboard transfer-table and bulk-actions
 - Phase 70 added: Drilldown Segment Filters — two-level drill-down for Active/Errors segment buttons with individual status sub-buttons
+- Phase 71 added: Push stable release
 
 ### Decisions
 

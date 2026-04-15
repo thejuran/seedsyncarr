@@ -521,6 +521,16 @@ Plans:
 - [x] 70-01-PLAN.md — Drill-down component logic, template, and SCSS styles
 - [x] 70-02-PLAN.md — Unit test updates and new drill-down test cases
 
+### Phase 71: push stable release
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 70
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 71 to break down)
+
 ---
 
 *Last updated: 2026-04-14 — All phases 62-67 complete, milestone audit in progress*
