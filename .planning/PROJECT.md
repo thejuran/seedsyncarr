@@ -348,4 +348,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-15 after v1.1.0-dev milestone (UI Redesign — Triggarr Style)*
+*Last updated: 2026-04-15 after Phase 70 (Drilldown Segment Filters) — two-level drill-down filter replaces flat segment buttons*
