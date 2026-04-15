@@ -59,7 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 
 ### Todos
 
-None.
+- E2E Playwright tests need selector updates for redesigned dashboard (bulk-actions.spec.ts, dashboard.page.spec.ts) — old `#file-list .file`, `.checkbox`, `#header .header-inner` selectors don't match new transfer-table markup
 
 ### Blockers
 
