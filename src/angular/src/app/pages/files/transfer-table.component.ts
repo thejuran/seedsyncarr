@@ -5,8 +5,6 @@ import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 import {Observable, BehaviorSubject, combineLatest} from "rxjs";
 import {distinctUntilChanged, map} from "rxjs/operators";
 
-import {List} from "immutable";
-
 import {ViewFileService} from "../../services/files/view-file.service";
 import {ViewFileOptionsService} from "../../services/files/view-file-options.service";
 import {ViewFile} from "../../services/files/view-file";
