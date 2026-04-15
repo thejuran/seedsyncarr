@@ -1,5 +1,8 @@
 @use '../../common/common' as *;
 
+// Page-specific semantic colors — these are NOT in the shared palette.
+// $term-bg: Deeper black for terminal background (darker than $base)
+// $success/$warning/$error: Log level severity colors
 $term-bg: #0a0d09;
 $success: #59a362;
 $warning: #d18c34;
@@ -354,7 +357,7 @@ $error: #c45b5b;
     }
 
     &--error {
-        color: #ff8e8e;
+        color: lighten($error, 20%);
         font-weight: 500;
     }
 

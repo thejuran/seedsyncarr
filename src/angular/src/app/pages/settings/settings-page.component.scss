@@ -1,5 +1,10 @@
 @use '../../common/common' as *;
 
+// Local semantic colors (not shared palette — page-specific)
+$success: #59a362;      // Green — connected badge, add-pattern button
+$danger: #c45b5b;       // Red — auto-delete, regenerate, remove actions
+$check-green: #5cb85c;  // Bootstrap check green — copy confirmation
+
 #settings {
     width: 100%;
 
@@ -26,7 +31,7 @@
         overflow: hidden;
 
         .settings-card-header {
-            background: #1a2019;
+            background: $row;
             border-bottom: 1px solid var(--app-file-border-color);
             padding: 12px 20px;
             display: flex;
@@ -62,7 +67,7 @@
 
         .option-separator {
             height: 1px;
-            background: rgba(62, 74, 56, 0.50);
+            background: rgba($border, 0.50);
             margin: 0 16px;
         }
 
@@ -124,7 +129,7 @@
                     justify-content: center;
                     padding: 0;
 
-                    .fa-check { color: #5cb85c; }
+                    .fa-check { color: $check-green; }
                 }
             }
         }
@@ -146,7 +151,7 @@
         gap: 6px;
         font-family: 'JetBrains Mono', 'Fira Code', monospace;
         font-size: 0.7rem;
-        color: #59a362;
+        color: $success;
         padding: 2px 8px;
         background: rgba(89, 163, 98, 0.10);
         border: 1px solid rgba(89, 163, 98, 0.20);
@@ -156,7 +161,7 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: #59a362;
+            background: $success;
             box-shadow: 0 0 8px rgba(89, 163, 98, 0.6);
         }
     }
@@ -188,8 +193,8 @@
         .toggle-track {
             width: 36px;
             height: 20px;
-            background: #2c3629;
-            border: 1px solid #3e4a38;
+            background: $muted;
+            border: 1px solid $border;
             border-radius: 9999px;
             position: relative;
             transition: background 0.2s, border-color 0.2s;
@@ -201,19 +206,19 @@
                 left: 2px;
                 width: 14px;
                 height: 14px;
-                background: #9aaa8a;
+                background: $textsec;
                 border-radius: 50%;
                 transition: transform 0.2s, background 0.2s;
             }
         }
 
         .toggle-input:checked + .toggle-track {
-            background: rgba(196, 154, 74, 0.10);
-            border-color: rgba(196, 154, 74, 0.50);
+            background: rgba($amber, 0.10);
+            border-color: rgba($amber, 0.50);
 
             &::after {
                 transform: translateX(16px);
-                background: #c49a4a;
+                background: $amber;
             }
         }
     }
@@ -237,7 +242,7 @@
     }
 
     .settings-card-body--accent-amber {
-        border-left: 2px solid rgba(196, 154, 74, 0.50);
+        border-left: 2px solid rgba($amber, 0.50);
         margin-left: 2px;
     }
 
@@ -248,14 +253,14 @@
         padding: 12px 16px 0;
 
         .sub-toggle-pill {
-            background: rgba(44, 54, 41, 0.40);
+            background: rgba($muted, 0.40);
             border: 1px solid var(--app-file-border-color);
             border-radius: 4px;
             padding: 2px 0;
         }
     }
 
-    // Sonarr brand card (D-09)
+    // Sonarr brand colors — external app identity, not forest palette
     .settings-card--sonarr {
         border-color: #2b3a4a;
 
@@ -289,7 +294,7 @@
         }
     }
 
-    // Radarr brand card (D-10)
+    // Radarr brand colors — external app identity, not forest palette
     .settings-card--radarr {
         border-color: #4a3415;
 
@@ -326,30 +331,30 @@
     // Auto-Delete danger card (D-12)
     .settings-card--autodelete {
         .settings-card-header {
-            i.fa { color: #c45b5b; }
-            span { color: rgba(196, 91, 91, 0.90); }
+            i.fa { color: $danger; }
+            span { color: rgba($danger, 0.90); }
         }
 
         .settings-card-body {
-            border-left: 2px solid rgba(196, 91, 91, 0.30);
+            border-left: 2px solid rgba($danger, 0.30);
             margin-left: 2px;
         }
 
         .header-toggle .toggle-input:checked + .toggle-track {
-            background: rgba(196, 91, 91, 0.20);
-            border-color: #c45b5b;
+            background: rgba($danger, 0.20);
+            border-color: $danger;
 
             &::after {
-                background: #c45b5b;
+                background: $danger;
             }
         }
 
         .toggle-input:checked + .toggle-track {
-            background: rgba(196, 91, 91, 0.10);
-            border-color: rgba(196, 91, 91, 0.50);
+            background: rgba($danger, 0.10);
+            border-color: rgba($danger, 0.50);
 
             &::after {
-                background: #c45b5b;
+                background: $danger;
             }
         }
 
@@ -395,15 +400,15 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: #151a14;
+            background: $base;
             box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
-            border: 1px solid #3e4a38;
+            border: 1px solid $border;
             border-radius: 4px;
             padding: 6px 12px;
             transition: border-color 0.2s;
 
             &:hover {
-                border-color: rgba(196, 91, 91, 0.30);
+                border-color: rgba($danger, 0.30);
             }
 
             .pattern-chip-text {
@@ -420,7 +425,7 @@
                 opacity: 0;
                 transition: opacity 0.2s, color 0.2s;
 
-                &:hover { color: #c45b5b; }
+                &:hover { color: $danger; }
             }
 
             &:hover .pattern-chip-remove {
@@ -442,7 +447,7 @@
         .btn-pattern-add {
             flex-shrink: 0;
             background: rgba(89, 163, 98, 0.10);
-            color: #59a362;
+            color: $success;
             border: 1px solid rgba(89, 163, 98, 0.30);
             padding: 6px 12px;
             border-radius: 4px;
@@ -506,7 +511,7 @@
 
         .token-display {
             display: flex;
-            background: #1a2019;
+            background: $row;
             border: 1px solid var(--app-file-border-color);
             border-radius: 4px;
             overflow: hidden;
@@ -531,7 +536,7 @@
                 display: flex;
                 align-items: center;
                 border-left: 1px solid var(--app-file-border-color);
-                background: #151a14;
+                background: $base;
             }
 
             .token-action-btn {
@@ -545,22 +550,22 @@
 
                 &:hover {
                     color: var(--app-text-color, #e0e8d6);
-                    background: rgba(44, 54, 41, 0.40);
+                    background: rgba($muted, 0.40);
                 }
 
                 &:last-child {
                     border-right: none;
                 }
 
-                .fa-check { color: #5cb85c; }
+                .fa-check { color: $check-green; }
             }
         }
 
         .btn-regenerate {
             margin-top: 12px;
-            background: rgba(196, 91, 91, 0.10);
-            color: #c45b5b;
-            border: 1px solid rgba(196, 91, 91, 0.30);
+            background: rgba($danger, 0.10);
+            color: $danger;
+            border: 1px solid rgba($danger, 0.30);
             padding: 8px 16px;
             border-radius: 4px;
             font-size: 0.875rem;
@@ -572,8 +577,8 @@
             transition: background 0.2s, border-color 0.2s;
 
             &:hover {
-                background: rgba(196, 91, 91, 0.20);
-                border-color: rgba(196, 91, 91, 0.50);
+                background: rgba($danger, 0.20);
+                border-color: rgba($danger, 0.50);
             }
         }
     }
@@ -589,7 +594,7 @@
             background: rgba(34, 42, 32, 0.90);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1px solid #3e4a38;
+            border: 1px solid $border;
             border-radius: 12px;
             padding: 12px 16px 12px 20px;
             display: flex;
@@ -605,7 +610,7 @@
         }
 
         .floating-save-icon--success {
-            color: #5cb85c;
+            color: $check-green;
             font-size: 1.1rem;
         }
 
@@ -631,8 +636,8 @@
         }
 
         .btn-save-settings {
-            background: #c49a4a;
-            color: #151a14;
+            background: $amber;
+            color: $base;
             font-weight: 700;
             padding: 10px 24px;
             border-radius: 6px;
@@ -642,11 +647,11 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            box-shadow: 0 0 15px rgba(196, 154, 74, 0.15);
+            box-shadow: 0 0 15px rgba($amber, 0.15);
             transition: box-shadow 0.2s, transform 0.1s;
 
             &:hover {
-                box-shadow: 0 0 20px rgba(196, 154, 74, 0.3);
+                box-shadow: 0 0 20px rgba($amber, 0.3);
                 transform: translateY(-1px);
             }
 
