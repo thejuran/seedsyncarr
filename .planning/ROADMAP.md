@@ -505,10 +505,10 @@ Plans:
 **Goal:** Update Playwright E2E page objects and specs to match redesigned dashboard transfer-table and bulk-actions markup from v1.1.0 — all E2E tests pass in CI
 **Requirements**: E2E-01 (dashboard page object selectors), E2E-02 (bulk-actions page object selectors), E2E-03 (CI green)
 **Depends on:** Phase 68
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 69-01-PLAN.md — Rewrite dashboard page object selectors and skip bulk-actions tests
+- [x] 69-01-PLAN.md — Rewrite dashboard page object selectors and skip bulk-actions tests
 
 ---
 
