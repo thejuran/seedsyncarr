@@ -131,11 +131,12 @@ describe("TransferTableComponent", () => {
         expect(buttons[2].textContent).toContain("Errors");
     });
 
-    it("should call viewFileOptionsService.setNameFilter on search input", () => {
+    it("should call viewFileOptionsService.setNameFilter on search input", fakeAsync(() => {
         component.onSearchInput("test query");
-        expect(mockOptionsService.setNameFilter).toHaveBeenCalledWith("test query");
         expect(component.nameFilter).toBe("test query");
-    });
+        tick(300);
+        expect(mockOptionsService.setNameFilter).toHaveBeenCalledWith("test query");
+    }));
 
     it("should set activeSegment when segment button clicked", () => {
         component.onSegmentChange("active");

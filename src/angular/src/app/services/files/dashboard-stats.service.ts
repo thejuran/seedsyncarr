@@ -46,8 +46,8 @@ export class DashboardStatsService implements OnDestroy {
         this.viewFileService.files
             .pipe(takeUntil(this.destroy$))
             .subscribe(files => {
-                const downloading = files.filter(f => f.status === ViewFile.Status.DOWNLOADING);
-                const queued = files.filter(f => f.status === ViewFile.Status.QUEUED);
+                const downloading = files.filter(f => f.status === ViewFile.Status.DOWNLOADING).toList();
+                const queued = files.filter(f => f.status === ViewFile.Status.QUEUED).toList();
 
                 const totalSpeed = downloading.reduce(
                     (sum, f) => sum + (f.downloadingSpeed ?? 0), 0

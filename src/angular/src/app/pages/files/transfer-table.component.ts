@@ -2,8 +2,8 @@ import {Component, ChangeDetectionStrategy, DestroyRef, inject} from "@angular/c
 import {AsyncPipe} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
-import {Observable, BehaviorSubject, combineLatest} from "rxjs";
-import {distinctUntilChanged, map} from "rxjs/operators";
+import {Observable, BehaviorSubject, Subject, combineLatest} from "rxjs";
+import {debounceTime, distinctUntilChanged, map} from "rxjs/operators";
 
 import {ViewFileService} from "../../services/files/view-file.service";
 import {ViewFileOptionsService} from "../../services/files/view-file-options.service";
@@ -31,6 +31,7 @@ export class TransferTableComponent {
     totalCount$: Observable<number>;
 
     private filterState$ = new BehaviorSubject<{segment: "all" | "active" | "errors", page: number}>({segment: "all", page: 1});
+    private searchInput$ = new Subject<string>();
     private destroyRef = inject(DestroyRef);
 
     constructor(
@@ -84,11 +85,22 @@ export class TransferTableComponent {
             .subscribe(() => {
                 this.goToPage(1);
             });
+
+        // Debounce search input to avoid expensive recalculations per keystroke
+        this.searchInput$
+            .pipe(
+                debounceTime(300),
+                distinctUntilChanged(),
+                takeUntilDestroyed(this.destroyRef)
+            )
+            .subscribe(value => {
+                this.viewFileOptionsService.setNameFilter(value);
+            });
     }
 
     onSearchInput(value: string): void {
         this.nameFilter = value;
-        this.viewFileOptionsService.setNameFilter(value);
+        this.searchInput$.next(value);
     }
 
     onSegmentChange(segment: "all" | "active" | "errors"): void {

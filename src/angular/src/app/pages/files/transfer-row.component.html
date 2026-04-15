@@ -19,14 +19,14 @@
     <div class="progress-cell">
       <div class="progress-labels">
         <span>{{ file.localSize | fileSize:1 }}</span>
-        <span>{{ file.percentDownloaded }}%</span>
+        <span>{{ file.percentDownloaded | number:'1.0-1' }}%</span>
       </div>
       <div class="progress-track">
         <div class="progress-fill"
              [class.progress-fill--active]="isDownloading"
              [class.progress-fill--success]="file.percentDownloaded === 100"
              [class.progress-fill--error]="file.status === ViewFile.Status.STOPPED || file.status === ViewFile.Status.DELETED"
-             [style.width.%]="file.percentDownloaded">
+             [style.width.%]="file.percentDownloaded > 100 ? 100 : file.percentDownloaded < 0 ? 0 : file.percentDownloaded">
         </div>
       </div>
     </div>

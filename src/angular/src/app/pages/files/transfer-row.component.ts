@@ -1,4 +1,5 @@
 import {Component, Input, ChangeDetectionStrategy} from "@angular/core";
+import {DecimalPipe} from "@angular/common";
 
 import {FileSizePipe} from "../../common/file-size.pipe";
 import {EtaPipe} from "../../common/eta.pipe";
@@ -10,7 +11,7 @@ import {ViewFile} from "../../services/files/view-file";
     templateUrl: "./transfer-row.component.html",
     styleUrls: ["./transfer-row.component.scss"],
     standalone: true,
-    imports: [FileSizePipe, EtaPipe],
+    imports: [FileSizePipe, EtaPipe, DecimalPipe],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TransferRowComponent {

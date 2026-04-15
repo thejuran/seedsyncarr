@@ -61,7 +61,11 @@
   <!-- Pagination Footer -->
   <div class="pagination-footer">
     <span class="page-info">
-      Showing {{ (vm.totalCount ?? 0) === 0 ? 0 : (currentPage - 1) * pageSize + 1 }} to {{ currentPage * pageSize > (vm.totalCount ?? 0) ? (vm.totalCount ?? 0) : currentPage * pageSize }} of {{ vm.totalCount }} active tasks
+      @if ((vm.totalCount ?? 0) === 0) {
+        No files to display
+      } @else {
+        Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ currentPage * pageSize > vm.totalCount ? vm.totalCount : currentPage * pageSize }} of {{ vm.totalCount }} files
+      }
     </span>
     <div class="page-controls">
       <button class="btn-page"
