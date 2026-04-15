@@ -47,7 +47,7 @@ module.exports = tseslint.config(
             "max-len": ["error", { "code": 140 }],
             "no-bitwise": "error",
             "no-caller": "error",
-            "no-console": ["error", { "allow": ["log", "warn", "error", "debug"] }],
+            "no-console": ["error", { "allow": ["warn", "error", "debug"] }],
             "no-debugger": "error",
             "no-eval": "error",
             "no-fallthrough": "error",

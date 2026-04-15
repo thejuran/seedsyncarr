@@ -53,7 +53,7 @@ export class TransferTableComponent {
             )
         ]).pipe(
             map(([files, state]) => {
-                if (state.subStatus != null) {
+                if (state.subStatus != null && state.segment !== "all") {
                     return files.filter(f => f.status === state.subStatus).toList();
                 }
                 if (state.segment === "active") {
@@ -69,7 +69,7 @@ export class TransferTableComponent {
                         f.status === ViewFile.Status.DELETED
                     ).toList();
                 }
-                return files;
+                return files.toList();
             }),
             shareReplay(1)
         );
@@ -130,6 +130,9 @@ export class TransferTableComponent {
     }
 
     onSubStatusChange(status: ViewFile.Status): void {
+        if (this.activeSegment === "all") {
+            return;
+        }
         if (this.activeSubStatus === status) {
             // Second click — deselect, show full parent segment
             this.activeSubStatus = null;
@@ -163,8 +166,15 @@ export class TransferTableComponent {
         }
     }
 
+    private _cachedPageNumbers: number[] = [1];
+    private _cachedTotalPages = 1;
+
     getPageNumbers(totalPages: number): number[] {
-        return Array.from({length: totalPages}, (_, i) => i + 1);
+        if (totalPages !== this._cachedTotalPages) {
+            this._cachedTotalPages = totalPages;
+            this._cachedPageNumbers = Array.from({length: totalPages}, (_, i) => i + 1);
+        }
+        return this._cachedPageNumbers;
     }
 
     trackByName(index: number, file: ViewFile): string {

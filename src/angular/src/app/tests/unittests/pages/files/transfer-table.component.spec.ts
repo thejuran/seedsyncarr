@@ -185,8 +185,9 @@ describe("TransferTableComponent", () => {
         tick();
 
         let pagedFiles: ViewFile[] = [];
-        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
         tick();
+        sub.unsubscribe();
 
         // Active = DOWNLOADING + QUEUED + EXTRACTING
         expect(pagedFiles.length).toBe(3);
@@ -207,8 +208,9 @@ describe("TransferTableComponent", () => {
         tick();
 
         let pagedFiles: ViewFile[] = [];
-        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
         tick();
+        sub.unsubscribe();
 
         // Errors = STOPPED + DELETED
         expect(pagedFiles.length).toBe(2);
@@ -225,14 +227,16 @@ describe("TransferTableComponent", () => {
         tick();
 
         let pagedFiles: ViewFile[] = [];
-        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
         tick();
+        sub.unsubscribe();
 
         expect(pagedFiles.length).toBe(15); // First page
 
         let totalPages = 0;
-        component.totalPages$.subscribe(t => totalPages = t);
+        const totalSub = component.totalPages$.subscribe(t => totalPages = t);
         tick();
+        totalSub.unsubscribe();
 
         expect(totalPages).toBe(2); // 20 / 15 = 2 pages
     }));
@@ -251,8 +255,9 @@ describe("TransferTableComponent", () => {
         expect(component.currentPage).toBe(2);
 
         let pagedFiles: ViewFile[] = [];
-        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
         tick();
+        sub.unsubscribe();
 
         expect(pagedFiles.length).toBe(5); // Remaining 5 files
     }));
@@ -326,8 +331,9 @@ describe("TransferTableComponent", () => {
         tick();
 
         let pagedFiles: ViewFile[] = [];
-        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
         tick();
+        sub.unsubscribe();
 
         expect(pagedFiles.length).toBe(1);
         expect(pagedFiles[0].name).toBe("dl-1");
@@ -348,8 +354,9 @@ describe("TransferTableComponent", () => {
         tick();
 
         let pagedFiles: ViewFile[] = [];
-        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
         tick();
+        sub.unsubscribe();
 
         expect(pagedFiles.length).toBe(1);
         expect(pagedFiles[0].name).toBe("queued-1");
@@ -370,8 +377,9 @@ describe("TransferTableComponent", () => {
         tick();
 
         let pagedFiles: ViewFile[] = [];
-        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
         tick();
+        sub.unsubscribe();
 
         expect(pagedFiles.length).toBe(1);
         expect(pagedFiles[0].name).toBe("extract-1");
@@ -392,8 +400,9 @@ describe("TransferTableComponent", () => {
         tick();
 
         let pagedFiles: ViewFile[] = [];
-        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
         tick();
+        sub.unsubscribe();
 
         expect(pagedFiles.length).toBe(1);
         expect(pagedFiles[0].name).toBe("stopped-1");
@@ -414,8 +423,9 @@ describe("TransferTableComponent", () => {
         tick();
 
         let pagedFiles: ViewFile[] = [];
-        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
         tick();
+        sub.unsubscribe();
 
         expect(pagedFiles.length).toBe(1);
         expect(pagedFiles[0].name).toBe("deleted-1");
@@ -440,8 +450,9 @@ describe("TransferTableComponent", () => {
         tick();
 
         let pagedFiles: ViewFile[] = [];
-        component.pagedFiles$.subscribe(f => pagedFiles = f);
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
         tick();
+        sub.unsubscribe();
 
         expect(pagedFiles.length).toBe(1);
         expect(pagedFiles[0].name).toBe("queued-1");
