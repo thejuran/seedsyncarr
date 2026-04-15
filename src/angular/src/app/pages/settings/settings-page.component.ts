@@ -210,13 +210,13 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
         }
     }
 
-    onCopyWebhookFromInput(input: HTMLInputElement, target: 'sonarr' | 'radarr'): void {
+    onCopyWebhookFromInput(input: HTMLInputElement, target: "sonarr" | "radarr"): void {
         navigator.clipboard.writeText(input.value).then(() => {
-            if (target === 'sonarr') { this.sonarrWebhookCopied = true; }
+            if (target === "sonarr") { this.sonarrWebhookCopied = true; }
             else { this.radarrWebhookCopied = true; }
             this._cdr.markForCheck();
             setTimeout(() => {
-                if (target === 'sonarr') { this.sonarrWebhookCopied = false; }
+                if (target === "sonarr") { this.sonarrWebhookCopied = false; }
                 else { this.radarrWebhookCopied = false; }
                 this._cdr.markForCheck();
             }, 2000);
@@ -264,13 +264,13 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
 
     formatMs(val: unknown): string {
         const ms = Number(val);
-        if (!ms || isNaN(ms)) return '';
+        if (!ms || isNaN(ms)) {return "";}
         if (ms >= 60000) {
             const mins = Math.round(ms / 60000);
-            return mins === 1 ? '1 min' : `${mins} mins`;
+            return mins === 1 ? "1 min" : `${mins} mins`;
         }
         const secs = Math.round(ms / 1000);
-        return secs === 1 ? '1 sec' : `${secs} sec`;
+        return secs === 1 ? "1 sec" : `${secs} sec`;
     }
 
     onCommandRestart(): void {

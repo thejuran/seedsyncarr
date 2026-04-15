@@ -153,30 +153,30 @@ describe("LogsPageComponent", () => {
         }));
 
         it("ALL returns all entries", () => {
-            component.setLevel('ALL');
+            component.setLevel("ALL");
             expect(component.filteredLogs.length).toBe(5);
         });
 
         it("INFO returns only INFO entries", () => {
-            component.setLevel('INFO');
+            component.setLevel("INFO");
             expect(component.filteredLogs.length).toBe(1);
             expect(component.filteredLogs[0].message).toBe("info-msg");
         });
 
         it("WARN returns only WARNING entries", () => {
-            component.setLevel('WARN');
+            component.setLevel("WARN");
             expect(component.filteredLogs.length).toBe(1);
             expect(component.filteredLogs[0].message).toBe("warn-msg");
         });
 
         it("ERROR returns ERROR + CRITICAL entries", () => {
-            component.setLevel('ERROR');
+            component.setLevel("ERROR");
             expect(component.filteredLogs.length).toBe(2);
             expect(component.filteredLogs.map(r => r.message)).toEqual(["error-msg", "crit-msg"]);
         });
 
         it("DEBUG returns only DEBUG entries", () => {
-            component.setLevel('DEBUG');
+            component.setLevel("DEBUG");
             expect(component.filteredLogs.length).toBe(1);
             expect(component.filteredLogs[0].message).toBe("debug-msg");
         });
@@ -194,14 +194,14 @@ describe("LogsPageComponent", () => {
         it("filters by regex match on message", fakeAsync(() => {
             // Directly set searchQuery (bypassing debounce for unit test)
             component.searchQuery = "download";
-            component.setLevel('ALL');
+            component.setLevel("ALL");
             expect(component.filteredLogs.length).toBe(1);
             expect(component.filteredLogs[0].message).toContain("download");
         }));
 
         it("invalid regex does not throw", fakeAsync(() => {
             component.searchQuery = "(invalid[";
-            component.setLevel('ALL');
+            component.setLevel("ALL");
             expect(component.filteredLogs.length).toBe(2);
         }));
     });
@@ -213,15 +213,15 @@ describe("LogsPageComponent", () => {
             mockRegistry.logService.emit(makeRecord(LogRecord.Level.INFO, "msg"));
             tick();
             expect(component.allLogs.length).toBe(1);
-            component.searchInput = 'foo';
-            component.searchQuery = 'foo';
+            component.searchInput = "foo";
+            component.searchQuery = "foo";
             component.clearLogs();
             expect(component.allLogs.length).toBe(0);
-            expect(component.searchInput).toBe('');
-            expect(component.searchQuery).toBe('');
+            expect(component.searchInput).toBe("");
+            expect(component.searchQuery).toBe("");
             // Flush debounce to verify searchQuery$ pipeline emission resolves cleanly
             tick(200);
-            expect(component.searchQuery).toBe('');
+            expect(component.searchQuery).toBe("");
         }));
 
         it("resets scan accumulator so new logs start fresh", fakeAsync(() => {
@@ -247,11 +247,11 @@ describe("LogsPageComponent", () => {
 
         const createSpy = spyOn(URL, "createObjectURL").and.returnValue("blob:test");
         spyOn(URL, "revokeObjectURL");
-        const fakeAnchor = document.createElement('a');
+        const fakeAnchor = document.createElement("a");
         const clickSpy = spyOn(fakeAnchor, "click");
         const origCreate = document.createElement.bind(document);
         spyOn(document, "createElement").and.callFake((tag: string) =>
-            tag === 'a' ? fakeAnchor : origCreate(tag));
+            tag === "a" ? fakeAnchor : origCreate(tag));
 
         component.exportLogs();
         expect(createSpy).toHaveBeenCalledTimes(1);
@@ -265,7 +265,7 @@ describe("LogsPageComponent", () => {
         fixture.detectChanges();
         // Manually set allLogs with a newline-containing message
         component.allLogs = [makeRecord(LogRecord.Level.INFO, "line1\ninjected line")];
-        component.setLevel('ALL');
+        component.setLevel("ALL");
 
         let capturedBlob: Blob | null = null;
         spyOn(URL, "createObjectURL").and.callFake((blob: Blob) => {
@@ -273,20 +273,20 @@ describe("LogsPageComponent", () => {
             return "blob:test";
         });
         spyOn(URL, "revokeObjectURL");
-        const fakeAnchor = document.createElement('a');
+        const fakeAnchor = document.createElement("a");
         spyOn(fakeAnchor, "click");
         const origCreate = document.createElement.bind(document);
         spyOn(document, "createElement").and.callFake((tag: string) =>
-            tag === 'a' ? fakeAnchor : origCreate(tag));
+            tag === "a" ? fakeAnchor : origCreate(tag));
 
         component.exportLogs();
         expect(capturedBlob).toBeTruthy();
-        if (!capturedBlob) return;
+        if (!capturedBlob) {return;}
         const content = await (capturedBlob as Blob).text();
         // Each individual log line should be free of embedded newlines
-        const lines = content.split('\n');
+        const lines = content.split("\n");
         lines.forEach(line => expect(line).not.toMatch(/[\r\n]/));
-        expect(content).toContain('line1 injected line');
+        expect(content).toContain("line1 injected line");
     });
 
     // Test 14: connection status (LOGS-04)

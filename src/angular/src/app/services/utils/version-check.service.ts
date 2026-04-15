@@ -66,7 +66,7 @@ export class VersionCheckService implements OnDestroy {
                     let isNewer: boolean;
                     try {
                         isNewer = VersionCheckService.isVersionNewer(latestVersion);
-                    } catch (e) {
+                    } catch {
                         this._logger.warn("tag_name is not a valid semver string: %O", latestVersion);
                         return;
                     }

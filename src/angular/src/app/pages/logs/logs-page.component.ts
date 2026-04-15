@@ -13,7 +13,7 @@ import {LogService} from "../../services/logs/log.service";
 import {LogRecord} from "../../services/logs/log-record";
 import {ConnectedService} from "../../services/utils/connected.service";
 
-export type LevelFilter = 'ALL' | 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
+export type LevelFilter = "ALL" | "INFO" | "WARN" | "ERROR" | "DEBUG";
 
 const MAX_LOG_ENTRIES = 5000;
 const MAX_SEARCH_LENGTH = 200;
@@ -28,12 +28,12 @@ const MAX_SEARCH_LENGTH = 200;
 })
 export class LogsPageComponent implements OnInit {
     public readonly LogRecord = LogRecord;
-    readonly LEVEL_FILTERS: LevelFilter[] = ['ALL', 'INFO', 'WARN', 'ERROR', 'DEBUG'];
+    readonly LEVEL_FILTERS: LevelFilter[] = ["ALL", "INFO", "WARN", "ERROR", "DEBUG"];
 
     allLogs: LogRecord[] = [];
-    activeLevel: LevelFilter = 'ALL';
-    searchInput = '';
-    searchQuery = '';
+    activeLevel: LevelFilter = "ALL";
+    searchInput = "";
+    searchQuery = "";
     autoScroll = true;
     isConnected = false;
     lastUpdated: Date | null = null;
@@ -45,7 +45,7 @@ export class LogsPageComponent implements OnInit {
     private scanEpoch = 0;
     private scrollTimer: ReturnType<typeof setTimeout> | null = null;
 
-    @ViewChild('terminalViewport') terminalViewport!: ElementRef<HTMLDivElement>;
+    @ViewChild("terminalViewport") terminalViewport!: ElementRef<HTMLDivElement>;
 
     private logService: LogService;
     private connectedService: ConnectedService;
@@ -60,7 +60,7 @@ export class LogsPageComponent implements OnInit {
 
     ngOnInit(): void {
         this.destroyRef.onDestroy(() => {
-            if (this.scrollTimer) clearTimeout(this.scrollTimer);
+            if (this.scrollTimer) {clearTimeout(this.scrollTimer);}
         });
 
         // Accumulate log entries via scan; clearEpoch resets accumulator on clear
@@ -83,7 +83,7 @@ export class LogsPageComponent implements OnInit {
                 this.recomputeFilteredLogs();
                 this.cdr.markForCheck();
                 if (this.autoScroll) {
-                    if (this.scrollTimer) clearTimeout(this.scrollTimer);
+                    if (this.scrollTimer) {clearTimeout(this.scrollTimer);}
                     this.scrollTimer = setTimeout(() => this.scrollToBottom(), 0);
                 }
             });
@@ -134,7 +134,7 @@ export class LogsPageComponent implements OnInit {
 
     onTerminalScroll(event: Event): void {
         const el = event.target as HTMLElement | null;
-        if (!el) return;
+        if (!el) {return;}
         const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 10;
         if (this.autoScroll && !isAtBottom) {
             this.autoScroll = false;
@@ -145,27 +145,30 @@ export class LogsPageComponent implements OnInit {
     clearLogs(): void {
         this.clearEpoch++;
         this.allLogs = [];
-        this.searchInput = '';
-        this.searchQuery = '';
-        this.searchQuery$.next('');
+        this.searchInput = "";
+        this.searchQuery = "";
+        this.searchQuery$.next("");
         this.recomputeFilteredLogs();
         this.cdr.markForCheck();
     }
 
     exportLogs(): void {
-        const sanitize = (s: string) => s.replace(/[\r\n]/g, ' ');
+        const sanitize = (s: string) => s.replace(/[\r\n]/g, " ");
         const lines = this.filteredLogs.map(e => {
             const d = e.time;
-            const date = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-            const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+            const date = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+            const hh = String(d.getHours()).padStart(2, "0");
+            const mm = String(d.getMinutes()).padStart(2, "0");
+            const ss = String(d.getSeconds()).padStart(2, "0");
+            const time = `${hh}:${mm}:${ss}`;
             return `${date} ${time} - ${sanitize(e.level)} - ${sanitize(e.loggerName)} - ${sanitize(e.message)}`;
-        }).join('\n');
+        }).join("\n");
 
-        const blob = new Blob([lines], {type: 'text/plain'});
+        const blob = new Blob([lines], {type: "text/plain"});
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
-        a.download = `seedsyncarr-logs-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.log`;
+        a.download = `seedsyncarr-logs-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.log`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -173,30 +176,30 @@ export class LogsPageComponent implements OnInit {
     }
 
     formatTimestamp(date: Date): string {
-        const hh = String(date.getHours()).padStart(2, '0');
-        const mm = String(date.getMinutes()).padStart(2, '0');
-        const ss = String(date.getSeconds()).padStart(2, '0');
-        const ms = String(date.getMilliseconds()).padStart(3, '0');
+        const hh = String(date.getHours()).padStart(2, "0");
+        const mm = String(date.getMinutes()).padStart(2, "0");
+        const ss = String(date.getSeconds()).padStart(2, "0");
+        const ms = String(date.getMilliseconds()).padStart(3, "0");
         return `${hh}:${mm}:${ss}.${ms}`;
     }
 
     formatLastUpdated(): string {
-        if (!this.lastUpdated) return '--:--:-- --';
+        if (!this.lastUpdated) {return "--:--:-- --";}
         const h = this.lastUpdated.getHours();
-        const ampm = h >= 12 ? 'PM' : 'AM';
+        const ampm = h >= 12 ? "PM" : "AM";
         const h12 = h % 12 || 12;
-        const mm = String(this.lastUpdated.getMinutes()).padStart(2, '0');
-        const ss = String(this.lastUpdated.getSeconds()).padStart(2, '0');
+        const mm = String(this.lastUpdated.getMinutes()).padStart(2, "0");
+        const ss = String(this.lastUpdated.getSeconds()).padStart(2, "0");
         return `${h12}:${mm}:${ss} ${ampm}`;
     }
 
     levelLabel(level: LogRecord.Level): string {
         switch (level) {
-            case LogRecord.Level.DEBUG:    return 'DEBUG';
-            case LogRecord.Level.INFO:     return 'INFO';
-            case LogRecord.Level.WARNING:  return 'WARN';
-            case LogRecord.Level.ERROR:    return 'ERROR';
-            case LogRecord.Level.CRITICAL: return 'CRIT';
+            case LogRecord.Level.DEBUG:    return "DEBUG";
+            case LogRecord.Level.INFO:     return "INFO";
+            case LogRecord.Level.WARNING:  return "WARN";
+            case LogRecord.Level.ERROR:    return "ERROR";
+            case LogRecord.Level.CRITICAL: return "CRIT";
             default:                       return level;
         }
     }
@@ -204,29 +207,29 @@ export class LogsPageComponent implements OnInit {
     levelRowClass(level: LogRecord.Level): string {
         switch (level) {
             case LogRecord.Level.ERROR:
-            case LogRecord.Level.CRITICAL: return 'log-row--error';
-            case LogRecord.Level.WARNING:  return 'log-row--warn';
-            default:                       return '';
+            case LogRecord.Level.CRITICAL: return "log-row--error";
+            case LogRecord.Level.WARNING:  return "log-row--warn";
+            default:                       return "";
         }
     }
 
     levelClass(level: LogRecord.Level): string {
         switch (level) {
-            case LogRecord.Level.INFO:     return 'log-level--info';
-            case LogRecord.Level.WARNING:  return 'log-level--warn';
-            case LogRecord.Level.DEBUG:    return 'log-level--debug';
+            case LogRecord.Level.INFO:     return "log-level--info";
+            case LogRecord.Level.WARNING:  return "log-level--warn";
+            case LogRecord.Level.DEBUG:    return "log-level--debug";
             case LogRecord.Level.ERROR:
-            case LogRecord.Level.CRITICAL: return 'log-level--error-badge';
-            default:                       return '';
+            case LogRecord.Level.CRITICAL: return "log-level--error-badge";
+            default:                       return "";
         }
     }
 
     private matchesLevel(level: LogRecord.Level): boolean {
         switch (this.activeLevel) {
-            case 'INFO':  return level === LogRecord.Level.INFO;
-            case 'WARN':  return level === LogRecord.Level.WARNING;
-            case 'ERROR': return level === LogRecord.Level.ERROR || level === LogRecord.Level.CRITICAL;
-            case 'DEBUG': return level === LogRecord.Level.DEBUG;
+            case "INFO":  return level === LogRecord.Level.INFO;
+            case "WARN":  return level === LogRecord.Level.WARNING;
+            case "ERROR": return level === LogRecord.Level.ERROR || level === LogRecord.Level.CRITICAL;
+            case "DEBUG": return level === LogRecord.Level.DEBUG;
             default:      return true;
         }
     }
@@ -234,7 +237,7 @@ export class LogsPageComponent implements OnInit {
     private recomputeFilteredLogs(): void {
         let result = this.allLogs;
 
-        if (this.activeLevel !== 'ALL') {
+        if (this.activeLevel !== "ALL") {
             result = result.filter(r => this.matchesLevel(r.level));
         }
 
@@ -248,7 +251,7 @@ export class LogsPageComponent implements OnInit {
                     r.loggerName.toLowerCase().includes(lower));
             } else {
                 try {
-                    const rx = new RegExp(safe, 'i');
+                    const rx = new RegExp(safe, "i");
                     result = result.filter(r => rx.test(r.message) || rx.test(r.loggerName));
                 } catch {
                     // Invalid regex — show all results
