@@ -418,10 +418,10 @@ Plans:
   4. The AutoQueue card shows the existing pattern list inline with working add and remove controls
   5. Sonarr and Radarr cards display a read-only webhook URL field with a working copy-to-clipboard button
   6. A floating save button appears fixed at the bottom-right of the viewport and submits all pending changes
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
-- [ ] 65-01-PLAN.md -- Masonry grid layout, card header restructure with icons, toggle switch restyle
-- [ ] 65-02-PLAN.md -- Brand-colored Sonarr/Radarr/AutoDelete cards, webhook copy buttons, floating save bar
+- [x] 65-01-PLAN.md -- Masonry grid layout, card header restructure with icons, toggle switch restyle
+- [x] 65-02-PLAN.md -- Brand-colored Sonarr/Radarr/AutoDelete cards, webhook copy buttons, floating save bar
 **UI hint**: yes
 
 ### Phase 66: Logs Page
@@ -485,7 +485,7 @@ Plans:
 | 62. Nav Bar Foundation | v1.1.0 | 2/2 | Complete    | 2026-04-15 |
 | 63. Dashboard — Stats Strip & Transfer Table | v1.1.0 | 2/2 | Complete    | 2026-04-15 |
 | 64. Dashboard — Log Pane | v1.1.0 | 1/1 | Complete | 2026-04-14 |
-| 65. Settings Page | v1.1.0 | 2/2 | Complete | 2026-04-14 |
+| 65. Settings Page | v1.1.0 | 2/2 | Complete   | 2026-04-15 |
 | 66. Logs Page | v1.1.0 | 2/2 | Complete | 2026-04-14 |
 | 67. About Page | v1.1.0 | 2/2 | Complete    | 2026-04-14 |
 
