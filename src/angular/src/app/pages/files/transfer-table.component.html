@@ -18,15 +18,82 @@
                (ngModelChange)="onSearchInput($event)">
       </div>
       <div class="segment-filters" role="group" aria-label="File status filter">
+
+        <!-- All: terminal button, keeps existing active class -->
         <button type="button" class="btn-segment"
                 [class.active]="activeSegment === 'all'"
                 (click)="onSegmentChange('all')">All</button>
+
+        <!-- Active: expandable parent -->
         <button type="button" class="btn-segment"
-                [class.active]="activeSegment === 'active'"
-                (click)="onSegmentChange('active')">Active</button>
+                [class.btn-segment--parent-active]="activeSegment === 'active' && activeSubStatus === null"
+                [class.btn-segment--parent-expanded]="activeSegment === 'active' && activeSubStatus !== null"
+                (click)="onSegmentChange('active')">
+          Active
+          <i class="ph-bold"
+             [class.ph-caret-down]="activeSegment !== 'active'"
+             [class.ph-caret-up]="activeSegment === 'active'"></i>
+        </button>
+
+        @if (activeSegment === 'active') {
+          <div class="segment-divider"></div>
+          <button type="button" class="btn-sub"
+                  [class.active]="activeSubStatus === ViewFileStatus.DOWNLOADING"
+                  (click)="onSubStatusChange(ViewFileStatus.DOWNLOADING)">
+            @if (activeSubStatus === ViewFileStatus.DOWNLOADING) {
+              <span class="accent-dot"></span>
+            }
+            Syncing
+          </button>
+          <button type="button" class="btn-sub"
+                  [class.active]="activeSubStatus === ViewFileStatus.QUEUED"
+                  (click)="onSubStatusChange(ViewFileStatus.QUEUED)">
+            @if (activeSubStatus === ViewFileStatus.QUEUED) {
+              <span class="accent-dot"></span>
+            }
+            Queued
+          </button>
+          <button type="button" class="btn-sub"
+                  [class.active]="activeSubStatus === ViewFileStatus.EXTRACTING"
+                  (click)="onSubStatusChange(ViewFileStatus.EXTRACTING)">
+            @if (activeSubStatus === ViewFileStatus.EXTRACTING) {
+              <span class="accent-dot"></span>
+            }
+            Extracting
+          </button>
+        }
+
+        <!-- Errors: expandable parent -->
         <button type="button" class="btn-segment"
-                [class.active]="activeSegment === 'errors'"
-                (click)="onSegmentChange('errors')">Errors</button>
+                [class.btn-segment--parent-active]="activeSegment === 'errors' && activeSubStatus === null"
+                [class.btn-segment--parent-expanded]="activeSegment === 'errors' && activeSubStatus !== null"
+                (click)="onSegmentChange('errors')">
+          Errors
+          <i class="ph-bold"
+             [class.ph-caret-down]="activeSegment !== 'errors'"
+             [class.ph-caret-up]="activeSegment === 'errors'"></i>
+        </button>
+
+        @if (activeSegment === 'errors') {
+          <div class="segment-divider"></div>
+          <button type="button" class="btn-sub"
+                  [class.active]="activeSubStatus === ViewFileStatus.STOPPED"
+                  (click)="onSubStatusChange(ViewFileStatus.STOPPED)">
+            @if (activeSubStatus === ViewFileStatus.STOPPED) {
+              <span class="accent-dot"></span>
+            }
+            Failed
+          </button>
+          <button type="button" class="btn-sub"
+                  [class.active]="activeSubStatus === ViewFileStatus.DELETED"
+                  (click)="onSubStatusChange(ViewFileStatus.DELETED)">
+            @if (activeSubStatus === ViewFileStatus.DELETED) {
+              <span class="accent-dot"></span>
+            }
+            Deleted
+          </button>
+        }
+
       </div>
     </div>
   </div>

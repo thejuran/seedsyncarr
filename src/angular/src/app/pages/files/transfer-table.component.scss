@@ -126,18 +126,20 @@
 .segment-filters {
   display: none;
   background: #151a14;
-  border: 1px solid #3e4a38;
-  border-radius: 4px;
+  border: 1px solid rgba(62, 74, 56, 0.3);
+  border-radius: 6px;
   padding: 2px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
 
   @media (min-width: 768px) {
     display: flex;
+    align-items: center;
   }
 }
 
 .btn-segment {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: #9aaa8a;
   font-size: 0.75rem;
   font-weight: 500;
@@ -145,6 +147,9 @@
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s ease;
+  height: 28px;
+  display: flex;
+  align-items: center;
 
   &:hover {
     background: #293326;
@@ -155,9 +160,85 @@
     background: #222a20;
     border: 1px solid #3e4a38;
     color: #e0e8d6;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
     pointer-events: none;
   }
+}
+
+.btn-segment i {
+  font-size: 10px;
+  margin-left: 6px;
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+.btn-segment:hover i {
+  opacity: 1;
+}
+
+.btn-segment--parent-active i,
+.btn-segment--parent-expanded i {
+  opacity: 1;
+}
+
+.btn-segment--parent-expanded i {
+  color: #c49a4a;
+}
+
+.btn-segment--parent-expanded {
+  background: rgba(34, 42, 32, 0.6);
+  border: 1px solid transparent;
+  color: #e0e8d6;
+}
+
+.btn-segment--parent-active {
+  background: #222a20;
+  border: 1px solid #3e4a38;
+  color: #e0e8d6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.segment-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(62, 74, 56, 0.6);
+  flex-shrink: 0;
+}
+
+.btn-sub {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #7d8c6d;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  &:hover {
+    color: #e0e8d6;
+    background: rgba(34, 42, 32, 0.4);
+  }
+
+  &.active {
+    background: #222a20;
+    border: 1px solid #3e4a38;
+    color: #c49a4a;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  }
+}
+
+.accent-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c49a4a;
+  box-shadow: 0 0 6px 1px rgba(196, 154, 74, 0.3);
+  flex-shrink: 0;
 }
 
 // ============================================================================
