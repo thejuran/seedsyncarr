@@ -241,7 +241,15 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-(Next milestone TBD)
+## Current Milestone: v1.2.0 Storage Capacity Tiles
+
+**Goal:** Add disk capacity awareness to dashboard storage tiles, showing percentage used with total/used breakdown for both local and remote storage.
+
+**Target features:**
+- Backend StorageStatus component on existing Status model (local via shutil, remote via SSH df)
+- Storage capacity data piggybacked on existing SSE status stream
+- Dashboard tiles show percentage with used/total breakdown when capacity available
+- Graceful fallback to current tracked-bytes display when capacity unavailable
 
 ### Out of Scope
 
@@ -326,9 +334,9 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Project Status
 
-**Status:** v1.1.0-dev complete — UI Redesign shipped, pending stable release
+**Status:** v1.2.0 in progress — Storage Capacity Tiles
 
-25 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign as SeedSyncarr).
+26 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign as SeedSyncarr).
 
 ## Evolution
 
@@ -348,4 +356,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-15 after v1.1.0-dev milestone (UI Redesign — Triggarr Style) — 9 phases, 16 plans, all 4 pages redesigned*
+*Last updated: 2026-04-15 after v1.2.0 milestone start (Storage Capacity Tiles)*

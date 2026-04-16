@@ -1,36 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1.0
-milestone_name: UI Redesign — Triggarr Style
-status: executing
-stopped_at: Phase 67 context gathered
-last_updated: "2026-04-15T21:10:15.393Z"
+milestone: v1.2.0
+milestone_name: Storage Capacity Tiles
+status: defining_requirements
+stopped_at: null
+last_updated: "2026-04-15"
 last_activity: 2026-04-15
 progress:
-  total_phases: 18
-  completed_phases: 9
-  total_plans: 16
-  completed_plans: 16
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-13)
+See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 70 — drilldown-segment-filters
+**Current focus:** Defining requirements for v1.2.0 Storage Capacity Tiles
 
 ## Current Position
 
-Phase: 70
-Plan: Not started
-Status: Executing Phase 70
-Last activity: 2026-04-15
-
-Progress: [░░░░░░░░░░] 0%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-15 — Milestone v1.2.0 started
 
 ## Milestones Shipped
 
@@ -42,27 +40,25 @@ Progress: [░░░░░░░░░░] 0%
 | M001-M010 | 29 slices | 2026-03-21 to 2026-03-28 |
 | v4.0.3 | Phase 52 | 2026-04-08 |
 | v1.0.0 Rebrand | Phases 53-61 | 2026-04-08 to 2026-04-13 |
+| v1.1.0 UI Redesign | Phases 62-71 | 2026-04-13 to 2026-04-15 |
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
-- Phase 68 added: UI Polish — palette consolidation, clickable version, dashboard favicon, docs visuals
-- Phase 69 added: E2E Selector Update — update Playwright page objects for redesigned dashboard transfer-table and bulk-actions
-- Phase 70 added: Drilldown Segment Filters — two-level drill-down for Active/Errors segment buttons with individual status sub-buttons
-- Phase 71 added: Push stable release
+(New milestone — no roadmap evolution yet)
 
 ### Decisions
 
-- Design artifacts in `.aidesigner/runs/` — 4 HTML mockups (Dashboard, Settings v2, Logs, About) approved as visual spec
-- Port into Angular 21 + Bootstrap 5 + SCSS (no Tailwind) — translate Tailwind classes to Bootstrap/SCSS equivalents
-- Preserve existing Deep Moss + Amber palette tokens already in `_bootstrap-variables.scss`
-- Nav bar is shared across all pages — implemented first as foundation before page-specific work
-- Dashboard split into two phases (63: Stats+Table, 64: Log Pane) due to 11 vs 3 requirement density
+- Design spec at `docs/superpowers/specs/2026-04-15-storage-capacity-tiles-design.md`
+- StorageStatus component on existing Status model (Approach A — dedicated service)
+- Remote capacity via SSH df, local via shutil.disk_usage()
+- Piggyback on existing SSE status stream (no new endpoint)
+- Fallback to tracked-bytes display when capacity unavailable
 
 ### Todos
 
-- E2E Playwright tests need selector updates for redesigned dashboard (bulk-actions.spec.ts, dashboard.page.spec.ts) — old `#file-list .file`, `.checkbox`, `#header .header-inner` selectors don't match new transfer-table markup
+- E2E Playwright tests need selector updates for redesigned dashboard (carried from v1.1.0)
 
 ### Blockers
 
@@ -76,9 +72,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-14T21:34:24.576Z
-Stopped at: Phase 67 context gathered
-Next action: `/gsd-plan-phase 62`
+Last session: 2026-04-15
+Stopped at: Milestone v1.2.0 initialization
+Next action: Define requirements
 
 ---
-*v1.1.0 UI Redesign — Triggarr Style*
+*v1.2.0 Storage Capacity Tiles*
