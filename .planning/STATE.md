@@ -59,6 +59,7 @@ Last activity: 2026-04-15 — Milestone v1.2.0 started
 ### Todos
 
 - E2E Playwright tests need selector updates for redesigned dashboard (carried from v1.1.0)
+- Add dashboard filter for every torrent status (target: next milestone)
 
 ### Blockers
 
