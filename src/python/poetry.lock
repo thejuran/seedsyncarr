@@ -727,14 +727,14 @@ tests = ["pytest (>=9)", "typing-extensions (>=4.15)"]
 
 [[package]]
 name = "patool"
-version = "4.0.3"
+version = "4.0.4"
 description = "portable archive file manager"
 optional = false
 python-versions = ">=3.11"
 groups = ["main"]
 files = [
-    {file = "patool-4.0.3-py2.py3-none-any.whl", hash = "sha256:b688801314a1deea00d60853418ab5892084a053a8cbf3a5730e1200a8ad65f7"},
-    {file = "patool-4.0.3.tar.gz", hash = "sha256:d7e3d3b69857edd4441061e27254ff1761c9e7a0627562be9eb1fc90cc08770f"},
+    {file = "patool-4.0.4-py2.py3-none-any.whl", hash = "sha256:15505e518a3cc1d2f845361e54082f7d382728e93a656ba1e683eaf8f68731ad"},
+    {file = "patool-4.0.4.tar.gz", hash = "sha256:2f23e2d6513193c28061425d6ddf1f56561ae4003cbe2007fc6d051df273e09a"},
 ]
 
 [package.extras]
