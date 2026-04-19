@@ -1,5 +1,5 @@
 import {ComponentFixture, fakeAsync, TestBed, tick} from "@angular/core/testing";
-import {BehaviorSubject, Observable} from "rxjs";
+import {BehaviorSubject, Observable, of, throwError} from "rxjs";
 
 import * as Immutable from "immutable";
 
@@ -8,6 +8,11 @@ import {ViewFileService} from "../../../../services/files/view-file.service";
 import {ViewFileOptionsService} from "../../../../services/files/view-file-options.service";
 import {ViewFile} from "../../../../services/files/view-file";
 import {ViewFileOptions} from "../../../../services/files/view-file-options";
+import {FileSelectionService} from "../../../../services/files/file-selection.service";
+import {BulkCommandService, BulkActionResult} from "../../../../services/server/bulk-command.service";
+import {ConfirmModalService} from "../../../../services/utils/confirm-modal.service";
+import {NotificationService} from "../../../../services/utils/notification.service";
+import {Localization} from "../../../../common/localization";
 
 
 // Simplified template for unit testing — mirrors key structural elements
@@ -104,16 +109,38 @@ describe("TransferTableComponent", () => {
     let fixture: ComponentFixture<TransferTableComponent>;
     let mockFileService: MockViewFileService;
     let mockOptionsService: MockViewFileOptionsService;
+    let selectionService: FileSelectionService;
+    let bulkCommandMock: {executeBulkAction: jasmine.Spy};
+    let confirmModalMock: {confirm: jasmine.Spy};
+    let notificationMock: {show: jasmine.Spy; hide: jasmine.Spy};
 
     beforeEach(async () => {
         mockFileService = new MockViewFileService();
         mockOptionsService = new MockViewFileOptionsService();
 
+        const defaultResult = new BulkActionResult(true, {
+            results: [],
+            summary: {total: 0, succeeded: 0, failed: 0}
+        } as any, null);
+        bulkCommandMock = {
+            executeBulkAction: jasmine.createSpy("executeBulkAction").and.returnValue(of(defaultResult))
+        };
+        confirmModalMock = {
+            confirm: jasmine.createSpy("confirm").and.returnValue(Promise.resolve(true))
+        };
+        notificationMock = {
+            show: jasmine.createSpy("show"),
+            hide: jasmine.createSpy("hide")
+        };
+
         await TestBed.configureTestingModule({
             imports: [TransferTableComponent],
             providers: [
                 {provide: ViewFileService, useValue: mockFileService},
-                {provide: ViewFileOptionsService, useValue: mockOptionsService}
+                {provide: ViewFileOptionsService, useValue: mockOptionsService},
+                {provide: BulkCommandService, useValue: bulkCommandMock},
+                {provide: ConfirmModalService, useValue: confirmModalMock},
+                {provide: NotificationService, useValue: notificationMock}
             ]
         })
         .overrideTemplate(TransferTableComponent, TEST_TEMPLATE)
@@ -121,6 +148,8 @@ describe("TransferTableComponent", () => {
 
         fixture = TestBed.createComponent(TransferTableComponent);
         component = fixture.componentInstance;
+        selectionService = TestBed.inject(FileSelectionService);
+        selectionService.clearSelection();
         fixture.detectChanges();
     });
 
@@ -489,5 +518,183 @@ describe("TransferTableComponent", () => {
         component.onSegmentChange("active");
         component.onSubStatusChange(ViewFile.Status.DOWNLOADING);
         expect(component.currentPage).toBe(1);
+    });
+
+    // --- 72-04: Selection-clearing hooks (D-04) ---
+
+    describe("selection clearing (D-04)", () => {
+        it("clears selection on segment change", () => {
+            selectionService.setSelection(["alpha", "beta"]);
+            expect(selectionService.getSelectedCount()).toBe(2);
+
+            component.onSegmentChange("active");
+
+            expect(selectionService.getSelectedCount()).toBe(0);
+        });
+
+        it("clears selection on sub-status change", () => {
+            component.onSegmentChange("active");
+            selectionService.setSelection(["alpha", "beta"]);
+            expect(selectionService.getSelectedCount()).toBe(2);
+
+            component.onSubStatusChange(ViewFile.Status.DOWNLOADING);
+
+            expect(selectionService.getSelectedCount()).toBe(0);
+        });
+
+        it("clears selection on goToPage", () => {
+            selectionService.setSelection(["alpha", "beta"]);
+            expect(selectionService.getSelectedCount()).toBe(2);
+
+            component.goToPage(2);
+
+            expect(selectionService.getSelectedCount()).toBe(0);
+        });
+    });
+
+    // --- 72-04: Esc key handler (D-05) ---
+
+    describe("Esc key handler (D-05)", () => {
+        it("clears selection when Escape pressed and target is body", () => {
+            selectionService.setSelection(["alpha"]);
+            const event = new KeyboardEvent("keydown", {key: "Escape"});
+            Object.defineProperty(event, "target", {value: document.body});
+
+            component.onKeyDown(event);
+
+            expect(selectionService.getSelectedCount()).toBe(0);
+        });
+
+        it("does NOT clear selection when Escape pressed while focus in an <input>", () => {
+            selectionService.setSelection(["alpha"]);
+            const input = document.createElement("input");
+            const event = new KeyboardEvent("keydown", {key: "Escape"});
+            Object.defineProperty(event, "target", {value: input});
+
+            component.onKeyDown(event);
+
+            expect(selectionService.getSelectedCount()).toBe(1);
+        });
+    });
+
+    // --- 72-04: Header checkbox (D-02) ---
+
+    describe("header checkbox state + click (D-02)", () => {
+        it("onHeaderCheckboxClick selects all paged files when none selected", () => {
+            const a = makeFile("a", ViewFile.Status.DOWNLOADED);
+            const b = makeFile("b", ViewFile.Status.DOWNLOADED);
+            (component as any)._currentPagedFiles = Immutable.List([a, b]);
+            selectionService.clearSelection();
+
+            component.onHeaderCheckboxClick();
+
+            expect(selectionService.getSelectedFiles()).toEqual(new Set(["a", "b"]));
+        });
+
+        it("onHeaderCheckboxClick clears selection when all paged files already selected", () => {
+            const a = makeFile("a", ViewFile.Status.DOWNLOADED);
+            const b = makeFile("b", ViewFile.Status.DOWNLOADED);
+            (component as any)._currentPagedFiles = Immutable.List([a, b]);
+            selectionService.setSelection(["a", "b"]);
+
+            component.onHeaderCheckboxClick();
+
+            expect(selectionService.getSelectedCount()).toBe(0);
+        });
+    });
+
+    // --- 72-04: Shift-click range selection (D-03) ---
+
+    describe("shift-click range selection (D-03)", () => {
+        let a: ViewFile;
+        let b: ViewFile;
+        let c: ViewFile;
+        let d: ViewFile;
+
+        beforeEach(() => {
+            a = makeFile("a", ViewFile.Status.DOWNLOADED);
+            b = makeFile("b", ViewFile.Status.DOWNLOADED);
+            c = makeFile("c", ViewFile.Status.DOWNLOADED);
+            d = makeFile("d", ViewFile.Status.DOWNLOADED);
+            (component as any)._currentPagedFiles = Immutable.List([a, b, c, d]);
+        });
+
+        it("selects single file on first click (no prior anchor)", () => {
+            component.onCheckboxToggle({file: b, shiftKey: false});
+
+            expect(selectionService.getSelectedFiles()).toEqual(new Set(["b"]));
+            expect((component as any)._lastClickedFileName).toBe("b");
+        });
+
+        it("selects range between anchor and target on shift-click", () => {
+            component.onCheckboxToggle({file: a, shiftKey: false});
+            component.onCheckboxToggle({file: c, shiftKey: true});
+
+            expect(selectionService.getSelectedFiles()).toEqual(new Set(["a", "b", "c"]));
+        });
+
+        it("falls back to single toggle when anchor is not in the current paged list", () => {
+            (component as any)._lastClickedFileName = "nonexistent";
+
+            component.onCheckboxToggle({file: b, shiftKey: true});
+
+            expect(selectionService.getSelectedFiles()).toEqual(new Set(["b"]));
+        });
+    });
+
+    // --- 72-04: Bulk action dispatch (D-16, D-17) ---
+
+    describe("bulk action dispatch (D-16)", () => {
+        it("onBulkQueue calls BulkCommandService.executeBulkAction with 'queue'", () => {
+            component.onBulkQueue(["a"]);
+            expect(bulkCommandMock.executeBulkAction).toHaveBeenCalledWith("queue", ["a"]);
+        });
+
+        it("onBulkStop calls executeBulkAction with 'stop'", () => {
+            component.onBulkStop(["a"]);
+            expect(bulkCommandMock.executeBulkAction).toHaveBeenCalledWith("stop", ["a"]);
+        });
+
+        it("onBulkExtract calls executeBulkAction with 'extract'", () => {
+            component.onBulkExtract(["a"]);
+            expect(bulkCommandMock.executeBulkAction).toHaveBeenCalledWith("extract", ["a"]);
+        });
+
+        it("onBulkDeleteLocal shows confirm modal with skipCount and calls executeBulkAction on confirm", async () => {
+            selectionService.setSelection(["a", "b", "c"]);
+
+            await component.onBulkDeleteLocal(["a", "b"]);
+
+            expect(confirmModalMock.confirm).toHaveBeenCalled();
+            const firstArg = confirmModalMock.confirm.calls.mostRecent().args[0];
+            expect(firstArg.title).toBe(Localization.Modal.BULK_DELETE_LOCAL_TITLE);
+            expect(firstArg.skipCount).toBe(1);
+            expect(firstArg.okBtn).toBe("Delete");
+            expect(bulkCommandMock.executeBulkAction).toHaveBeenCalledWith("delete_local", ["a", "b"]);
+        });
+
+        it("onBulkDeleteLocal does NOT call executeBulkAction if user cancels", async () => {
+            confirmModalMock.confirm.and.returnValue(Promise.resolve(false));
+
+            await component.onBulkDeleteLocal(["a", "b"]);
+
+            expect(bulkCommandMock.executeBulkAction).not.toHaveBeenCalled();
+        });
+
+        it("onBulkDeleteRemote calls executeBulkAction with 'delete_remote' on confirm", async () => {
+            await component.onBulkDeleteRemote(["a", "b"]);
+
+            const firstArg = confirmModalMock.confirm.calls.mostRecent().args[0];
+            expect(firstArg.title).toBe(Localization.Modal.BULK_DELETE_REMOTE_TITLE);
+            expect(bulkCommandMock.executeBulkAction).toHaveBeenCalledWith("delete_remote", ["a", "b"]);
+        });
+
+        it("clears selection after successful bulk action", fakeAsync(() => {
+            selectionService.setSelection(["a"]);
+            component.onBulkQueue(["a"]);
+            tick();
+
+            expect(selectionService.getSelectedCount()).toBe(0);
+        }));
     });
 });
