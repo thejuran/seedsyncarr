@@ -69,6 +69,14 @@ export class DashboardPage extends App {
         return this.page.locator('app-bulk-actions-bar').getByRole('button', { name, exact: true });
     }
 
+    getSegmentButton(name: 'All' | 'Active' | 'Done' | 'Errors'): Locator {
+        return this.page.locator('.segment-filters').getByRole('button', { name, exact: true });
+    }
+
+    getSubButton(name: 'Pending' | 'Syncing' | 'Queued' | 'Extracting' | 'Downloaded' | 'Extracted' | 'Failed' | 'Deleted'): Locator {
+        return this.page.locator('.segment-filters button.btn-sub').getByText(name, { exact: true });
+    }
+
     async selectFileByName(fileName: string): Promise<void> {
         await this.getRowCheckbox(fileName).click();
     }
