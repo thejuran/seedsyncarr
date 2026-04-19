@@ -38,6 +38,14 @@
         @if (activeSegment === 'active') {
           <div class="segment-divider"></div>
           <button type="button" class="btn-sub"
+                  [class.active]="activeSubStatus === ViewFileStatus.DEFAULT"
+                  (click)="onSubStatusChange(ViewFileStatus.DEFAULT)">
+            @if (activeSubStatus === ViewFileStatus.DEFAULT) {
+              <span class="accent-dot"></span>
+            }
+            Pending
+          </button>
+          <button type="button" class="btn-sub"
                   [class.active]="activeSubStatus === ViewFileStatus.DOWNLOADING"
                   (click)="onSubStatusChange(ViewFileStatus.DOWNLOADING)">
             @if (activeSubStatus === ViewFileStatus.DOWNLOADING) {
@@ -60,6 +68,37 @@
               <span class="accent-dot"></span>
             }
             Extracting
+          </button>
+        }
+
+        <!-- Done: expandable parent -->
+        <button type="button" class="btn-segment"
+                [class.btn-segment--parent-active]="activeSegment === 'done' && activeSubStatus === null"
+                [class.btn-segment--parent-expanded]="activeSegment === 'done' && activeSubStatus !== null"
+                (click)="onSegmentChange('done')">
+          Done
+          <i class="ph-bold"
+             [class.ph-caret-down]="activeSegment !== 'done'"
+             [class.ph-caret-up]="activeSegment === 'done'"></i>
+        </button>
+
+        @if (activeSegment === 'done') {
+          <div class="segment-divider"></div>
+          <button type="button" class="btn-sub"
+                  [class.active]="activeSubStatus === ViewFileStatus.DOWNLOADED"
+                  (click)="onSubStatusChange(ViewFileStatus.DOWNLOADED)">
+            @if (activeSubStatus === ViewFileStatus.DOWNLOADED) {
+              <span class="accent-dot"></span>
+            }
+            Downloaded
+          </button>
+          <button type="button" class="btn-sub"
+                  [class.active]="activeSubStatus === ViewFileStatus.EXTRACTED"
+                  (click)="onSubStatusChange(ViewFileStatus.EXTRACTED)">
+            @if (activeSubStatus === ViewFileStatus.EXTRACTED) {
+              <span class="accent-dot"></span>
+            }
+            Extracted
           </button>
         }
 
