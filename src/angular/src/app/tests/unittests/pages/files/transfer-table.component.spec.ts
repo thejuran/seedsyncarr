@@ -499,6 +499,133 @@ describe("TransferTableComponent", () => {
         expect(pagedFiles[0].name).toBe("deleted-1");
     }));
 
+    // --- Plan 73 — Done segment + Pending sub-status filtering ---
+
+    it("should filter to DOWNLOADED ∪ EXTRACTED when 'done' segment selected with no sub", fakeAsync(() => {
+        const files = [
+            makeFile("dl-1", ViewFile.Status.DOWNLOADING),
+            makeFile("done-1", ViewFile.Status.DOWNLOADED),
+            makeFile("done-2", ViewFile.Status.DOWNLOADED),
+            makeFile("extracted-1", ViewFile.Status.EXTRACTED),
+            makeFile("stopped-1", ViewFile.Status.STOPPED),
+        ];
+        mockFileService.pushFiles(files);
+        tick();
+
+        component.onSegmentChange("done");
+        fixture.detectChanges();
+        tick();
+
+        let pagedFiles: ViewFile[] = [];
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
+        tick();
+        sub.unsubscribe();
+
+        expect(pagedFiles.length).toBe(3);
+        expect(pagedFiles.map(f => f.name)).toEqual(jasmine.arrayContaining(["done-1", "done-2", "extracted-1"]));
+    }));
+
+    it("should include DEFAULT (Pending) in 'active' segment results", fakeAsync(() => {
+        const files = [
+            makeFile("default-1", ViewFile.Status.DEFAULT),
+            makeFile("dl-1", ViewFile.Status.DOWNLOADING),
+            makeFile("queued-1", ViewFile.Status.QUEUED),
+            makeFile("extract-1", ViewFile.Status.EXTRACTING),
+            makeFile("done-1", ViewFile.Status.DOWNLOADED),
+        ];
+        mockFileService.pushFiles(files);
+        tick();
+
+        component.onSegmentChange("active");
+        fixture.detectChanges();
+        tick();
+
+        let pagedFiles: ViewFile[] = [];
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
+        tick();
+        sub.unsubscribe();
+
+        expect(pagedFiles.length).toBe(4);
+        expect(pagedFiles.map(f => f.name)).toEqual(jasmine.arrayContaining(["default-1", "dl-1", "queued-1", "extract-1"]));
+    }));
+
+    it("should filter to DEFAULT only when Pending sub-status selected under Active", fakeAsync(() => {
+        const files = [
+            makeFile("default-1", ViewFile.Status.DEFAULT),
+            makeFile("dl-1", ViewFile.Status.DOWNLOADING),
+            makeFile("queued-1", ViewFile.Status.QUEUED),
+        ];
+        mockFileService.pushFiles(files);
+        tick();
+
+        component.onSegmentChange("active");
+        component.onSubStatusChange(ViewFile.Status.DEFAULT);
+        fixture.detectChanges();
+        tick();
+
+        let pagedFiles: ViewFile[] = [];
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
+        tick();
+        sub.unsubscribe();
+
+        expect(pagedFiles.length).toBe(1);
+        expect(pagedFiles[0].name).toBe("default-1");
+    }));
+
+    it("should filter to DOWNLOADED only when Downloaded sub-status selected under Done", fakeAsync(() => {
+        const files = [
+            makeFile("done-1", ViewFile.Status.DOWNLOADED),
+            makeFile("extracted-1", ViewFile.Status.EXTRACTED),
+            makeFile("dl-1", ViewFile.Status.DOWNLOADING),
+        ];
+        mockFileService.pushFiles(files);
+        tick();
+
+        component.onSegmentChange("done");
+        component.onSubStatusChange(ViewFile.Status.DOWNLOADED);
+        fixture.detectChanges();
+        tick();
+
+        let pagedFiles: ViewFile[] = [];
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
+        tick();
+        sub.unsubscribe();
+
+        expect(pagedFiles.length).toBe(1);
+        expect(pagedFiles[0].name).toBe("done-1");
+    }));
+
+    it("should filter to EXTRACTED only when Extracted sub-status selected under Done", fakeAsync(() => {
+        const files = [
+            makeFile("done-1", ViewFile.Status.DOWNLOADED),
+            makeFile("extracted-1", ViewFile.Status.EXTRACTED),
+        ];
+        mockFileService.pushFiles(files);
+        tick();
+
+        component.onSegmentChange("done");
+        component.onSubStatusChange(ViewFile.Status.EXTRACTED);
+        fixture.detectChanges();
+        tick();
+
+        let pagedFiles: ViewFile[] = [];
+        const sub = component.pagedFiles$.subscribe(f => pagedFiles = f);
+        tick();
+        sub.unsubscribe();
+
+        expect(pagedFiles.length).toBe(1);
+        expect(pagedFiles[0].name).toBe("extracted-1");
+    }));
+
+    it("should clear file selection when 'done' segment selected (D-12 carry-forward)", () => {
+        selectionService.setSelection(["a.mp4", "b.mp4"]);
+        expect(selectionService.getSelectedCount()).toBe(2);
+
+        component.onSegmentChange("done");
+
+        expect(selectionService.getSelectedCount()).toBe(0);
+    });
+
     // --- Sub-status switching and state management ---
 
     it("should switch sub-status within same segment", fakeAsync(() => {
