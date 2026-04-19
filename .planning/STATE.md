@@ -10,8 +10,8 @@ progress:
   total_phases: 22
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
-  percent: 0
+  completed_plans: 2
+  percent: 40
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 ## Current Position
 
 Phase: 72 (restore-dashboard-file-selection-and-action-bar) — EXECUTING
-Plan: 1 of 5
+Plan: 3 of 5 (72-01, 72-02 complete; 72-03 next)
 Status: Executing Phase 72
 Last activity: 2026-04-19 -- Phase 72 execution started
 
