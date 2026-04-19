@@ -25,7 +25,7 @@ import {BulkActionsBarComponent} from "./bulk-actions-bar.component";
 })
 export class TransferTableComponent {
 
-    activeSegment: "all" | "active" | "errors" = "all";
+    activeSegment: "all" | "active" | "done" | "errors" = "all";
     activeSubStatus: ViewFile.Status | null = null;
     readonly ViewFileStatus = ViewFile.Status;
     nameFilter = "";
@@ -51,7 +51,7 @@ export class TransferTableComponent {
     private _currentPagedFiles: List<ViewFile> = List();
 
     private filterState$ = new BehaviorSubject<{
-        segment: "all" | "active" | "errors";
+        segment: "all" | "active" | "done" | "errors";
         subStatus: ViewFile.Status | null;
         page: number;
     }>({segment: "all", subStatus: null, page: 1});
@@ -155,7 +155,7 @@ export class TransferTableComponent {
         this.searchInput$.next(value);
     }
 
-    onSegmentChange(segment: "all" | "active" | "errors"): void {
+    onSegmentChange(segment: "all" | "active" | "done" | "errors"): void {
         if (segment !== "all" && this.activeSegment === segment) {
             // Second click on same expandable parent — collapse to All
             this.activeSegment = "all";
