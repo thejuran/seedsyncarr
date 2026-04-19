@@ -103,6 +103,13 @@
     <table class="transfer-table">
       <thead>
         <tr>
+          <th class="col-checkbox">
+            <input type="checkbox" class="ss-checkbox"
+                   [checked]="(headerCheckboxState$ | async) === 'all'"
+                   [indeterminate]="(headerCheckboxState$ | async) === 'some'"
+                   (click)="onHeaderCheckboxClick()"
+                   aria-label="Select all visible files" />
+          </th>
           <th class="col-name">Data Content</th>
           <th class="col-status">Status</th>
           <th class="col-progress">Progress</th>
@@ -113,10 +120,10 @@
       </thead>
       <tbody>
         @for (file of (vm.paged ?? []); track trackByName($index, file)) {
-          <app-transfer-row [file]="file"></app-transfer-row>
+          <app-transfer-row [file]="file" (checkboxToggle)="onCheckboxToggle($event)"></app-transfer-row>
         } @empty {
           <tr class="empty-row">
-            <td colspan="6" class="text-center text-muted py-4">
+            <td colspan="7" class="text-center text-muted py-4">
               No files match the current filter
             </td>
           </tr>
@@ -124,6 +131,18 @@
       </tbody>
     </table>
   </div>
+
+  <app-bulk-actions-bar
+    [visibleFiles]="(pagedFilesList$ | async) ?? emptySetList"
+    [selectedFiles]="(selectedFiles$ | async) ?? emptySet"
+    [operationInProgress]="bulkOperationInProgress"
+    (clearSelection)="onClearSelection()"
+    (queueAction)="onBulkQueue($event)"
+    (stopAction)="onBulkStop($event)"
+    (extractAction)="onBulkExtract($event)"
+    (deleteLocalAction)="onBulkDeleteLocal($event)"
+    (deleteRemoteAction)="onBulkDeleteRemote($event)">
+  </app-bulk-actions-bar>
 
   <!-- Pagination Footer -->
   <div class="pagination-footer">

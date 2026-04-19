@@ -345,3 +345,12 @@
     cursor: not-allowed;
   }
 }
+
+// ============================================================================
+// Header checkbox column — width matches body .cell-checkbox from transfer-row
+// ============================================================================
+.transfer-table thead th.col-checkbox {
+  width: 3rem;
+  text-align: center;
+  padding: 12px 20px;
+}
