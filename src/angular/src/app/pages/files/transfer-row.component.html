@@ -1,3 +1,9 @@
+<td class="cell-checkbox" appClickStopPropagation>
+  <input type="checkbox" class="ss-checkbox"
+         [checked]="isSelected()"
+         (click)="onCheckboxClick($event)"
+         [attr.aria-label]="'Select ' + file.name" />
+</td>
 <td class="cell-name" [title]="file.name">
   <div class="file-name">{{ file.name }}</div>
   <div class="file-meta">

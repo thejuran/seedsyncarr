@@ -236,3 +236,63 @@ td {
 .text-muted-soft {
   color: rgba(154, 170, 138, 0.4);
 }
+
+// ============================================================================
+// Cell: Checkbox (Variant B line 185, header cell line 174)
+// ============================================================================
+.cell-checkbox {
+  padding: 12px 20px;
+  text-align: center;
+  width: 3rem;
+}
+
+// ============================================================================
+// Custom checkbox — Variant B lines 45-58 (literal port)
+// ============================================================================
+.ss-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid #2d3a2d;
+  border-radius: 0.25rem;
+  background-color: #1a201a;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  margin: 0;
+
+  &::before {
+    content: "";
+    width: 0.65em;
+    height: 0.65em;
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+    transform: scale(0);
+    transform-origin: bottom left;
+    transition: 120ms transform ease-in-out;
+    background-color: #1a201a;
+  }
+
+  &:checked {
+    background-color: #d4a574;
+    border-color: #d4a574;
+  }
+
+  &:checked::before {
+    transform: scale(1);
+  }
+}
+
+// ============================================================================
+// Selected-row treatment — D-06: amber-wash + 3px amber left-border (Variant B line 184)
+// Must win over the :host:nth-child(odd) zebra-stripe defined above.
+// ============================================================================
+:host.row-selected {
+  background: rgba(212, 165, 116, 0.04) !important;
+  box-shadow: inset 3px 0 0 #d4a574;
+
+  &:hover {
+    background: rgba(212, 165, 116, 0.08) !important;
+  }
+}
