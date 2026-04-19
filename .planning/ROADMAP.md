@@ -551,6 +551,16 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 73 to break down)
 
+### Phase 74: Storage capacity tiles — remote and local disk usage on dashboard
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 73
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 74 to break down)
+
 ---
 
 *Last updated: 2026-04-14 — All phases 62-67 complete, milestone audit in progress*

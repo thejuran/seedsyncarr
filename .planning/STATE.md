@@ -48,6 +48,7 @@ Last activity: 2026-04-15 — Milestone v1.2.0 started
 
 - Phase 72 added: Restore dashboard file selection and action bar (promoted from todo 2026-04-19)
 - Phase 73 added: Dashboard filter for every torrent status (promoted from todo 2026-04-17)
+- Phase 74 added: Storage capacity tiles — milestone theme (design spec already exists)
 
 ### Decisions
 
