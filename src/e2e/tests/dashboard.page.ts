@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { Page, Locator } from '@playwright/test';
 import { Paths } from '../urls';
 import { App } from './app';
 
@@ -48,5 +48,39 @@ export class DashboardPage extends App {
         }
 
         return files;
+    }
+
+    getRowCheckbox(fileName: string): Locator {
+        const row = this.page.locator('.transfer-table tbody app-transfer-row', {
+            has: this.page.locator('td.cell-name .file-name', { hasText: new RegExp(`^${this._escapeRegex(fileName)}$`) })
+        });
+        return row.locator('td.cell-checkbox input.ss-checkbox');
+    }
+
+    getHeaderCheckbox(): Locator {
+        return this.page.locator('.transfer-table thead th.col-checkbox input.ss-checkbox');
+    }
+
+    getActionBar(): Locator {
+        return this.page.locator('app-bulk-actions-bar .bulk-actions-bar');
+    }
+
+    getActionButton(name: 'Queue' | 'Stop' | 'Extract' | 'Delete Local' | 'Delete Remote'): Locator {
+        return this.page.locator('app-bulk-actions-bar').getByRole('button', { name, exact: true });
+    }
+
+    async selectFileByName(fileName: string): Promise<void> {
+        await this.getRowCheckbox(fileName).click();
+    }
+
+    async clearSelectionViaBar(): Promise<void> {
+        const clearBtn = this.page.locator('app-bulk-actions-bar button.clear-btn');
+        if (await clearBtn.isVisible()) {
+            await clearBtn.click();
+        }
+    }
+
+    private _escapeRegex(s: string): string {
+        return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 }
