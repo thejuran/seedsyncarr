@@ -1,7 +1,8 @@
-import {Component, ChangeDetectionStrategy, DestroyRef, HostListener, computed, inject} from "@angular/core";
+import {Component, ChangeDetectionStrategy, DestroyRef, HostListener, OnInit, computed, inject} from "@angular/core";
 import {AsyncPipe} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
+import {Router, ActivatedRoute} from "@angular/router";
 import {Observable, BehaviorSubject, Subject, combineLatest} from "rxjs";
 import {debounceTime, distinctUntilChanged, map, shareReplay} from "rxjs/operators";
 import {List} from "immutable";
@@ -23,7 +24,7 @@ import {BulkActionsBarComponent} from "./bulk-actions-bar.component";
     imports: [AsyncPipe, FormsModule, TransferRowComponent, BulkActionsBarComponent],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TransferTableComponent {
+export class TransferTableComponent implements OnInit {
 
     activeSegment: "all" | "active" | "done" | "errors" = "all";
     activeSubStatus: ViewFile.Status | null = null;
@@ -58,11 +59,31 @@ export class TransferTableComponent {
     private searchInput$ = new Subject<string>();
     private destroyRef = inject(DestroyRef);
 
+    private readonly VALID_SEGMENTS = new Set<string>(["all", "active", "done", "errors"]);
+    private readonly VALID_SUBS_PER_SEGMENT: { [k: string]: Set<string> } = {
+        active: new Set([
+            ViewFile.Status.DEFAULT,
+            ViewFile.Status.DOWNLOADING,
+            ViewFile.Status.QUEUED,
+            ViewFile.Status.EXTRACTING,
+        ]),
+        done: new Set([
+            ViewFile.Status.DOWNLOADED,
+            ViewFile.Status.EXTRACTED,
+        ]),
+        errors: new Set([
+            ViewFile.Status.STOPPED,
+            ViewFile.Status.DELETED,
+        ]),
+    };
+
     constructor(
         private viewFileService: ViewFileService,
         private viewFileOptionsService: ViewFileOptionsService,
         public fileSelectionService: FileSelectionService,
         public bulkActionDispatcher: BulkActionDispatcher,
+        private router: Router,
+        private route: ActivatedRoute,
     ) {
         // Derive segmented files from filteredFiles + filter state (segment + optional sub-status)
         const segmentedFiles$ = combineLatest([
@@ -157,6 +178,34 @@ export class TransferTableComponent {
             });
     }
 
+    ngOnInit(): void {
+        const segParam = this.route.snapshot.queryParamMap.get("segment");
+        const subParam = this.route.snapshot.queryParamMap.get("sub");
+
+        // Validate segment — invalid or missing falls back silently to "all" (D-11)
+        const segment: "all" | "active" | "done" | "errors" =
+            (segParam != null && this.VALID_SEGMENTS.has(segParam))
+                ? (segParam as "all" | "active" | "done" | "errors")
+                : "all";
+
+        // Validate sub against the per-segment allowed-set; invalid silently drops to null (D-11)
+        let subStatus: ViewFile.Status | null = null;
+        if (segment !== "all" && subParam != null) {
+            const allowed = this.VALID_SUBS_PER_SEGMENT[segment];
+            if (allowed && allowed.has(subParam)) {
+                subStatus = subParam as ViewFile.Status;
+            }
+        }
+
+        // Only update state when non-default — the BehaviorSubject already holds the default
+        if (segment !== "all" || subStatus !== null) {
+            this.activeSegment = segment;
+            this.activeSubStatus = subStatus;
+            this.currentPage = 1;
+            this.filterState$.next({segment, subStatus, page: 1});
+        }
+    }
+
     onSearchInput(value: string): void {
         this.nameFilter = value;
         this.searchInput$.next(value);
@@ -176,6 +225,7 @@ export class TransferTableComponent {
             this.filterState$.next({segment, subStatus: null, page: 1});
         }
         this.fileSelectionService.clearSelection();
+        this._writeFilterToUrl();
     }
 
     onSubStatusChange(status: ViewFile.Status): void {
@@ -188,6 +238,7 @@ export class TransferTableComponent {
             this.currentPage = 1;
             this.filterState$.next({segment: this.activeSegment, subStatus: null, page: 1});
             this.fileSelectionService.clearSelection();
+            this._writeFilterToUrl();
             return;
         }
         this.activeSubStatus = status;
@@ -198,6 +249,7 @@ export class TransferTableComponent {
             page: 1
         });
         this.fileSelectionService.clearSelection();
+        this._writeFilterToUrl();
     }
 
     goToPage(page: number): void {
@@ -306,5 +358,22 @@ export class TransferTableComponent {
             fileNames,
             this.fileSelectionService.getSelectedFiles().size
         );
+    }
+
+    private _writeFilterToUrl(): void {
+        const queryParams: {segment: string | null; sub: string | null} = {
+            segment: null,
+            sub: null,
+        };
+        if (this.activeSegment !== "all") {
+            queryParams.segment = this.activeSegment;
+            queryParams.sub = this.activeSubStatus ?? null;
+        }
+        this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams,
+            queryParamsHandling: "merge",
+            replaceUrl: true,
+        });
     }
 }
