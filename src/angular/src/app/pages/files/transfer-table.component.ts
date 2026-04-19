@@ -78,9 +78,16 @@ export class TransferTableComponent {
                 }
                 if (state.segment === "active") {
                     return files.filter(f =>
+                        f.status === ViewFile.Status.DEFAULT ||
                         f.status === ViewFile.Status.DOWNLOADING ||
                         f.status === ViewFile.Status.QUEUED ||
                         f.status === ViewFile.Status.EXTRACTING
+                    ).toList();
+                }
+                if (state.segment === "done") {
+                    return files.filter(f =>
+                        f.status === ViewFile.Status.DOWNLOADED ||
+                        f.status === ViewFile.Status.EXTRACTED
                     ).toList();
                 }
                 if (state.segment === "errors") {
