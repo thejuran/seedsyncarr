@@ -950,4 +950,105 @@ describe("TransferTableComponent", () => {
             expect(component.bulkOperationInProgress()).toBe(false);
         });
     });
+
+    // --- Plan 73 — URL query-param persistence (D-09 / D-10 / D-11) ---
+
+    describe("URL query-param persistence", () => {
+
+        // Helper — sets mockQueryParamMap, then re-creates the component so ngOnInit runs against the new params
+        function createWithQuery(params: { [k: string]: string | null }) {
+            for (const k of Object.keys(mockQueryParamMap)) { delete mockQueryParamMap[k]; }
+            Object.assign(mockQueryParamMap, params);
+            fixture = TestBed.createComponent(TransferTableComponent);
+            component = fixture.componentInstance;
+            fixture.detectChanges();
+        }
+
+        // --- Hydration on init (D-09 / D-11) ---
+
+        it("hydrates activeSegment='done' from ?segment=done", () => {
+            createWithQuery({segment: "done"});
+            expect(component.activeSegment).toBe("done");
+            expect(component.activeSubStatus).toBeNull();
+        });
+
+        it("hydrates activeSegment='done' and activeSubStatus=DOWNLOADED from ?segment=done&sub=downloaded", () => {
+            createWithQuery({segment: "done", sub: "downloaded"});
+            expect(component.activeSegment).toBe("done");
+            expect(component.activeSubStatus).toBe(ViewFile.Status.DOWNLOADED);
+        });
+
+        it("hydrates activeSegment='active' and activeSubStatus=DEFAULT from ?segment=active&sub=default", () => {
+            createWithQuery({segment: "active", sub: "default"});
+            expect(component.activeSegment).toBe("active");
+            expect(component.activeSubStatus).toBe(ViewFile.Status.DEFAULT);
+        });
+
+        it("falls back silently to 'all' when ?segment value is invalid (D-11)", () => {
+            createWithQuery({segment: "garbage"});
+            expect(component.activeSegment).toBe("all");
+            expect(component.activeSubStatus).toBeNull();
+            expect(notificationMock.show).not.toHaveBeenCalled();
+        });
+
+        it("drops sub silently when sub doesn't belong to the named segment (D-11)", () => {
+            createWithQuery({segment: "active", sub: "stopped"});
+            expect(component.activeSegment).toBe("active");
+            expect(component.activeSubStatus).toBeNull();
+            expect(notificationMock.show).not.toHaveBeenCalled();
+        });
+
+        it("treats missing query params as default 'all' (no params present)", () => {
+            createWithQuery({});
+            expect(component.activeSegment).toBe("all");
+            expect(component.activeSubStatus).toBeNull();
+        });
+
+        // --- Write-back on change (D-09 / D-10) ---
+
+        it("writes ?segment=done&sub=null on onSegmentChange('done')", () => {
+            mockRouter.navigate.calls.reset();
+            component.onSegmentChange("done");
+            expect(mockRouter.navigate).toHaveBeenCalledTimes(1);
+            const [commands, extras] = mockRouter.navigate.calls.mostRecent().args;
+            expect(commands).toEqual([]);
+            expect(extras.queryParams).toEqual({segment: "done", sub: null});
+            expect(extras.queryParamsHandling).toBe("merge");
+            expect(extras.replaceUrl).toBe(true);
+        });
+
+        it("writes ?segment=done&sub=downloaded on subsequent onSubStatusChange(DOWNLOADED)", () => {
+            component.onSegmentChange("done");
+            mockRouter.navigate.calls.reset();
+            component.onSubStatusChange(ViewFile.Status.DOWNLOADED);
+            expect(mockRouter.navigate).toHaveBeenCalledTimes(1);
+            const [, extras] = mockRouter.navigate.calls.mostRecent().args;
+            expect(extras.queryParams).toEqual({segment: "done", sub: "downloaded"});
+            expect(extras.queryParamsHandling).toBe("merge");
+        });
+
+        it("clears both params on onSegmentChange('all')", () => {
+            component.onSegmentChange("done");
+            component.onSubStatusChange(ViewFile.Status.DOWNLOADED);
+            mockRouter.navigate.calls.reset();
+            component.onSegmentChange("all");
+            expect(mockRouter.navigate).toHaveBeenCalledTimes(1);
+            const [, extras] = mockRouter.navigate.calls.mostRecent().args;
+            expect(extras.queryParams).toEqual({segment: null, sub: null});
+            expect(extras.queryParamsHandling).toBe("merge");
+        });
+
+        it("does NOT call router.navigate when goToPage is invoked (page is not persisted per D-11)", () => {
+            mockRouter.navigate.calls.reset();
+            component.goToPage(2);
+            expect(mockRouter.navigate).not.toHaveBeenCalled();
+        });
+
+        it("does NOT call router.navigate when onSearchInput is invoked (search is not persisted per D-11)", fakeAsync(() => {
+            mockRouter.navigate.calls.reset();
+            component.onSearchInput("test");
+            tick(300);
+            expect(mockRouter.navigate).not.toHaveBeenCalled();
+        }));
+    });
 });
