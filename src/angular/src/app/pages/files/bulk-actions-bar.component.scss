@@ -2,46 +2,46 @@
 
 .bulk-actions-bar {
     display: flex;
-    align-items: center;
+    flex-direction: row;
     justify-content: space-between;
-    padding: 8px 16px;
-    background-color: var(--app-selection-bg);
-    border: 1px solid var(--app-selection-border);
-    border-radius: 4px;
-    margin-bottom: 8px;
+    align-items: center;
+    padding: 12px 20px;
+    background: #252e23;
+    border-top: 1px solid rgba(212, 165, 116, 0.3);
+    box-shadow: inset 0 1px 0 rgba(212, 165, 116, 0.1);
+    position: relative;
+    z-index: 10;
 }
 
 .bar-left {
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 12px;
     flex-shrink: 0;
 }
 
 .selection-label {
-    font-weight: 500;
+    color: #d4a574;
     font-size: 0.875rem;
-    color: var(--app-selection-text-emphasis);
+    font-weight: 500;
 }
 
 .clear-btn {
+    background: none;
+    border: none;
+    color: #9ca39a;
     font-size: 0.75rem;
-}
+    text-decoration: underline;
+    text-decoration-color: #2d3a2d;
+    text-underline-offset: 2px;
+    padding: 0;
+    cursor: pointer;
+    transition: color 0.15s ease;
 
-.actions {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.action-btn {
-    white-space: nowrap;
-    font-size: 0.75rem;
-    padding: 3px 10px;
-    border-radius: 4px;
-    border: 1px solid transparent;
-    transition: background-color 0.15s ease;
+    &:not(:disabled):hover {
+        color: #e8ebe6;
+    }
 
     &:disabled {
         opacity: 0.4;
@@ -49,47 +49,94 @@
     }
 }
 
-.action-primary {
-    background-color: rgba($primary, 0.2);
-    color: $primary;
-    border-color: rgba($primary, 0.3);
-
-    &:hover:not(:disabled) {
-        background-color: rgba($primary, 0.35);
-        color: $primary;
-    }
-}
-
-.action-secondary {
-    background-color: rgba($secondary, 0.15);
-    color: $secondary;
-    border-color: rgba($secondary, 0.25);
-
-    &:hover:not(:disabled) {
-        background-color: rgba($secondary, 0.3);
-        color: $secondary;
-    }
-}
-
-.action-danger {
-    background-color: rgba($danger, 0.15);
-    color: $danger;
-    border-color: rgba($danger, 0.25);
-
-    &:hover:not(:disabled) {
-        background-color: rgba($danger, 0.3);
-        color: $danger;
-    }
+.actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
 }
 
 .progress-indicator {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--app-selection-text-emphasis);
+    color: #d4a574;
     font-weight: 500;
     font-size: 0.8rem;
     margin-right: 4px;
+}
+
+.action-btn {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.25;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    border: 1px solid transparent;
+    cursor: pointer;
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    &:focus-visible {
+        outline: 2px solid #d4a574;
+        outline-offset: -1px;
+    }
+}
+
+.action-queue {
+    background: #d4a574;
+    color: #1a201a;
+    border-color: #d4a574;
+
+    &:not(:disabled):hover {
+        background: rgba(212, 165, 116, 0.9);
+    }
+}
+
+.action-danger {
+    background: transparent;
+    color: #c97d7d;
+    border-color: rgba(201, 125, 125, 0.4);
+
+    &:not(:disabled):hover {
+        background: rgba(201, 125, 125, 0.1);
+        color: #c97d7d;
+    }
+}
+
+.action-neutral {
+    background: rgba(17, 21, 17, 0.5);
+    color: #6b736a;
+    border-color: #2d3a2d;
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+.action-overlay {
+    position: relative;
+    margin-left: -0.9em;
+    color: #c97d7d;
+}
+
+.btn-divider {
+    display: inline-block;
+    width: 1px;
+    height: 20px;
+    background: #2d3a2d;
+    margin: 0 4px;
+    flex-shrink: 0;
 }
 
 /* Mobile responsiveness */
@@ -103,6 +150,7 @@
     .actions {
         width: 100%;
         justify-content: flex-start;
+        flex-wrap: wrap;
     }
 }
 
