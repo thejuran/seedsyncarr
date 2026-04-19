@@ -365,6 +365,73 @@ describe("BulkActionsBarComponent", () => {
     });
 
     // =========================================================================
+    // Variant B DOM Contract Tests
+    // =========================================================================
+
+    describe("Variant B DOM contract", () => {
+        /**
+         * Helper for DOM tests: uses componentRef.setInput() which properly
+         * marks an OnPush component as dirty before detectChanges().
+         */
+        function setInputsForDOM(visibleFiles: List<ViewFile>, selectedFiles: Set<string>): void {
+            fixture.componentRef.setInput("visibleFiles", visibleFiles);
+            fixture.componentRef.setInput("selectedFiles", selectedFiles);
+            component.ngOnChanges({
+                visibleFiles: new SimpleChange(component.visibleFiles, visibleFiles, false),
+                selectedFiles: new SimpleChange(component.selectedFiles, selectedFiles, false)
+            });
+            fixture.detectChanges();
+        }
+
+        it("renders exactly 5 action buttons in order Queue, Stop, Extract, Delete Local, Delete Remote", () => {
+            setInputsForDOM(testFiles, new Set(["file1", "file2"]));
+            const buttons = fixture.nativeElement.querySelectorAll("button.action-btn");
+            expect(buttons.length).toBe(5);
+
+            const expectedLabels = ["Queue", "Stop", "Extract", "Delete Local", "Delete Remote"];
+            buttons.forEach((btn: HTMLButtonElement, idx: number) => {
+                const text = btn.textContent!.replace(/\s+/g, " ").trim();
+                expect(text).toContain(expectedLabels[idx]);
+            });
+        });
+
+        it("renders the vertical divider between Extract and Delete Local", () => {
+            setInputsForDOM(testFiles, new Set(["file1", "file2"]));
+            const actionsChildren = fixture.nativeElement.querySelectorAll(".actions > *");
+            // Find Extract button index among children (skipping progress-indicator which is @if-hidden)
+            let extractIdx = -1;
+            actionsChildren.forEach((el: Element, idx: number) => {
+                if (el.tagName === "BUTTON" && el.textContent!.replace(/\s+/g, " ").trim().includes("Extract")) {
+                    extractIdx = idx;
+                }
+            });
+            expect(extractIdx).toBeGreaterThan(-1);
+            const dividerEl = actionsChildren[extractIdx + 1];
+            expect(dividerEl.classList.contains("btn-divider")).toBe(true);
+        });
+
+        it("renders selection label as 'N selected' with no 'file/files' suffix", () => {
+            setInputsForDOM(testFiles, new Set(["file1"]));
+            const label1 = fixture.nativeElement.querySelector(".selection-label").textContent.trim();
+            expect(label1).toBe("1 selected");
+            expect(/\bfile(s)?\b/.test(label1)).toBe(false);
+
+            setInputsForDOM(testFiles, new Set(["file1", "file2"]));
+            const label2 = fixture.nativeElement.querySelector(".selection-label").textContent.trim();
+            expect(label2).toBe("2 selected");
+            expect(/\bfile(s)?\b/.test(label2)).toBe(false);
+        });
+
+        it("does NOT render button labels with a parenthesized count suffix", () => {
+            setInputsForDOM(testFiles, new Set(["file1", "file2"]));
+            const buttons = fixture.nativeElement.querySelectorAll("button.action-btn");
+            buttons.forEach((btn: HTMLButtonElement) => {
+                expect(/\(\d+\)/.test(btn.textContent!)).toBe(false);
+            });
+        });
+    });
+
+    // =========================================================================
     // Performance Tests
     // =========================================================================
 
