@@ -73,4 +73,28 @@ test.describe('Testing dashboard page', () => {
         await dashboardPage.selectFileByName(TEST_FILE);
         await expect(dashboardPage.getActionButton('Stop')).toBeDisabled();
     });
+
+    test('should expand Done segment to reveal Downloaded and Extracted subs', async () => {
+        await expect(dashboardPage.getSubButton('Downloaded')).not.toBeVisible();
+        await expect(dashboardPage.getSubButton('Extracted')).not.toBeVisible();
+
+        await dashboardPage.getSegmentButton('Done').click();
+
+        await expect(dashboardPage.getSubButton('Downloaded')).toBeVisible();
+        await expect(dashboardPage.getSubButton('Extracted')).toBeVisible();
+    });
+
+    test('should reveal Pending sub under Active', async () => {
+        await expect(dashboardPage.getSubButton('Pending')).not.toBeVisible();
+
+        await dashboardPage.getSegmentButton('Active').click();
+
+        await expect(dashboardPage.getSubButton('Pending')).toBeVisible();
+    });
+
+    test('should persist Done filter via URL query param (D-09)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Done').click();
+
+        await expect(page).toHaveURL(/[?&]segment=done(&|$)/);
+    });
 });
