@@ -531,6 +531,26 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd-plan-phase 71 to break down)
 
+### Phase 72: Restore dashboard file selection and action bar
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 71
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 72 to break down)
+
+### Phase 73: Dashboard filter for every torrent status
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 72
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 73 to break down)
+
 ---
 
 *Last updated: 2026-04-14 — All phases 62-67 complete, milestone audit in progress*
