@@ -2,10 +2,17 @@ import {ComponentFixture, TestBed} from "@angular/core/testing";
 
 import {TransferRowComponent} from "../../../../pages/files/transfer-row.component";
 import {ViewFile} from "../../../../services/files/view-file";
+import {FileSelectionService} from "../../../../services/files/file-selection.service";
 
 
 // Simplified template for unit testing — mirrors key structural elements
 const TEST_TEMPLATE = `
+<td class="cell-checkbox" appClickStopPropagation>
+  <input type="checkbox" class="ss-checkbox"
+         [checked]="isSelected()"
+         (click)="onCheckboxClick($event)"
+         [attr.aria-label]="'Select ' + file.name" />
+</td>
 <td class="cell-name">{{ file.name }}</td>
 <td class="cell-status"><span [class]="badgeClass">{{ badgeLabel }}</span></td>
 <td class="cell-progress">
@@ -35,6 +42,7 @@ const TEST_TEMPLATE = `
 describe("TransferRowComponent", () => {
     let component: TransferRowComponent;
     let fixture: ComponentFixture<TransferRowComponent>;
+    let selectionService: FileSelectionService;
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
@@ -45,6 +53,8 @@ describe("TransferRowComponent", () => {
 
         fixture = TestBed.createComponent(TransferRowComponent);
         component = fixture.componentInstance;
+        selectionService = TestBed.inject(FileSelectionService);
+        selectionService.clearSelection();
     });
 
     function setFile(status: ViewFile.Status, opts: Partial<ViewFile> = {}): void {
@@ -157,5 +167,67 @@ describe("TransferRowComponent", () => {
         setFile(ViewFile.Status.DOWNLOADED, {remoteSize: 9999});
         const size = fixture.nativeElement.querySelector(".cell-size");
         expect(size!.textContent).toContain("9999");
+    });
+
+    describe("checkbox + selection signal", () => {
+        it("reflects isSelected() = false when the service selection does not contain the file name", () => {
+            setFile(ViewFile.Status.DEFAULT, {name: "alpha.mkv"});
+            selectionService.clearSelection();
+            fixture.detectChanges();
+
+            expect(component.isSelected()).toBe(false);
+            const checkbox = fixture.nativeElement.querySelector("input.ss-checkbox") as HTMLInputElement;
+            expect(checkbox.checked).toBe(false);
+            expect(fixture.debugElement.nativeElement.classList.contains("row-selected")).toBe(false);
+        });
+
+        it("reflects isSelected() = true + applies row-selected class when service selection contains the file name", () => {
+            setFile(ViewFile.Status.DEFAULT, {name: "beta.mkv"});
+            selectionService.select("beta.mkv");
+            fixture.detectChanges();
+
+            expect(component.isSelected()).toBe(true);
+            const checkbox = fixture.nativeElement.querySelector("input.ss-checkbox") as HTMLInputElement;
+            expect(checkbox.checked).toBe(true);
+            expect(fixture.debugElement.nativeElement.classList.contains("row-selected")).toBe(true);
+        });
+
+        it("emits checkboxToggle with shiftKey=false on plain click", () => {
+            setFile(ViewFile.Status.DEFAULT, {name: "gamma.mkv"});
+            let emission: {file: ViewFile, shiftKey: boolean} | null = null;
+            component.checkboxToggle.subscribe(e => emission = e);
+
+            component.onCheckboxClick(new MouseEvent("click", {shiftKey: false}));
+
+            expect(emission).not.toBeNull();
+            expect(emission!.file).toBe(component.file);
+            expect(emission!.shiftKey).toBe(false);
+        });
+
+        it("emits checkboxToggle with shiftKey=true on shift+click", () => {
+            setFile(ViewFile.Status.DEFAULT, {name: "delta.mkv"});
+            let emission: {file: ViewFile, shiftKey: boolean} | null = null;
+            component.checkboxToggle.subscribe(e => emission = e);
+
+            component.onCheckboxClick(new MouseEvent("click", {shiftKey: true}));
+
+            expect(emission).not.toBeNull();
+            expect(emission!.shiftKey).toBe(true);
+        });
+
+        it("host aria-label includes 'selected' suffix when selected", () => {
+            setFile(ViewFile.Status.DEFAULT, {name: "epsilon.mkv"});
+            selectionService.select("epsilon.mkv");
+            fixture.detectChanges();
+
+            const selectedLabel = fixture.debugElement.nativeElement.getAttribute("aria-label") as string;
+            expect(selectedLabel.endsWith(", selected")).toBe(true);
+
+            selectionService.clearSelection();
+            fixture.detectChanges();
+
+            const unselectedLabel = fixture.debugElement.nativeElement.getAttribute("aria-label") as string;
+            expect(unselectedLabel.endsWith(", selected")).toBe(false);
+        });
     });
 });
