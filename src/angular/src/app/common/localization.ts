@@ -75,6 +75,8 @@ export class Localization {
             `Bulk action failed: ${message}`;
         public static readonly ERROR_RETRY = (message: string): string =>
             `${message} Please re-select files and try again.`;
+        public static readonly ERROR_TRANSIENT = (message: string): string =>
+            `${message} Selection preserved — please try again.`;
     };
 
     static Log = class {

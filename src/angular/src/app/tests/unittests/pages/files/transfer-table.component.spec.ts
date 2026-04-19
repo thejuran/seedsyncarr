@@ -1,5 +1,5 @@
 import {ComponentFixture, fakeAsync, TestBed, tick} from "@angular/core/testing";
-import {BehaviorSubject, Observable, of, throwError} from "rxjs";
+import {BehaviorSubject, Observable, of} from "rxjs";
 
 import * as Immutable from "immutable";
 
@@ -9,6 +9,7 @@ import {ViewFileOptionsService} from "../../../../services/files/view-file-optio
 import {ViewFile} from "../../../../services/files/view-file";
 import {ViewFileOptions} from "../../../../services/files/view-file-options";
 import {FileSelectionService} from "../../../../services/files/file-selection.service";
+import {BulkActionDispatcher} from "../../../../services/files/bulk-action-dispatcher.service";
 import {BulkCommandService, BulkActionResult} from "../../../../services/server/bulk-command.service";
 import {ConfirmModalService} from "../../../../services/utils/confirm-modal.service";
 import {NotificationService} from "../../../../services/utils/notification.service";
@@ -87,6 +88,10 @@ class MockViewFileOptionsService {
         return this._options$.asObservable();
     }
 
+    pushOptions(options: ViewFileOptions): void {
+        this._options$.next(options);
+    }
+
     setNameFilter = jasmine.createSpy("setNameFilter");
     setSelectedStatusFilter = jasmine.createSpy("setSelectedStatusFilter");
 }
@@ -110,6 +115,7 @@ describe("TransferTableComponent", () => {
     let mockFileService: MockViewFileService;
     let mockOptionsService: MockViewFileOptionsService;
     let selectionService: FileSelectionService;
+    let dispatcher: BulkActionDispatcher;
     let bulkCommandMock: {executeBulkAction: jasmine.Spy};
     let confirmModalMock: {confirm: jasmine.Spy};
     let notificationMock: {show: jasmine.Spy; hide: jasmine.Spy};
@@ -149,6 +155,7 @@ describe("TransferTableComponent", () => {
         fixture = TestBed.createComponent(TransferTableComponent);
         component = fixture.componentInstance;
         selectionService = TestBed.inject(FileSelectionService);
+        dispatcher = TestBed.inject(BulkActionDispatcher);
         selectionService.clearSelection();
         fixture.detectChanges();
     });
@@ -550,6 +557,27 @@ describe("TransferTableComponent", () => {
 
             expect(selectionService.getSelectedCount()).toBe(0);
         });
+
+        it("clears selection when filter options change (viewFileOptionsService.options emits)", fakeAsync(() => {
+            component.currentPage = 3;
+            selectionService.setSelection(["alpha", "beta"]);
+            expect(selectionService.getSelectedCount()).toBe(2);
+
+            mockOptionsService.pushOptions(new ViewFileOptions({nameFilter: "changed"}));
+            tick();
+
+            expect(selectionService.getSelectedCount()).toBe(0);
+            expect(component.currentPage).toBe(1);
+        }));
+
+        it("also resets the shift-click anchor in the service on clear", () => {
+            selectionService.setLastClicked("alpha");
+            selectionService.setSelection(["alpha"]);
+
+            component.onSegmentChange("active");
+
+            expect(selectionService.getLastClicked()).toBeNull();
+        });
     });
 
     // --- 72-04: Esc key handler (D-05) ---
@@ -623,7 +651,7 @@ describe("TransferTableComponent", () => {
             component.onCheckboxToggle({file: b, shiftKey: false});
 
             expect(selectionService.getSelectedFiles()).toEqual(new Set(["b"]));
-            expect((component as any)._lastClickedFileName).toBe("b");
+            expect(selectionService.getLastClicked()).toBe("b");
         });
 
         it("selects range between anchor and target on shift-click", () => {
@@ -634,11 +662,12 @@ describe("TransferTableComponent", () => {
         });
 
         it("falls back to single toggle when anchor is not in the current paged list", () => {
-            (component as any)._lastClickedFileName = "nonexistent";
+            selectionService.setLastClicked("nonexistent");
 
             component.onCheckboxToggle({file: b, shiftKey: true});
 
             expect(selectionService.getSelectedFiles()).toEqual(new Set(["b"]));
+            expect(selectionService.getLastClicked()).toBe("b");
         });
     });
 
@@ -696,5 +725,75 @@ describe("TransferTableComponent", () => {
 
             expect(selectionService.getSelectedCount()).toBe(0);
         }));
+    });
+
+    // --- New: dispatcher concurrency gate + transient error handling ---
+
+    describe("bulk dispatch concurrency + error handling", () => {
+        it("ignores a second dispatch while the first is still in flight", () => {
+            // Hold the first response — never emit, never complete.
+            const pending = new Observable<BulkActionResult>(() => { /* never emits */ });
+            bulkCommandMock.executeBulkAction.and.returnValue(pending);
+
+            component.onBulkQueue(["a"]);
+            expect(bulkCommandMock.executeBulkAction).toHaveBeenCalledTimes(1);
+            expect(dispatcher.inProgress()).toBe(true);
+
+            component.onBulkQueue(["b"]);
+            expect(bulkCommandMock.executeBulkAction).toHaveBeenCalledTimes(1);
+        });
+
+        it("preserves selection on transient failure (HTTP 500) so user can retry", fakeAsync(() => {
+            selectionService.setSelection(["a", "b"]);
+
+            const transientFailure = new BulkActionResult(false, null, "Internal Server Error", 500);
+            bulkCommandMock.executeBulkAction.and.returnValue(of(transientFailure));
+
+            component.onBulkQueue(["a", "b"]);
+            tick();
+
+            expect(selectionService.getSelectedCount()).toBe(2);
+            expect(notificationMock.show).toHaveBeenCalled();
+            expect(dispatcher.inProgress()).toBe(false);
+        }));
+
+        it("preserves selection on network failure (status=0)", fakeAsync(() => {
+            selectionService.setSelection(["a"]);
+
+            const networkFailure = new BulkActionResult(false, null, "Network error", 0);
+            bulkCommandMock.executeBulkAction.and.returnValue(of(networkFailure));
+
+            component.onBulkQueue(["a"]);
+            tick();
+
+            expect(selectionService.getSelectedCount()).toBe(1);
+        }));
+
+        it("clears selection on permanent failure (HTTP 400)", fakeAsync(() => {
+            selectionService.setSelection(["a", "b"]);
+
+            const permanentFailure = new BulkActionResult(false, null, "Bad Request", 400);
+            bulkCommandMock.executeBulkAction.and.returnValue(of(permanentFailure));
+
+            component.onBulkQueue(["a", "b"]);
+            tick();
+
+            expect(selectionService.getSelectedCount()).toBe(0);
+            expect(notificationMock.show).toHaveBeenCalled();
+        }));
+
+        it("releases the concurrency gate after a failure completes", fakeAsync(() => {
+            const permanentFailure = new BulkActionResult(false, null, "Bad Request", 400);
+            bulkCommandMock.executeBulkAction.and.returnValue(of(permanentFailure));
+
+            component.onBulkQueue(["a"]);
+            tick();
+
+            expect(dispatcher.inProgress()).toBe(false);
+        }));
+
+        it("exposes bulkOperationInProgress as a computed mirroring the dispatcher signal", () => {
+            expect(component.bulkOperationInProgress()).toBe(false);
+        });
     });
 });

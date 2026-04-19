@@ -17,7 +17,7 @@ import {ViewFile} from "./view-file";
  *
  * Angular Signals Architecture (Session 16):
  * - Uses signals for fine-grained reactivity
- * - FileComponent uses computed() to derive its own selection state
+ * - TransferRowComponent uses computed() to derive its own selection state
  * - Only components whose selection actually changed will re-render
  * - Eliminates cascading checkbox effect on select-all
  *
@@ -39,6 +39,10 @@ export class FileSelectionService {
     // When true, pruneSelection() will be skipped to prevent race conditions
     private readonly _operationInProgress = signal<boolean>(false);
     readonly operationInProgress = this._operationInProgress.asReadonly();
+
+    // Anchor for shift-click range selection — the last explicitly clicked file.
+    // Reset automatically on clearSelection() so callers never need to null it.
+    private _lastClickedFileName: string | null = null;
 
     // Computed signals for derived state
     readonly selectedCount = computed(() => this.selectedFiles().size);
@@ -171,11 +175,13 @@ export class FileSelectionService {
 
     /**
      * Clear all selections and reset to initial state.
+     * Also clears the shift-click anchor so subsequent clicks start fresh.
      */
     clearSelection(): void {
         if (this.selectedFiles().size > 0) {
             this.selectedFiles.set(new Set());
         }
+        this._lastClickedFileName = null;
     }
 
     /**
@@ -219,6 +225,25 @@ export class FileSelectionService {
                 return newSet;
             });
         }
+    }
+
+    // =========================================================================
+    // Shift-click Anchor
+    // =========================================================================
+
+    /**
+     * Record the last-clicked file as the shift-click range anchor.
+     * Pass null to reset without clearing selection.
+     */
+    setLastClicked(fileName: string | null): void {
+        this._lastClickedFileName = fileName;
+    }
+
+    /**
+     * Get the last-clicked file (shift-click range anchor), or null if none.
+     */
+    getLastClicked(): string | null {
+        return this._lastClickedFileName;
     }
 
     // =========================================================================

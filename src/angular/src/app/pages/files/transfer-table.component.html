@@ -135,7 +135,7 @@
   <app-bulk-actions-bar
     [visibleFiles]="(pagedFilesList$ | async) ?? emptySetList"
     [selectedFiles]="(selectedFiles$ | async) ?? emptySet"
-    [operationInProgress]="bulkOperationInProgress"
+    [operationInProgress]="bulkOperationInProgress()"
     (clearSelection)="onClearSelection()"
     (queueAction)="onBulkQueue($event)"
     (stopAction)="onBulkStop($event)"

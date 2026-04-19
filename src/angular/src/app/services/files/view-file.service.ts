@@ -10,7 +10,6 @@ import {ModelFileService} from "./model-file.service";
 import {ViewFile} from "./view-file";
 import {MOCK_MODEL_FILES} from "./mock-model-files";
 import {StreamServiceRegistry} from "../base/stream-service.registry";
-import {WebReaction} from "../utils/rest.service";
 import {FileSelectionService} from "./file-selection.service";
 
 
@@ -261,56 +260,6 @@ export class ViewFileService implements OnDestroy {
     }
 
     /**
-     * Queue a file for download
-     * @param {ViewFile} file
-     * @returns {Observable<WebReaction>}
-     */
-    public queue(file: ViewFile): Observable<WebReaction> {
-        this._logger.debug("Queue view file: " + file.name);
-        return this.createAction(file, (f) => this.modelFileService.queue(f));
-    }
-
-    /**
-     * Stop a file
-     * @param {ViewFile} file
-     * @returns {Observable<WebReaction>}
-     */
-    public stop(file: ViewFile): Observable<WebReaction> {
-        this._logger.debug("Stop view file: " + file.name);
-        return this.createAction(file, (f) => this.modelFileService.stop(f));
-    }
-
-    /**
-     * Extract a file
-     * @param {ViewFile} file
-     * @returns {Observable<WebReaction>}
-     */
-    public extract(file: ViewFile): Observable<WebReaction> {
-        this._logger.debug("Extract view file: " + file.name);
-        return this.createAction(file, (f) => this.modelFileService.extract(f));
-    }
-
-    /**
-     * Locally delete a file
-     * @param {ViewFile} file
-     * @returns {Observable<WebReaction>}
-     */
-    public deleteLocal(file: ViewFile): Observable<WebReaction> {
-        this._logger.debug("Locally delete view file: " + file.name);
-        return this.createAction(file, (f) => this.modelFileService.deleteLocal(f));
-    }
-
-    /**
-     * Remotely delete a file
-     * @param {ViewFile} file
-     * @returns {Observable<WebReaction>}
-     */
-    public deleteRemote(file: ViewFile): Observable<WebReaction> {
-        this._logger.debug("Remotely delete view file: " + file.name);
-        return this.createAction(file, (f) => this.modelFileService.deleteRemote(f));
-    }
-
-    /**
      * Set a new filter criteria.
      * Clears bulk file selection when filter changes.
      * @param {ViewFileFilterCriteria} criteria
@@ -453,31 +402,6 @@ export class ViewFileService implements OnDestroy {
             default:
                 return ViewFile.ImportStatus.NONE;
         }
-    }
-
-    /**
-     * Helper method to execute an action on ModelFileService and generate a ViewFileReaction
-     * @param {ViewFile} file
-     * @param {Observable<WebReaction>} action
-     * @returns {Observable<WebReaction>}
-     */
-    private createAction(file: ViewFile,
-                         action: (file: ModelFile) => Observable<WebReaction>)
-            : Observable<WebReaction> {
-        return new Observable<WebReaction>(observer => {
-            if (!this._prevModelFiles.has(file.name!)) {
-                // File not found, exit early
-                this._logger.error("File to queue not found: " + file.name);
-                observer.next(new WebReaction(false, null, `File '${file.name}' not found`));
-            } else {
-                const modelFile = this._prevModelFiles.get(file.name!)!;
-                const sub = action(modelFile).subscribe(reaction => {
-                    this._logger.debug("Received model reaction: %O", reaction);
-                    observer.next(reaction);
-                });
-                return () => sub.unsubscribe();
-            }
-        });
     }
 
     private pushViewFiles(): void {

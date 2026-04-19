@@ -121,6 +121,44 @@ describe("Testing file selection service", () => {
     });
 
     // =========================================================================
+    // Shift-click Anchor Tests
+    // =========================================================================
+
+    describe("shift-click anchor", () => {
+        it("starts out null", () => {
+            expect(service.getLastClicked()).toBeNull();
+        });
+
+        it("records the anchor via setLastClicked", () => {
+            service.setLastClicked("file1");
+            expect(service.getLastClicked()).toBe("file1");
+        });
+
+        it("can be cleared via setLastClicked(null)", () => {
+            service.setLastClicked("file1");
+            service.setLastClicked(null);
+            expect(service.getLastClicked()).toBeNull();
+        });
+
+        it("is cleared automatically when clearSelection() is called", () => {
+            service.setLastClicked("file1");
+            service.select("file1");
+
+            service.clearSelection();
+
+            expect(service.getLastClicked()).toBeNull();
+        });
+
+        it("is cleared by clearSelection even if selection is already empty", () => {
+            service.setLastClicked("file1");
+            // No selection set — verify anchor still resets
+            service.clearSelection();
+
+            expect(service.getLastClicked()).toBeNull();
+        });
+    });
+
+    // =========================================================================
     // Set Selection Tests
     // =========================================================================
 
