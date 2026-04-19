@@ -1,9 +1,11 @@
-import {Component, Input, ChangeDetectionStrategy} from "@angular/core";
+import {Component, Input, ChangeDetectionStrategy, EventEmitter, Output, inject, computed, HostBinding} from "@angular/core";
 import {DecimalPipe} from "@angular/common";
 
 import {FileSizePipe} from "../../common/file-size.pipe";
 import {EtaPipe} from "../../common/eta.pipe";
 import {ViewFile} from "../../services/files/view-file";
+import {ClickStopPropagationDirective} from "../../common/click-stop-propagation.directive";
+import {FileSelectionService} from "../../services/files/file-selection.service";
 
 
 @Component({
@@ -11,13 +13,38 @@ import {ViewFile} from "../../services/files/view-file";
     templateUrl: "./transfer-row.component.html",
     styleUrls: ["./transfer-row.component.scss"],
     standalone: true,
-    imports: [FileSizePipe, EtaPipe, DecimalPipe],
+    imports: [FileSizePipe, EtaPipe, DecimalPipe, ClickStopPropagationDirective],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TransferRowComponent {
 
     public readonly ViewFile = ViewFile;
     @Input({ required: true }) file!: ViewFile;
+
+    private selectionService = inject(FileSelectionService);
+
+    readonly isSelected = computed(() => {
+        const selected = this.selectionService.selectedFiles();
+        return this.file?.name != null ? selected.has(this.file.name) : false;
+    });
+
+    @Output() checkboxToggle = new EventEmitter<{file: ViewFile, shiftKey: boolean}>();
+
+    @HostBinding("attr.role") readonly hostRole = "row";
+
+    @HostBinding("class.row-selected")
+    get isRowSelected(): boolean { return this.isSelected(); }
+
+    @HostBinding("attr.aria-label")
+    get hostAriaLabel(): string {
+        const base = `${this.file?.name ?? ""}, ${(this.badgeLabel || "").toLowerCase()}`;
+        return this.isSelected() ? `${base}, selected` : base;
+    }
+
+    onCheckboxClick(event: MouseEvent): void {
+        event.stopPropagation();
+        this.checkboxToggle.emit({file: this.file, shiftKey: event.shiftKey});
+    }
 
     private static readonly BADGE_LABELS: Record<ViewFile.Status, string> = {
         [ViewFile.Status.DOWNLOADING]: "Syncing",
