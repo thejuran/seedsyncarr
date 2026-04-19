@@ -28,7 +28,10 @@ test.describe('Testing dashboard page', () => {
         ];
         await dashboardPage.waitForAtLeastFileCount(golden.length);
         const files = await dashboardPage.getFiles();
-        expect(files).toEqual(golden);
+        // Compare order-independent: display order depends on browser locale's
+        // localeCompare, which can differ between amd64/arm64 Chromium builds.
+        const byName = (a: FileInfo, b: FileInfo) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+        expect([...files].sort(byName)).toEqual([...golden].sort(byName));
     });
 
     // v1.1.0: app-file-actions-bar removed from dashboard — transfer-table is read-only
