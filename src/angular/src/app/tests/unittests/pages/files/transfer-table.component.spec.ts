@@ -1,4 +1,5 @@
 import {ComponentFixture, fakeAsync, TestBed, tick} from "@angular/core/testing";
+import {Router, ActivatedRoute} from "@angular/router";
 import {BehaviorSubject, Observable, of} from "rxjs";
 
 import * as Immutable from "immutable";
@@ -30,12 +31,24 @@ const TEST_TEMPLATE = `
             [class.btn-segment--parent-expanded]="activeSegment === 'active' && activeSubStatus !== null"
             (click)="onSegmentChange('active')">Active</button>
     @if (activeSegment === 'active') {
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.DEFAULT"
+              (click)="onSubStatusChange(ViewFileStatus.DEFAULT)">Pending</button>
       <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.DOWNLOADING"
               (click)="onSubStatusChange(ViewFileStatus.DOWNLOADING)">Syncing</button>
       <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.QUEUED"
               (click)="onSubStatusChange(ViewFileStatus.QUEUED)">Queued</button>
       <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.EXTRACTING"
               (click)="onSubStatusChange(ViewFileStatus.EXTRACTING)">Extracting</button>
+    }
+    <button class="btn-segment"
+            [class.btn-segment--parent-active]="activeSegment === 'done' && activeSubStatus === null"
+            [class.btn-segment--parent-expanded]="activeSegment === 'done' && activeSubStatus !== null"
+            (click)="onSegmentChange('done')">Done</button>
+    @if (activeSegment === 'done') {
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.DOWNLOADED"
+              (click)="onSubStatusChange(ViewFileStatus.DOWNLOADED)">Downloaded</button>
+      <button class="btn-sub" [class.active]="activeSubStatus === ViewFileStatus.EXTRACTED"
+              (click)="onSubStatusChange(ViewFileStatus.EXTRACTED)">Extracted</button>
     }
     <button class="btn-segment"
             [class.btn-segment--parent-active]="activeSegment === 'errors' && activeSubStatus === null"
@@ -120,7 +133,18 @@ describe("TransferTableComponent", () => {
     let confirmModalMock: {confirm: jasmine.Spy};
     let notificationMock: {show: jasmine.Spy; hide: jasmine.Spy};
 
+    const mockQueryParamMap: { [k: string]: string | null } = {};
+    const mockActivatedRoute = {
+        snapshot: {
+            queryParamMap: { get: (k: string) => mockQueryParamMap[k] ?? null }
+        }
+    };
+    let mockRouter: { navigate: jasmine.Spy };
+
     beforeEach(async () => {
+        mockRouter = { navigate: jasmine.createSpy("navigate") };
+        for (const k of Object.keys(mockQueryParamMap)) { delete mockQueryParamMap[k]; }
+
         mockFileService = new MockViewFileService();
         mockOptionsService = new MockViewFileOptionsService();
 
@@ -146,7 +170,9 @@ describe("TransferTableComponent", () => {
                 {provide: ViewFileOptionsService, useValue: mockOptionsService},
                 {provide: BulkCommandService, useValue: bulkCommandMock},
                 {provide: ConfirmModalService, useValue: confirmModalMock},
-                {provide: NotificationService, useValue: notificationMock}
+                {provide: NotificationService, useValue: notificationMock},
+                {provide: ActivatedRoute, useValue: mockActivatedRoute},
+                {provide: Router, useValue: mockRouter}
             ]
         })
         .overrideTemplate(TransferTableComponent, TEST_TEMPLATE)
@@ -179,12 +205,13 @@ describe("TransferTableComponent", () => {
         expect(input).toBeTruthy();
     });
 
-    it("should render 3 parent segment filter buttons", () => {
+    it("should render 4 parent segment filter buttons in order All, Active, Done, Errors", () => {
         const buttons = fixture.nativeElement.querySelectorAll(".btn-segment");
-        expect(buttons.length).toBe(3);
+        expect(buttons.length).toBe(4);
         expect(buttons[0].textContent).toContain("All");
         expect(buttons[1].textContent).toContain("Active");
-        expect(buttons[2].textContent).toContain("Errors");
+        expect(buttons[2].textContent).toContain("Done");
+        expect(buttons[3].textContent).toContain("Errors");
     });
 
     it("should call viewFileOptionsService.setNameFilter on search input", fakeAsync(() => {
