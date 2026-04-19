@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { DashboardPage, FileInfo } from './dashboard.page';
 
+const TEST_FILE = 'clients.jpg';
+
 test.describe('Testing dashboard page', () => {
     let dashboardPage: DashboardPage;
 
@@ -34,24 +36,41 @@ test.describe('Testing dashboard page', () => {
         expect([...files].sort(byName)).toEqual([...golden].sort(byName));
     });
 
-    // v1.1.0: app-file-actions-bar removed from dashboard — transfer-table is read-only
-    test.skip('should show and hide action buttons on select', async () => {
-        // Skipped: app-file-actions-bar not rendered in v1.1.0 dashboard (files-page uses app-transfer-table)
+    test('should show and hide action buttons on select', async () => {
+        await expect(dashboardPage.getActionBar()).not.toBeVisible();
+
+        await dashboardPage.selectFileByName(TEST_FILE);
+        await expect(dashboardPage.getActionBar()).toBeVisible();
+
+        await dashboardPage.selectFileByName(TEST_FILE);
+        await expect(dashboardPage.getActionBar()).not.toBeVisible();
     });
 
-    test.skip('should show action buttons for most recent file selected', async () => {
-        // Skipped: app-file-actions-bar not rendered in v1.1.0 dashboard
+    test('should show action buttons for most recent file selected', async ({ page }) => {
+        await dashboardPage.selectFileByName(TEST_FILE);
+        await expect(page.locator('app-bulk-actions-bar .selection-label')).toHaveText('1 selected');
+
+        await dashboardPage.selectFileByName('goose');
+        await expect(page.locator('app-bulk-actions-bar .selection-label')).toHaveText('2 selected');
     });
 
-    test.skip('should have all the action buttons', async () => {
-        // Skipped: app-file-actions-bar not rendered in v1.1.0 dashboard
+    test('should have all the action buttons', async () => {
+        await dashboardPage.selectFileByName(TEST_FILE);
+
+        await expect(dashboardPage.getActionBar().locator('button.action-btn')).toHaveCount(5);
+
+        for (const name of ['Queue', 'Stop', 'Extract', 'Delete Local', 'Delete Remote'] as const) {
+            await expect(dashboardPage.getActionButton(name)).toBeVisible();
+        }
     });
 
-    test.skip('should have Queue action enabled for Default state', async () => {
-        // Skipped: app-file-actions-bar not rendered in v1.1.0 dashboard
+    test('should have Queue action enabled for Default state', async () => {
+        await dashboardPage.selectFileByName(TEST_FILE);
+        await expect(dashboardPage.getActionButton('Queue')).toBeEnabled();
     });
 
-    test.skip('should have Stop action disabled for Default state', async () => {
-        // Skipped: app-file-actions-bar not rendered in v1.1.0 dashboard
+    test('should have Stop action disabled for Default state', async () => {
+        await dashboardPage.selectFileByName(TEST_FILE);
+        await expect(dashboardPage.getActionButton('Stop')).toBeDisabled();
     });
 });
