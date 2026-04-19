@@ -1,0 +1,374 @@
+<!--
+  aesthetic_dna: Triggarr-style utility dashboard, rigid structure, dark-mode terminal vibes.
+  ui_paradigm: Dense Data Grid with contextual meso-level toolbars.
+  palette: Deep Moss (#1a201a, #222a20) + Amber accent (#d4a574)
+  variant: B — action bar contained inside transfer-table card, above pagination
+  run_id: 8f895826-91f5-40de-9c56-5f6d2aac514d
+-->
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeedSyncarr Dashboard — Variant B (card-internal bar)</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        moss: { base: '#1a201a', surface: '#222a20', border: '#2d3a2d', terminal: '#111511' },
+                        ui: { primary: '#e8ebe6', secondary: '#9ca39a', muted: '#6b736a' },
+                        brand: { amber: '#d4a574', amberWash: 'rgba(212, 165, 116, 0.04)' },
+                        status: { green: '#7fb069', red: '#c97d7d', blue: '#7896b0' }
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :focus-visible { outline: 2px solid #d4a574; outline-offset: -1px; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1a201a; }
+        ::-webkit-scrollbar-thumb { background: #2d3a2d; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b736a; }
+
+        .ss-checkbox {
+            appearance: none; width: 1rem; height: 1rem;
+            border: 1px solid #2d3a2d; border-radius: 0.25rem;
+            background-color: #1a201a; display: grid; place-content: center;
+            cursor: pointer; transition: all 0.15s ease-in-out;
+        }
+        .ss-checkbox::before {
+            content: ""; width: 0.65em; height: 0.65em;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+            transform: scale(0); transform-origin: bottom left;
+            transition: 120ms transform ease-in-out; background-color: #1a201a;
+        }
+        .ss-checkbox:checked { background-color: #d4a574; border-color: #d4a574; }
+        .ss-checkbox:checked::before { transform: scale(1); }
+
+        .table-clip { max-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    </style>
+</head>
+<body class="bg-moss-base text-ui-primary min-h-screen flex flex-col font-sans antialiased selection:bg-brand-amber/30">
+
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-moss-base/85 border-b border-moss-border supports-[backdrop-filter]:bg-moss-base/70">
+        <div class="max-w-[1400px] mx-auto px-6 h-14 flex items-center justify-between">
+            <div class="flex items-center gap-8">
+                <div class="flex items-center gap-2 text-brand-amber font-semibold text-lg tracking-tight">
+                    <i class="ph-fill ph-plant text-xl"></i> SeedSyncarr
+                </div>
+                <nav class="flex items-center gap-6 text-sm font-medium pt-1">
+                    <a href="#" class="text-ui-primary relative after:absolute after:bottom-[-13px] after:left-0 after:h-[2px] after:w-full after:bg-brand-amber">Dashboard</a>
+                    <a href="#" class="text-ui-secondary hover:text-ui-primary transition-colors">Settings</a>
+                    <a href="#" class="text-ui-secondary hover:text-ui-primary transition-colors">Logs</a>
+                    <a href="#" class="text-ui-secondary hover:text-ui-primary transition-colors">About</a>
+                </nav>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 bg-moss-surface border border-moss-border rounded-full pl-2 pr-3 py-1 text-xs font-medium text-ui-secondary shadow-sm">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-amber opacity-40"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-amber"></span>
+                    </span>
+                    Connected
+                </div>
+                <button class="relative p-1.5 text-ui-muted hover:text-ui-primary transition-colors" aria-label="Notifications">
+                    <i class="ph ph-bell text-lg"></i>
+                    <span class="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-brand-amber border border-moss-base"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow flex flex-col gap-6 max-w-[1400px] mx-auto w-full px-6 py-6 overflow-hidden">
+
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-moss-surface border border-moss-border rounded-lg p-4 flex flex-col gap-3 shadow-sm hover:border-moss-border/80 transition-colors">
+                <div class="flex justify-between items-start text-sm">
+                    <span class="text-ui-secondary font-medium">Remote Storage</span>
+                    <i class="ph ph-cloud-arrow-down text-ui-muted text-lg"></i>
+                </div>
+                <div class="flex items-baseline gap-1.5 font-mono">
+                    <span class="text-xl text-ui-primary">847 <span class="text-xs text-ui-secondary">GB</span></span>
+                    <span class="text-ui-muted text-sm">/ 1.2 TB</span>
+                </div>
+                <div class="w-full bg-moss-terminal rounded-full h-1 mt-auto">
+                    <div class="bg-ui-secondary h-1 rounded-full" style="width: 70%"></div>
+                </div>
+            </div>
+            <div class="bg-moss-surface border border-moss-border rounded-lg p-4 flex flex-col gap-3 shadow-sm hover:border-moss-border/80 transition-colors">
+                <div class="flex justify-between items-start text-sm">
+                    <span class="text-ui-secondary font-medium">Local Storage</span>
+                    <i class="ph ph-hard-drives text-ui-muted text-lg"></i>
+                </div>
+                <div class="flex items-baseline gap-1.5 font-mono">
+                    <span class="text-xl text-ui-primary">412 <span class="text-xs text-ui-secondary">GB</span></span>
+                    <span class="text-ui-muted text-sm">/ 2.0 TB</span>
+                </div>
+                <div class="w-full bg-moss-terminal rounded-full h-1 mt-auto">
+                    <div class="bg-ui-secondary h-1 rounded-full" style="width: 20%"></div>
+                </div>
+            </div>
+            <div class="bg-moss-surface border border-moss-border rounded-lg p-4 flex flex-col gap-3 shadow-sm hover:border-moss-border/80 transition-colors relative overflow-hidden">
+                <div class="flex justify-between items-start text-sm">
+                    <span class="text-ui-secondary font-medium">Download Speed</span>
+                    <i class="ph ph-activity text-brand-amber text-lg"></i>
+                </div>
+                <div class="flex flex-col">
+                    <div class="flex items-baseline gap-1.5 font-mono z-10">
+                        <span class="text-xl text-brand-amber font-semibold">24.3</span>
+                        <span class="text-ui-secondary text-sm">MB/s</span>
+                    </div>
+                    <span class="text-xs text-ui-muted z-10">3 active</span>
+                </div>
+                <svg class="absolute bottom-0 left-0 w-full h-12 opacity-[0.07] z-0 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <path d="M0,100 L0,80 L10,75 L20,90 L30,60 L40,80 L50,40 L60,50 L70,20 L80,40 L90,10 L100,30 L100,100 Z" fill="#d4a574" />
+                </svg>
+            </div>
+            <div class="bg-moss-surface border border-moss-border rounded-lg p-4 flex flex-col justify-between shadow-sm hover:border-moss-border/80 transition-colors">
+                <div class="flex justify-between items-start text-sm">
+                    <span class="text-ui-secondary font-medium">Active Tasks</span>
+                    <i class="ph ph-queue text-ui-muted text-lg"></i>
+                </div>
+                <div class="flex flex-col gap-1 z-10">
+                    <span class="text-xl text-ui-primary font-mono">8 <span class="text-sm text-ui-secondary font-sans font-normal tracking-wide">Total</span></span>
+                    <span class="text-xs font-medium text-brand-amber bg-brand-amber/10 border border-brand-amber/20 self-start px-2 py-0.5 rounded">5 Queued &middot; 3 Syncing</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-moss-surface border border-moss-border rounded-lg flex flex-col shadow-sm flex-grow overflow-hidden relative">
+            <header class="px-5 py-3 border-b border-moss-border flex items-center justify-between bg-moss-surface z-10">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-sm font-medium text-ui-primary">Transfer Queue <span class="text-ui-secondary font-normal">&middot; 12 files</span></h2>
+                    <span class="text-[11px] font-medium px-2 py-0.5 rounded bg-moss-terminal border border-moss-border text-ui-secondary">5 Queued</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <i class="ph ph-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-ui-muted text-sm z-10 cursor-text"></i>
+                        <input type="text" placeholder="Search files..." class="w-[240px] pl-8 pr-3 py-1.5 bg-moss-terminal border border-moss-border rounded text-sm text-ui-primary placeholder:text-ui-muted focus:border-brand-amber focus:ring-1 focus:ring-brand-amber transition-shadow outline-none">
+                    </div>
+                    <div class="flex p-0.5 bg-moss-terminal rounded border border-moss-border text-xs font-medium">
+                        <button class="px-3 py-1 bg-moss-surface text-ui-primary rounded-sm shadow-sm relative after:absolute after:bottom-0 after:left-[10%] after:w-[80%] after:h-[1px] after:bg-brand-amber">All</button>
+                        <button class="px-3 py-1 text-ui-secondary hover:text-ui-primary transition-colors rounded-sm">Active</button>
+                        <button class="px-3 py-1 text-ui-secondary hover:text-ui-primary transition-colors rounded-sm">Errors</button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="overflow-x-auto overflow-y-hidden">
+                <table class="w-full text-left text-sm whitespace-nowrap border-collapse">
+                    <thead>
+                        <tr class="border-b border-moss-border select-none bg-[#1d241d]">
+                            <th class="py-2.5 px-5 w-12 font-medium text-ui-muted text-center"><input type="checkbox" class="ss-checkbox" aria-label="Select all"></th>
+                            <th class="py-2.5 px-3 font-medium text-ui-secondary">Name</th>
+                            <th class="py-2.5 px-3 w-32 font-medium text-ui-secondary">Status</th>
+                            <th class="py-2.5 px-3 w-40 font-medium text-ui-secondary">Progress</th>
+                            <th class="py-2.5 px-3 w-28 font-medium text-ui-secondary">Speed</th>
+                            <th class="py-2.5 px-3 w-24 font-medium text-ui-secondary">ETA</th>
+                            <th class="py-2.5 px-5 w-24 font-medium text-ui-secondary text-right">Size</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-moss-border/40">
+                        <tr class="hover:bg-moss-base/40 transition-colors bg-brand-amberWash border-l-2 border-l-brand-amber">
+                            <td class="py-3 px-5 text-center"><input type="checkbox" class="ss-checkbox" checked aria-label="Select item"></td>
+                            <td class="py-3 px-3 font-mono text-ui-primary table-clip w-full max-w-[300px]">Stranger.Things.S05E01.1080p.mkv</td>
+                            <td class="py-3 px-3">
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium border border-brand-amber/30 text-brand-amber bg-brand-amber/10">
+                                    <i class="ph-bold ph-arrows-clockwise animate-spin"></i> Syncing
+                                </span>
+                            </td>
+                            <td class="py-3 px-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-24 h-1.5 bg-moss-terminal rounded-full overflow-hidden border border-moss-border/50">
+                                        <div class="h-full bg-brand-amber" style="width: 67%"></div>
+                                    </div>
+                                    <span class="font-mono text-xs text-brand-amber">67%</span>
+                                </div>
+                            </td>
+                            <td class="py-3 px-3 font-mono text-xs text-ui-secondary">12.4 MB/s</td>
+                            <td class="py-3 px-3 font-mono text-xs text-ui-secondary">2m 34s</td>
+                            <td class="py-3 px-5 font-mono text-xs text-ui-secondary text-right">2.1 GB</td>
+                        </tr>
+                        <tr class="hover:bg-moss-base/40 transition-colors border-l-2 border-l-transparent">
+                            <td class="py-3 px-5 text-center"><input type="checkbox" class="ss-checkbox" aria-label="Select item"></td>
+                            <td class="py-3 px-3 font-mono text-ui-secondary table-clip w-full max-w-[300px]">The.Bear.S04E03.720p.mkv</td>
+                            <td class="py-3 px-3">
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium border border-moss-border text-ui-muted bg-moss-terminal">
+                                    <i class="ph-bold ph-hourglass-high"></i> Queued
+                                </span>
+                            </td>
+                            <td class="py-3 px-3">
+                                <div class="flex items-center gap-2 opacity-30">
+                                    <div class="w-24 h-1.5 bg-moss-terminal rounded-full border border-moss-border/50"></div>
+                                    <span class="font-mono text-xs text-ui-muted">0%</span>
+                                </div>
+                            </td>
+                            <td class="py-3 px-3 font-mono text-xs text-ui-muted">&mdash;</td>
+                            <td class="py-3 px-3 font-mono text-xs text-ui-muted">&mdash;</td>
+                            <td class="py-3 px-5 font-mono text-xs text-ui-muted text-right">890 MB</td>
+                        </tr>
+                        <tr class="hover:bg-moss-base/40 transition-colors bg-brand-amberWash border-l-2 border-l-brand-amber">
+                            <td class="py-3 px-5 text-center"><input type="checkbox" class="ss-checkbox" checked aria-label="Select item"></td>
+                            <td class="py-3 px-3 font-mono text-ui-primary table-clip w-full max-w-[300px]">Dune.Part.Two.2024.2160p.mkv</td>
+                            <td class="py-3 px-3">
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium border border-brand-amber/30 text-brand-amber bg-brand-amber/10">
+                                    <i class="ph-bold ph-arrows-clockwise animate-spin"></i> Syncing
+                                </span>
+                            </td>
+                            <td class="py-3 px-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-24 h-1.5 bg-moss-terminal rounded-full overflow-hidden border border-moss-border/50">
+                                        <div class="h-full bg-brand-amber" style="width: 34%"></div>
+                                    </div>
+                                    <span class="font-mono text-xs text-brand-amber">34%</span>
+                                </div>
+                            </td>
+                            <td class="py-3 px-3 font-mono text-xs text-ui-secondary">8.2 MB/s</td>
+                            <td class="py-3 px-3 font-mono text-xs text-ui-secondary">8m 12s</td>
+                            <td class="py-3 px-5 font-mono text-xs text-ui-secondary text-right">14.7 GB</td>
+                        </tr>
+                        <tr class="hover:bg-moss-base/40 transition-colors border-l-2 border-l-transparent opacity-80">
+                            <td class="py-3 px-5 text-center"><input type="checkbox" class="ss-checkbox" aria-label="Select item"></td>
+                            <td class="py-3 px-3 font-mono text-ui-secondary table-clip w-full max-w-[300px]">Oppenheimer.2023.1080p.mkv</td>
+                            <td class="py-3 px-3">
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium border border-status-green/30 text-status-green bg-status-green/10">
+                                    <i class="ph-bold ph-check"></i> Synced
+                                </span>
+                            </td>
+                            <td class="py-3 px-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-24 h-1.5 bg-status-green/20 rounded-full overflow-hidden border border-status-green/30">
+                                        <div class="h-full bg-status-green" style="width: 100%"></div>
+                                    </div>
+                                    <span class="font-mono text-xs text-status-green">100%</span>
+                                </div>
+                            </td>
+                            <td class="py-3 px-3 font-mono text-xs text-ui-muted">&mdash;</td>
+                            <td class="py-3 px-3 font-mono text-xs text-status-green">Done</td>
+                            <td class="py-3 px-5 font-mono text-xs text-ui-secondary text-right">4.2 GB</td>
+                        </tr>
+                        <tr class="hover:bg-moss-base/40 transition-colors border-l-2 border-l-transparent">
+                            <td class="py-3 px-5 text-center"><input type="checkbox" class="ss-checkbox" aria-label="Select item"></td>
+                            <td class="py-3 px-3 font-mono text-ui-secondary table-clip w-full max-w-[300px]">The.Last.of.Us.S02E05.mkv</td>
+                            <td class="py-3 px-3">
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium border border-status-red/30 text-status-red bg-status-red/10">
+                                    <i class="ph-bold ph-warning-circle"></i> Failed
+                                </span>
+                            </td>
+                            <td class="py-3 px-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-24 h-1.5 bg-moss-terminal rounded-full overflow-hidden border border-status-red/30">
+                                        <div class="h-full bg-status-red" style="width: 45%"></div>
+                                    </div>
+                                    <span class="font-mono text-xs text-status-red">45%</span>
+                                </div>
+                            </td>
+                            <td class="py-3 px-3 font-mono text-xs text-ui-muted">&mdash;</td>
+                            <td class="py-3 px-3 font-mono text-xs text-ui-muted">&mdash;</td>
+                            <td class="py-3 px-5 font-mono text-xs text-ui-secondary text-right">1.8 GB</td>
+                        </tr>
+                        <tr class="hover:bg-moss-base/40 transition-colors border-l-2 border-l-transparent">
+                            <td class="py-3 px-5 text-center"><input type="checkbox" class="ss-checkbox" aria-label="Select item"></td>
+                            <td class="py-3 px-3 font-mono text-ui-secondary table-clip w-full max-w-[300px]">House.of.the.Dragon.S03E01.mkv</td>
+                            <td class="py-3 px-3">
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium border border-status-blue/30 text-status-blue bg-status-blue/10">
+                                    <i class="ph-bold ph-folder-open animate-pulse"></i> Extracting
+                                </span>
+                            </td>
+                            <td class="py-3 px-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-24 h-1.5 bg-status-blue/10 rounded-full overflow-hidden border border-status-blue/30 relative">
+                                        <div class="absolute inset-0 bg-status-blue/40 animate-pulse"></div>
+                                    </div>
+                                    <span class="font-mono text-xs text-status-blue">Wait</span>
+                                </div>
+                            </td>
+                            <td class="py-3 px-3 font-mono text-xs text-ui-muted">&mdash;</td>
+                            <td class="py-3 px-3 font-mono text-xs text-ui-muted">&mdash;</td>
+                            <td class="py-3 px-5 font-mono text-xs text-ui-secondary text-right">3.4 GB</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="border-t border-brand-amber/30 bg-[#252e23] px-5 py-3 flex justify-between items-center z-10 shadow-[inset_0_1px_0_rgba(212,165,116,0.1)]">
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-medium text-brand-amber">2 selected</span>
+                    <button class="text-xs text-ui-secondary hover:text-ui-primary underline decoration-moss-border underline-offset-2 transition-colors">Clear</button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-brand-amber text-moss-base hover:bg-brand-amber/90 font-medium text-xs shadow-sm transition-colors focus:ring-2 focus:ring-brand-amber focus:ring-offset-2 focus:ring-offset-moss-surface">
+                        <i class="ph-bold ph-play"></i> Queue
+                    </button>
+                    <button class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-status-red/40 text-status-red hover:bg-status-red/10 font-medium text-xs transition-colors">
+                        <i class="ph-bold ph-stop"></i> Stop
+                    </button>
+                    <button class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-moss-border text-ui-muted cursor-not-allowed opacity-50 font-medium text-xs bg-moss-terminal/50" disabled>
+                        <i class="ph-bold ph-archive"></i> Extract
+                    </button>
+                    <div class="w-px h-5 bg-moss-border mx-1"></div>
+                    <button class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-status-red/40 text-status-red hover:bg-status-red/10 font-medium text-xs transition-colors">
+                        <i class="ph-bold ph-trash"></i> Delete Local
+                    </button>
+                    <button class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-moss-border text-ui-muted cursor-not-allowed opacity-50 font-medium text-xs bg-moss-terminal/50" disabled>
+                        <i class="ph-bold ph-cloud-slash"></i> Delete Remote
+                    </button>
+                </div>
+            </div>
+
+            <footer class="px-5 py-3 bg-moss-surface border-t border-moss-border flex items-center justify-between z-10">
+                <span class="text-xs text-ui-muted">Showing <span class="font-mono text-ui-primary">1-6</span> of 12</span>
+                <div class="flex gap-1 text-xs">
+                    <button class="px-3 py-1 rounded border border-moss-border text-ui-muted bg-moss-terminal hover:text-ui-primary hover:border-ui-muted transition-colors disabled:opacity-50" disabled>Prev</button>
+                    <button class="px-2.5 py-1 rounded border border-brand-amber bg-brand-amber/10 text-brand-amber font-medium">1</button>
+                    <button class="px-2.5 py-1 rounded border border-transparent text-ui-secondary hover:bg-moss-terminal transition-colors">2</button>
+                    <button class="px-3 py-1 rounded border border-moss-border text-ui-secondary bg-moss-terminal hover:text-ui-primary hover:border-ui-muted transition-colors">Next</button>
+                </div>
+            </footer>
+        </section>
+
+        <section class="h-[120px] shrink-0 bg-moss-terminal rounded-lg border border-moss-border p-3 overflow-y-auto font-mono text-xs shadow-inner shadow-black/20 flex flex-col">
+            <ul class="flex flex-col gap-1.5">
+                <li class="flex gap-3 whitespace-nowrap">
+                    <span class="text-ui-muted">[14:23:41]</span>
+                    <span class="font-bold text-status-green w-10">[INFO]</span>
+                    <span class="text-ui-secondary table-clip w-full">Download completed: <span class="text-ui-primary">Oppenheimer.2023.1080p.mkv</span> in 12m 4s</span>
+                </li>
+                <li class="flex gap-3 whitespace-nowrap">
+                    <span class="text-ui-muted">[14:23:42]</span>
+                    <span class="font-bold text-status-green w-10">[INFO]</span>
+                    <span class="text-ui-secondary table-clip w-full">Starting remote sync for <span class="text-ui-primary">Oppenheimer.2023.1080p.mkv</span></span>
+                </li>
+                <li class="flex gap-3 whitespace-nowrap">
+                    <span class="text-ui-muted">[14:25:12]</span>
+                    <span class="font-bold text-[#d4a574] w-10">[WARN]</span>
+                    <span class="text-brand-amber table-clip w-full">Slow speeds detected on tracker: BackupTracker2</span>
+                </li>
+                <li class="flex gap-3 whitespace-nowrap">
+                    <span class="text-ui-muted">[14:28:05]</span>
+                    <span class="font-bold text-status-red w-10">[FAIL]</span>
+                    <span class="text-status-red table-clip w-full">Hash check failed for chunk 42 in <span class="text-ui-primary">The.Last.of.Us.S02E05.mkv</span>. Retrying...</span>
+                </li>
+                <li class="flex gap-3 whitespace-nowrap">
+                    <span class="text-ui-muted">[14:29:10]</span>
+                    <span class="font-bold text-status-green w-10">[INFO]</span>
+                    <span class="text-ui-secondary table-clip w-full">Extraction initiated: <span class="text-ui-primary">House.of.the.Dragon.S03E01.mkv</span></span>
+                </li>
+            </ul>
+        </section>
+
+    </main>
+</body>
+</html>
