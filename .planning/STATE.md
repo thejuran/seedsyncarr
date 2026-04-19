@@ -4,8 +4,8 @@ milestone: v1.1.0
 milestone_name: UI Redesign — Triggarr Style
 status: executing
 stopped_at: Phase 72 context gathered
-last_updated: "2026-04-19T21:34:48.646Z"
-last_activity: 2026-04-19 -- Phase null planning complete
+last_updated: "2026-04-19T21:38:13.443Z"
+last_activity: 2026-04-19 -- Phase 72 execution started
 progress:
   total_phases: 22
   completed_phases: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Defining requirements for v1.2.0 Storage Capacity Tiles
+**Current focus:** Phase 72 — restore-dashboard-file-selection-and-action-bar
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Ready to execute
-Last activity: 2026-04-19 -- Phase null planning complete
+Phase: 72 (restore-dashboard-file-selection-and-action-bar) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 72
+Last activity: 2026-04-19 -- Phase 72 execution started
 
 ## Milestones Shipped
 
