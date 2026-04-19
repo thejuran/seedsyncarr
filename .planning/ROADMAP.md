@@ -548,13 +548,17 @@ Plans:
 
 ### Phase 73: Dashboard filter for every torrent status
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Extend the dashboard transfer-table segment filter so every operationally-meaningful ViewFile.Status (DEFAULT, DOWNLOADED, EXTRACTED) is reachable as a filter sub-button under a new Done parent + Pending sub under Active, and persist active filter state via URL query params with silent fallback on invalid values.
+**Requirements**: D-01, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12, D-13, D-14, D-15
 **Depends on:** Phase 72
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 73 to break down)
+- [ ] 73-01-PLAN.md — Widen activeSegment union to include 'done' + add Done branch (DOWNLOADED ∪ EXTRACTED) + add DEFAULT (Pending) to Active branch in segmentedFiles$
+- [ ] 73-02-PLAN.md — Insert Done parent button + Done expand block (Downloaded, Extracted) + Pending sub-button (first under Active) into transfer-table template, reusing existing .btn-segment / .btn-sub classes verbatim
+- [ ] 73-03-PLAN.md — Inject Router + ActivatedRoute, add ngOnInit URL hydration with enum-validated silent fallback (D-11), add _writeFilterToUrl helper called from onSegmentChange / onSubStatusChange with queryParamsHandling: "merge" + replaceUrl: true
+- [ ] 73-04-PLAN.md — Update TestBed providers (Router/ActivatedRoute mocks) + TEST_TEMPLATE; add 6 filter-logic tests (Done branch, Pending under Active, 3 new sub-status filters, selection-clear-on-Done) + 11 URL persistence tests covering D-09/D-10/D-11
+- [ ] 73-05-PLAN.md — Add getSegmentButton + getSubButton page-object locators; add 3 e2e tests (Done expand, Pending reveal, URL round-trip persistence)
 
 ### Phase 74: Storage capacity tiles
 
