@@ -225,6 +225,7 @@ export class TransferTableComponent implements OnInit {
             this.filterState$.next({segment, subStatus: null, page: 1});
         }
         this.fileSelectionService.clearSelection();
+        this._writeFilterToUrl();
     }
 
     onSubStatusChange(status: ViewFile.Status): void {
@@ -237,6 +238,7 @@ export class TransferTableComponent implements OnInit {
             this.currentPage = 1;
             this.filterState$.next({segment: this.activeSegment, subStatus: null, page: 1});
             this.fileSelectionService.clearSelection();
+            this._writeFilterToUrl();
             return;
         }
         this.activeSubStatus = status;
@@ -247,6 +249,7 @@ export class TransferTableComponent implements OnInit {
             page: 1
         });
         this.fileSelectionService.clearSelection();
+        this._writeFilterToUrl();
     }
 
     goToPage(page: number): void {
@@ -355,5 +358,22 @@ export class TransferTableComponent implements OnInit {
             fileNames,
             this.fileSelectionService.getSelectedFiles().size
         );
+    }
+
+    private _writeFilterToUrl(): void {
+        const queryParams: {segment: string | null; sub: string | null} = {
+            segment: null,
+            sub: null,
+        };
+        if (this.activeSegment !== "all") {
+            queryParams.segment = this.activeSegment;
+            queryParams.sub = this.activeSubStatus ?? null;
+        }
+        this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams,
+            queryParamsHandling: "merge",
+            replaceUrl: true,
+        });
     }
 }
