@@ -533,13 +533,18 @@ Plans:
 
 ### Phase 72: Restore dashboard file selection and action bar
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Restore per-file selection (checkboxes) and the 5-action control surface (Queue / Stop / Extract / Delete Local / Delete Remote) on the dashboard transfer table — dropped in the v1.1.0 redesign — using AIDesigner Variant B (card-internal action bar), with functional parity to the pre-redesign behavior and visual identity matching the Deep Moss + Amber palette.
+**Requirements**: TBD (phase decisions D-01..D-19 in 72-CONTEXT.md)
 **Depends on:** Phase 71
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 72 to break down)
+- [ ] 72-01-PLAN.md — Adapt BulkActionsBarComponent: template + SCSS rewrite to Variant B (card-internal bar, 5 buttons, amber primary + red outline variants); preserve eligibility-count spec contract
+- [ ] 72-02-PLAN.md — Delete the four obsolete component sets (file-actions-bar, file-list, file, file-options) + their specs per D-18; prove clean build with zero orphan imports
+- [ ] 72-03-PLAN.md — Add leading checkbox cell to TransferRow; signal-driven isSelected via FileSelectionService; amber-wash + 3px left-border selected-row styling; HostBinding aria-label + role
+- [ ] 72-04-PLAN.md — Wire TransferTable selection clearing on page/segment/sub-status/goToPage + Esc handler + shift-click range + header select-all (page-scoped); insert BulkActionsBar card-internally; dispatch 5 bulk actions via BulkCommandService + ConfirmModalService
+- [ ] 72-05-PLAN.md — Un-skip and rewrite the 5 E2E tests in dashboard.page.spec.ts:38-56; add page-object selectors for row/header checkbox + action bar + 5 named action buttons (D-19 — no new tests beyond the originals)
+
 
 ### Phase 73: Dashboard filter for every torrent status
 
