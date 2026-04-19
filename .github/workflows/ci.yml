@@ -117,11 +117,7 @@ jobs:
       # for code changes that don't touch native deps, and arm64 E2E via
       # hosted runner adds ~10 min to PR feedback.
       matrix:
-        include: ${{ fromJSON(
-          (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
-          && '[{"arch":"amd64","runner":"ubuntu-latest"},{"arch":"arm64","runner":"ubuntu-24.04-arm"}]'
-          || '[{"arch":"amd64","runner":"ubuntu-latest"}]'
-        ) }}
+        include: ${{ fromJSON((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) && '[{"arch":"amd64","runner":"ubuntu-latest"},{"arch":"arm64","runner":"ubuntu-24.04-arm"}]' || '[{"arch":"amd64","runner":"ubuntu-latest"}]') }}
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
