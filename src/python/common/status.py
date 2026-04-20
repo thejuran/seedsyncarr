@@ -124,11 +124,25 @@ class Status(BaseStatus):
             self.latest_remote_scan_failed = None
             self.latest_remote_scan_error = None
 
+    class StorageStatus(StatusComponent):
+        local_total = StatusComponent._create_property("local_total")
+        local_used = StatusComponent._create_property("local_used")
+        remote_total = StatusComponent._create_property("remote_total")
+        remote_used = StatusComponent._create_property("remote_used")
+
+        def __init__(self):
+            super().__init__()
+            self.local_total = None
+            self.local_used = None
+            self.remote_total = None
+            self.remote_used = None
+
     # ----- End of component definition -----
 
     # Component registration
     server = BaseStatus._create_property("server")
     controller = BaseStatus._create_property("controller")
+    storage = BaseStatus._create_property("storage")
 
     def __init__(self):
         self._listeners = []
@@ -138,6 +152,7 @@ class Status(BaseStatus):
         # Component initialization
         self.server = self.__create_component(Status.ServerStatus)
         self.controller = self.__create_component(Status.ControllerStatus)
+        self.storage = self.__create_component(Status.StorageStatus)
 
     def copy(self) -> "Status":
         copy = Status()
