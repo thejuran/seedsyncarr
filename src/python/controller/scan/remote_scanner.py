@@ -1,6 +1,6 @@
 import logging
 import json
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import os
 import hashlib
 import shlex
@@ -26,6 +26,29 @@ class RemoteScanner(IScanner):
         """Check if an SSH error is a permanent config problem (wrong password, bad host, etc.)"""
         msg = str(error)
         return any(pattern in msg for pattern in PERMANENT_ERROR_PATTERNS)
+
+    @staticmethod
+    def _parse_df_output(out) -> Tuple[Optional[int], Optional[int]]:
+        """
+        Parse `df -B1 <path>` output. Returns (total_bytes, used_bytes), or
+        (None, None) on any parse failure (silent fallback per D-16). Never raises.
+        """
+        try:
+            text = out.decode("utf-8") if isinstance(out, (bytes, bytearray)) else out
+        except UnicodeDecodeError:
+            return (None, None)
+        lines = [line for line in text.splitlines() if line.strip()]
+        if len(lines) < 2:
+            return (None, None)
+        parts = lines[-1].split()
+        if len(parts) < 3:
+            return (None, None)
+        try:
+            total = int(parts[1])
+            used = int(parts[2])
+        except (ValueError, IndexError):
+            return (None, None)
+        return (total, used)
 
     def __init__(self,
                  remote_address: str,
@@ -57,7 +80,7 @@ class RemoteScanner(IScanner):
         self.__ssh.set_base_logger(self.logger)
 
     @overrides(IScanner)
-    def scan(self) -> List[SystemFile]:
+    def scan(self) -> Tuple[List[SystemFile], Optional[int], Optional[int]]:
         if not self.__install_done:
             self._install_scanfs()
             self.__install_done = True
@@ -99,7 +122,21 @@ class RemoteScanner(IScanner):
             )
 
         self.__first_run = False
-        return remote_files
+
+        # Capacity collection — silent fallback per D-16 (ancillary, never fatal)
+        total_bytes: Optional[int] = None
+        used_bytes: Optional[int] = None
+        try:
+            df_out = self.__ssh.shell("df -B1 {}".format(shlex.quote(self.__remote_path_to_scan)))
+            total_bytes, used_bytes = RemoteScanner._parse_df_output(df_out)
+            if total_bytes is None or used_bytes is None:
+                self.logger.warning("df output parse failed for '%s': %r",
+                                    self.__remote_path_to_scan, df_out)
+        except SshcpError as err:
+            self.logger.warning("df SSH call failed for '%s': %s",
+                                self.__remote_path_to_scan, err)
+
+        return remote_files, total_bytes, used_bytes
 
     def _install_scanfs(self):
         # Check md5sum on remote to see if we can skip installation

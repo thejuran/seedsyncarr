@@ -2,11 +2,13 @@ import logging
 from abc import ABC, abstractmethod
 import multiprocessing
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import queue
 
 from common import overrides, AppProcess, AppError
 from system import SystemFile
+
+ScanOutput = Tuple[List[SystemFile], Optional[int], Optional[int]]
 
 class ScannerError(AppError):
     """
@@ -25,8 +27,8 @@ class IScanner(ABC):
     This hides the scanning implementation from the scanner process.
     """
     @abstractmethod
-    def scan(self) -> List[SystemFile]:
-        """Scan system"""
+    def scan(self) -> ScanOutput:
+        """Scan system. Returns (files, total_bytes, used_bytes); capacity may be (None, None)."""
         pass
 
     @abstractmethod
@@ -41,11 +43,15 @@ class ScannerResult:
                  timestamp: datetime,
                  files: List[SystemFile],
                  failed: bool = False,
-                 error_message: str = None):
+                 error_message: str = None,
+                 total_bytes: Optional[int] = None,
+                 used_bytes: Optional[int] = None):
         self.timestamp = timestamp
         self.files = files
         self.failed = failed
         self.error_message = error_message
+        self.total_bytes = total_bytes
+        self.used_bytes = used_bytes
 
 class ScannerProcess(AppProcess):
     """
@@ -81,9 +87,11 @@ class ScannerProcess(AppProcess):
         if self.verbose:
             self.logger.debug("Running a scan")
         try:
-            files = self.__scanner.scan()
+            files, total_bytes, used_bytes = self.__scanner.scan()
             result = ScannerResult(timestamp=timestamp_start,
-                                   files=files)
+                                   files=files,
+                                   total_bytes=total_bytes,
+                                   used_bytes=used_bytes)
         except ScannerError as e:
             # Non-recoverable errors continue up as a fatal error
             if not e.recoverable:

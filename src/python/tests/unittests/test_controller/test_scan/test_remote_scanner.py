@@ -164,7 +164,8 @@ class TestRemoteScanner(unittest.TestCase):
         self.mock_ssh.shell.side_effect = ssh_shell
 
         scanner.scan()
-        self.assertEqual(2, self.mock_ssh.shell.call_count)
+        # md5sum + main scan + df = 3 calls (Phase 74-02 added df)
+        self.assertEqual(3, self.mock_ssh.shell.call_count)
         self.mock_ssh.shell.assert_has_calls([
             call("md5sum /remote/path/to/scan/script | awk '{print $1}' || echo"),
             call(ANY)
@@ -287,8 +288,11 @@ class TestRemoteScanner(unittest.TestCase):
         self.mock_ssh.shell.side_effect = ssh_shell
 
         scanner.scan()
-        self.assertEqual(2, self.mock_ssh.shell.call_count)
-        self.mock_ssh.shell.assert_called_with(
+        # md5sum + main scan + df = 3 calls (Phase 74-02 added df)
+        self.assertEqual(3, self.mock_ssh.shell.call_count)
+        # The main scan call (second of three) — assert_called_with looks at the LAST call,
+        # which after Phase 74-02 is the df call. Use assert_has_calls instead.
+        self.mock_ssh.shell.assert_any_call(
             "/remote/path/to/scan/script /remote/path/to/scan"
         )
 
@@ -425,10 +429,11 @@ class TestRemoteScanner(unittest.TestCase):
         self.assertTrue(ctx.exception.recoverable)
 
         # Retry succeeds — install is not re-run
-        files = scanner.scan()
+        files, _, _ = scanner.scan()
         self.assertEqual([], files)
         self.mock_ssh.copy.assert_not_called()
-        self.assertEqual(3, self.mock_ssh.shell.call_count)
+        # md5sum + failed scan + retry main + df = 4 calls (Phase 74-02 added df)
+        self.assertEqual(4, self.mock_ssh.shell.call_count)
 
     def test_raises_nonrecoverable_error_on_system_scanner_error_with_timeout_in_message(self):
         """SystemScannerError is always fatal, even if the message also contains 'Timed out'"""
@@ -529,6 +534,9 @@ class TestRemoteScanner(unittest.TestCase):
                 # first scan succeeds
                 return json.dumps([]).encode()
             elif self.ssh_run_command_count == 3:
+                # df call after first scan (Phase 74-02 — silent fallback, returns to df parser)
+                return b""
+            elif self.ssh_run_command_count == 4:
                 # second scan - wrong password (e.g. password was changed)
                 raise SshcpError("Incorrect password")
             else:
@@ -564,6 +572,9 @@ class TestRemoteScanner(unittest.TestCase):
                 # first scan succeeds
                 return json.dumps([]).encode()
             elif self.ssh_run_command_count == 3:
+                # df call after first scan (Phase 74-02 — silent fallback)
+                return b""
+            elif self.ssh_run_command_count == 4:
                 # second scan - host key changed
                 raise SshcpError("Remote host key has changed. This may indicate a MITM attack.")
             else:
@@ -598,6 +609,9 @@ class TestRemoteScanner(unittest.TestCase):
                 # first try
                 return json.dumps([]).encode()
             elif self.ssh_run_command_count == 3:
+                # df call after first scan (Phase 74-02 — silent fallback)
+                return b""
+            elif self.ssh_run_command_count == 4:
                 # second try
                 raise SshcpError("an ssh error")
             else:
@@ -631,13 +645,16 @@ class TestRemoteScanner(unittest.TestCase):
                 # md5sum check
                 return b''
             elif self.ssh_run_command_count == 2:
-                # first try
+                # first scan main
                 return json.dumps([]).encode()
             elif self.ssh_run_command_count == 3:
-                # second try
+                # df call after first scan (Phase 74-02 — silent fallback)
+                return b""
+            elif self.ssh_run_command_count == 4:
+                # second scan main — raises
                 raise SshcpError("an ssh error")
             else:
-                # later tries
+                # third scan main + its df, both succeed
                 return json.dumps([]).encode()
         self.mock_ssh.shell.side_effect = ssh_shell
 
@@ -645,7 +662,8 @@ class TestRemoteScanner(unittest.TestCase):
         with self.assertRaises(ScannerError):
             scanner.scan()
         scanner.scan()
-        self.assertEqual(4, self.mock_ssh.shell.call_count)
+        # md5sum + scan1(main+df) + scan2(fail-no-df) + scan3(main+df) = 6 (Phase 74-02 added df after each successful main scan)
+        self.assertEqual(6, self.mock_ssh.shell.call_count)
 
     def test_raises_nonrecoverable_error_on_failed_copy(self):
         scanner = RemoteScanner(
