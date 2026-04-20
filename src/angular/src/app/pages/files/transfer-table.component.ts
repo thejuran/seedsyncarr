@@ -359,11 +359,13 @@ export class TransferTableComponent implements OnInit {
             queryParams.segment = this.activeSegment;
             queryParams.sub = this.activeSubStatus ?? null;
         }
+        // URL sync is best-effort; swallow any rejection so a router error can't
+        // leave an unhandled-promise warning or disrupt the filter action.
         this.router.navigate([], {
             relativeTo: this.route,
             queryParams,
             queryParamsHandling: "merge",
             replaceUrl: true,
-        });
+        }).catch(() => { /* noop */ });
     }
 }

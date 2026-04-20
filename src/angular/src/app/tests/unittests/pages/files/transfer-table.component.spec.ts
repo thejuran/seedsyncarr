@@ -142,7 +142,7 @@ describe("TransferTableComponent", () => {
     let mockRouter: { navigate: jasmine.Spy };
 
     beforeEach(async () => {
-        mockRouter = { navigate: jasmine.createSpy("navigate") };
+        mockRouter = { navigate: jasmine.createSpy("navigate").and.returnValue(Promise.resolve(true)) };
         for (const k of Object.keys(mockQueryParamMap)) { delete mockQueryParamMap[k]; }
 
         mockFileService = new MockViewFileService();
