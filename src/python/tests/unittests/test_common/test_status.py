@@ -189,3 +189,51 @@ class TestStatus(unittest.TestCase):
 
         copy.server.error_msg = "b"
         listener.notify.assert_not_called()
+
+    def test_storage_default_values(self):
+        status = Status()
+        self.assertIsNone(status.storage.local_total)
+        self.assertIsNone(status.storage.local_used)
+        self.assertIsNone(status.storage.remote_total)
+        self.assertIsNone(status.storage.remote_used)
+
+    def test_storage_property_values(self):
+        status = Status()
+        status.storage.local_total = 500_000_000_000
+        status.storage.local_used = 123_000_000_000
+        status.storage.remote_total = 2_000_000_000_000
+        status.storage.remote_used = 1_300_000_000_000
+        self.assertEqual(500_000_000_000, status.storage.local_total)
+        self.assertEqual(123_000_000_000, status.storage.local_used)
+        self.assertEqual(2_000_000_000_000, status.storage.remote_total)
+        self.assertEqual(1_300_000_000_000, status.storage.remote_used)
+
+    def test_storage_listeners(self):
+        listener = DummyStatusListener()
+        listener.notify = MagicMock()
+        status = Status()
+        status.add_listener(listener)
+        status.storage.local_total = 1
+        listener.notify.assert_called_once_with()
+        listener.notify.reset_mock()
+        status.storage.remote_used = 2
+        listener.notify.assert_called_once_with()
+
+    def test_storage_cannot_replace_component(self):
+        status = Status()
+        new_storage = Status.StorageStatus()
+        with self.assertRaises(ValueError) as e:
+            status.storage = new_storage
+        self.assertEqual("Cannot reassign component", str(e.exception))
+
+    def test_storage_copy_preserves_values(self):
+        status = Status()
+        status.storage.local_total = 500
+        status.storage.local_used = 100
+        status.storage.remote_total = 2000
+        status.storage.remote_used = 1300
+        copy = status.copy()
+        self.assertEqual(500, copy.storage.local_total)
+        self.assertEqual(100, copy.storage.local_used)
+        self.assertEqual(2000, copy.storage.remote_total)
+        self.assertEqual(1300, copy.storage.remote_used)
