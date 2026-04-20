@@ -1,5 +1,5 @@
 import {Component, ChangeDetectionStrategy} from "@angular/core";
-import {AsyncPipe} from "@angular/common";
+import {AsyncPipe, DecimalPipe} from "@angular/common";
 
 import {DashboardStatsService} from "../../services/files/dashboard-stats.service";
 import {FileSizePipe} from "../../common/file-size.pipe";
@@ -10,7 +10,7 @@ import {FileSizePipe} from "../../common/file-size.pipe";
     templateUrl: "./stats-strip.component.html",
     styleUrls: ["./stats-strip.component.scss"],
     standalone: true,
-    imports: [AsyncPipe, FileSizePipe],
+    imports: [AsyncPipe, FileSizePipe, DecimalPipe],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class StatsStripComponent {

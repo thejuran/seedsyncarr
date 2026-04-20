@@ -139,6 +139,14 @@
   &--secondary {
     background: #9aaa8a;
   }
+
+  &--warning {
+    background: var(--bs-warning, #ffc107);
+  }
+
+  &--danger {
+    background: var(--bs-danger, #dc3545);
+  }
 }
 
 // ============================================================================
