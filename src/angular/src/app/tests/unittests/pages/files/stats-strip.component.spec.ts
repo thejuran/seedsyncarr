@@ -73,6 +73,10 @@ class MockDashboardStatsService {
         remoteTrackedBytes: 0,
         localTrackedBytes: 0,
         totalTrackedBytes: 0,
+        remoteCapacityTotal: null,
+        remoteCapacityUsed: null,
+        localCapacityTotal: null,
+        localCapacityUsed: null,
     });
 
     get stats$(): Observable<DashboardStats> {
@@ -162,6 +166,10 @@ describe("StatsStripComponent", () => {
             remoteTrackedBytes: 0,
             localTrackedBytes: 0,
             totalTrackedBytes: 0,
+            remoteCapacityTotal: null,
+            remoteCapacityUsed: null,
+            localCapacityTotal: null,
+            localCapacityUsed: null,
         });
         fixture.detectChanges();
         tick();
@@ -181,6 +189,10 @@ describe("StatsStripComponent", () => {
             remoteTrackedBytes: 0,
             localTrackedBytes: 0,
             totalTrackedBytes: 0,
+            remoteCapacityTotal: null,
+            remoteCapacityUsed: null,
+            localCapacityTotal: null,
+            localCapacityUsed: null,
         });
         fixture.detectChanges();
         tick();
