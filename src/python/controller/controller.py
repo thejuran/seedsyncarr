@@ -892,7 +892,7 @@ class Controller:
                 nodes_visited = 0
                 while frontier:
                     nodes_visited += 1
-                    if nodes_visited > _AUTO_DELETE_BFS_NODE_LIMIT:
+                    if nodes_visited >= _AUTO_DELETE_BFS_NODE_LIMIT:
                         self.logger.warning(
                             "Auto-delete skipped for '{}': BFS node limit ({}) exceeded".format(
                                 file_name, _AUTO_DELETE_BFS_NODE_LIMIT

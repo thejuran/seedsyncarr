@@ -70,18 +70,22 @@ class WebhookManager:
 
             # Case-insensitive matching against root and child names
             root_name = name_to_root.get(file_name.lower())
+            # Sanitize webhook-supplied file_name for log output (CWE-117). The
+            # queue value is used raw for matching (correct), but log sinks must
+            # strip newlines so crafted payloads can't split log entries.
+            safe_file_name = file_name.replace("\n", "\\n").replace("\r", "\\r")
             if root_name is not None:
                 newly_imported.append((root_name, file_name))
                 self.logger.info(
                     "{} import detected: '{}' (matched SeedSyncarr file '{}')".format(
-                        source, file_name, root_name
+                        source, safe_file_name, root_name
                     )
                 )
             else:
                 self.logger.warning(
                     "{} webhook file '{}' not found in SeedSyncarr model "
                     "(checked {} names including children)".format(
-                        source, file_name, len(name_to_root)
+                        source, safe_file_name, len(name_to_root)
                     )
                 )
 
