@@ -247,7 +247,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 **v1.1.1 Post-Redesign Cleanup & Outstanding Work (planned 2026-04-20):**
 
-- Multiselect bulk bar computes union of applicable actions across selection (re-expose "Re-Queue from Remote" when a deleted file is selected)
+- ✓ Multiselect bulk bar computes union of applicable actions across selection — DELETED rows with null `remote_size` now surface Queue (Re-Queue from Remote) + Delete Remote; fix in `view-file.service.ts` `isQueueable`/`isRemotelyDeletable` predicates; 5 FIX-01 regression tests across 2 spec files. Validated in Phase 76.
 - Phase 72 deferred: 5 Playwright E2E tests for per-file selection + 5-action bulk bar
 - Phase 73 deferred: 10 Playwright E2E tests for dashboard filter + URL round-trip
 - Phase 74 deferred: 6 manual UAT items for storage capacity tiles against live seedbox
@@ -365,4 +365,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-20 — v1.1.1 milestone planned (cleanup + outstanding work: deferred UAT, GH #19, Dependabot #3, retroactive v1.1.0 release notes, pending todos, tech debt).*
+*Last updated: 2026-04-20 — Phase 76 complete (FIX-01 multiselect bulk-bar action union shipped).*
