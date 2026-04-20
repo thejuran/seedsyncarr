@@ -646,20 +646,22 @@ class Controller:
             self.__context.status.controller.latest_remote_scan_failed = remote_scan.failed
             self.__context.status.controller.latest_remote_scan_error = remote_scan.error_message
             if remote_scan.total_bytes is not None and remote_scan.used_bytes is not None:
-                old_total = self.__context.status.storage.remote_total
-                old_used = self.__context.status.storage.remote_used
-                if (Controller._should_update_capacity(old_total, remote_scan.total_bytes)
-                        or Controller._should_update_capacity(old_used, remote_scan.used_bytes)):
+                # Per-field gate: total and used are independent under D-12/D-15 so
+                # a sub-1% change on one must not drag the other into a write.
+                if Controller._should_update_capacity(
+                        self.__context.status.storage.remote_total, remote_scan.total_bytes):
                     self.__context.status.storage.remote_total = remote_scan.total_bytes
+                if Controller._should_update_capacity(
+                        self.__context.status.storage.remote_used, remote_scan.used_bytes):
                     self.__context.status.storage.remote_used = remote_scan.used_bytes
         if local_scan is not None:
             self.__context.status.controller.latest_local_scan_time = local_scan.timestamp
             if local_scan.total_bytes is not None and local_scan.used_bytes is not None:
-                old_total = self.__context.status.storage.local_total
-                old_used = self.__context.status.storage.local_used
-                if (Controller._should_update_capacity(old_total, local_scan.total_bytes)
-                        or Controller._should_update_capacity(old_used, local_scan.used_bytes)):
+                if Controller._should_update_capacity(
+                        self.__context.status.storage.local_total, local_scan.total_bytes):
                     self.__context.status.storage.local_total = local_scan.total_bytes
+                if Controller._should_update_capacity(
+                        self.__context.status.storage.local_used, local_scan.used_bytes):
                     self.__context.status.storage.local_used = local_scan.used_bytes
 
     # =========================================================================

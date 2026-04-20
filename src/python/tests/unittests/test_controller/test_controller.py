@@ -77,8 +77,9 @@ class TestUpdateControllerStatusCapacity(unittest.TestCase):
     def test_above_one_percent_delta_writes_both(self):
         c = self._make_controller_with_status()
         c._update_controller_status(self._result(2_000_000_000_000, 1_000_000_000_000), None)
-        c._update_controller_status(self._result(2_000_100_000_000, 1_015_000_000_000), None)
-        self.assertEqual(2_000_100_000_000, c._Controller__context.status.storage.remote_total)
+        # Both fields move +1.5% — each crosses its own per-field gate (D-12/D-15).
+        c._update_controller_status(self._result(2_030_000_000_000, 1_015_000_000_000), None)
+        self.assertEqual(2_030_000_000_000, c._Controller__context.status.storage.remote_total)
         self.assertEqual(1_015_000_000_000, c._Controller__context.status.storage.remote_used)
 
     def test_none_capacity_leaves_existing_values(self):
@@ -124,6 +125,44 @@ class TestUpdateControllerStatusCapacity(unittest.TestCase):
         c._update_controller_status(scan, None)
         self.assertEqual(ts, c._Controller__context.status.controller.latest_remote_scan_time)
         self.assertEqual(False, c._Controller__context.status.controller.latest_remote_scan_failed)
+
+    def test_used_crosses_threshold_total_does_not_writes_only_used(self):
+        """Per-field independence: a sub-1% delta on total must not bypass its own gate
+        when used crosses the threshold (and vice versa)."""
+        c = self._make_controller_with_status()
+        c._update_controller_status(
+            self._result(2_000_000_000_000, 1_000_000_000_000), None
+        )
+        # total: +0.0005% (well below gate); used: +1.5% (above gate)
+        c._update_controller_status(
+            self._result(2_000_010_000_000, 1_015_000_000_000), None
+        )
+        self.assertEqual(
+            2_000_000_000_000,
+            c._Controller__context.status.storage.remote_total,
+            "remote_total must NOT be overwritten when its own delta is sub-1%",
+        )
+        self.assertEqual(
+            1_015_000_000_000,
+            c._Controller__context.status.storage.remote_used,
+            "remote_used must be written when it crosses the gate",
+        )
+
+    def test_total_crosses_threshold_used_does_not_writes_only_total(self):
+        c = self._make_controller_with_status()
+        c._update_controller_status(
+            self._result(2_000_000_000_000, 1_000_000_000_000), None
+        )
+        # total: +5% (above gate); used: +0.0005% (below gate)
+        c._update_controller_status(
+            self._result(2_100_000_000_000, 1_000_005_000_000), None
+        )
+        self.assertEqual(2_100_000_000_000, c._Controller__context.status.storage.remote_total)
+        self.assertEqual(
+            1_000_000_000_000,
+            c._Controller__context.status.storage.remote_used,
+            "remote_used must NOT be overwritten when its own delta is sub-1%",
+        )
 
 
 if __name__ == "__main__":
