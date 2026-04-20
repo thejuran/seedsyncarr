@@ -979,4 +979,97 @@ describe("Testing view file service", () => {
         // Selection should be cleared
         expect(fileSelectionService.getSelectedCount()).toBe(0);
     }));
+
+    // =========================================================================
+    // FIX-01 DELETED isQueueable regression (Wave 1 characterization — D-01)
+    // =========================================================================
+    //
+    // User symptom: when a DELETED file is selected, the bulk bar does not
+    // expose the Queue ("Re-Queue from Remote") action. Prior executor traced
+    // the silent failure to createViewFile() in view-file.service.ts: the
+    // null-normalization (lines 303-306) zeroes `remote_size: null` to
+    // `remoteSize = 0`, then the `remoteSize > 0` guard in the isQueueable
+    // predicate (lines 348-351) forces isQueueable = false even for DELETED
+    // rows that the backend reports as null-remote-size.
+    //
+    // The existing isQueueable test vector at line 283 covers
+    // [DELETED, null, 100] → [true, DELETED] (remote_size = 100 passes
+    // the guard). It does NOT cover [DELETED, null, null] which is the
+    // backend's representation of a freshly-deleted file with no remaining
+    // remote-size metadata — the user's reproduced scenario.
+    //
+    // Wave 1 commits these red. Wave 2 drives them green with a minimal
+    // edit to the `remoteSize > 0` guard in view-file.service.ts (D-02
+    // candidate #1, confirmed by prior analysis).
+    describe("FIX-01 DELETED isQueueable regression", () => {
+        it("DELETED + remote_size=null must be queueable (RED target)", fakeAsync(() => {
+            let count = -1;
+            viewService.files.subscribe({
+                next: list => {
+                    // Ignore first empty emission
+                    if (count >= 0) {
+                        expect(list.size).toBe(1);
+                        const file = list.get(0)!;
+                        expect(file!.status)
+                            .withContext("status should map to ViewFile.Status.DELETED")
+                            .toBe(ViewFile.Status.DELETED);
+                        expect(file!.isQueueable)
+                            .withContext("DELETED rows must remain queueable even when " +
+                                         "backend reports remote_size=null (FIX-01)")
+                            .toBe(true);
+                    }
+                    count++;
+                }
+            });
+            tick();
+            expect(count).toBe(0);
+
+            let model = Immutable.Map<string, ModelFile>();
+            model = model.set("deleted-file.mkv", new ModelFile({
+                name: "deleted-file.mkv",
+                state: ModelFile.State.DELETED,
+                local_size: null as unknown as number,
+                remote_size: null as unknown as number,
+            }));
+            mockModelService._files.next(model);
+            tick();
+
+            expect(count).toBe(1);
+        }));
+
+        it("DELETED + remote_size>0 is queueable (GREEN control)", fakeAsync(() => {
+            let count = -1;
+            viewService.files.subscribe({
+                next: list => {
+                    // Ignore first empty emission
+                    if (count >= 0) {
+                        expect(list.size).toBe(1);
+                        const file = list.get(0)!;
+                        expect(file!.status)
+                            .withContext("status should map to ViewFile.Status.DELETED")
+                            .toBe(ViewFile.Status.DELETED);
+                        expect(file!.isQueueable)
+                            .withContext("DELETED row with positive remote_size is queueable " +
+                                         "(pins the null-remote-size trigger)")
+                            .toBe(true);
+                    }
+                    count++;
+                }
+            });
+            tick();
+            expect(count).toBe(0);
+
+            let model = Immutable.Map<string, ModelFile>();
+            model = model.set("deleted-file.mkv", new ModelFile({
+                name: "deleted-file.mkv",
+                state: ModelFile.State.DELETED,
+                local_size: null as unknown as number,
+                remote_size: 1024,
+            }));
+            mockModelService._files.next(model);
+            tick();
+
+            expect(count).toBe(1);
+        }));
+    });
 });
