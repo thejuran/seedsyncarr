@@ -925,16 +925,23 @@ class Controller:
                             )
                         )
                         return
+        # WR-02: clear the per-child entry BEFORE dispatching delete_local. The
+        # decision to delete is final at this point (state + pack + coverage
+        # guards all passed); if delete_local raises between dispatch and the
+        # post-delete cleanup, leaking imported_children[root] would cause
+        # persist drift -- the next Timer-fire for the same root after a rearm
+        # would compare fresh on-disk videos against stale per-child state,
+        # producing either a false partial-import skip or a false full-coverage
+        # delete depending on overlap. Clearing pre-dispatch preserves D-04's
+        # "on successful __execute_auto_delete" intent (dispatch IS the success
+        # signal here) without the drift window.
+        with self.__model_lock:
+            self.__persist.imported_children.pop(file_name, None)
         # delete_local is safe outside lock -- it spawns a subprocess, holding
         # the lock during a blocking subprocess call would starve model updates.
         # ModelFile is frozen/immutable after add, so `file` reference is safe.
         self.__file_op_manager.delete_local(file)
         self.logger.info("Auto-deleted local file '{}'".format(file_name))
-        # Clear per-child entry on successful auto-delete (D-04). Keeps persist
-        # small and avoids stale data. Brief lock reacquire -- delete_local is a
-        # subprocess spawn so the lock is released immediately above.
-        with self.__model_lock:
-            self.__persist.imported_children.pop(file_name, None)
 
     def __handle_queue_command(self, file: ModelFile, command: Command) -> (bool, str, int):
         """
