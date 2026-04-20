@@ -227,3 +227,55 @@ class TestControllerPersist(unittest.TestCase):
         stats = persist.get_eviction_stats()
         self.assertIn('imported_evictions', stats)
         self.assertEqual(1, stats['imported_evictions'])
+
+    def test_imported_children_roundtrip(self):
+        """Test imported_children serialization roundtrip."""
+        persist = ControllerPersist()
+        persist.add_imported_child("Pack.S01", "ep01.mkv")
+        persist.add_imported_child("Pack.S01", "ep02.mkv")
+        persist.add_imported_child("Other.S02", "ep01.mkv")
+
+        persist_actual = ControllerPersist.from_str(persist.to_str())
+
+        self.assertEqual(
+            {root: bset.as_list() for root, bset in persist.imported_children.items()},
+            {root: bset.as_list() for root, bset in persist_actual.imported_children.items()},
+        )
+
+    def test_imported_children_in_to_str(self):
+        """Test imported_children key appears in serialized output with correct nested shape."""
+        persist = ControllerPersist()
+        persist.add_imported_child("Pack.S01", "ep01.mkv")
+        persist.add_imported_child("Pack.S01", "ep02.mkv")
+
+        dct = json.loads(persist.to_str())
+
+        self.assertIn("imported_children", dct)
+        self.assertEqual({"Pack.S01": ["ep01.mkv", "ep02.mkv"]}, dct["imported_children"])
+
+    def test_backward_compatibility_no_imported_children_key(self):
+        """Test old persist files without imported_children key load successfully."""
+        content = json.dumps({
+            "downloaded": ["a"],
+            "extracted": ["b"],
+            "stopped": [],
+            "imported": ["c"],
+        })
+        persist = ControllerPersist.from_str(content)
+        self.assertEqual(0, len(persist.imported_children))
+
+    def test_imported_children_eviction_per_root(self):
+        """Test per-root bounded set evicts oldest child when cap exceeded."""
+        persist = ControllerPersist()
+        # Fill one root past DEFAULT_MAX_CHILDREN_PER_ROOT (500)
+        for i in range(persist.DEFAULT_MAX_CHILDREN_PER_ROOT + 1):
+            persist.add_imported_child("Pack.S01", "ep{:04d}.mkv".format(i))
+
+        bset = persist.imported_children["Pack.S01"]
+        self.assertEqual(persist.DEFAULT_MAX_CHILDREN_PER_ROOT, len(bset))
+        # Oldest (ep0000) should be evicted, newest (ep500) retained
+        self.assertNotIn("ep0000.mkv", bset)
+        self.assertIn("ep0500.mkv", bset)
+        # Eviction stats reflect it
+        stats = persist.get_eviction_stats()
+        self.assertEqual(1, stats['imported_children_evictions'])
