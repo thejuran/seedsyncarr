@@ -278,7 +278,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 **Plans**: 4 plans
   - [x] 76-01-PLAN.md — Wave 1: failing characterization tests for FIX-01 DELETED union regression (red-first per D-01)
   - [x] 76-02-PLAN.md — Wave 2: root-cause analysis + minimal one-file fix that drives Wave 1 green (D-02/D-03, checkpoint-gated)
-  - [ ] 76-03-PLAN.md — Wave 3: three D-09 mixed-selection coverage tests (All-DELETED, DELETED+DOWNLOADING, DELETED+DOWNLOADED+STOPPED)
+  - [x] 76-03-PLAN.md — Wave 3: three D-09 mixed-selection coverage tests (All-DELETED, DELETED+DOWNLOADING, DELETED+DOWNLOADED+STOPPED)
   - [ ] 76-04-PLAN.md — Wave 4: full Angular suite verification + D-06/D-07 visual-freeze audit + regression-guard report
 **UI hint**: yes
 
