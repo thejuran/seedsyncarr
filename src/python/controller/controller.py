@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import collections
+import os
 import threading
 from typing import Dict, List, Optional, Tuple
 from threading import Lock
@@ -25,6 +26,16 @@ class ControllerError(AppError):
     Exception indicating a controller error
     """
     pass
+
+# Video file extensions considered for auto-delete coverage check.
+# Comparison is case-insensitive on the extension. Non-allowlisted files
+# (.nfo, .srt, .sample.mp4, etc.) are intentionally ignored: Sonarr skips
+# these during import, so requiring them would permanently strand real-world
+# packs. See phase 75 (GH #19) D-09, D-10.
+_VIDEO_EXTENSIONS = frozenset({
+    '.mkv', '.mp4', '.avi', '.m4v', '.mov',
+    '.ts', '.wmv', '.flv', '.webm',
+})
 
 class Controller:
     """
@@ -747,15 +758,27 @@ class Controller:
         if newly_imported:
             # Window 2: Update model import status for all newly imported files under single lock
             with self.__model_lock:
-                for file_name in newly_imported:
-                    self.__persist.imported_file_names.add(file_name)
-                    self.logger.info("Recorded webhook import: '{}'".format(file_name))
-                    self._set_import_status(self.__model, file_name)
+                for root_name, matched_name in newly_imported:
+                    # Backward-compat root tracking (D-05) -- drives UI badge + existing dedup
+                    self.__persist.imported_file_names.add(root_name)
+                    # Per-child tracking (D-07) -- lowercased basename for case-insensitive
+                    # comparison in the coverage guard. See matched_name comment in
+                    # WebhookManager.process docstring.
+                    self.__persist.add_imported_child(root_name, matched_name.lower())
+                    self.logger.info(
+                        "Recorded webhook import: '{}' (child: '{}')".format(
+                            root_name, matched_name
+                        )
+                    )
+                    self._set_import_status(self.__model, root_name)
 
-            # Schedule auto-deletes outside lock -- Timer operations only
+            # Schedule auto-deletes outside lock -- Timer operations only.
+            # De-duplicate roots: two child webhooks in one cycle would otherwise
+            # schedule the same root twice (the second call cancels the first timer
+            # and rearms -- benign but wasteful). Iterate unique roots explicitly.
             if self.__context.config.autodelete.enabled:
-                for file_name in newly_imported:
-                    self.__schedule_auto_delete(file_name)
+                for root_name in {r for r, _ in newly_imported}:
+                    self.__schedule_auto_delete(root_name)
 
     def __schedule_auto_delete(self, file_name: str):
         """Schedule auto-delete of local file after safety delay."""
@@ -833,10 +856,13 @@ class Controller:
                 )
                 return
 
-            # Pack guard: when the root is a directory, walk every descendant
-            # and skip if ANY child is in an active state. Prevents wiping a
-            # season pack while a sibling episode is still being downloaded or
-            # extracted (Sonarr's per-episode webhook schedules the pack root).
+            # Pack guard + coverage-basename collection: single BFS over descendants.
+            # (a) Pack guard: skip if ANY child is in an active state. Prevents wiping
+            #     a season pack while a sibling is still being downloaded or extracted
+            #     (Sonarr's per-episode webhook schedules the pack root).
+            # (b) Coverage collection: gather lowercased basenames of all on-disk
+            #     video children for the coverage guard below (D-08, D-09).
+            on_disk_videos = set()
             if file.is_dir:
                 unsafe_child = None
                 frontier = collections.deque(file.get_children())
@@ -845,6 +871,13 @@ class Controller:
                     if child.state not in deletable_states:
                         unsafe_child = child
                         break
+                    # Collect video basenames for coverage check. Non-video files
+                    # (.nfo, .srt, .sample.mp4, etc.) are intentionally ignored (D-10).
+                    # Directories have no extension match; they are traversed only.
+                    if not child.get_children():
+                        ext = os.path.splitext(child.name)[1].lower()
+                        if ext in _VIDEO_EXTENSIONS:
+                            on_disk_videos.add(child.name.lower())
                     frontier.extend(child.get_children())
                 if unsafe_child is not None:
                     self.logger.info(
@@ -853,11 +886,44 @@ class Controller:
                         )
                     )
                     return
+
+                # Coverage guard (D-08): pack roots with a directory on disk require
+                # every on-disk video child to appear in imported_children[root].
+                # A missing child indicates Sonarr silently rejected the file;
+                # deleting now would lose data. Grandfather (D-14): if no per-root
+                # entry exists (legacy persist or never imported via webhook), treat
+                # as fully imported and proceed.
+                imported_child_bset = self.__persist.imported_children.get(file_name)
+                if imported_child_bset is not None:
+                    imported_child_set = {c.lower() for c in imported_child_bset.as_list()}
+                    missing = on_disk_videos - imported_child_set
+                    if missing:
+                        missing_list = sorted(missing)
+                        shown = missing_list[:5]
+                        suffix = ""
+                        if len(missing_list) > 5:
+                            suffix = " (+{} more)".format(len(missing_list) - 5)
+                        self.logger.info(
+                            "Auto-delete skipped for '{}': partial import "
+                            "({} of {} on-disk video children imported; missing: {}{})".format(
+                                file_name,
+                                len(on_disk_videos) - len(missing),
+                                len(on_disk_videos),
+                                shown,
+                                suffix,
+                            )
+                        )
+                        return
         # delete_local is safe outside lock -- it spawns a subprocess, holding
         # the lock during a blocking subprocess call would starve model updates.
         # ModelFile is frozen/immutable after add, so `file` reference is safe.
         self.__file_op_manager.delete_local(file)
         self.logger.info("Auto-deleted local file '{}'".format(file_name))
+        # Clear per-child entry on successful auto-delete (D-04). Keeps persist
+        # small and avoids stale data. Brief lock reacquire -- delete_local is a
+        # subprocess spawn so the lock is released immediately above.
+        with self.__model_lock:
+            self.__persist.imported_children.pop(file_name, None)
 
     def __handle_queue_command(self, file: ModelFile, command: Command) -> (bool, str, int):
         """
