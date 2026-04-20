@@ -32,7 +32,10 @@ class WebhookManager:
             file_name: Name of the imported file
         """
         self.__import_queue.put((source, file_name))
-        self.logger.info("{} webhook import enqueued: '{}'".format(source, file_name))
+        # Sanitize newlines before logging -- file_name is webhook-supplied and
+        # could otherwise be used for log injection (CWE-117).
+        safe_file_name = file_name.replace("\n", "\\n").replace("\r", "\\r")
+        self.logger.info("{} webhook import enqueued: '{}'".format(source, safe_file_name))
 
     def process(self, name_to_root: Dict[str, str]) -> List[Tuple[str, str]]:
         """

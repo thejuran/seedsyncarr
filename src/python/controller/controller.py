@@ -898,6 +898,12 @@ class Controller:
                                 file_name, _AUTO_DELETE_BFS_NODE_LIMIT
                             )
                         )
+                        # Terminal skip: Timer does not re-arm for this firing.
+                        # Clear the per-child entry so imported_children isn't
+                        # stranded on a permanently-oversized pack. All other
+                        # skip paths below are retriable and intentionally leave
+                        # the entry intact.
+                        self.__persist.imported_children.pop(file_name, None)
                         return
                     child = frontier.popleft()
                     if child.state not in deletable_states:
@@ -905,12 +911,12 @@ class Controller:
                         break
                     # Collect video basenames for coverage check. Only files whose
                     # extension is in _VIDEO_EXTENSIONS are tracked (D-09/D-10).
-                    # Use child.is_dir as the authoritative signal -- a directory whose
-                    # children have not been scanned yet would falsely report
-                    # `not get_children()` and could inject a folder name into
-                    # on_disk_videos if the folder name ends in a video extension.
+                    # child.is_dir is the authoritative leaf signal -- falls back
+                    # to `not get_children()` would let a directory with an as-yet
+                    # unscanned child set inject its own name into on_disk_videos
+                    # if the folder name ends in a video extension.
                     grandchildren = child.get_children()
-                    if not child.is_dir and not grandchildren:
+                    if not child.is_dir:
                         ext = os.path.splitext(child.name)[1].lower()
                         if ext in _VIDEO_EXTENSIONS:
                             on_disk_videos.add(child.name.lower())
