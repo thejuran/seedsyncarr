@@ -7,17 +7,37 @@
       <i class="fa fa-cloud stat-icon stat-icon--amber"></i>
       <span class="stat-label">Remote Storage</span>
     </div>
-    <div class="stat-value-row">
-      <span class="stat-value">{{ stats.remoteTrackedBytes | fileSize:2:'value' }}</span>
-      <span class="stat-unit">{{ stats.remoteTrackedBytes | fileSize:2:'unit' }} Tracked</span>
-    </div>
-    <div class="stat-progress-wrap">
-      <div class="stat-progress-track">
-        <div class="stat-progress-fill stat-progress-fill--amber"
-             [style.width.%]="stats.totalTrackedBytes > 0 ? (stats.remoteTrackedBytes / stats.totalTrackedBytes * 100) : 0">
+    @if (stats.remoteCapacityTotal !== null && stats.remoteCapacityUsed !== null && stats.remoteCapacityTotal > 0) {
+      <!-- Capacity mode (D-01..D-07) -->
+      <div class="stat-value-row">
+        <span class="stat-value">{{ (stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100) | number:'1.0-0' }}%</span>
+        <span class="stat-unit">of {{ stats.remoteCapacityTotal | fileSize:2 }}</span>
+      </div>
+      <div class="stat-progress-wrap">
+        <div class="stat-progress-track">
+          <div class="stat-progress-fill"
+               [class.stat-progress-fill--amber]="(stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100) < 80"
+               [class.stat-progress-fill--warning]="(stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100) >= 80 && (stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100) < 95"
+               [class.stat-progress-fill--danger]="(stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100) >= 95"
+               [style.width.%]="stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100">
+          </div>
         </div>
       </div>
-    </div>
+      <div class="stat-sub">{{ stats.remoteCapacityUsed | fileSize:2 }} used</div>
+    } @else {
+      <!-- Fallback mode (D-14) — verbatim tracked-bytes layout -->
+      <div class="stat-value-row">
+        <span class="stat-value">{{ stats.remoteTrackedBytes | fileSize:2:'value' }}</span>
+        <span class="stat-unit">{{ stats.remoteTrackedBytes | fileSize:2:'unit' }} Tracked</span>
+      </div>
+      <div class="stat-progress-wrap">
+        <div class="stat-progress-track">
+          <div class="stat-progress-fill stat-progress-fill--amber"
+               [style.width.%]="stats.totalTrackedBytes > 0 ? (stats.remoteTrackedBytes / stats.totalTrackedBytes * 100) : 0">
+          </div>
+        </div>
+      </div>
+    }
   </div>
 
   <!-- Local Storage -->
@@ -27,17 +47,37 @@
       <i class="fa fa-database stat-icon stat-icon--amber"></i>
       <span class="stat-label">Local Storage</span>
     </div>
-    <div class="stat-value-row">
-      <span class="stat-value">{{ stats.localTrackedBytes | fileSize:2:'value' }}</span>
-      <span class="stat-unit">{{ stats.localTrackedBytes | fileSize:2:'unit' }} Tracked</span>
-    </div>
-    <div class="stat-progress-wrap">
-      <div class="stat-progress-track">
-        <div class="stat-progress-fill stat-progress-fill--secondary"
-             [style.width.%]="stats.totalTrackedBytes > 0 ? (stats.localTrackedBytes / stats.totalTrackedBytes * 100) : 0">
+    @if (stats.localCapacityTotal !== null && stats.localCapacityUsed !== null && stats.localCapacityTotal > 0) {
+      <!-- Capacity mode (D-01..D-07) -->
+      <div class="stat-value-row">
+        <span class="stat-value">{{ (stats.localCapacityUsed / stats.localCapacityTotal * 100) | number:'1.0-0' }}%</span>
+        <span class="stat-unit">of {{ stats.localCapacityTotal | fileSize:2 }}</span>
+      </div>
+      <div class="stat-progress-wrap">
+        <div class="stat-progress-track">
+          <div class="stat-progress-fill"
+               [class.stat-progress-fill--secondary]="(stats.localCapacityUsed / stats.localCapacityTotal * 100) < 80"
+               [class.stat-progress-fill--warning]="(stats.localCapacityUsed / stats.localCapacityTotal * 100) >= 80 && (stats.localCapacityUsed / stats.localCapacityTotal * 100) < 95"
+               [class.stat-progress-fill--danger]="(stats.localCapacityUsed / stats.localCapacityTotal * 100) >= 95"
+               [style.width.%]="stats.localCapacityUsed / stats.localCapacityTotal * 100">
+          </div>
         </div>
       </div>
-    </div>
+      <div class="stat-sub">{{ stats.localCapacityUsed | fileSize:2 }} used</div>
+    } @else {
+      <!-- Fallback mode (D-14) — verbatim tracked-bytes layout -->
+      <div class="stat-value-row">
+        <span class="stat-value">{{ stats.localTrackedBytes | fileSize:2:'value' }}</span>
+        <span class="stat-unit">{{ stats.localTrackedBytes | fileSize:2:'unit' }} Tracked</span>
+      </div>
+      <div class="stat-progress-wrap">
+        <div class="stat-progress-track">
+          <div class="stat-progress-fill stat-progress-fill--secondary"
+               [style.width.%]="stats.totalTrackedBytes > 0 ? (stats.localTrackedBytes / stats.totalTrackedBytes * 100) : 0">
+          </div>
+        </div>
+      </div>
+    }
   </div>
 
   <!-- Download Speed -->
