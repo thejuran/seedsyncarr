@@ -95,3 +95,51 @@ class TestSerializeStatus(unittest.TestCase):
         out = parse_stream(serialize.status(status))
         data = json.loads(out["data"])
         self.assertEqual("remote server went boom", data["controller"]["latest_remote_scan_error"])
+
+    def test_storage_local_total(self):
+        serialize = SerializeStatus()
+        status = Status()
+        out = parse_stream(serialize.status(status))
+        data = json.loads(out["data"])
+        self.assertIsNone(data["storage"]["local_total"])
+
+        status.storage.local_total = 500_000_000_000
+        out = parse_stream(serialize.status(status))
+        data = json.loads(out["data"])
+        self.assertEqual(500_000_000_000, data["storage"]["local_total"])
+
+    def test_storage_local_used(self):
+        serialize = SerializeStatus()
+        status = Status()
+        out = parse_stream(serialize.status(status))
+        data = json.loads(out["data"])
+        self.assertIsNone(data["storage"]["local_used"])
+
+        status.storage.local_used = 123_000_000_000
+        out = parse_stream(serialize.status(status))
+        data = json.loads(out["data"])
+        self.assertEqual(123_000_000_000, data["storage"]["local_used"])
+
+    def test_storage_remote_total(self):
+        serialize = SerializeStatus()
+        status = Status()
+        out = parse_stream(serialize.status(status))
+        data = json.loads(out["data"])
+        self.assertIsNone(data["storage"]["remote_total"])
+
+        status.storage.remote_total = 2_000_000_000_000
+        out = parse_stream(serialize.status(status))
+        data = json.loads(out["data"])
+        self.assertEqual(2_000_000_000_000, data["storage"]["remote_total"])
+
+    def test_storage_remote_used(self):
+        serialize = SerializeStatus()
+        status = Status()
+        out = parse_stream(serialize.status(status))
+        data = json.loads(out["data"])
+        self.assertIsNone(data["storage"]["remote_used"])
+
+        status.storage.remote_used = 1_300_000_000_000
+        out = parse_stream(serialize.status(status))
+        data = json.loads(out["data"])
+        self.assertEqual(1_300_000_000_000, data["storage"]["remote_used"])
