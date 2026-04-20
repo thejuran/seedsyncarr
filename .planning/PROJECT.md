@@ -245,7 +245,20 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-(None — ready to plan next milestone via `/gsd-new-milestone`.)
+**v1.1.1 Post-Redesign Cleanup & Outstanding Work (planned 2026-04-20):**
+
+- Multiselect bulk bar computes union of applicable actions across selection (re-expose "Re-Queue from Remote" when a deleted file is selected)
+- Phase 72 deferred: 5 Playwright E2E tests for per-file selection + 5-action bulk bar
+- Phase 73 deferred: 10 Playwright E2E tests for dashboard filter + URL round-trip
+- Phase 74 deferred: 6 manual UAT items for storage capacity tiles against live seedbox
+- GH #19: Per-child import state tracking so auto-delete cannot wipe packs with Sonarr silent-rejects
+- Dependabot alert #3: audit/override transitive `basic-ftp` to ≥5.3.0 (DoS via unbounded `Client.list()`)
+- Clean up CI test runner warnings (pytest cache + webob cgi deprecation)
+- Playwright CSP violation detection in main E2E suite
+- Optional Fernet encryption at rest for config credentials (`api_token`, `webhook_secret`, `sonarr_api_key`, `radarr_api_key`, `remote_password`)
+- arm64 Docker test build: resolve `rar` package availability for Apple Silicon local dev
+- `WAITING_FOR_IMPORT` enum: wire business logic or remove placeholder
+- Retroactive v1.1.0 release notes (CHANGELOG + GitHub Release) — missing at ship time
 
 ### Out of Scope
 
@@ -330,9 +343,9 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Project Status
 
-**Status:** v1.1.0 shipped — between milestones.
+**Status:** v1.1.1 in planning — cleanup & outstanding-work milestone (no net-new features).
 
-27 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign as SeedSyncarr).
+28 milestones planned (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup as SeedSyncarr).
 
 ## Evolution
 
@@ -352,4 +365,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-19 after v1.1.0 milestone close (Phases 62-74; Phase 71 dropped). Storage-capacity tiles shipped as Phase 74.*
+*Last updated: 2026-04-20 — v1.1.1 milestone planned (cleanup + outstanding work: deferred UAT, GH #19, Dependabot #3, retroactive v1.1.0 release notes, pending todos, tech debt).*

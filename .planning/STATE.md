@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: null
-milestone_name: null
-status: idle
-stopped_at: v1.1.0 milestone closed 2026-04-19
-last_updated: "2026-04-19T23:30:00.000Z"
-last_activity: 2026-04-19 -- v1.1.0 milestone closed (phases 62-74)
+milestone: v1.1.1
+milestone_name: Post-Redesign Cleanup & Outstanding Work
+status: planning
+stopped_at: null
+last_updated: "2026-04-20T00:00:00.000Z"
+last_activity: 2026-04-20 -- v1.1.1 milestone started (defining requirements)
 progress:
   total_phases: 0
   completed_phases: 0
@@ -18,17 +18,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-19)
+See: .planning/PROJECT.md (updated 2026-04-20)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Planning next milestone
+**Current focus:** v1.1.1 — close outstanding deferred UAT, open issues, Dependabot, tech debt, and retroactive v1.1.0 release notes
 
 ## Current Position
 
-Phase: — (between milestones)
+Phase: Not started (defining requirements)
 Plan: —
-Status: Ready for `/gsd-new-milestone`
-Last activity: 2026-04-19 — v1.1.0 milestone closed (phases 62-74; Phase 71 dropped)
+Status: Defining requirements
+Last activity: 2026-04-20 — v1.1.1 milestone started
 
 ## Milestones Shipped
 
