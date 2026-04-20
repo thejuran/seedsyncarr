@@ -326,7 +326,7 @@ class TestAutoDeleteIntegration(BaseAutoDeleteTestCase):
         f.remote_size = 1000
         self.controller._Controller__model.add_file(f)
         # Webhook manager reports import
-        self.mock_webhook_manager.process.return_value = ["test_file.mkv"]
+        self.mock_webhook_manager.process.return_value = [("test_file.mkv", "test_file.mkv")]
 
         self.controller.process()
 
@@ -340,7 +340,7 @@ class TestAutoDeleteIntegration(BaseAutoDeleteTestCase):
         f = ModelFile("test_file.mkv", False)
         f.remote_size = 1000
         self.controller._Controller__model.add_file(f)
-        self.mock_webhook_manager.process.return_value = ["test_file.mkv"]
+        self.mock_webhook_manager.process.return_value = [("test_file.mkv", "test_file.mkv")]
 
         self.controller.process()
 
