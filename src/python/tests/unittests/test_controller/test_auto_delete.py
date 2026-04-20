@@ -279,6 +279,150 @@ class TestAutoDeleteExecution(BaseAutoDeleteTestCase):
         self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
 
 
+class TestAutoDeleteCoverageGuard(TestAutoDeleteExecution):
+    """Phase 75 (GH #19): per-child coverage guard in __execute_auto_delete.
+
+    Reuses _make_safe_mock_file and _make_child from TestAutoDeleteExecution.
+    Seeds self.persist.imported_children directly to simulate webhook-driven
+    per-child state (the webhook path itself is exercised in
+    TestAutoDeleteIntegration).
+    """
+
+    def test_execute_proceeds_single_file_root_when_root_imported(self):
+        """D-11: non-dir root bypasses the coverage guard entirely (single-file
+        pass-through -- pre-PR-18 behavior preserved)."""
+        mock_file = self._make_safe_mock_file(is_dir=False)
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.persist.imported_file_names.add("single_file.mkv")
+        # Intentionally NOT seeding imported_children -- single-file roots never
+        # touch it (coverage check gated on file.is_dir == True).
+        self.controller._Controller__execute_auto_delete("single_file.mkv")
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+
+    def test_execute_proceeds_dir_when_all_video_children_imported(self):
+        """D-08 full-coverage path: every on-disk video basename covered -> delete."""
+        child_a = self._make_child("ep01.mkv")
+        child_b = self._make_child("ep02.mkv")
+        mock_file = self._make_safe_mock_file(is_dir=True, children=[child_a, child_b])
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.persist.add_imported_child("Pack.S01", "ep01.mkv")
+        self.persist.add_imported_child("Pack.S01", "ep02.mkv")
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+
+    def test_execute_skips_dir_when_one_video_child_missing(self):
+        """D-08 partial-coverage path: one on-disk video missing from imported
+        children -> skip + INFO log containing 'partial import' and the
+        missing basename. This is the canonical GH #19 regression test."""
+        child_a = self._make_child("ep01.mkv")
+        child_b = self._make_child("ep02.mkv")
+        mock_file = self._make_safe_mock_file(is_dir=True, children=[child_a, child_b])
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        # Seed only ep01 -- ep02 is on disk but not imported
+        self.persist.add_imported_child("Pack.S01", "ep01.mkv")
+
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+
+        self.mock_file_op_manager.delete_local.assert_not_called()
+        # Verify the D-16 log phrasing
+        logged_messages = [
+            str(call) for call in self.controller.logger.info.call_args_list
+        ]
+        partial_hits = [m for m in logged_messages if "partial import" in m and "Pack.S01" in m]
+        self.assertTrue(partial_hits, "Expected 'partial import' INFO log for 'Pack.S01'")
+        missing_hits = [m for m in logged_messages if "ep02.mkv" in m]
+        self.assertTrue(missing_hits, "Expected missing basename 'ep02.mkv' in log")
+
+    def test_execute_proceeds_dir_when_non_video_files_uncovered(self):
+        """D-10: non-allowlisted extensions (.nfo, .txt) are ignored by the
+        coverage guard. Only .mkv must be covered for delete to proceed."""
+        child_video = self._make_child("ep01.mkv")
+        child_nfo = self._make_child("ep01.nfo")
+        child_sample = self._make_child("sample.txt")
+        mock_file = self._make_safe_mock_file(
+            is_dir=True,
+            children=[child_video, child_nfo, child_sample],
+        )
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        # Only the video is covered -- .nfo and .txt are out of the allowlist
+        self.persist.add_imported_child("Pack.S01", "ep01.mkv")
+
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+
+    def test_execute_proceeds_dir_when_no_imported_children_entry_legacy(self):
+        """D-14 grandfather: root tracked in imported_file_names but absent
+        from imported_children (pre-upgrade state) -> delete proceeds."""
+        child_a = self._make_child("ep01.mkv")
+        mock_file = self._make_safe_mock_file(is_dir=True, children=[child_a])
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        # Populate imported_file_names (root tracked) but NOT imported_children
+        self.persist.imported_file_names.add("Pack.S01")
+        self.assertNotIn("Pack.S01", self.persist.imported_children)
+
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+
+    def test_execute_clears_imported_children_after_delete(self):
+        """D-04: after successful delete, the per-root entry is removed from
+        imported_children to keep persist small and avoid stale data."""
+        child_a = self._make_child("ep01.mkv")
+        mock_file = self._make_safe_mock_file(is_dir=True, children=[child_a])
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.persist.add_imported_child("Pack.S01", "ep01.mkv")
+        self.assertIn("Pack.S01", self.persist.imported_children)
+
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.assertNotIn("Pack.S01", self.persist.imported_children)
+
+    def test_execute_coverage_check_is_case_insensitive(self):
+        """Case-insensitive matching: imported_children stored lowercase,
+        on-disk basename may be mixed case -- delete still proceeds."""
+        child_mixed_case = self._make_child("Ep01.MKV")
+        mock_file = self._make_safe_mock_file(is_dir=True, children=[child_mixed_case])
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        # Stored as lowercase (what the controller writes via matched_name.lower())
+        self.persist.add_imported_child("Pack.S01", "ep01.mkv")
+
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+
+
+class TestAutoDeletePersistRehydration(TestAutoDeleteExecution):
+    """D-20: partial-coverage state survives JSON round-trip (restart)."""
+
+    def test_imported_children_partial_coverage_survives_restart(self):
+        """Seed partial coverage, round-trip through to_str/from_str, replace
+        the controller's persist with the rehydrated copy, and confirm
+        Timer-fire still skips -- proving persist rehydration works."""
+        # Seed the original persist
+        self.persist.imported_file_names.add("Pack.S01")
+        self.persist.add_imported_child("Pack.S01", "ep01.mkv")
+        # Round-trip
+        serialized = self.persist.to_str()
+        rehydrated = ControllerPersist.from_str(serialized, max_tracked_files=100)
+        # Swap the controller's persist for the rehydrated copy
+        self.controller._Controller__persist = rehydrated
+        # Confirm the rehydrated persist contains the seeded state
+        self.assertIn("Pack.S01", rehydrated.imported_children)
+        self.assertIn("ep01.mkv", rehydrated.imported_children["Pack.S01"])
+        # Now run Timer-fire with an on-disk pack containing BOTH ep01 and ep02
+        child_a = self._make_child("ep01.mkv")
+        child_b = self._make_child("ep02.mkv")
+        mock_file = self._make_safe_mock_file(is_dir=True, children=[child_a, child_b])
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+
+        # ep02 was not in the persisted imported_children -> partial coverage -> skip
+        self.mock_file_op_manager.delete_local.assert_not_called()
+
+
 class TestAutoDeleteShutdown(BaseAutoDeleteTestCase):
     """Test timer cleanup on controller exit."""
 
@@ -326,7 +470,7 @@ class TestAutoDeleteIntegration(BaseAutoDeleteTestCase):
         f.remote_size = 1000
         self.controller._Controller__model.add_file(f)
         # Webhook manager reports import
-        self.mock_webhook_manager.process.return_value = ["test_file.mkv"]
+        self.mock_webhook_manager.process.return_value = [("test_file.mkv", "test_file.mkv")]
 
         self.controller.process()
 
@@ -340,7 +484,7 @@ class TestAutoDeleteIntegration(BaseAutoDeleteTestCase):
         f = ModelFile("test_file.mkv", False)
         f.remote_size = 1000
         self.controller._Controller__model.add_file(f)
-        self.mock_webhook_manager.process.return_value = ["test_file.mkv"]
+        self.mock_webhook_manager.process.return_value = [("test_file.mkv", "test_file.mkv")]
 
         self.controller.process()
 
