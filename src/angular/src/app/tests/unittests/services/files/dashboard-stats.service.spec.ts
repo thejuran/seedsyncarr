@@ -11,13 +11,29 @@ import {ConnectedService} from "../../../../services/utils/connected.service";
 import {MockModelFileService} from "../../../mocks/mock-model-file.service";
 import {ModelFile} from "../../../../services/files/model-file";
 import {FileSelectionService} from "../../../../services/files/file-selection.service";
+import {BehaviorSubject} from "rxjs";
+import {ServerStatusService} from "../../../../services/server/server-status.service";
+import {ServerStatus} from "../../../../services/server/server-status";
+
+
+class MockServerStatusService {
+    _status$ = new BehaviorSubject<ServerStatus>(new ServerStatus({}));
+    get status() {
+        return this._status$.asObservable();
+    }
+    pushStatus(storage: {localTotal: number | null; localUsed: number | null; remoteTotal: number | null; remoteUsed: number | null}) {
+        this._status$.next(new ServerStatus({storage}));
+    }
+}
 
 
 describe("Testing dashboard stats service", () => {
     let statsService: DashboardStatsService;
     let mockModelService: MockModelFileService;
+    let mockServerStatus: MockServerStatusService;
 
     beforeEach(() => {
+        mockServerStatus = new MockServerStatusService();
         TestBed.configureTestingModule({
             providers: [
                 DashboardStatsService,
@@ -25,6 +41,7 @@ describe("Testing dashboard stats service", () => {
                 LoggerService,
                 ConnectedService,
                 FileSelectionService,
+                {provide: ServerStatusService, useValue: mockServerStatus},
                 {provide: StreamServiceRegistry, useClass: MockStreamServiceRegistry}
             ]
         });
@@ -54,6 +71,10 @@ describe("Testing dashboard stats service", () => {
         expect(latestStats!.remoteTrackedBytes).toBe(0);
         expect(latestStats!.localTrackedBytes).toBe(0);
         expect(latestStats!.totalTrackedBytes).toBe(0);
+        expect(latestStats!.remoteCapacityTotal).toBeNull();
+        expect(latestStats!.remoteCapacityUsed).toBeNull();
+        expect(latestStats!.localCapacityTotal).toBeNull();
+        expect(latestStats!.localCapacityUsed).toBeNull();
     }));
 
     it("should count downloading files", fakeAsync(() => {
@@ -266,5 +287,105 @@ describe("Testing dashboard stats service", () => {
         expect(latestStats!.remoteTrackedBytes).toBe(0);
         expect(latestStats!.localTrackedBytes).toBe(0);
         expect(latestStats!.totalTrackedBytes).toBe(0);
+    }));
+
+    it("should surface capacity from status stream when backend emits values", fakeAsync(() => {
+        let latestStats: DashboardStats | null = null;
+        statsService.stats$.subscribe(stats => { latestStats = stats; });
+        tick();
+
+        mockServerStatus.pushStatus({
+            localTotal: 500_000_000_000,
+            localUsed: 100_000_000_000,
+            remoteTotal: 2_000_000_000_000,
+            remoteUsed: 1_300_000_000_000,
+        });
+        tick();
+
+        expect(latestStats!.remoteCapacityTotal).toBe(2_000_000_000_000);
+        expect(latestStats!.remoteCapacityUsed).toBe(1_300_000_000_000);
+        expect(latestStats!.localCapacityTotal).toBe(500_000_000_000);
+        expect(latestStats!.localCapacityUsed).toBe(100_000_000_000);
+    }));
+
+    it("should keep per-tile capacity independent (remote null, local populated)", fakeAsync(() => {
+        let latestStats: DashboardStats | null = null;
+        statsService.stats$.subscribe(stats => { latestStats = stats; });
+        tick();
+
+        mockServerStatus.pushStatus({
+            localTotal: 500_000_000_000,
+            localUsed: 100_000_000_000,
+            remoteTotal: null,
+            remoteUsed: null,
+        });
+        tick();
+
+        expect(latestStats!.localCapacityTotal).toBe(500_000_000_000);
+        expect(latestStats!.remoteCapacityTotal).toBeNull();
+        expect(latestStats!.remoteCapacityUsed).toBeNull();
+    }));
+
+    it("should preserve capacity when file list re-emits (combineLatest retention)", fakeAsync(() => {
+        let latestStats: DashboardStats | null = null;
+        statsService.stats$.subscribe(stats => { latestStats = stats; });
+        tick();
+
+        // First: status delivers capacity.
+        mockServerStatus.pushStatus({
+            localTotal: 500, localUsed: 100,
+            remoteTotal: 2000, remoteUsed: 1300,
+        });
+        tick();
+
+        // Then: a file-list update arrives (no status change).
+        let model = Immutable.Map<string, ModelFile>();
+        model = model.set("a", new ModelFile({
+            name: "a",
+            state: ModelFile.State.DOWNLOADING,
+            remote_size: 100,
+            local_size: 50,
+            downloading_speed: 10,
+        }));
+        mockModelService._files.next(model);
+        tick();
+
+        // Capacity must be preserved from the prior status emission.
+        expect(latestStats!.remoteCapacityTotal).toBe(2000);
+        expect(latestStats!.localCapacityTotal).toBe(500);
+        // And file-derived fields reflect the new file.
+        expect(latestStats!.downloadingCount).toBe(1);
+        expect(latestStats!.remoteTrackedBytes).toBe(100);
+    }));
+
+    it("should preserve file-derived counts when status re-emits (combineLatest retention)", fakeAsync(() => {
+        let latestStats: DashboardStats | null = null;
+        statsService.stats$.subscribe(stats => { latestStats = stats; });
+        tick();
+
+        // First: a file-list update.
+        let model = Immutable.Map<string, ModelFile>();
+        model = model.set("a", new ModelFile({
+            name: "a",
+            state: ModelFile.State.DOWNLOADING,
+            remote_size: 1000,
+            local_size: 500,
+            downloading_speed: 100,
+        }));
+        mockModelService._files.next(model);
+        tick();
+
+        // Then: a status update arrives (no file change).
+        mockServerStatus.pushStatus({
+            localTotal: 500_000_000_000, localUsed: 100_000_000_000,
+            remoteTotal: 2_000_000_000_000, remoteUsed: 1_300_000_000_000,
+        });
+        tick();
+
+        // File-derived fields preserved.
+        expect(latestStats!.downloadingCount).toBe(1);
+        expect(latestStats!.remoteTrackedBytes).toBe(1000);
+        // Capacity updated.
+        expect(latestStats!.remoteCapacityTotal).toBe(2_000_000_000_000);
     }));
 });
