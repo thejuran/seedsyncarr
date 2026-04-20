@@ -28,6 +28,7 @@
 - v4.0.3 Dependency Fixes & CI - Phase 52 (shipped 2026-04-08)
 - v1.0.0 SeedSyncarr Rebrand - Phases 53-61 (shipped 2026-04-13)
 - v1.1.0 UI Redesign — Triggarr Style - Phases 62-74 (shipped 2026-04-19; Phase 71 dropped)
+- **v1.1.1 Post-Redesign Cleanup & Outstanding Work - Phases 75-82 (planning 2026-04-20)**
 
 ## Phases
 
@@ -237,232 +238,112 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 
 </details>
 
+### v1.1.1 Post-Redesign Cleanup & Outstanding Work (Phases 75-82) - PLANNING
+
+- [ ] **Phase 75: Per-Child Import State (GH #19)** - Data-loss bug fix: per-child import tracking prevents pack-wide auto-delete on Sonarr silent-reject
+- [ ] **Phase 76: Multiselect Bulk-Bar Action Union** - Restore "Re-Queue from Remote" in mixed selections; union-of-applicable-actions with per-row disable
+- [ ] **Phase 77: Deferred Playwright E2E (Phases 72 + 73)** - 15 E2E specs covering selection + bulk bar + dashboard filter + URL round-trip
+- [ ] **Phase 78: Storage Tile Live-Seedbox UAT** - 6 manual UAT items against live remote (df-over-SSH, thresholds, graceful fallback)
+- [ ] **Phase 79: Test Infra Cleanup** - Zero CI warnings (pytest-cache + webob/cgi) + Playwright CSP violation listener
+- [ ] **Phase 80: Small Cleanups (Dependabot + arm64 + enum)** - basic-ftp override, arm64 `rar` resolution, WAITING_FOR_IMPORT wire-or-remove
+- [ ] **Phase 81: Optional Fernet Encryption at Rest** - Opt-in encryption for 5 config secrets, transparent decrypt, backward-compat
+- [ ] **Phase 82: Release Prep (Retro v1.1.0 Notes + v1.1.1 Tag)** - Retroactive v1.1.0 CHANGELOG + GitHub Release, version bump, tag
+
 ## Phase Details
 
-### Phase 53: New Repo & Atomic Rename
-**Goal**: `thejuran/seedsyncarr` exists with all code, CI green, Docker image published to the new GHCR path, and v1.0.0 tagged -- the full standalone identity established in one shot
-**Depends on**: Phase 52
-**Requirements**: RBND-01, RBND-02, RBND-03, RBND-04, RBND-05
+### Phase 75: Per-Child Import State (GH #19)
+**Goal**: Auto-delete never wipes a pack with incomplete Sonarr imports — every on-disk child must be individually confirmed as imported before the pack root is deletable.
+**Depends on**: Nothing (first phase of milestone)
+**Requirements**: FIX-02
 **Success Criteria** (what must be TRUE):
-  1. `docker pull ghcr.io/thejuran/seedsyncarr:latest` succeeds and the container starts with all features working
-  2. Every visible UI surface (nav bar brand, About page, browser tab title) shows "SeedSyncarr" -- no "SeedSync" strings remain in the running app
-  3. `debian/seedsyncarr.service` installs cleanly and the config directory is `~/.seedsyncarr`
-  4. CI in the new repo runs all jobs (lint, unit tests, E2E amd64+arm64, Docker build, Deb build) and all pass green
-  5. Tag v1.0.0 exists on `thejuran/seedsyncarr` with published Docker images for amd64 and arm64
-**Plans:** 2 plans
-Plans:
-- [x] 53-01-PLAN.md -- Create new repo, copy files, rename all references, restructure Docker/CI/Makefile, atomic commit, push
-- [x] 53-02-PLAN.md -- Verify CI green, UAT on Docker image, tag v1.0.0, create GitHub Release
+  1. When Sonarr silently rejects one episode from a multi-episode pack, auto-delete does not run on the pack root at Timer-fire time.
+  2. Per-child import state (root, child basename) is persisted across app restarts and bounded in size.
+  3. Timer-fire logic enumerates on-disk children via BFS and skips+logs deletion when coverage is partial; full coverage still deletes as before.
+  4. New unit tests cover: single-file import (fully covered → delete), partial-coverage pack (skip+log), post-restart rehydration of per-child state.
+**Plans**: TBD
 
-### Phase 54: Archive Old Repo
-**Goal**: `thejuran/seedsync` is archived and points visitors to SeedSyncarr -- old repo is read-only with no ambiguity about where active development lives
-**Depends on**: Phase 53
-**Requirements**: RBND-06
+### Phase 76: Multiselect Bulk-Bar Action Union
+**Goal**: Users selecting any mix of file states (including deleted files) see every action that applies to at least one selected row, with inapplicable actions disabled per-row rather than hidden wholesale.
+**Depends on**: Nothing (independent UI fix)
+**Requirements**: FIX-01
 **Success Criteria** (what must be TRUE):
-  1. `github.com/thejuran/seedsync` shows the "Archived" banner and accepts no new issues or pull requests
-  2. The `thejuran/seedsync` repository description or README contains a visible pointer to `thejuran/seedsyncarr`
-  3. A user following the old repo URL can find the new project in one click without any prior knowledge
-**Plans:** 2 plans
-Plans:
-- [x] 54-01-PLAN.md -- Update README with deprecation notice, archive repository, verify one-click discoverability
-
-### Phase 55: Code Hardening
-**Goal**: The codebase reads as hand-crafted professional code -- no AI artifact signals, no dead code, zero open Dependabot alerts, zero lint warnings
-**Depends on**: Phase 54
-**Requirements**: HARD-01, HARD-02, HARD-05, HARD-06
-**Success Criteria** (what must be TRUE):
-  1. A full-text grep for planning docs, modernization reports, or analysis files (`.planning/`, `planning docs/`) finds no tracked files in the repository
-  2. `ruff check src/python` and `npm run lint` in `src/angular` both exit 0 with zero warnings
-  3. `gh api repos/thejuran/seedsyncarr/dependabot/alerts` returns zero open alerts
-  4. Source comments describe why or what-is-non-obvious -- no comments explaining what a line of code does that any reader could infer, no docstrings restating the function signature
-  5. Code style is consistent throughout -- no files that feel structurally different from their neighbors
-**Plans:** 2 plans
-Plans:
-- [ ] 55-01-PLAN.md -- Python code hardening: copyright headers, section dividers, verbose docstrings, obvious comments
-- [ ] 55-02-PLAN.md -- Angular ESLint fixes, IDE comment removal, Dependabot enablement, zero-warning enforcement
-
-### Phase 56: Test Quality
-**Goal**: The test suite asserts real behavior -- coverage gaps in meaningful paths are closed and E2E tests exercise unhappy paths a community reviewer would look for
-**Depends on**: Phase 55
-**Requirements**: HARD-03, HARD-04
-**Success Criteria** (what must be TRUE):
-  1. Python test assertions verify observable outcomes (return values, state changes, side effects) -- not just "function did not raise"
-  2. At least one E2E test covers a failed operation path (e.g., invalid config, connection failure, or download error) confirming the UI surfaces the error state
-  3. Coverage threshold (`fail_under`) continues to pass -- no regression from hardening changes
-  4. `make run-tests-python` and `make run-tests-angular` both exit 0 in CI
-**Plans:** 2 plans
-Plans:
-- [ ] 56-01-PLAN.md -- Strengthen Python assertions and add E2E Sonarr connection failure spec
-
-### Phase 57: README & Community Health
-**Goal**: A first-time visitor to `thejuran/seedsyncarr` immediately understands the value, can install in under 5 minutes, and has clear paths for getting help or contributing
-**Depends on**: Phase 56
-**Requirements**: PRES-01, PRES-02, PRES-03, PRES-07, PRES-08, PRES-09, PRES-10
-**Success Criteria** (what must be TRUE):
-  1. The README opens with a one-sentence value proposition, a screenshot, and a Docker Compose block -- visible without scrolling past the fold on a standard monitor
-  2. CI, version, Docker pulls, and license badges appear in the README and all resolve to live status
-  3. The README contains a visible cross-link to Triggarr in a "Related projects" or "See also" section
-  4. Opening a new issue on GitHub shows two structured YAML form templates: one for bug reports, one for feature requests
-  5. `CONTRIBUTING.md`, `SECURITY.md`, and a `CHANGELOG.md` (or GitHub Releases note) are present and non-empty
-  6. The repository has at least the topic tags: `seedbox`, `sonarr`, `radarr`, `lftp`, `arr`, `self-hosted`, `file-sync`
-  7. GitHub Discussions is enabled with at least a Support category visible to visitors
-**Plans:** 2 plans
-Plans:
-- [ ] 57-01-PLAN.md -- README rewrite, issue template conversion, CONTRIBUTING.md, CHANGELOG.md, screenshot
-- [ ] 57-02-PLAN.md -- Enable GitHub Discussions, set topic tags, human-verify presentation
+  1. Selecting a deleted file (alone or mixed with others) exposes "Re-Queue from Remote" in the bulk-actions bar.
+  2. Mixed selections show the union of applicable actions across the selection.
+  3. Each action dispatches only to rows where it is valid; non-applicable rows in the selection are unaffected.
+  4. Unit tests cover the union logic for at least three representative mixed selections.
+**Plans**: TBD
 **UI hint**: yes
 
-### Phase 58: Docs Site
-**Goal**: `thejuran.github.io/seedsyncarr` is live with enough content that a new user can install, configure, and set up the Sonarr/Radarr integration without reading the source code
-**Depends on**: Phase 57
-**Requirements**: PRES-04, PRES-05, PRES-06
+### Phase 77: Deferred Playwright E2E (Phases 72 + 73)
+**Goal**: Every deferred v1.1.0 UI behavior (per-file selection + 5-action bulk bar + dashboard filter + URL round-trip) is covered by CI-gated Playwright specs so regressions surface automatically.
+**Depends on**: Phase 76 (multiselect fix lands before its E2E covers it)
+**Requirements**: UAT-01, UAT-02
 **Success Criteria** (what must be TRUE):
-  1. `https://thejuran.github.io/seedsyncarr` loads the MkDocs Material site and is publicly accessible
-  2. The docs site includes an installation guide covering Docker Compose and pip install paths
-  3. The docs site includes a configuration reference covering all environment variables and settings fields
-  4. The Sonarr/Radarr webhook setup guide exists as a dedicated page with step-by-step instructions for connecting at least one *arr app
-  5. A FAQ or troubleshooting page addresses at least three common problems (e.g., connection refused, HMAC mismatch, arm64 test caveat)
-**Plans:** 2 plans
-Plans:
-- [ ] 58-01-PLAN.md -- Create all docs content pages (index, install, config reference, arr-setup, FAQ, changelog), fix mkdocs.yml, add image assets
-- [ ] 58-02-PLAN.md -- Update README docs link, enable GitHub Pages, human-verify live site
-
-### Phase 59: Community Launch
-**Goal**: SeedSyncarr is announced to the self-hosted community in a way that earns genuine engagement -- staggered posts per audience, no spam, deferred submissions respected
-**Depends on**: Phase 58
-**Requirements**: LNCH-01, LNCH-02, LNCH-03, LNCH-04
-**Success Criteria** (what must be TRUE):
-  1. An r/selfhosted post is published in "I built X to solve Y" format, linking to the repo and docs site
-  2. Follow-up posts to Servarr Discord, r/sonarr, and r/radarr are published 24-48 hours after the Reddit post, each customized for that audience
-  3. LNCH-03 (awesome-selfhosted PR) is documented as deferred with an August 2026 calendar reminder -- not submitted early
-  4. LNCH-04 (Awesomarr PR) is documented as deferred pending 50+ GitHub stars -- not submitted early
-**Plans:** 2 plans
-Plans:
-- [ ] 59-01-PLAN.md -- Draft r/selfhosted announcement post, user review
-- [ ] 59-02-PLAN.md -- Follow-up posts (Discord, r/sonarr, r/radarr), deferral documentation
-
-### Phase 60: Dependency Updates
-**Goal**: All dependencies are current with no open Dependabot alerts -- minor/patch PRs merged, major bumps reviewed for breaking changes and resolved
-**Depends on**: Phase 59
-**Requirements**: PLSH-01, PLSH-02, PLSH-03
-**Success Criteria** (what must be TRUE):
-  1. Dependabot PRs #2 (mkdocs-material), #3 (pyinstaller), #5 (pytest-cov) merged to main
-  2. Major bumps #4 (pytest 7→9), #6 (testfixtures 10→11), #7 (Angular npm bundle) reviewed -- either merged with passing tests or closed with documented reason
-  3. `gh api repos/thejuran/seedsyncarr/dependabot/alerts` returns zero open alerts
-  4. `make run-tests-python` and `make run-tests-angular` both exit 0 in CI after all merges
-**Plans:** 2 plans
-Plans:
-- [x] 60-01-PLAN.md -- Merge minor/patch Dependabot PRs (#2, #3, #5) and verify CI green
-- [x] 60-02-PLAN.md -- Resolve major bumps (pytest 7->9, testfixtures 10->11, Angular npm bundle) and clear all alerts
-
-### Phase 61: Branding Integration
-**Goal**: The SeedSyncarr arrow-mark branding replaces the legacy leaf icon everywhere -- web app, docs site, GitHub, README -- creating a cohesive visual identity before community launch
-**Depends on**: Phase 60
-**Requirements**: PLSH-04, PLSH-05, PLSH-06, PLSH-07
-**Success Criteria** (what must be TRUE):
-  1. `src/angular/src/assets/favicon.png` is the new arrow-mark icon (not the green leaf)
-  2. `src/python/docs/images/favicon.png` and `logo.png` are the new branding assets
-  3. GitHub repo social preview is set to the banner with tagline image
-  4. README.md includes the project logo at the top
-  5. Web app browser tab shows the new favicon when loaded
-**Plans:** 5 plans
-Plans:
-- [ ] 61-01-PLAN.md -- Stage 6 canonical brand source PNGs into `doc/brand/` (prerequisite for all other plans)
-- [ ] 61-02-PLAN.md -- Web app favicon multi-size set (32/192/512) + apple-touch-icon + index.html link tags
-- [ ] 61-03-PLAN.md -- Docs site favicon + logo replacement (MkDocs Material, no config change)
-- [ ] 61-04-PLAN.md -- README header picture block with prefers-color-scheme dark/light wordmarks
-- [ ] 61-05-PLAN.md -- GitHub repo social preview upload via gh api / curl / web UI fallback
-
-### Phase 62: Nav Bar Foundation
-**Goal**: The shared nav bar delivers Triggarr-level polish visible on every page — backdrop blur, amber active indicator, live connection status, and notification bell
-**Depends on**: Phase 61
-**Requirements**: NAV-01, NAV-02, NAV-03, NAV-04
-**Success Criteria** (what must be TRUE):
-  1. The nav bar has a semi-transparent background with visible backdrop blur effect against page content
-  2. The active page link shows an amber underline indicator that updates when navigating between pages
-  3. A connection status badge in the nav shows live server state with a pulse animation when connected
-  4. A notification bell with a badge dot appears in the nav (badge visible when notifications are present)
-**Plans:** 2/2 plans complete
-Plans:
-- [x] 62-01-PLAN.md -- Backdrop blur nav, amber brand split, active link indicator, connection status badge
-- [x] 62-02-PLAN.md -- Notification bell with dropdown panel, remove old alert bar, visual verification
+  1. `make run-tests-e2e` runs the 5 new Phase 72 specs (selection, shift-range, page-select-all, bulk-bar visibility, all 5 bulk actions) green.
+  2. `make run-tests-e2e` runs the 10 new Phase 73 specs (every `ViewFile.Status`, URL round-trip, drill-down expansion, invalid-value fallback) green.
+  3. Specs execute in CI (`make run-tests-e2e` job) and fail the build on regression.
+  4. The FIX-01 union behavior is covered by at least one of the new selection specs.
+**Plans**: TBD
 **UI hint**: yes
 
-### Phase 63: Dashboard — Stats Strip & Transfer Table
-**Goal**: The dashboard delivers a complete at-a-glance view of sync activity — 4 metric cards above a fully functional transfer table with search, filters, status badges, progress bars, and pagination
-**Depends on**: Phase 62
-**Requirements**: DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, DASH-06, DASH-07, DASH-08, DASH-09, DASH-10, DASH-11
+### Phase 78: Storage Tile Live-Seedbox UAT
+**Goal**: Storage capacity tiles are validated against real remote infrastructure — thresholds trigger, change-gate suppresses spam, graceful fallback hides the tile on SSH `df` failure.
+**Depends on**: Nothing (manual, independent)
+**Requirements**: UAT-03
 **Success Criteria** (what must be TRUE):
-  1. Four stat cards display above the transfer table in a responsive grid: Remote Storage, Local Storage, Download Speed, and Active Tasks — each showing live data with their respective sub-stats
-  2. The Remote Storage and Local Storage cards each show a progress bar reflecting used/free space
-  3. File rows in the transfer table show status badges (Syncing, Queued, Synced, Failed) with semantically appropriate colors and animated striped progress bars with a percentage value
-  4. The transfer table has a working search/filter input and segmented filter buttons (All/Active/Errors) that visibly narrow the displayed rows
-  5. The table footer shows pagination controls that update the displayed rows
-**Plans:** 2/2 plans complete
-Plans:
-- [x] 63-01-PLAN.md -- DashboardStatsService + StatsStripComponent (4 metric cards with progress bars)
-- [x] 63-02-PLAN.md -- TransferTableComponent + TransferRowComponent (search, filters, badges, progress, pagination)
+  1. Local tile shows correct used/total/percent against `shutil.disk_usage` on the host.
+  2. Remote tile shows correct used/total/percent against `df -B1` over live SSH; changes <1% suppressed.
+  3. Warning (80%+) and danger (95%+) color shifts render against a real disk at each threshold.
+  4. Remote tile hides gracefully when `df` fails (network drop, path missing, non-zero exit) without crashing the dashboard.
+  5. All 6 UAT items recorded with pass/fail and findings in the milestone log.
+**Plans**: TBD
 **UI hint**: yes
 
-### Phase 64: Dashboard — Log Pane
-**Goal**: The dashboard provides an inline terminal log pane giving users a live view of recent activity without leaving the page
-**Depends on**: Phase 63
-**Requirements**: DASH-12, DASH-13, DASH-14
+### Phase 79: Test Infra Cleanup
+**Goal**: CI test output is signal-only — zero noise warnings in Python runs, and any CSP violation during Playwright E2E fails the build.
+**Depends on**: Phase 77 (CSP listener attaches to the main E2E suite which includes the new UAT specs)
+**Requirements**: TEST-01, TEST-02
 **Success Criteria** (what must be TRUE):
-  1. A compact log pane is visible at the bottom of the dashboard page
-  2. Each log entry shows a timestamp, a level badge, and the message text in monospace font
-  3. Log entry levels are visually distinct by color: green for INFO, amber for WARN, red for ERROR
-**Plans:** 1 plan
-Plans:
-- [ ] 64-01-PLAN.md -- DashboardLogPaneComponent: create component, wire into dashboard, unit tests
-**UI hint**: yes
+  1. CI Python test stderr contains zero pytest-cache warnings and zero webob/cgi deprecation warnings.
+  2. Playwright E2E suite registers a shared fixture that listens for `console` CSP messages and the `securitypolicyviolation` DOM event.
+  3. A seeded inline-script violation in a test verifies the listener fails the spec (verification test can then be removed or marked as a regression guard).
+  4. No existing specs fail after the listener lands (current CSP is clean).
+**Plans**: TBD
 
-### Phase 65: Settings Page
-**Goal**: The Settings page renders all configuration in a structured two-column masonry layout with card sections, toggle switches, inline AutoQueue CRUD, webhook display, and a floating save button
-**Depends on**: Phase 64
-**Requirements**: SETT-01, SETT-02, SETT-03, SETT-04, SETT-05, SETT-06
+### Phase 80: Small Cleanups (Dependabot + arm64 + enum)
+**Goal**: Three independent small cleanups land together — Dependabot alert #3 closed, `make run-tests-python` runs on Apple Silicon, and the WAITING_FOR_IMPORT enum is either used or gone.
+**Depends on**: Nothing (independent cleanups)
+**Requirements**: SEC-01, TECH-01, TECH-02
 **Success Criteria** (what must be TRUE):
-  1. On desktop viewports, settings sections appear in two columns with card borders — not a single stacked list
-  2. All 10 settings sections are rendered as cards with icon headers and visible section labels
-  3. Boolean settings (toggles) render as styled switch controls, not plain checkboxes
-  4. The AutoQueue card shows the existing pattern list inline with working add and remove controls
-  5. Sonarr and Radarr cards display a read-only webhook URL field with a working copy-to-clipboard button
-  6. A floating save button appears fixed at the bottom-right of the viewport and submits all pending changes
-**Plans:** 2/2 plans complete
-Plans:
-- [x] 65-01-PLAN.md -- Masonry grid layout, card header restructure with icons, toggle switch restyle
-- [x] 65-02-PLAN.md -- Brand-colored Sonarr/Radarr/AutoDelete cards, webhook copy buttons, floating save bar
-**UI hint**: yes
+  1. `gh api repos/.../dependabot/alerts` shows alert #3 closed (override, path-drop, or documented dismissal), with `npm ls basic-ftp` confirming ≥5.3.0 or path removed.
+  2. `make run-tests-python` builds and runs to completion on arm64 (Apple Silicon) locally; CI amd64 run is unchanged.
+  3. WAITING_FOR_IMPORT enum is either (a) set by real business logic with unit-test coverage, or (b) removed from the model along with every reference — chosen resolution logged in `PROJECT.md` Key Decisions.
+  4. All existing Python and Angular test suites remain green.
+**Plans**: TBD
 
-### Phase 66: Logs Page
-**Goal**: The Logs page delivers a full-viewport terminal log viewer with level filtering, regex search, auto-scroll toggle, export, and a live status bar
-**Depends on**: Phase 65
-**Requirements**: LOGS-01, LOGS-02, LOGS-03, LOGS-04
+### Phase 81: Optional Fernet Encryption at Rest
+**Goal**: Users who opt in have their 5 config secrets encrypted at rest with zero disruption to existing plaintext installs.
+**Depends on**: Nothing (new opt-in capability, no migration required)
+**Requirements**: SEC-02
 **Success Criteria** (what must be TRUE):
-  1. A segmented button group (ALL/INFO/WARN/ERROR/DEBUG) filters the displayed log entries when clicked
-  2. A search field accepts regex input and filters visible log entries in real time
-  3. Auto-scroll toggle, clear, and export-as-.log buttons are present and functional
-  4. A status bar footer shows the current connection status, total log entry count, and last-updated time
-**Plans:** 2/2 plans complete
-Plans:
-- [x] 66-01-PLAN.md -- Terminal log viewer rewrite with toolbar, level filter, regex search, auto-scroll, clear, export
-- [x] 66-02-PLAN.md -- Status bar footer (connection status, log count, last updated) and unit tests
-**UI hint**: yes
+  1. On first run with the feature enabled, a keyfile is generated with 0600 permissions and the 5 listed secrets (`api_token`, `webhook_secret`, `sonarr_api_key`, `radarr_api_key`, `remote_password`) are encrypted in place.
+  2. Config read path transparently decrypts on load; rest of the app sees plaintext values with no code changes outside `config.py`.
+  3. Plaintext values detected on startup (post-enable) are re-encrypted in place; plaintext installs with the flag disabled continue working unchanged.
+  4. A config flag lets users disable encryption for manual editing without data loss (round-trip enable→disable preserves all 5 values).
+  5. Unit tests cover: enable-new, enable-existing-plaintext, disable-restore-plaintext, keyfile permissions, and decrypt failure surfaces a clear startup warning.
+**Plans**: TBD
 
-### Phase 67: About Page
-**Goal**: The About page presents app identity, system info, and community links in a clean centered layout matching the AIDesigner mockup
-**Depends on**: Phase 66
-**Requirements**: ABUT-01, ABUT-02, ABUT-03, ABUT-04
+### Phase 82: Release Prep (Retro v1.1.0 Notes + v1.1.1 Tag)
+**Goal**: v1.1.0 has retroactive release notes on record, and v1.1.1 ships as a tagged release with a categorized changelog covering every milestone REQ.
+**Depends on**: Phases 75-81 (all milestone work must be merged before release)
+**Requirements**: DOCS-01
 **Success Criteria** (what must be TRUE):
-  1. An identity card at the top shows the app icon, branded title "SeedSyncarr", version string, tagline, and build info
-  2. A system info table displays key-value rows for Python version, Angular version, OS, uptime, PID, and config path
-  3. A grid of link cards (GitHub, Docs, Report Issue, Changelog) renders with hover-to-amber color transitions
-  4. A license badge and copyright footer appear at the bottom of the page
-**Plans:** 2/2 plans complete
-Plans:
-- [x] 67-01-PLAN.md -- Rewrite About page component (TS, HTML, SCSS) with identity card, system info, link cards, license footer + unit tests
-- [x] 67-02-PLAN.md -- [to be planned]
-**UI hint**: yes
+  1. `CHANGELOG.md` has a v1.1.0 entry summarizing Phases 62-74 (UI redesign, selection + bulk bar, dashboard filter + URL persistence, storage capacity tiles, SCSS consolidation).
+  2. A GitHub Release exists for tag `v1.1.0` with matching categorized notes.
+  3. `CHANGELOG.md` has a v1.1.1 entry summarizing the 12 requirements shipped in this milestone.
+  4. Version strings in `version.ts` / `pyproject` / Debian control files are bumped to `1.1.1` and remain consistent across artifacts.
+  5. Git tag `v1.1.1` pushed; Docker and Deb release artifacts published by CI; GitHub Release v1.1.1 created with the v1.1.1 changelog body.
+**Plans**: TBD
 
 ## Progress
 
@@ -493,7 +374,15 @@ Plans:
 | 60. Dependency Updates | v1.0.0 | 2/2 | Complete | 2026-04-09 |
 | 61. Branding Integration | v1.0.0 | 0/0 | Complete | 2026-04-13 |
 | 62-74. v1.1.0 UI Redesign — Triggarr Style | v1.1.0 | 30/30 | Complete | 2026-04-19 |
+| 75. Per-Child Import State (GH #19) | v1.1.1 | 0/0 | Not started | - |
+| 76. Multiselect Bulk-Bar Action Union | v1.1.1 | 0/0 | Not started | - |
+| 77. Deferred Playwright E2E (72+73) | v1.1.1 | 0/0 | Not started | - |
+| 78. Storage Tile Live-Seedbox UAT | v1.1.1 | 0/0 | Not started | - |
+| 79. Test Infra Cleanup | v1.1.1 | 0/0 | Not started | - |
+| 80. Small Cleanups (Dependabot + arm64 + enum) | v1.1.1 | 0/0 | Not started | - |
+| 81. Optional Fernet Encryption at Rest | v1.1.1 | 0/0 | Not started | - |
+| 82. Release Prep (v1.1.0 retro + v1.1.1 tag) | v1.1.1 | 0/0 | Not started | - |
 
 ---
 
-*Last updated: 2026-04-19 — v1.1.0 milestone closed (Phases 62-74; Phase 71 dropped).*
+*Last updated: 2026-04-20 — v1.1.1 milestone planned (Phases 75-82; 12 requirements across 8 phases).*

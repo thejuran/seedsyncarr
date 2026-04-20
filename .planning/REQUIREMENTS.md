@@ -73,19 +73,22 @@ _Filled by roadmapper — maps each REQ-ID to its owning phase._
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| FIX-01 | TBD   | Pending |
-| FIX-02 | TBD   | Pending |
-| UAT-01 | TBD   | Pending |
-| UAT-02 | TBD   | Pending |
-| UAT-03 | TBD   | Pending |
-| SEC-01 | TBD   | Pending |
-| SEC-02 | TBD   | Pending |
-| TEST-01 | TBD  | Pending |
-| TEST-02 | TBD  | Pending |
-| TECH-01 | TBD  | Pending |
-| TECH-02 | TBD  | Pending |
-| DOCS-01 | TBD  | Pending |
+| FIX-01 | Phase 76 | Pending |
+| FIX-02 | Phase 75 | Pending |
+| UAT-01 | Phase 77 | Pending |
+| UAT-02 | Phase 77 | Pending |
+| UAT-03 | Phase 78 | Pending |
+| SEC-01 | Phase 80 | Pending |
+| SEC-02 | Phase 81 | Pending |
+| TEST-01 | Phase 79 | Pending |
+| TEST-02 | Phase 79 | Pending |
+| TECH-01 | Phase 80 | Pending |
+| TECH-02 | Phase 80 | Pending |
+| DOCS-01 | Phase 82 | Pending |
+
+**Coverage:** 12/12 requirements mapped across 8 phases. No orphans, no duplicates.
 
 ---
 
 *Created: 2026-04-20*
+*Traceability filled: 2026-04-20 (roadmapper, v1.1.1 phases 75-82)*

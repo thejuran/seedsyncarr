@@ -5,9 +5,9 @@ milestone_name: Post-Redesign Cleanup & Outstanding Work
 status: planning
 stopped_at: null
 last_updated: "2026-04-20T00:00:00.000Z"
-last_activity: 2026-04-20 -- v1.1.1 milestone started (defining requirements)
+last_activity: 2026-04-20 -- v1.1.1 roadmap drafted (Phases 75-82; 12 requirements mapped)
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,10 +25,23 @@ See: .planning/PROJECT.md (updated 2026-04-20)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 75 (not started — roadmap drafted)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-20 — v1.1.1 milestone started
+Status: Roadmap drafted; awaiting `/gsd-plan-phase 75`
+Last activity: 2026-04-20 — v1.1.1 roadmap drafted
+
+## v1.1.1 Phase List
+
+| Phase | Name | Reqs | Status |
+|-------|------|------|--------|
+| 75 | Per-Child Import State (GH #19) | FIX-02 | Not started |
+| 76 | Multiselect Bulk-Bar Action Union | FIX-01 | Not started |
+| 77 | Deferred Playwright E2E (72+73) | UAT-01, UAT-02 | Not started |
+| 78 | Storage Tile Live-Seedbox UAT | UAT-03 | Not started |
+| 79 | Test Infra Cleanup | TEST-01, TEST-02 | Not started |
+| 80 | Small Cleanups (Dependabot + arm64 + enum) | SEC-01, TECH-01, TECH-02 | Not started |
+| 81 | Optional Fernet Encryption at Rest | SEC-02 | Not started |
+| 82 | Release Prep (v1.1.0 retro + v1.1.1 tag) | DOCS-01 | Not started |
 
 ## Milestones Shipped
 
@@ -51,29 +64,29 @@ None.
 ## Tech Debt
 
 - Bootstrap 5.3 still uses @import internally (blocked until Bootstrap 6)
-- `make run-tests-python` Docker build fails on arm64 (Apple Silicon) — `rar` package amd64-only; CI unaffected
-- WAITING_FOR_IMPORT enum exists as structural placeholder (no business logic sets it yet)
+- `make run-tests-python` Docker build fails on arm64 (Apple Silicon) — `rar` package amd64-only; CI unaffected (scheduled for Phase 80, TECH-01)
+- WAITING_FOR_IMPORT enum exists as structural placeholder (no business logic sets it yet) (scheduled for Phase 80, TECH-02)
 
-## Deferred Items
+## Deferred Items (now scheduled)
 
-Infrastructure-gated items carried forward from v1.1.0 close (accepted as documented, not gaps):
+Infrastructure-gated items carried forward from v1.1.0 close are now scheduled in v1.1.1:
 
-| Phase | Count | Kind | Gating |
-|-------|-------|------|--------|
-| 72 | 5 | Playwright E2E (rewritten per 72-05) | `make run-tests-e2e` (docker-compose); CI-gated |
-| 73 | 10 | Playwright E2E (dashboard filter + URL round-trip) | `make run-tests-e2e`; CI-gated |
-| 74 | 6 | Manual runtime UAT (live seedbox required) | Next dev release; SSH `df` unfakeable in E2E harness per locked design spec |
+| Phase | Source | Count | Kind | Scheduled In |
+|-------|--------|-------|------|--------------|
+| 72 | v1.1.0 | 5 | Playwright E2E (selection + bulk bar) | Phase 77 (UAT-01) |
+| 73 | v1.1.0 | 10 | Playwright E2E (dashboard filter + URL round-trip) | Phase 77 (UAT-02) |
+| 74 | v1.1.0 | 6 | Manual runtime UAT (live seedbox) | Phase 78 (UAT-03) |
 
-## Pending Todos (pre-existing backlog, not milestone-gating)
+## Pending Todos (absorbed into v1.1.1)
 
-- 2026-02-08-clean-up-test-warnings
-- 2026-02-24-e2e-csp-violation-detection
-- 2026-04-14-encrypt-credentials-at-rest
-- 2026-04-14-rate-limiting-all-endpoints
+- 2026-02-08-clean-up-test-warnings → Phase 79 (TEST-01)
+- 2026-02-24-e2e-csp-violation-detection → Phase 79 (TEST-02)
+- 2026-04-14-encrypt-credentials-at-rest → Phase 81 (SEC-02)
+- 2026-04-14-rate-limiting-all-endpoints → remains Out of Scope (reverse-proxy concern per PROJECT.md)
 
 ## Session Continuity
 
-Last session: v1.1.0 milestone close complete
-Next action: Run `/gsd-new-milestone` to plan the next milestone
+Last session: v1.1.1 roadmap drafted — 8 phases, 100% requirement coverage
+Next action: Run `/gsd-plan-phase 75` to start the critical GH #19 data-loss bug fix
 
 ---
