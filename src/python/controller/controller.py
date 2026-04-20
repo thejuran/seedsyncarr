@@ -805,6 +805,13 @@ class Controller:
 
         # Get file from model under lock -- ensures file still exists in model
         # at the moment we read it, preventing use of a stale reference.
+        # State guards also run under the lock so we check against a consistent
+        # snapshot of the model (states can flip as scanners update).
+        deletable_states = (
+            ModelFile.State.DEFAULT,
+            ModelFile.State.DOWNLOADED,
+            ModelFile.State.EXTRACTED,
+        )
         with self.__model_lock:
             try:
                 file = self.__model.get_file(file_name)
@@ -813,6 +820,39 @@ class Controller:
                     "File '{}' no longer in model, skipping auto-delete".format(file_name)
                 )
                 return
+
+            # State guard: do not delete a file that is mid-lifecycle. Mirrors
+            # __handle_delete_command so the Timer path cannot race an in-flight
+            # sync, queue, or extract when a re-download arrives between
+            # scheduling and firing (e.g., Deluge re-seed triggers a re-sync).
+            if file.state not in deletable_states:
+                self.logger.info(
+                    "Auto-delete skipped for '{}': file is in state {}".format(
+                        file_name, str(file.state)
+                    )
+                )
+                return
+
+            # Pack guard: when the root is a directory, walk every descendant
+            # and skip if ANY child is in an active state. Prevents wiping a
+            # season pack while a sibling episode is still being downloaded or
+            # extracted (Sonarr's per-episode webhook schedules the pack root).
+            if file.is_dir:
+                unsafe_child = None
+                frontier = collections.deque(file.get_children())
+                while frontier:
+                    child = frontier.popleft()
+                    if child.state not in deletable_states:
+                        unsafe_child = child
+                        break
+                    frontier.extend(child.get_children())
+                if unsafe_child is not None:
+                    self.logger.info(
+                        "Auto-delete skipped for '{}': child '{}' is in state {}".format(
+                            file_name, unsafe_child.name, str(unsafe_child.state)
+                        )
+                    )
+                    return
         # delete_local is safe outside lock -- it spawns a subprocess, holding
         # the lock during a blocking subprocess call would starve model updates.
         # ModelFile is frozen/immutable after add, so `file` reference is safe.

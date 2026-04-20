@@ -102,9 +102,17 @@ class TestAutoDeleteScheduling(BaseAutoDeleteTestCase):
 class TestAutoDeleteExecution(BaseAutoDeleteTestCase):
     """Test auto-delete execution (timer callback)."""
 
+    def _make_safe_mock_file(self, state=ModelFile.State.DOWNLOADED, is_dir=False, children=None):
+        """Helper: build a ModelFile mock that passes the state + pack guards."""
+        mock_file = MagicMock(spec=ModelFile)
+        mock_file.state = state
+        mock_file.is_dir = is_dir
+        mock_file.get_children.return_value = children or []
+        return mock_file
+
     def test_execute_calls_delete_local(self):
         """Verify execution calls delete_local (not delete_remote)."""
-        mock_file = MagicMock(spec=ModelFile)
+        mock_file = self._make_safe_mock_file()
         self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
 
         self.controller._Controller__execute_auto_delete("test_file.mkv")
@@ -113,7 +121,7 @@ class TestAutoDeleteExecution(BaseAutoDeleteTestCase):
 
     def test_execute_never_calls_delete_remote(self):
         """SAFETY: Verify execution NEVER calls delete_remote."""
-        mock_file = MagicMock(spec=ModelFile)
+        mock_file = self._make_safe_mock_file()
         self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
 
         self.controller._Controller__execute_auto_delete("test_file.mkv")
@@ -150,7 +158,7 @@ class TestAutoDeleteExecution(BaseAutoDeleteTestCase):
 
     def test_execute_removes_from_pending_dict(self):
         """Verify execution removes file from pending dict."""
-        mock_file = MagicMock(spec=ModelFile)
+        mock_file = self._make_safe_mock_file()
         self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
         # Pre-populate pending dict
         self.controller._Controller__pending_auto_deletes["test_file.mkv"] = MagicMock()
@@ -176,7 +184,7 @@ class TestAutoDeleteExecution(BaseAutoDeleteTestCase):
 
         def check_lock(name):
             lock_was_held.append(self.controller._Controller__model_lock.locked())
-            return MagicMock(spec=ModelFile)
+            return self._make_safe_mock_file()
 
         self.controller._Controller__model.get_file = MagicMock(side_effect=check_lock)
         self.controller._Controller__execute_auto_delete("test_file.mkv")
@@ -185,7 +193,7 @@ class TestAutoDeleteExecution(BaseAutoDeleteTestCase):
     def test_execute_releases_lock_before_delete_local(self):
         """Verify model lock is released before calling delete_local (avoid blocking)."""
         lock_held_during_delete = []
-        mock_file = MagicMock(spec=ModelFile)
+        mock_file = self._make_safe_mock_file()
         self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
 
         def check_lock_on_delete(file):
@@ -197,6 +205,78 @@ class TestAutoDeleteExecution(BaseAutoDeleteTestCase):
             lock_held_during_delete[0],
             "Model lock must NOT be held during delete_local"
         )
+
+    # --- State guard: skip deletion when root is in an active state -----------
+
+    def _run_skip_on_root_state_test(self, state):
+        """Helper: assert auto-delete is skipped when the root is in `state`."""
+        mock_file = self._make_safe_mock_file(state=state)
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.controller._Controller__execute_auto_delete("test_file.mkv")
+        self.mock_file_op_manager.delete_local.assert_not_called()
+
+    def test_execute_skips_when_root_is_downloading(self):
+        self._run_skip_on_root_state_test(ModelFile.State.DOWNLOADING)
+
+    def test_execute_skips_when_root_is_queued(self):
+        self._run_skip_on_root_state_test(ModelFile.State.QUEUED)
+
+    def test_execute_skips_when_root_is_extracting(self):
+        self._run_skip_on_root_state_test(ModelFile.State.EXTRACTING)
+
+    def test_execute_skips_when_root_is_deleted(self):
+        self._run_skip_on_root_state_test(ModelFile.State.DELETED)
+
+    def test_execute_proceeds_when_root_is_default(self):
+        mock_file = self._make_safe_mock_file(state=ModelFile.State.DEFAULT)
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.controller._Controller__execute_auto_delete("test_file.mkv")
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+
+    def test_execute_proceeds_when_root_is_extracted(self):
+        mock_file = self._make_safe_mock_file(state=ModelFile.State.EXTRACTED)
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.controller._Controller__execute_auto_delete("test_file.mkv")
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+
+    # --- Pack guard: skip deletion when any descendant is in an active state --
+
+    def _make_child(self, name, state=ModelFile.State.DOWNLOADED, children=None):
+        child = MagicMock(spec=ModelFile)
+        child.name = name
+        child.state = state
+        child.get_children.return_value = children or []
+        return child
+
+    def test_execute_skips_dir_when_direct_child_is_downloading(self):
+        child = self._make_child("ep01.mkv", state=ModelFile.State.DOWNLOADING)
+        mock_file = self._make_safe_mock_file(is_dir=True, children=[child])
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+        self.mock_file_op_manager.delete_local.assert_not_called()
+
+    def test_execute_skips_dir_when_direct_child_is_extracting(self):
+        child = self._make_child("ep02.mkv", state=ModelFile.State.EXTRACTING)
+        mock_file = self._make_safe_mock_file(is_dir=True, children=[child])
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+        self.mock_file_op_manager.delete_local.assert_not_called()
+
+    def test_execute_skips_dir_when_nested_child_is_queued(self):
+        grandchild = self._make_child("sample.mkv", state=ModelFile.State.QUEUED)
+        child = self._make_child("Samples", children=[grandchild])
+        mock_file = self._make_safe_mock_file(is_dir=True, children=[child])
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+        self.mock_file_op_manager.delete_local.assert_not_called()
+
+    def test_execute_proceeds_dir_when_all_children_safe(self):
+        child_a = self._make_child("ep01.mkv", state=ModelFile.State.DOWNLOADED)
+        child_b = self._make_child("ep02.mkv", state=ModelFile.State.EXTRACTED)
+        mock_file = self._make_safe_mock_file(is_dir=True, children=[child_a, child_b])
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
 
 
 class TestAutoDeleteShutdown(BaseAutoDeleteTestCase):
