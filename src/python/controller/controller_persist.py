@@ -187,12 +187,29 @@ class ControllerPersist(Persist):
 
             # imported_children is optional for backwards compatibility with old persist files
             imported_children_dct = dct.get(ControllerPersist.__KEY_IMPORTED_CHILDREN, {})
+            if not isinstance(imported_children_dct, dict):
+                raise PersistError(
+                    "Error parsing ControllerPersist: 'imported_children' must be a dict, "
+                    "got {}".format(type(imported_children_dct).__name__)
+                )
             for root_name, child_list in imported_children_dct.items():
+                if not isinstance(root_name, str):
+                    raise PersistError(
+                        "Error parsing ControllerPersist: imported_children keys must be strings"
+                    )
+                if not isinstance(child_list, list):
+                    raise PersistError(
+                        "Error parsing ControllerPersist: imported_children['{}'] must be a list, "
+                        "got {}".format(root_name, type(child_list).__name__)
+                    )
                 for child_name in child_list:
+                    if not isinstance(child_name, str):
+                        # Skip non-string entries silently -- tolerant of schema drift
+                        continue
                     persist.add_imported_child(root_name, child_name)
 
             return persist
-        except (json.decoder.JSONDecodeError, KeyError) as e:
+        except (json.decoder.JSONDecodeError, KeyError, TypeError, AttributeError) as e:
             raise PersistError("Error parsing ControllerPersist - {}: {}".format(
                 type(e).__name__, str(e))
             )

@@ -37,6 +37,13 @@ _VIDEO_EXTENSIONS = frozenset({
     '.ts', '.wmv', '.flv', '.webm',
 })
 
+# Safety bound on the auto-delete BFS traversal. Caps pack-guard + coverage
+# collection at this many nodes to prevent a pathological pack (BD rip with
+# deep nesting, or a user-introduced symlink loop surfaced in the model) from
+# monopolizing the timer thread. If exceeded, the auto-delete is skipped with
+# a warning log; the next Timer-fire retries.
+_AUTO_DELETE_BFS_NODE_LIMIT = 10_000
+
 class Controller:
     """
     Top-level class that controls the behaviour of the app
@@ -776,9 +783,14 @@ class Controller:
                     # releaseTitle/series.title fallback paths.
                     if matched_name.lower() != root_name.lower():
                         self.__persist.add_imported_child(root_name, matched_name.lower())
+                    # Strip newlines/CRs from webhook-supplied matched_name before
+                    # logging to prevent log-injection (CWE-117). Sonarr/Radarr
+                    # payload fields are user-controllable if the webhook secret
+                    # isn't configured or the HMAC boundary is bypassed.
+                    safe_matched = matched_name.replace("\n", "\\n").replace("\r", "\\r")
                     self.logger.info(
                         "Recorded webhook import: '{}' (child: '{}')".format(
-                            root_name, matched_name
+                            root_name, safe_matched
                         )
                     )
                     self._set_import_status(self.__model, root_name)
@@ -877,7 +889,16 @@ class Controller:
             if file.is_dir:
                 unsafe_child = None
                 frontier = collections.deque(file.get_children())
+                nodes_visited = 0
                 while frontier:
+                    nodes_visited += 1
+                    if nodes_visited > _AUTO_DELETE_BFS_NODE_LIMIT:
+                        self.logger.warning(
+                            "Auto-delete skipped for '{}': BFS node limit ({}) exceeded".format(
+                                file_name, _AUTO_DELETE_BFS_NODE_LIMIT
+                            )
+                        )
+                        return
                     child = frontier.popleft()
                     if child.state not in deletable_states:
                         unsafe_child = child
