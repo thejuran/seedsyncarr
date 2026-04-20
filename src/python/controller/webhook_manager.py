@@ -1,5 +1,5 @@
 from queue import Queue, Empty
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from common import Context
 
@@ -34,7 +34,7 @@ class WebhookManager:
         self.__import_queue.put((source, file_name))
         self.logger.info("{} webhook import enqueued: '{}'".format(source, file_name))
 
-    def process(self, name_to_root: Dict[str, str]) -> List[str]:
+    def process(self, name_to_root: Dict[str, str]) -> List[Tuple[str, str]]:
         """
         Process queued import events and match against SeedSyncarr model.
         Called from controller thread each cycle.
@@ -49,7 +49,11 @@ class WebhookManager:
                 model file name. Includes both root names and child file names.
 
         Returns:
-            List of root-level SeedSyncarr model file names that were imported
+            List of (root_name, matched_name) tuples for imports that matched a
+            tracked model file. root_name is the canonical-cased root model file
+            name; matched_name is the webhook-supplied file name (preserves
+            original casing). When the webhook name IS the root, matched_name
+            equals root_name.
         """
         newly_imported = []
 
@@ -64,7 +68,7 @@ class WebhookManager:
             # Case-insensitive matching against root and child names
             root_name = name_to_root.get(file_name.lower())
             if root_name is not None:
-                newly_imported.append(root_name)
+                newly_imported.append((root_name, file_name))
                 self.logger.info(
                     "{} import detected: '{}' (matched SeedSyncarr file '{}')".format(
                         source, file_name, root_name
