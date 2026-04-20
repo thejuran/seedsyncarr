@@ -15,6 +15,33 @@ import {BulkActionDispatcher} from "../../services/files/bulk-action-dispatcher.
 import {TransferRowComponent} from "./transfer-row.component";
 import {BulkActionsBarComponent} from "./bulk-actions-bar.component";
 
+type Segment = "all" | "active" | "done" | "errors";
+type NonAllSegment = Exclude<Segment, "all">;
+
+const SEGMENTS: readonly Segment[] = ["all", "active", "done", "errors"];
+function isSegment(value: string | null): value is Segment {
+    return value != null && (SEGMENTS as readonly string[]).includes(value);
+}
+
+// Single source of truth for which ViewFile.Status values belong to each parent segment.
+// Both the runtime filter predicate and the URL-param validator derive from this map.
+const SEGMENT_STATUSES: Record<NonAllSegment, readonly ViewFile.Status[]> = {
+    active: [
+        ViewFile.Status.DEFAULT,
+        ViewFile.Status.DOWNLOADING,
+        ViewFile.Status.QUEUED,
+        ViewFile.Status.EXTRACTING,
+    ],
+    done: [
+        ViewFile.Status.DOWNLOADED,
+        ViewFile.Status.EXTRACTED,
+    ],
+    errors: [
+        ViewFile.Status.STOPPED,
+        ViewFile.Status.DELETED,
+    ],
+};
+
 
 @Component({
     selector: "app-transfer-table",
@@ -26,7 +53,7 @@ import {BulkActionsBarComponent} from "./bulk-actions-bar.component";
 })
 export class TransferTableComponent implements OnInit {
 
-    activeSegment: "all" | "active" | "done" | "errors" = "all";
+    activeSegment: Segment = "all";
     activeSubStatus: ViewFile.Status | null = null;
     readonly ViewFileStatus = ViewFile.Status;
     nameFilter = "";
@@ -52,30 +79,12 @@ export class TransferTableComponent implements OnInit {
     private _currentPagedFiles: List<ViewFile> = List();
 
     private filterState$ = new BehaviorSubject<{
-        segment: "all" | "active" | "done" | "errors";
+        segment: Segment;
         subStatus: ViewFile.Status | null;
         page: number;
     }>({segment: "all", subStatus: null, page: 1});
     private searchInput$ = new Subject<string>();
     private destroyRef = inject(DestroyRef);
-
-    private readonly VALID_SEGMENTS = new Set<string>(["all", "active", "done", "errors"]);
-    private readonly VALID_SUBS_PER_SEGMENT: { [k: string]: Set<string> } = {
-        active: new Set([
-            ViewFile.Status.DEFAULT,
-            ViewFile.Status.DOWNLOADING,
-            ViewFile.Status.QUEUED,
-            ViewFile.Status.EXTRACTING,
-        ]),
-        done: new Set([
-            ViewFile.Status.DOWNLOADED,
-            ViewFile.Status.EXTRACTED,
-        ]),
-        errors: new Set([
-            ViewFile.Status.STOPPED,
-            ViewFile.Status.DELETED,
-        ]),
-    };
 
     constructor(
         private viewFileService: ViewFileService,
@@ -97,25 +106,9 @@ export class TransferTableComponent implements OnInit {
                 if (state.subStatus != null && state.segment !== "all") {
                     return files.filter(f => f.status === state.subStatus).toList();
                 }
-                if (state.segment === "active") {
-                    return files.filter(f =>
-                        f.status === ViewFile.Status.DEFAULT ||
-                        f.status === ViewFile.Status.DOWNLOADING ||
-                        f.status === ViewFile.Status.QUEUED ||
-                        f.status === ViewFile.Status.EXTRACTING
-                    ).toList();
-                }
-                if (state.segment === "done") {
-                    return files.filter(f =>
-                        f.status === ViewFile.Status.DOWNLOADED ||
-                        f.status === ViewFile.Status.EXTRACTED
-                    ).toList();
-                }
-                if (state.segment === "errors") {
-                    return files.filter(f =>
-                        f.status === ViewFile.Status.STOPPED ||
-                        f.status === ViewFile.Status.DELETED
-                    ).toList();
+                if (state.segment !== "all") {
+                    const allowed = SEGMENT_STATUSES[state.segment];
+                    return files.filter(f => f.status != null && allowed.includes(f.status)).toList();
                 }
                 return files.toList();
             }),
@@ -183,22 +176,19 @@ export class TransferTableComponent implements OnInit {
         const subParam = this.route.snapshot.queryParamMap.get("sub");
 
         // Validate segment — invalid or missing falls back silently to "all" (D-11)
-        const segment: "all" | "active" | "done" | "errors" =
-            (segParam != null && this.VALID_SEGMENTS.has(segParam))
-                ? (segParam as "all" | "active" | "done" | "errors")
-                : "all";
+        const segment: Segment = isSegment(segParam) ? segParam : "all";
 
         // Validate sub against the per-segment allowed-set; invalid silently drops to null (D-11)
         let subStatus: ViewFile.Status | null = null;
         if (segment !== "all" && subParam != null) {
-            const allowed = this.VALID_SUBS_PER_SEGMENT[segment];
-            if (allowed && allowed.has(subParam)) {
+            const allowed = SEGMENT_STATUSES[segment];
+            if (allowed.includes(subParam as ViewFile.Status)) {
                 subStatus = subParam as ViewFile.Status;
             }
         }
 
         // Only update state when non-default — the BehaviorSubject already holds the default
-        if (segment !== "all" || subStatus !== null) {
+        if (segment !== "all") {
             this.activeSegment = segment;
             this.activeSubStatus = subStatus;
             this.currentPage = 1;
@@ -211,7 +201,7 @@ export class TransferTableComponent implements OnInit {
         this.searchInput$.next(value);
     }
 
-    onSegmentChange(segment: "all" | "active" | "done" | "errors"): void {
+    onSegmentChange(segment: Segment): void {
         if (segment !== "all" && this.activeSegment === segment) {
             // Second click on same expandable parent — collapse to All
             this.activeSegment = "all";
