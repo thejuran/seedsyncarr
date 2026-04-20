@@ -16,28 +16,28 @@
       <button type="button" class="action-btn action-queue"
               [disabled]="actionCounts.queueable === 0 || operationInProgress"
               (click)="onQueueClick()">
-        <i class="fa fa-play"></i> Queue
+        <i class="fa fa-play" aria-hidden="true"></i><span>Queue</span>
       </button>
       <button type="button" class="action-btn action-danger"
               [disabled]="actionCounts.stoppable === 0 || operationInProgress"
               (click)="onStopClick()">
-        <i class="fa fa-stop"></i> Stop
+        <i class="fa fa-stop" aria-hidden="true"></i><span>Stop</span>
       </button>
       <button type="button" class="action-btn action-neutral"
               [disabled]="actionCounts.extractable === 0 || operationInProgress"
               (click)="onExtractClick()">
-        <i class="fa fa-file-archive-o"></i> Extract
+        <i class="fa fa-file-archive-o" aria-hidden="true"></i><span>Extract</span>
       </button>
       <div class="btn-divider" aria-hidden="true"></div>
       <button type="button" class="action-btn action-danger"
               [disabled]="actionCounts.locallyDeletable === 0 || operationInProgress"
               (click)="onDeleteLocalClick()">
-        <i class="fa fa-trash"></i> Delete Local
+        <i class="fa fa-trash" aria-hidden="true"></i><span>Delete Local</span>
       </button>
       <button type="button" class="action-btn action-danger"
               [disabled]="actionCounts.remotelyDeletable === 0 || operationInProgress"
               (click)="onDeleteRemoteClick()">
-        <i class="fa fa-cloud"></i><i class="fa fa-ban action-overlay" aria-hidden="true"></i> Delete Remote
+        <i class="fa fa-cloud" aria-hidden="true"></i><i class="fa fa-ban action-overlay" aria-hidden="true"></i><span>Delete Remote</span>
       </button>
     </div>
   </div>
