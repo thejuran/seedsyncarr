@@ -15,17 +15,18 @@ const STATS_STRIP_TEMPLATE = `
       <span class="stat-label">Remote Storage</span>
     </div>
     @if (stats.remoteCapacityTotal !== null && stats.remoteCapacityUsed !== null && stats.remoteCapacityTotal > 0) {
+      @let remotePct = stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100;
       <div class="stat-value-row">
-        <span class="stat-value">{{ (stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100) | number:'1.0-0' }}%</span>
+        <span class="stat-value">{{ remotePct | number:'1.0-0' }}%</span>
         <span class="stat-unit">of {{ stats.remoteCapacityTotal | fileSize:2 }}</span>
       </div>
       <div class="stat-progress-wrap">
         <div class="stat-progress-track">
           <div class="stat-progress-fill"
-               [class.stat-progress-fill--amber]="(stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100) < 80"
-               [class.stat-progress-fill--warning]="(stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100) >= 80 && (stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100) < 95"
-               [class.stat-progress-fill--danger]="(stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100) >= 95"
-               [style.width.%]="stats.remoteCapacityUsed / stats.remoteCapacityTotal * 100">
+               [class.stat-progress-fill--amber]="remotePct < 80"
+               [class.stat-progress-fill--warning]="remotePct >= 80 && remotePct < 95"
+               [class.stat-progress-fill--danger]="remotePct >= 95"
+               [style.width.%]="remotePct">
           </div>
         </div>
       </div>
@@ -51,17 +52,18 @@ const STATS_STRIP_TEMPLATE = `
       <span class="stat-label">Local Storage</span>
     </div>
     @if (stats.localCapacityTotal !== null && stats.localCapacityUsed !== null && stats.localCapacityTotal > 0) {
+      @let localPct = stats.localCapacityUsed / stats.localCapacityTotal * 100;
       <div class="stat-value-row">
-        <span class="stat-value">{{ (stats.localCapacityUsed / stats.localCapacityTotal * 100) | number:'1.0-0' }}%</span>
+        <span class="stat-value">{{ localPct | number:'1.0-0' }}%</span>
         <span class="stat-unit">of {{ stats.localCapacityTotal | fileSize:2 }}</span>
       </div>
       <div class="stat-progress-wrap">
         <div class="stat-progress-track">
           <div class="stat-progress-fill"
-               [class.stat-progress-fill--secondary]="(stats.localCapacityUsed / stats.localCapacityTotal * 100) < 80"
-               [class.stat-progress-fill--warning]="(stats.localCapacityUsed / stats.localCapacityTotal * 100) >= 80 && (stats.localCapacityUsed / stats.localCapacityTotal * 100) < 95"
-               [class.stat-progress-fill--danger]="(stats.localCapacityUsed / stats.localCapacityTotal * 100) >= 95"
-               [style.width.%]="stats.localCapacityUsed / stats.localCapacityTotal * 100">
+               [class.stat-progress-fill--secondary]="localPct < 80"
+               [class.stat-progress-fill--warning]="localPct >= 80 && localPct < 95"
+               [class.stat-progress-fill--danger]="localPct >= 95"
+               [style.width.%]="localPct">
           </div>
         </div>
       </div>
