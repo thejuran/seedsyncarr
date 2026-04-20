@@ -956,11 +956,15 @@ describe("TransferTableComponent", () => {
     describe("URL query-param persistence", () => {
 
         // Helper — sets mockQueryParamMap, then re-creates the component so ngOnInit runs against the new params
-        function createWithQuery(params: { [k: string]: string | null }) {
+        function createWithQuery(params: { [k: string]: string | null }): void {
             for (const k of Object.keys(mockQueryParamMap)) { delete mockQueryParamMap[k]; }
             Object.assign(mockQueryParamMap, params);
             fixture = TestBed.createComponent(TransferTableComponent);
             component = fixture.componentInstance;
+            // Re-resolve the singleton so any assertion below references the same instance
+            // the new component is wired to (defensive — FileSelectionService is providedIn:'root').
+            selectionService = TestBed.inject(FileSelectionService);
+            selectionService.clearSelection();
             fixture.detectChanges();
         }
 
