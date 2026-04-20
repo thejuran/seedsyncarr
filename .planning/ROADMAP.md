@@ -276,7 +276,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
   3. Each action dispatches only to rows where it is valid; non-applicable rows in the selection are unaffected.
   4. Unit tests cover the union logic for at least three representative mixed selections.
 **Plans**: 4 plans
-  - [ ] 76-01-PLAN.md — Wave 1: failing characterization tests for FIX-01 DELETED union regression (red-first per D-01)
+  - [x] 76-01-PLAN.md — Wave 1: failing characterization tests for FIX-01 DELETED union regression (red-first per D-01)
   - [ ] 76-02-PLAN.md — Wave 2: root-cause analysis + minimal one-file fix that drives Wave 1 green (D-02/D-03, checkpoint-gated)
   - [ ] 76-03-PLAN.md — Wave 3: three D-09 mixed-selection coverage tests (All-DELETED, DELETED+DOWNLOADING, DELETED+DOWNLOADED+STOPPED)
   - [ ] 76-04-PLAN.md — Wave 4: full Angular suite verification + D-06/D-07 visual-freeze audit + regression-guard report
@@ -383,7 +383,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 | 61. Branding Integration | v1.0.0 | 0/0 | Complete | 2026-04-13 |
 | 62-74. v1.1.0 UI Redesign — Triggarr Style | v1.1.0 | 30/30 | Complete | 2026-04-19 |
 | 75. Per-Child Import State (GH #19) | v1.1.1 | 4/4 | Complete    | 2026-04-20 |
-| 76. Multiselect Bulk-Bar Action Union | v1.1.1 | 0/4 | Planned | - |
+| 76. Multiselect Bulk-Bar Action Union | v1.1.1 | 1/4 | Executing | - |
 | 77. Deferred Playwright E2E (72+73) | v1.1.1 | 0/0 | Not started | - |
 | 78. Storage Tile Live-Seedbox UAT | v1.1.1 | 0/0 | Not started | - |
 | 79. Test Infra Cleanup | v1.1.1 | 0/0 | Not started | - |
