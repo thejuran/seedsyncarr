@@ -15,6 +15,13 @@ interface IServerStatus {
         latestRemoteScanFailed: boolean;
         latestRemoteScanError: string;
     };
+
+    storage: {
+        localTotal: number | null;
+        localUsed: number | null;
+        remoteTotal: number | null;
+        remoteUsed: number | null;
+    };
 }
 const DefaultServerStatus: IServerStatus = {
     server: {
@@ -26,6 +33,12 @@ const DefaultServerStatus: IServerStatus = {
         latestRemoteScanTime: null,
         latestRemoteScanFailed: false,
         latestRemoteScanError: ""
+    },
+    storage: {
+        localTotal: null,
+        localUsed: null,
+        remoteTotal: null,
+        remoteUsed: null
     }
 };
 const ServerStatusRecord = Record(DefaultServerStatus);
@@ -40,6 +53,13 @@ export class ServerStatus extends ServerStatusRecord implements IServerStatus {
         latestRemoteScanTime: Date | null;
         latestRemoteScanFailed: boolean;
         latestRemoteScanError: string;
+    };
+
+    storage!: {
+        localTotal: number | null;
+        localUsed: number | null;
+        remoteTotal: number | null;
+        remoteUsed: number | null;
     };
 
     constructor(props: Partial<IServerStatus>) {
@@ -72,6 +92,12 @@ export namespace ServerStatus {
                 latestRemoteScanTime: latestRemoteScanTime,
                 latestRemoteScanFailed: json.controller.latest_remote_scan_failed,
                 latestRemoteScanError: json.controller.latest_remote_scan_error
+            },
+            storage: {
+                localTotal: json.storage?.local_total ?? null,
+                localUsed: json.storage?.local_used ?? null,
+                remoteTotal: json.storage?.remote_total ?? null,
+                remoteUsed: json.storage?.remote_used ?? null
             }
         });
     }
@@ -92,5 +118,12 @@ export interface ServerStatusJson {
         latest_remote_scan_time: string;
         latest_remote_scan_failed: boolean;
         latest_remote_scan_error: string;
+    };
+
+    storage?: {
+        local_total: number | null;
+        local_used: number | null;
+        remote_total: number | null;
+        remote_used: number | null;
     };
 }
