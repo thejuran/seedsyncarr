@@ -97,4 +97,15 @@ test.describe('Testing dashboard page', () => {
 
         await expect(page).toHaveURL(/[?&]segment=done(&|$)/);
     });
+
+    test('should silently fall back to All and sanitize URL when ?segment= is invalid (D-11)', async ({ page }) => {
+        await page.goto('/dashboard?segment=garbage');
+        await page.locator('.segment-filters').waitFor({ state: 'visible', timeout: 30000 });
+
+        // Default state: "All" is active
+        await expect(dashboardPage.getSegmentButton('All')).toHaveClass(/(^|\s)active(\s|$)/);
+
+        // URL is sanitized — the garbage param is gone
+        await expect(page).not.toHaveURL(/segment=garbage/);
+    });
 });
