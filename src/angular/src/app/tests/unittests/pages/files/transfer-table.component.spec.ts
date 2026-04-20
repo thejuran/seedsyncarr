@@ -1008,6 +1008,44 @@ describe("TransferTableComponent", () => {
             expect(component.activeSubStatus).toBeNull();
         });
 
+        // --- URL sanitization after silent fallback (D-11 hygiene) ---
+
+        it("sanitizes URL to default when ?segment is invalid", () => {
+            createWithQuery({segment: "garbage"});
+            expect(mockRouter.navigate).toHaveBeenCalledTimes(1);
+            const [, extras] = mockRouter.navigate.calls.mostRecent().args;
+            expect(extras.queryParams).toEqual({segment: null, sub: null});
+        });
+
+        it("sanitizes URL by dropping sub when sub is invalid for the segment", () => {
+            createWithQuery({segment: "active", sub: "stopped"});
+            expect(mockRouter.navigate).toHaveBeenCalledTimes(1);
+            const [, extras] = mockRouter.navigate.calls.mostRecent().args;
+            expect(extras.queryParams).toEqual({segment: "active", sub: null});
+        });
+
+        it("sanitizes URL by dropping orphan sub when no segment is given", () => {
+            createWithQuery({sub: "default"});
+            expect(mockRouter.navigate).toHaveBeenCalledTimes(1);
+            const [, extras] = mockRouter.navigate.calls.mostRecent().args;
+            expect(extras.queryParams).toEqual({segment: null, sub: null});
+        });
+
+        it("does NOT rewrite URL when hydrating from valid params (?segment=done)", () => {
+            createWithQuery({segment: "done"});
+            expect(mockRouter.navigate).not.toHaveBeenCalled();
+        });
+
+        it("does NOT rewrite URL when hydrating from valid ?segment=done&sub=downloaded", () => {
+            createWithQuery({segment: "done", sub: "downloaded"});
+            expect(mockRouter.navigate).not.toHaveBeenCalled();
+        });
+
+        it("does NOT rewrite URL when hydrating with no params at all", () => {
+            createWithQuery({});
+            expect(mockRouter.navigate).not.toHaveBeenCalled();
+        });
+
         // --- Write-back on change (D-09 / D-10) ---
 
         it("writes ?segment=done&sub=null on onSegmentChange('done')", () => {

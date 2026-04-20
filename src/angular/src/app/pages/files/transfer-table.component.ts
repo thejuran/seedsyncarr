@@ -177,6 +177,7 @@ export class TransferTableComponent implements OnInit {
 
         // Validate segment — invalid or missing falls back silently to "all" (D-11)
         const segment: Segment = isSegment(segParam) ? segParam : "all";
+        const segmentInvalid = segParam != null && !isSegment(segParam);
 
         // Validate sub against the per-segment allowed-set; invalid silently drops to null (D-11)
         let subStatus: ViewFile.Status | null = null;
@@ -186,6 +187,9 @@ export class TransferTableComponent implements OnInit {
                 subStatus = subParam as ViewFile.Status;
             }
         }
+        // sub is considered invalid when present but dropped during validation
+        // (either because segment is "all", or because sub doesn't belong to the segment)
+        const subInvalid = subParam != null && subStatus == null;
 
         // Only update state when non-default — the BehaviorSubject already holds the default
         if (segment !== "all") {
@@ -193,6 +197,12 @@ export class TransferTableComponent implements OnInit {
             this.activeSubStatus = subStatus;
             this.currentPage = 1;
             this.filterState$.next({segment, subStatus, page: 1});
+        }
+
+        // If the URL carried invalid params, rewrite it to reflect the sanitized state
+        // so reloads and shared links stay consistent with what's rendered (D-11 hygiene).
+        if (segmentInvalid || subInvalid) {
+            this._writeFilterToUrl();
         }
     }
 
