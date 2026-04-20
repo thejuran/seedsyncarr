@@ -764,7 +764,18 @@ class Controller:
                     # Per-child tracking (D-07) -- lowercased basename for case-insensitive
                     # comparison in the coverage guard. See matched_name comment in
                     # WebhookManager.process docstring.
-                    self.__persist.add_imported_child(root_name, matched_name.lower())
+                    #
+                    # WR-01 guard: skip add_imported_child when the webhook's matched_name
+                    # is the root itself (e.g. Sonarr's releaseTitle/series.title fallback
+                    # chain when episodeFile.sourcePath is absent from the payload). A
+                    # root-level match carries no per-child information; recording the
+                    # root name as a "child" would poison imported_children[root] with a
+                    # useless value and block auto-delete indefinitely on real packs.
+                    # Leaving the key absent lets D-14 grandfather the root as fully
+                    # imported, preserving pre-phase-75 auto-delete behavior for the
+                    # releaseTitle/series.title fallback paths.
+                    if matched_name.lower() != root_name.lower():
+                        self.__persist.add_imported_child(root_name, matched_name.lower())
                     self.logger.info(
                         "Recorded webhook import: '{}' (child: '{}')".format(
                             root_name, matched_name
