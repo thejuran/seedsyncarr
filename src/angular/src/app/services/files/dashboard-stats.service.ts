@@ -1,13 +1,14 @@
 import {Injectable, OnDestroy} from "@angular/core";
-import {Observable, BehaviorSubject, Subject} from "rxjs";
+import {Observable, BehaviorSubject, Subject, combineLatest} from "rxjs";
 import {takeUntil} from "rxjs/operators";
 
 import {ViewFileService} from "./view-file.service";
 import {ViewFile} from "./view-file";
+import {ServerStatusService} from "../server/server-status.service";
 
 
 /**
- * Stats derived from the file list for the dashboard stats strip.
+ * Stats derived from the file list and server status for the dashboard stats strip.
  */
 export interface DashboardStats {
     downloadingCount: number;
@@ -17,6 +18,10 @@ export interface DashboardStats {
     remoteTrackedBytes: number;
     localTrackedBytes: number;
     totalTrackedBytes: number;
+    remoteCapacityTotal: number | null;
+    remoteCapacityUsed: number | null;
+    localCapacityTotal: number | null;
+    localCapacityUsed: number | null;
 }
 
 const ZERO_STATS: DashboardStats = {
@@ -27,13 +32,18 @@ const ZERO_STATS: DashboardStats = {
     remoteTrackedBytes: 0,
     localTrackedBytes: 0,
     totalTrackedBytes: 0,
+    remoteCapacityTotal: null,
+    remoteCapacityUsed: null,
+    localCapacityTotal: null,
+    localCapacityUsed: null,
 };
 
 
 /**
  * DashboardStatsService derives dashboard metric card data
- * from the existing ViewFileService file list observable.
- * No backend changes required — all values are computed client-side.
+ * from the existing ViewFileService file list observable and the
+ * ServerStatusService status observable via combineLatest.
+ * Capacity fields flow from the status stream; counts/speeds flow from the file list.
  */
 @Injectable()
 export class DashboardStatsService implements OnDestroy {
@@ -42,10 +52,16 @@ export class DashboardStatsService implements OnDestroy {
     private _peakSpeed = 0;
     private _stats$ = new BehaviorSubject<DashboardStats>(ZERO_STATS);
 
-    constructor(private viewFileService: ViewFileService) {
-        this.viewFileService.files
+    constructor(
+        private viewFileService: ViewFileService,
+        private serverStatusService: ServerStatusService,
+    ) {
+        combineLatest([
+            this.viewFileService.files,
+            this.serverStatusService.status,
+        ])
             .pipe(takeUntil(this.destroy$))
-            .subscribe(files => {
+            .subscribe(([files, status]) => {
                 const downloading = files.filter(f => f.status === ViewFile.Status.DOWNLOADING).toList();
                 const queued = files.filter(f => f.status === ViewFile.Status.QUEUED).toList();
 
@@ -74,6 +90,10 @@ export class DashboardStatsService implements OnDestroy {
                     remoteTrackedBytes,
                     localTrackedBytes,
                     totalTrackedBytes: remoteTrackedBytes + localTrackedBytes,
+                    remoteCapacityTotal: status.storage.remoteTotal,
+                    remoteCapacityUsed: status.storage.remoteUsed,
+                    localCapacityTotal: status.storage.localTotal,
+                    localCapacityUsed: status.storage.localUsed,
                 });
             });
     }
