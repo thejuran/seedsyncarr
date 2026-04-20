@@ -617,22 +617,50 @@ class Controller:
             self._prune_extracted_files()
             self._prune_downloaded_files(latest_remote_scan)
 
+    @staticmethod
+    def _should_update_capacity(old: Optional[int], new: Optional[int]) -> bool:
+        """
+        >1% change gate (D-12/D-13). Returns True when the new value should be
+        written to Status.storage.
+        """
+        if new is None:
+            return False
+        if old is None:
+            return True
+        if old == 0:
+            return new != 0
+        return abs(new - old) / abs(old) > 0.01
+
     def _update_controller_status(self,
                                   remote_scan: Optional[ScannerResult],
                                   local_scan: Optional[ScannerResult]) -> None:
         """
         Update the controller status with latest scan information.
 
-        Args:
-            remote_scan: Latest remote scan result, or None.
-            local_scan: Latest local scan result, or None.
+        Writes storage capacity (Phase 74) gated by the >1% change rule
+        (D-12/D-13) per-side independently (D-15). A None total/used pair
+        leaves that side untouched (silent fallback per D-16).
         """
         if remote_scan is not None:
             self.__context.status.controller.latest_remote_scan_time = remote_scan.timestamp
             self.__context.status.controller.latest_remote_scan_failed = remote_scan.failed
             self.__context.status.controller.latest_remote_scan_error = remote_scan.error_message
+            if remote_scan.total_bytes is not None and remote_scan.used_bytes is not None:
+                old_total = self.__context.status.storage.remote_total
+                old_used = self.__context.status.storage.remote_used
+                if (Controller._should_update_capacity(old_total, remote_scan.total_bytes)
+                        or Controller._should_update_capacity(old_used, remote_scan.used_bytes)):
+                    self.__context.status.storage.remote_total = remote_scan.total_bytes
+                    self.__context.status.storage.remote_used = remote_scan.used_bytes
         if local_scan is not None:
             self.__context.status.controller.latest_local_scan_time = local_scan.timestamp
+            if local_scan.total_bytes is not None and local_scan.used_bytes is not None:
+                old_total = self.__context.status.storage.local_total
+                old_used = self.__context.status.storage.local_used
+                if (Controller._should_update_capacity(old_total, local_scan.total_bytes)
+                        or Controller._should_update_capacity(old_used, local_scan.used_bytes)):
+                    self.__context.status.storage.local_total = local_scan.total_bytes
+                    self.__context.status.storage.local_used = local_scan.used_bytes
 
     # =========================================================================
     # End of __update_model() helper methods

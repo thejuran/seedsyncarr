@@ -979,6 +979,10 @@ class TestControllerUpdateStatus(BaseControllerTestCase):
         remote_scan.timestamp = 12345
         remote_scan.failed = False
         remote_scan.error_message = None
+        # Phase 74-02: capacity fields default to None on the mock so the
+        # capacity-write block is skipped (this test covers scan-time fields only).
+        remote_scan.total_bytes = None
+        remote_scan.used_bytes = None
         self.controller._update_controller_status(remote_scan, None)
         self.assertEqual(12345,
                          self.mock_context.status.controller.latest_remote_scan_time)
@@ -990,6 +994,9 @@ class TestControllerUpdateStatus(BaseControllerTestCase):
     def test_local_scan_updates_status(self):
         local_scan = MagicMock()
         local_scan.timestamp = 67890
+        # Phase 74-02: see above — skip capacity-write block in this test.
+        local_scan.total_bytes = None
+        local_scan.used_bytes = None
         self.controller._update_controller_status(None, local_scan)
         self.assertEqual(67890,
                          self.mock_context.status.controller.latest_local_scan_time)
