@@ -75,7 +75,7 @@ _Filled by roadmapper — maps each REQ-ID to its owning phase._
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| FIX-01 | Phase 76 | Pending |
+| FIX-01 | Phase 76 | Complete |
 | FIX-02 | Phase 75 | Complete |
 | UAT-01 | Phase 77 | Pending |
 | UAT-02 | Phase 77 | Pending |
