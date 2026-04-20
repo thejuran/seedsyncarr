@@ -1,6 +1,7 @@
+import collections
 import json
 import logging
-from typing import Optional
+from typing import Dict, Optional
 
 from common import overrides, Constants, Persist, PersistError, BoundedOrderedSet
 
@@ -18,9 +19,16 @@ class ControllerPersist(Persist):
     __KEY_EXTRACTED_FILE_NAMES = "extracted"
     __KEY_STOPPED_FILE_NAMES = "stopped"
     __KEY_IMPORTED_FILE_NAMES = "imported"
+    __KEY_IMPORTED_CHILDREN = "imported_children"
 
     # Default maximum tracked files (shared between downloaded and extracted)
     DEFAULT_MAX_TRACKED_FILES = 10000
+
+    # Default maximum children tracked per root (per-pack cap, separate from global
+    # max_tracked_files which caps the number of root keys). Per-root eviction
+    # prevents one noisy multi-season release from evicting another pack's
+    # still-needed entries.
+    DEFAULT_MAX_CHILDREN_PER_ROOT = 500
 
     def __init__(self, max_tracked_files: Optional[int] = None):
         """
@@ -47,6 +55,47 @@ class ControllerPersist(Persist):
         self.imported_file_names: BoundedOrderedSet[str] = BoundedOrderedSet(
             maxlen=self._max_tracked_files
         )
+        # Per-child import tracking: keys are root model file names, values are
+        # BoundedOrderedSet of imported child basenames. Two bounds apply:
+        #   - Per-root set maxlen = DEFAULT_MAX_CHILDREN_PER_ROOT (500 children)
+        #   - Global root-key cap = self._max_tracked_files (10000 roots)
+        # See phase 75 (GH #19) D-01, D-02.
+        self.imported_children: "collections.OrderedDict[str, BoundedOrderedSet[str]]" = collections.OrderedDict()
+
+    def add_imported_child(self, root: str, child: str) -> None:
+        """
+        Record that a specific child basename has been imported for a given root.
+
+        Creates the per-root BoundedOrderedSet on first touch. Enforces two bounds:
+        per-root maxlen (DEFAULT_MAX_CHILDREN_PER_ROOT) and a global cap on the
+        number of tracked roots (self._max_tracked_files, evicting the oldest
+        root via OrderedDict.popitem(last=False)).
+
+        Eviction events are logged at debug level, matching the style of
+        from_str's per-collection eviction logs (see imported_file_names loader).
+
+        :param root: Root model file name (dict key).
+        :param child: Child basename to record.
+        """
+        if root not in self.imported_children:
+            # Enforce global root-key cap BEFORE inserting the new root
+            if len(self.imported_children) >= self._max_tracked_files:
+                evicted_root, _ = self.imported_children.popitem(last=False)
+                self._logger.debug(
+                    "Evicted imported_children root '{}' (limit: {})".format(
+                        evicted_root, self._max_tracked_files
+                    )
+                )
+            self.imported_children[root] = BoundedOrderedSet(
+                maxlen=self.DEFAULT_MAX_CHILDREN_PER_ROOT
+            )
+        evicted_child = self.imported_children[root].add(child)
+        if evicted_child:
+            self._logger.debug(
+                "Evicted child '{}' from imported_children['{}'] (per-root limit: {})".format(
+                    evicted_child, root, self.DEFAULT_MAX_CHILDREN_PER_ROOT
+                )
+            )
 
     def set_base_logger(self, base_logger: logging.Logger):
         """Set the base logger for this persist instance."""
@@ -68,6 +117,10 @@ class ControllerPersist(Persist):
             'extracted_evictions': self.extracted_file_names.total_evictions,
             'stopped_evictions': self.stopped_file_names.total_evictions,
             'imported_evictions': self.imported_file_names.total_evictions,
+            'imported_children_evictions': sum(
+                bset.total_evictions for bset in self.imported_children.values()
+            ),
+            'imported_children_root_count': len(self.imported_children),
             'max_tracked_files': self._max_tracked_files
         }
 
