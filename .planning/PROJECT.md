@@ -10,7 +10,7 @@ Reliable file sync from seedbox to local with automated media library integratio
 
 ## Previous State
 
-**v1.1.0-dev (2026-04-15)** — UI Redesign — Triggarr Style. All 4 pages ported from AIDesigner mockups: nav bar with backdrop blur, dashboard stats+table+log pane, settings masonry layout with toggle switches, terminal log viewer, about page. SCSS palette consolidated, clickable version badges, brand favicon.
+**v1.1.0 (2026-04-19)** — UI Redesign — Triggarr Style. All 4 pages ported from AIDesigner mockups (nav bar with backdrop blur, dashboard stats+table+log pane, settings masonry, terminal log viewer, about page); SCSS palette consolidated, clickable version badges, brand favicon; drill-down segment filters. Addendum (phases 72-74) restored per-file selection + 5-action bulk bar, extended dashboard filter to cover every torrent status with URL query-param persistence, and added disk-capacity awareness to storage tiles (local via `shutil.disk_usage`, remote via `df -B1` over SSH) with 80%/95% threshold color shifts.
 
 <details>
 <summary>v4.0.3 (released 2026-04-08)</summary>
@@ -229,7 +229,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Selection highlighting unified with teal palette — v1.0
 - ✓ All buttons standardized to Bootstrap semantic variants — v1.0
 
-**v1.1.0-dev (2026-04-15):**
+**v1.1.0 (Shipped 2026-04-19):**
 
 - ✓ Nav bar with backdrop blur, amber active indicator, connection badge, notification bell — v1.1.0
 - ✓ Dashboard stats strip (4 metric cards), transfer table (search, filters, progress, pagination) — v1.1.0
@@ -238,18 +238,14 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Terminal log viewer with level filter, regex search, auto-scroll, export, status bar — v1.1.0
 - ✓ About page identity card, system info, link cards, license footer — v1.1.0
 - ✓ SCSS palette consolidated to shared aliases, brand favicon, clickable version badges — v1.1.0
+- ✓ Drill-down segment filters (Active/Errors expand to individual statuses) — v1.1.0
+- ✓ Per-file selection + 5-action card-internal bulk bar (Queue/Stop/Extract/Delete Local/Delete Remote) with shift-range + page-scoped header select-all — v1.1.0
+- ✓ Dashboard filter covers every `ViewFile.Status` (Done parent + Pending sub) with URL query-param persistence and silent fallback on invalid values — v1.1.0
+- ✓ Storage capacity tiles — `StorageStatus` on `Status` model, `shutil.disk_usage` local + `df -B1 <shlex.quote>` over SSH remote, `>1%` change gate, 80%/95% warning/danger thresholds — v1.1.0
 
 ### Active
 
-## Current Milestone: v1.2.0 Storage Capacity Tiles
-
-**Goal:** Add disk capacity awareness to dashboard storage tiles, showing percentage used with total/used breakdown for both local and remote storage.
-
-**Target features:**
-- Backend StorageStatus component on existing Status model (local via shutil, remote via SSH df)
-- Storage capacity data piggybacked on existing SSE status stream
-- Dashboard tiles show percentage with used/total breakdown when capacity available
-- Graceful fallback to current tracked-bytes display when capacity unavailable
+(None — ready to plan next milestone via `/gsd-new-milestone`.)
 
 ### Out of Scope
 
@@ -334,9 +330,9 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Project Status
 
-**Status:** v1.2.0 in progress — Storage Capacity Tiles
+**Status:** v1.1.0 shipped — between milestones.
 
-26 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign as SeedSyncarr).
+27 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign as SeedSyncarr).
 
 ## Evolution
 
@@ -356,4 +352,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-15 after v1.2.0 milestone start (Storage Capacity Tiles)*
+*Last updated: 2026-04-19 after v1.1.0 milestone close (Phases 62-74; Phase 71 dropped). Storage-capacity tiles shipped as Phase 74.*

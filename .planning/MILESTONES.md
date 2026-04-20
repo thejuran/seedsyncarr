@@ -1,42 +1,43 @@
 # Project Milestones: SeedSync
 
-## v1.1.0 UI Redesign — Triggarr Style (Shipped: 2026-04-15)
+## v1.1.0 UI Redesign — Triggarr Style (Shipped: 2026-04-19)
 
-**Phases completed:** 9 phases, 16 plans, 14 tasks
+**Phases completed:** 12 phases (62-70, 72-74; Phase 71 dropped), 30 plans total
 
-**Key accomplishments:**
-
-- Notification bell dropdown with amber badge dot and dismiss support replacing inline Bootstrap alert bar (NAV-04), using standalone NotificationBellComponent with innerHTML text binding
-- Triggarr-style transfer table with search input, All/Active/Errors segment filters, animated striped progress bars, status badges (Syncing/Queued/Synced/Failed), bandwidth/ETA columns, and client-side pagination wired into the dashboard page shell
-- CSS Grid two-column masonry layout with 10 icon-headed dark cards and pill-shaped toggle switches replacing all checkboxes
-- Sonarr/Radarr/AutoDelete brand-colored cards, webhook copy buttons, and floating save confirmation bar completing the settings page redesign
-- Full-viewport terminal log viewer with level filtering, regex search, auto-scroll, clear, and export
-- Status bar footer with live connection indicator, log count, timestamp, plus 21 unit tests covering all LOGS requirements
-- One-liner:
-- Human-approved About page visual fidelity — all 4 sections match AIDesigner mockup, 552/552 tests green
-- Task 1 — SCSS palette consolidation:
-- Task 1 — Clickable version badges:
-- One-liner:
-- 1. [Rule 2 - Completeness] Added default activeSubStatus test as 10th test case
-
----
-
-## v1.1.0 UI Redesign — Triggarr Style (Shipped: 2026-04-15)
-
-**Phases completed:** 7 phases, 13 plans, 12 tasks
+**Delivered:** Port AIDesigner design artifacts into the Angular codebase, bringing all 4 pages to Triggarr-level visual polish with the earthy Deep Moss palette, plus a post-release addendum restoring per-file selection + bulk actions, extending the filter to cover every torrent status, and adding disk-capacity awareness to the storage tiles.
 
 **Key accomplishments:**
 
-- Notification bell dropdown with amber badge dot and dismiss support replacing inline Bootstrap alert bar (NAV-04), using standalone NotificationBellComponent with innerHTML text binding
-- Triggarr-style transfer table with search input, All/Active/Errors segment filters, animated striped progress bars, status badges (Syncing/Queued/Synced/Failed), bandwidth/ETA columns, and client-side pagination wired into the dashboard page shell
-- CSS Grid two-column masonry layout with 10 icon-headed dark cards and pill-shaped toggle switches replacing all checkboxes
-- Sonarr/Radarr/AutoDelete brand-colored cards, webhook copy buttons, and floating save confirmation bar completing the settings page redesign
-- Full-viewport terminal log viewer with level filtering, regex search, auto-scroll, clear, and export
-- Status bar footer with live connection indicator, log count, timestamp, plus 21 unit tests covering all LOGS requirements
-- One-liner:
-- Human-approved About page visual fidelity — all 4 sections match AIDesigner mockup, 552/552 tests green
-- Task 1 — SCSS palette consolidation:
-- Task 1 — Clickable version badges:
+- Nav bar with backdrop blur, amber active indicator, live connection badge, and notification bell dropdown replacing the inline Bootstrap alert bar (Phase 62)
+- Dashboard 4-card stats strip + transfer table with search, All/Active/Errors segment filters, status badges (Syncing/Queued/Synced/Failed), animated striped progress bars, bandwidth/ETA columns, and client-side pagination (Phase 63)
+- Inline terminal log pane at the bottom of the dashboard with colored severity levels (Phase 64)
+- Settings CSS Grid two-column masonry with 10 icon-headed cards, pill-shaped toggle switches replacing checkboxes, brand-colored Sonarr/Radarr/AutoDelete cards with webhook copy buttons, and a floating save confirmation bar (Phase 65)
+- Full-viewport terminal log viewer with level filter, regex search, auto-scroll, clear, export, and live status bar — 21 unit tests covering all LOGS requirements (Phase 66)
+- About page identity card, system info table, link cards grid with hover-to-amber transitions, and license footer — 552/552 tests green, human-verified visual fidelity (Phase 67)
+- SCSS palette consolidation to shared aliases, clickable version badges linking to changelog, brand favicon in nav, `version.ts` migration (Phase 68)
+- E2E page-object selectors rewritten for the redesigned dashboard/bulk-actions markup (Phase 69)
+- Drill-down segment filters replacing flat All/Active/Errors — Active and Errors expand to individual statuses (Syncing/Queued/Extracting and Failed/Deleted) (Phase 70)
+- Per-file checkbox selection + 5-action card-internal bulk bar (Queue/Stop/Extract/Delete Local/Delete Remote) using AIDesigner Variant B; shift-range + page-scoped header select-all; FileSelectionService signal-driven `isSelected`; 4 obsolete component sets deleted (file-actions-bar, file-list, file, file-options); 5 Playwright E2E tests rewritten (Phase 72)
+- Dashboard filter extended to cover every `ViewFile.Status` — Done parent (DOWNLOADED ∪ EXTRACTED), Pending sub under Active; URL query-param persistence with silent fallback on invalid values; 17 new unit tests + 3 E2E (Phase 73)
+- Storage capacity tiles — `StorageStatus` component on `Status` model, `shutil.disk_usage` local + `df -B1 <shlex.quote>` over existing SSH session remote; `>1%` change gate with per-side independence; Bootstrap `warning`/`danger` semantic tokens for 80%/95% thresholds; backend 82/82 + 12 new frontend component tests (Phase 74)
+
+**Stats (addendum 72-74):**
+
+- 58 source files changed (+3,145 / −3,348 LOC)
+- 102 commits
+- Single-day execution (2026-04-19)
+- Git range: `9435aa0` → `e8ccb9f`
+
+**Deferred items (infra-gated, accepted — not gaps):**
+
+- 15 Playwright E2E tests behind `make run-tests-e2e` (docker-compose): 5 for Phase 72 + 10 for Phase 73; CI-gated.
+- 6 runtime UAT tests for Phase 74 requiring a live seedbox; SSH `df` unfakeable in E2E harness per locked design spec. Structural coverage via unit tests at 79/80/94/95 boundaries accepted. Gated on next dev release.
+
+**Audit:** `v1.1.0-MILESTONE-AUDIT.md` status `passed` (re-audited 2026-04-19 after verification gap closure).
+
+**Tag:** v1.1.0
+
+**Archive:** `.planning/milestones/v1.1.0-ROADMAP.md`, `.planning/milestones/v1.1.0-REQUIREMENTS.md`, `.planning/milestones/v1.1.0-phases/`.
 
 ---
 

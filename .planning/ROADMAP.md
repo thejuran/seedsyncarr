@@ -27,7 +27,7 @@
 - M010: Screenshots, Docs & v4.0.0 Release - (shipped 2026-03-28, tagged v4.0.0)
 - v4.0.3 Dependency Fixes & CI - Phase 52 (shipped 2026-04-08)
 - v1.0.0 SeedSyncarr Rebrand - Phases 53-61 (shipped 2026-04-13)
-- v1.1.0 UI Redesign — Triggarr Style - Phases 62-68 (shipped 2026-04-15, dev release)
+- v1.1.0 UI Redesign — Triggarr Style - Phases 62-74 (shipped 2026-04-19; Phase 71 dropped)
 
 ## Phases
 
@@ -216,16 +216,26 @@ See `.planning/milestones/v3.1-ROADMAP.md` for full details.
 
 </details>
 
-### v1.1.0 UI Redesign — Triggarr Style (Phases 62-67)
+<details>
+<summary>v1.1.0 UI Redesign — Triggarr Style (Phases 62-74) - SHIPPED 2026-04-19</summary>
 
-**Milestone Goal:** Port AIDesigner design artifacts into the Angular codebase, bringing all 4 pages to Triggarr-level visual polish with the earthy Deep Moss palette.
+- [x] Phase 62: Nav Bar Foundation (2/2 plans) - completed 2026-04-15
+- [x] Phase 63: Dashboard — Stats Strip & Transfer Table (2/2 plans) - completed 2026-04-15
+- [x] Phase 64: Dashboard — Log Pane (1/1 plans) - completed 2026-04-14
+- [x] Phase 65: Settings Page (2/2 plans) - completed 2026-04-15
+- [x] Phase 66: Logs Page (2/2 plans) - completed 2026-04-15
+- [x] Phase 67: About Page (2/2 plans) - completed 2026-04-14
+- [x] Phase 68: UI Polish (2/2 plans) - completed 2026-04-15
+- [x] Phase 69: E2E Selector Update (1/1 plans) - completed 2026-04-15
+- [x] Phase 70: Drilldown Segment Filters (2/2 plans) - completed 2026-04-15
+- [ ] ~~Phase 71: push stable release~~ — dropped (never planned)
+- [x] Phase 72: Restore dashboard file selection and action bar (5/5 plans) - completed 2026-04-19
+- [x] Phase 73: Dashboard filter for every torrent status (5/5 plans) - completed 2026-04-19
+- [x] Phase 74: Storage capacity tiles (4/4 plans) - completed 2026-04-19
 
-- [x] **Phase 62: Nav Bar Foundation** - Backdrop blur nav with amber active indicator, connection status, and notification bell (completed 2026-04-14)
-- [x] **Phase 63: Dashboard — Stats Strip & Transfer Table** - Stats cards, search/filter controls, file rows with status badges, progress bars, and pagination (completed 2026-04-14)
-- [x] **Phase 64: Dashboard — Log Pane** - Compact terminal log pane at dashboard bottom with colored severity levels (completed 2026-04-14)
-- [x] **Phase 65: Settings Page** - Two-column masonry layout, 10 card sections, toggle switches, floating save button (completed 2026-04-14)
-- [x] **Phase 66: Logs Page** - Full-viewport terminal log viewer with level filters, search, auto-scroll, export, and status bar (completed 2026-04-14)
-- [x] **Phase 67: About Page** - Centered identity card, system info table, link cards grid, license footer (completed 2026-04-14)
+See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
+
+</details>
 
 ## Phase Details
 
@@ -482,98 +492,8 @@ Plans:
 | 59. Community Launch | v1.0.0 | 2/2 | Complete | 2026-04-09 |
 | 60. Dependency Updates | v1.0.0 | 2/2 | Complete | 2026-04-09 |
 | 61. Branding Integration | v1.0.0 | 0/0 | Complete | 2026-04-13 |
-| 62. Nav Bar Foundation | v1.1.0 | 2/2 | Complete    | 2026-04-15 |
-| 63. Dashboard — Stats Strip & Transfer Table | v1.1.0 | 2/2 | Complete    | 2026-04-15 |
-| 64. Dashboard — Log Pane | v1.1.0 | 1/1 | Complete | 2026-04-14 |
-| 65. Settings Page | v1.1.0 | 2/2 | Complete   | 2026-04-15 |
-| 66. Logs Page | v1.1.0 | 2/2 | Complete   | 2026-04-15 |
-| 67. About Page | v1.1.0 | 2/2 | Complete    | 2026-04-14 |
-
-### Phase 68: UI Polish
-
-**Goal:** Consolidate SCSS palette drift (settings + logs), make version badge clickable linking to changelog (like Triggarr), add brand favicon to dashboard header, update docs site screenshots, migrate remaining declare-require to shared version.ts
-**Requirements**: POLISH-01, POLISH-02, POLISH-03, POLISH-04, POLISH-05
-**Depends on:** Phase 67
-**Plans:** 2/2 plans complete
-
-Plans:
-- [x] 68-01-PLAN.md -- SCSS palette consolidation, nav bar favicon, version.ts migration
-- [x] 68-02-PLAN.md -- Clickable version badges, docs screenshot update
-
-### Phase 69: E2E Selector Update
-
-**Goal:** Update Playwright E2E page objects and specs to match redesigned dashboard transfer-table and bulk-actions markup from v1.1.0 — all E2E tests pass in CI
-**Requirements**: E2E-01 (dashboard page object selectors), E2E-02 (bulk-actions page object selectors), E2E-03 (CI green)
-**Depends on:** Phase 68
-**Plans:** 1/1 plans complete
-
-Plans:
-- [x] 69-01-PLAN.md — Rewrite dashboard page object selectors and skip bulk-actions tests
-
-### Phase 70: Drilldown Segment Filters
-
-**Goal:** Replace flat All/Active/Errors segment filter with two-level drill-down — clicking Active or Errors expands inline sub-buttons for individual statuses (Syncing/Queued/Extracting and Failed/Deleted)
-**Requirements**: UI-DRILL-01
-**Depends on:** Phase 69
-**Plans:** 2/2 plans complete
-
-Plans:
-- [x] 70-01-PLAN.md — Drill-down component logic, template, and SCSS styles
-- [x] 70-02-PLAN.md — Unit test updates and new drill-down test cases
-
-### Phase 71: push stable release
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 70
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 71 to break down)
-
-### Phase 72: Restore dashboard file selection and action bar
-
-**Goal:** Restore per-file selection (checkboxes) and the 5-action control surface (Queue / Stop / Extract / Delete Local / Delete Remote) on the dashboard transfer table — dropped in the v1.1.0 redesign — using AIDesigner Variant B (card-internal action bar), with functional parity to the pre-redesign behavior and visual identity matching the Deep Moss + Amber palette.
-**Requirements**: TBD (phase decisions D-01..D-19 in 72-CONTEXT.md)
-**Depends on:** Phase 71
-**Plans:** 5 plans
-
-Plans:
-- [x] 72-01-PLAN.md — Adapt BulkActionsBarComponent: template + SCSS rewrite to Variant B (card-internal bar, 5 buttons, amber primary + red outline variants); preserve eligibility-count spec contract
-- [x] 72-02-PLAN.md — Delete the four obsolete component sets (file-actions-bar, file-list, file, file-options) + their specs per D-18; prove clean build with zero orphan imports
-- [x] 72-03-PLAN.md — Add leading checkbox cell to TransferRow; signal-driven isSelected via FileSelectionService; amber-wash + 3px left-border selected-row styling; HostBinding aria-label + role
-- [x] 72-04-PLAN.md — Wire TransferTable selection clearing on page/segment/sub-status/goToPage + Esc handler + shift-click range + header select-all (page-scoped); insert BulkActionsBar card-internally; dispatch 5 bulk actions via BulkCommandService + ConfirmModalService
-- [x] 72-05-PLAN.md — Un-skip and rewrite the 5 E2E tests in dashboard.page.spec.ts:38-56; add page-object selectors for row/header checkbox + action bar + 5 named action buttons (D-19 — no new tests beyond the originals)
-
-
-### Phase 73: Dashboard filter for every torrent status
-
-**Goal:** Extend the dashboard transfer-table segment filter so every operationally-meaningful ViewFile.Status (DEFAULT, DOWNLOADED, EXTRACTED) is reachable as a filter sub-button under a new Done parent + Pending sub under Active, and persist active filter state via URL query params with silent fallback on invalid values.
-**Requirements**: D-01, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12, D-13, D-14, D-15
-**Depends on:** Phase 72
-**Plans:** 5/5 plans complete
-
-Plans:
-- [x] 73-01-PLAN.md — Widen activeSegment union to include 'done' + add Done branch (DOWNLOADED ∪ EXTRACTED) + add DEFAULT (Pending) to Active branch in segmentedFiles$
-- [x] 73-02-PLAN.md — Insert Done parent button + Done expand block (Downloaded, Extracted) + Pending sub-button (first under Active) into transfer-table template, reusing existing .btn-segment / .btn-sub classes verbatim
-- [x] 73-03-PLAN.md — Inject Router + ActivatedRoute, add ngOnInit URL hydration with enum-validated silent fallback (D-11), add _writeFilterToUrl helper called from onSegmentChange / onSubStatusChange with queryParamsHandling: "merge" + replaceUrl: true
-- [x] 73-04-PLAN.md — Update TestBed providers (Router/ActivatedRoute mocks) + TEST_TEMPLATE; add 6 filter-logic tests (Done branch, Pending under Active, 3 new sub-status filters, selection-clear-on-Done) + 11 URL persistence tests covering D-09/D-10/D-11
-- [x] 73-05-PLAN.md — Add getSegmentButton + getSubButton page-object locators; add 3 e2e tests (Done expand, Pending reveal, URL round-trip persistence)
-
-### Phase 74: Storage capacity tiles
-
-**Goal:** Add disk-capacity awareness to Remote and Local Storage dashboard tiles via a new `StorageStatus` component (fed by `shutil.disk_usage()` locally and `df -B1 <remote_path>` over the existing SSH session remotely), piggybacked onto the existing SSE status stream, with silent-fallback to tracked-bytes when capacity is unavailable and Bootstrap warning/danger color shifts at 80%/95% thresholds.
-**Requirements**: D-01..D-16 (CONTEXT.md decisions — no ROADMAP REQ-IDs mapped)
-**Depends on:** Phase 73
-**Plans:** 4 plans
-
-Plans:
-- [x] 74-01-PLAN.md — Backend: Add `StorageStatus` component to `Status` model + extend `SerializeStatusJson.status()` to emit `storage` block (wave 1)
-- [x] 74-02-PLAN.md — Backend: Wire `shutil.disk_usage` + `df -B1 <shlex.quote(path)>` into scanners; apply >1% change gate in `_update_controller_status` with per-side independence (wave 2, depends on 74-01)
-- [x] 74-03-PLAN.md — Frontend: Extend `ServerStatus` DTO with `storage` block (snake→camel) + widen `DashboardStats` with four `*Capacity*` fields + rewire `DashboardStatsService` to `combineLatest([files, status])` (wave 1, parallel with 74-01)
-- [x] 74-04-PLAN.md — Frontend: Port capacity-mode template to Remote/Local tiles per locked design spec + add `--warning`/`--danger` SCSS modifiers + threshold-boundary unit tests + human visual verification checkpoint (wave 2, depends on 74-03)
+| 62-74. v1.1.0 UI Redesign — Triggarr Style | v1.1.0 | 30/30 | Complete | 2026-04-19 |
 
 ---
 
-*Last updated: 2026-04-14 — All phases 62-67 complete, milestone audit in progress*
-*Phases 62-67: v1.1.0 UI Redesign — Triggarr Style*
+*Last updated: 2026-04-19 — v1.1.0 milestone closed (Phases 62-74; Phase 71 dropped).*

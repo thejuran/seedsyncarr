@@ -1,34 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1.0
-milestone_name: UI Redesign — Triggarr Style
-status: executing
-stopped_at: Phase 74 context gathered
-last_updated: "2026-04-20T01:06:11.546Z"
-last_activity: 2026-04-20 -- Phase 74 execution started
+milestone: null
+milestone_name: null
+status: idle
+stopped_at: v1.1.0 milestone closed 2026-04-19
+last_updated: "2026-04-19T23:30:00.000Z"
+last_activity: 2026-04-19 -- v1.1.0 milestone closed (phases 62-74)
 progress:
-  total_phases: 22
-  completed_phases: 2
-  total_plans: 14
-  completed_plans: 10
-  percent: 71
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-15)
+See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 74 — storage-capacity-tiles
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 74 (storage-capacity-tiles) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 74
-Last activity: 2026-04-20 -- Phase 74 execution started
+Phase: — (between milestones)
+Plan: —
+Status: Ready for `/gsd-new-milestone`
+Last activity: 2026-04-19 — v1.1.0 milestone closed (phases 62-74; Phase 71 dropped)
 
 ## Milestones Shipped
 
@@ -40,29 +40,11 @@ Last activity: 2026-04-20 -- Phase 74 execution started
 | M001-M010 | 29 slices | 2026-03-21 to 2026-03-28 |
 | v4.0.3 | Phase 52 | 2026-04-08 |
 | v1.0.0 Rebrand | Phases 53-61 | 2026-04-08 to 2026-04-13 |
-| v1.1.0 UI Redesign | Phases 62-71 | 2026-04-13 to 2026-04-15 |
+| v1.1.0 UI Redesign — Triggarr Style | Phases 62-74 (71 dropped) | 2026-04-13 to 2026-04-19 |
 
 ## Accumulated Context
 
-### Roadmap Evolution
-
-- Phase 72 added: Restore dashboard file selection and action bar (promoted from todo 2026-04-19)
-- Phase 73 added: Dashboard filter for every torrent status (promoted from todo 2026-04-17)
-- Phase 74 added: Storage capacity tiles — milestone theme (design spec already exists)
-
-### Decisions
-
-- Design spec at `docs/superpowers/specs/2026-04-15-storage-capacity-tiles-design.md`
-- StorageStatus component on existing Status model (Approach A — dedicated service)
-- Remote capacity via SSH df, local via shutil.disk_usage()
-- Piggyback on existing SSE status stream (no new endpoint)
-- Fallback to tracked-bytes display when capacity unavailable
-
-### Todos
-
-- E2E Playwright tests need selector updates for redesigned dashboard (carried from v1.1.0)
-
-### Blockers
+### Open Blockers
 
 None.
 
@@ -72,13 +54,26 @@ None.
 - `make run-tests-python` Docker build fails on arm64 (Apple Silicon) — `rar` package amd64-only; CI unaffected
 - WAITING_FOR_IMPORT enum exists as structural placeholder (no business logic sets it yet)
 
+## Deferred Items
+
+Infrastructure-gated items carried forward from v1.1.0 close (accepted as documented, not gaps):
+
+| Phase | Count | Kind | Gating |
+|-------|-------|------|--------|
+| 72 | 5 | Playwright E2E (rewritten per 72-05) | `make run-tests-e2e` (docker-compose); CI-gated |
+| 73 | 10 | Playwright E2E (dashboard filter + URL round-trip) | `make run-tests-e2e`; CI-gated |
+| 74 | 6 | Manual runtime UAT (live seedbox required) | Next dev release; SSH `df` unfakeable in E2E harness per locked design spec |
+
+## Pending Todos (pre-existing backlog, not milestone-gating)
+
+- 2026-02-08-clean-up-test-warnings
+- 2026-02-24-e2e-csp-violation-detection
+- 2026-04-14-encrypt-credentials-at-rest
+- 2026-04-14-rate-limiting-all-endpoints
+
 ## Session Continuity
 
-Last session: --stopped-at
-Stopped at: Phase 74 context gathered
-Next action: Define requirements
+Last session: v1.1.0 milestone close complete
+Next action: Run `/gsd-new-milestone` to plan the next milestone
 
 ---
-*v1.2.0 Storage Capacity Tiles*
-
-**Planned Phase:** 74 (storage-capacity-tiles) — 4 plans — 2026-04-20T01:04:21.703Z
