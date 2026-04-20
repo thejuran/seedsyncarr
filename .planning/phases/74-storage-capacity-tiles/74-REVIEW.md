@@ -28,7 +28,21 @@ findings:
   warning: 3
   info: 3
   total: 6
-status: issues_found
+status: re_reviewed
+re_reviewed: 2026-04-19T00:00:00Z
+re_review_depth: deep
+re_review_findings:
+  critical: 1   # CR-01 (FIXED)
+  warning: 2    # WR-04, WR-05 (FIXED)
+  medium: 3     # MD-01, MD-03 (FIXED) + MD-04 (NOTED)
+  total: 6
+re_review_resolved:
+  - CR-01  # ActiveScanner contract restored
+  - WR-01  # per-field gate split
+  - WR-04  # @let dedup in stats-strip template
+  - WR-05  # MockServerStatusService preserves prior status
+  - MD-01  # ScannerResult.error_message Optional[str]
+  - MD-03  # _parse_df_output input typed
 ---
 
 # Phase 74: Code Review Report
@@ -156,3 +170,91 @@ def test_only_used_crosses_threshold_still_writes_both_under_current_or_gate(sel
 _Reviewed: 2026-04-19_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+---
+
+# Phase 74: Re-Review (Deep, 2026-04-19)
+
+**Re-reviewer:** Claude (deep-review skill)
+**Scope:** 22 files (Phase 74 source + tests + downstream consumers)
+**New findings:** 1 critical, 2 warning, 3 medium
+**Status:** all blocking findings resolved
+
+## CR-01: `ActiveScanner.scan()` violates new `IScanner` tuple contract — production crash on every active-scan cycle (FIXED)
+
+**Files:** `src/python/controller/scan/active_scanner.py:34-52`, `src/python/controller/scan/scanner_process.py:90`
+
+Phase 74-02 widened `IScanner.scan()` to return `Tuple[List[SystemFile], Optional[int], Optional[int]]` and updated `ScannerProcess.run_loop` to unpack three values. `RemoteScanner` and `LocalScanner` were updated, but `ActiveScanner` was missed. Since `ScanManager` wraps all three scanners in `ScannerProcess` instances, every active-scan tick would raise `ValueError: not enough values to unpack` (when the active-files list has 0/1/2/4+ entries) or — at exactly 3 active files — silently assign `SystemFile` instances to `total_bytes`/`used_bytes`, propagating into `Controller._should_update_capacity` as a `TypeError`.
+
+Missed by the standard review because all five focal points were spec-internal; cross-implementation contract was not audited.
+
+**Resolution:** `ActiveScanner.scan()` now returns `(result, None, None)`. `DummyScanner` test mock and the `_scan` lambda in `test_scanner_process.py` updated to match. New `TestIScannerContract::test_active_scanner_returns_three_tuple` regression test added.
+
+## WR-01: Capacity gate writes both fields even when only one crossed 1% (RESOLVED — carried over from initial review)
+
+**File:** `src/python/controller/controller.py:649-666`
+
+The `or`-gate split into per-field `if`s (both remote and local sides). Two new locking tests added in `test_controller.py`:
+
+- `test_used_crosses_threshold_total_does_not_writes_only_used`
+- `test_total_crosses_threshold_used_does_not_writes_only_total`
+
+Pre-existing `test_above_one_percent_delta_writes_both` repurposed to use deltas that cross 1% on both fields (matches new correct semantic).
+
+## WR-04: Stats-strip template repeats `used / total * 100` four times per tile (FIXED)
+
+**File:** `src/angular/src/app/pages/files/stats-strip.component.html:11-26, 51-66`
+
+Each capacity-mode tile evaluated the percentage expression four times across class bindings, width binding, and display. Risk: a future refactor narrowing one expression but not the others (e.g., changing `< 80` to `<= 80` in only one binding) would silently desync threshold colors from width.
+
+**Resolution:** Used Angular `@let remotePct = ...` / `@let localPct = ...` declarations at the top of each capacity-mode block; all bindings now reference the single computed value. Inlined test template in `stats-strip.component.spec.ts` updated to match.
+
+## WR-05: `MockServerStatusService.pushStatus` silently resets `server` and `controller` blocks to defaults (FIXED)
+
+**File:** `src/angular/src/app/tests/unittests/services/files/dashboard-stats.service.spec.ts:18-30`
+
+The helper called `new ServerStatus({storage})` which reset all other fields to defaults. If a future change makes `DashboardStatsService` derive any signal from `status.server.up` or `status.controller.latestRemoteScanFailed`, the tests would silently render against `up: false` rather than the values the test author intended.
+
+**Resolution:** `pushStatus` now reads the current `BehaviorSubject` value and carries `server`/`controller` forward. Class also adds `implements Pick<ServerStatusService, "status">` to constrain the structural contract.
+
+## MD-01: `ScannerResult.error_message` typed `str = None` rather than `Optional[str] = None` (FIXED)
+
+**File:** `src/python/controller/scan/scanner_process.py:46`
+
+Pre-existing inconsistency that Phase 74's new `Optional[int]` annotations highlighted. Tightened to `Optional[str] = None` while in the area.
+
+## MD-03: `_parse_df_output(out)` accepted any input type (FIXED)
+
+**File:** `src/python/controller/scan/remote_scanner.py:31`
+
+Annotated as `out: Union[bytes, str]` (kept `Union` form for consistency with the rest of the file's `typing`-style annotations).
+
+## MD-04: Per-field gate split may emit up to 2 SSE notifications per scan with one transient mixed frame (NOTED, no action)
+
+**File:** `src/python/controller/controller.py:649-666`
+
+Each `StatusComponent._set_property` call fires the listener chain synchronously. After WR-01's split, when both fields cross the gate the controller still fires twice in succession (no regression vs. the old paired write), but an attentive SSE client may briefly see `Status` with the new `remote_total` and the old `remote_used` (between the two `if`s). Sub-millisecond, harmless given the ≥1% gate's coarse precision.
+
+**Recommendation:** leave as-is. Per-field correctness wins. If SSE volume becomes observable, batch both writes via a `StorageStatus.update_pair()` method that suspends notifications until both fields are set.
+
+## Carry-over status from initial standard review
+
+| Finding | Status |
+|---------|--------|
+| WR-01 (atomic-pair gate) | RESOLVED |
+| WR-02 (`df` last-line robustness) | UNCHANGED — silent-fallback-safe per D-16 |
+| WR-03 (`StatusComponent.copy` name-mangling comment) | UNCHANGED — pre-existing, non-blocking |
+| IN-01 (test for asymmetric gate) | SUPERSEDED — two locking tests added in `test_controller.py` |
+| IN-02 (controller/server optional typing in DTO) | UNCHANGED — pre-existing API |
+| IN-03 (template inline duplication in spec) | UNCHANGED — pragmatic Karma workaround |
+
+## Verification
+
+- 188 Python tests pass: `test_controller`, `test_remote_scanner`, `test_status`, `test_serialize_status`, `test_controller_unit`, `TestIScannerContract`.
+- 47 Angular tests pass: `dashboard-stats.service.spec`, `server-status.spec`, `stats-strip.component.spec`.
+- `ng build` (development) succeeds with only pre-existing Sass deprecation warnings.
+- 3 macOS-only `MagicMock` pickling failures in `test_scanner_process.py` are pre-existing platform issues (Python 3.9 `spawn` start method) and would pass in CI's Linux env.
+
+_Re-reviewed: 2026-04-19_
+_Reviewer: Claude (deep-review skill)_
+_Depth: deep_
