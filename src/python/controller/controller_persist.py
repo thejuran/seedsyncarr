@@ -185,6 +185,12 @@ class ControllerPersist(Persist):
                         )
                     )
 
+            # imported_children is optional for backwards compatibility with old persist files
+            imported_children_dct = dct.get(ControllerPersist.__KEY_IMPORTED_CHILDREN, {})
+            for root_name, child_list in imported_children_dct.items():
+                for child_name in child_list:
+                    persist.add_imported_child(root_name, child_name)
+
             return persist
         except (json.decoder.JSONDecodeError, KeyError) as e:
             raise PersistError("Error parsing ControllerPersist - {}: {}".format(
@@ -203,6 +209,9 @@ class ControllerPersist(Persist):
         dct[ControllerPersist.__KEY_EXTRACTED_FILE_NAMES] = self.extracted_file_names.as_list()
         dct[ControllerPersist.__KEY_STOPPED_FILE_NAMES] = self.stopped_file_names.as_list()
         dct[ControllerPersist.__KEY_IMPORTED_FILE_NAMES] = self.imported_file_names.as_list()
+        dct[ControllerPersist.__KEY_IMPORTED_CHILDREN] = {
+            root: bset.as_list() for root, bset in self.imported_children.items()
+        }
         return json.dumps(dct, indent=Constants.JSON_PRETTY_PRINT_INDENT)
 
     @classmethod
