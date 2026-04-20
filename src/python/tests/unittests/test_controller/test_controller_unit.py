@@ -1043,7 +1043,7 @@ class TestControllerWebhookIntegration(BaseControllerTestCase):
     def test_webhook_imports_added_to_persist(self):
         self._add_file_to_model("File.A", remote_size=5000)
         self._add_file_to_model("File.B", remote_size=3000)
-        self.mock_webhook_manager.process.return_value = ["File.A", "File.B"]
+        self.mock_webhook_manager.process.return_value = [("File.A", "File.A"), ("File.B", "File.B")]
         self.controller.process()
         self.assertIn("File.A", self.persist.imported_file_names)
         self.assertIn("File.B", self.persist.imported_file_names)
@@ -1137,7 +1137,7 @@ class TestControllerWebhookThreadSafety(BaseControllerTestCase):
         f.remote_size = 1000
         self.controller._Controller__model.add_file(f)
         # Webhook manager reports this file was imported
-        self.mock_webhook_manager.process.return_value = ["test_file.mkv"]
+        self.mock_webhook_manager.process.return_value = [("test_file.mkv", "test_file.mkv")]
         # Intercept update_file to check lock state
         original_update_file = self.controller._Controller__model.update_file
 
