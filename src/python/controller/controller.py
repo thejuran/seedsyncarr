@@ -882,14 +882,18 @@ class Controller:
                     if child.state not in deletable_states:
                         unsafe_child = child
                         break
-                    # Collect video basenames for coverage check. Non-video files
-                    # (.nfo, .srt, .sample.mp4, etc.) are intentionally ignored (D-10).
-                    # Directories have no extension match; they are traversed only.
-                    if not child.get_children():
+                    # Collect video basenames for coverage check. Only files whose
+                    # extension is in _VIDEO_EXTENSIONS are tracked (D-09/D-10).
+                    # Use child.is_dir as the authoritative signal -- a directory whose
+                    # children have not been scanned yet would falsely report
+                    # `not get_children()` and could inject a folder name into
+                    # on_disk_videos if the folder name ends in a video extension.
+                    grandchildren = child.get_children()
+                    if not child.is_dir and not grandchildren:
                         ext = os.path.splitext(child.name)[1].lower()
                         if ext in _VIDEO_EXTENSIONS:
                             on_disk_videos.add(child.name.lower())
-                    frontier.extend(child.get_children())
+                    frontier.extend(grandchildren)
                 if unsafe_child is not None:
                     self.logger.info(
                         "Auto-delete skipped for '{}': child '{}' is in state {}".format(
@@ -925,17 +929,17 @@ class Controller:
                             )
                         )
                         return
-        # WR-02: clear the per-child entry BEFORE dispatching delete_local. The
-        # decision to delete is final at this point (state + pack + coverage
-        # guards all passed); if delete_local raises between dispatch and the
-        # post-delete cleanup, leaking imported_children[root] would cause
-        # persist drift -- the next Timer-fire for the same root after a rearm
-        # would compare fresh on-disk videos against stale per-child state,
-        # producing either a false partial-import skip or a false full-coverage
-        # delete depending on overlap. Clearing pre-dispatch preserves D-04's
-        # "on successful __execute_auto_delete" intent (dispatch IS the success
-        # signal here) without the drift window.
-        with self.__model_lock:
+
+            # WR-02: clear the per-child entry BEFORE dispatching delete_local,
+            # inside the SAME lock window as the coverage guard above. This
+            # eliminates the TOCTOU window between coverage-check and pop where
+            # a concurrent webhook cycle (__check_webhook_imports Window 2)
+            # could add a new child that the pop would then silently discard.
+            # The decision to delete is final here -- any child added after
+            # this point is for a future import cycle. Clearing pre-dispatch
+            # preserves D-04's "on successful __execute_auto_delete" intent
+            # (dispatch IS the success signal). pop() is O(1) so the lock is
+            # not held any longer than the separate-acquisition approach.
             self.__persist.imported_children.pop(file_name, None)
         # delete_local is safe outside lock -- it spawns a subprocess, holding
         # the lock during a blocking subprocess call would starve model updates.

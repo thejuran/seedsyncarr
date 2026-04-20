@@ -241,11 +241,15 @@ class TestAutoDeleteExecution(BaseAutoDeleteTestCase):
 
     # --- Pack guard: skip deletion when any descendant is in an active state --
 
-    def _make_child(self, name, state=ModelFile.State.DOWNLOADED, children=None):
+    def _make_child(self, name, state=ModelFile.State.DOWNLOADED, children=None, is_dir=None):
         child = MagicMock(spec=ModelFile)
         child.name = name
         child.state = state
         child.get_children.return_value = children or []
+        # is_dir defaults to whether children were provided. MagicMock(spec=ModelFile)
+        # would otherwise leave `is_dir` as a truthy MagicMock, breaking the coverage
+        # guard's `not child.is_dir` leaf check.
+        child.is_dir = is_dir if is_dir is not None else bool(children)
         return child
 
     def test_execute_skips_dir_when_direct_child_is_downloading(self):
