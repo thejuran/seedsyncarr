@@ -365,6 +365,213 @@ describe("BulkActionsBarComponent", () => {
     });
 
     // =========================================================================
+    // FIX-01 DELETED Union Regression (D-09 coverage)
+    // =========================================================================
+
+    describe("FIX-01 DELETED union regression (D-09 coverage)", () => {
+        it("All-DELETED union: Queue + Delete Remote enabled; Stop/Extract/DeleteLocal disabled (FIX-01 D-09 case 1)", () => {
+            const makeDeleted = (name: string): ViewFile => new ViewFile({
+                name,
+                status: ViewFile.Status.DELETED,
+                remoteSize: 1000,
+                localSize: 0,
+                isQueueable: true,
+                isStoppable: false,
+                isExtractable: false,
+                isArchive: false,
+                isLocallyDeletable: false,
+                isRemotelyDeletable: true,
+            });
+            const d1 = makeDeleted("deleted-1.mkv");
+            const d2 = makeDeleted("deleted-2.mkv");
+            const d3 = makeDeleted("deleted-3.mkv");
+            const visible = List([d1, d2, d3]);
+            const selected = new Set<string>([
+                "deleted-1.mkv", "deleted-2.mkv", "deleted-3.mkv",
+            ]);
+
+            setInputsAndDetectChanges(visible, selected);
+
+            expect(component.actionCounts.queueable).toBe(3);
+            expect(component.actionCounts.stoppable).toBe(0);
+            expect(component.actionCounts.extractable).toBe(0);
+            expect(component.actionCounts.locallyDeletable).toBe(0);
+            expect(component.actionCounts.remotelyDeletable).toBe(3);
+
+            spyOn(component.queueAction, "emit");
+            spyOn(component.stopAction, "emit");
+            spyOn(component.extractAction, "emit");
+            spyOn(component.deleteLocalAction, "emit");
+            spyOn(component.deleteRemoteAction, "emit");
+
+            component.onQueueClick();
+            expect(component.queueAction.emit).toHaveBeenCalledWith(
+                jasmine.arrayContaining(["deleted-1.mkv", "deleted-2.mkv", "deleted-3.mkv"])
+            );
+            expect((component.queueAction.emit as jasmine.Spy).calls.mostRecent().args[0].length)
+                .toBe(3);
+
+            component.onDeleteRemoteClick();
+            expect(component.deleteRemoteAction.emit).toHaveBeenCalledWith(
+                jasmine.arrayContaining(["deleted-1.mkv", "deleted-2.mkv", "deleted-3.mkv"])
+            );
+
+            component.onStopClick();
+            expect(component.stopAction.emit).not.toHaveBeenCalled();
+
+            component.onExtractClick();
+            expect(component.extractAction.emit).not.toHaveBeenCalled();
+
+            component.onDeleteLocalClick();
+            expect(component.deleteLocalAction.emit).not.toHaveBeenCalled();
+        });
+
+        it("DELETED + DOWNLOADING union: Queue (1) + Stop (1) + DeleteRemote (2); Extract/DeleteLocal disabled (FIX-01 D-09 case 2)", () => {
+            const del = new ViewFile({
+                name: "del.mkv",
+                status: ViewFile.Status.DELETED,
+                remoteSize: 1000,
+                localSize: 0,
+                isQueueable: true,
+                isStoppable: false,
+                isExtractable: false,
+                isArchive: false,
+                isLocallyDeletable: false,
+                isRemotelyDeletable: true,
+            });
+            const dl = new ViewFile({
+                name: "dl.mkv",
+                status: ViewFile.Status.DOWNLOADING,
+                remoteSize: 2000,
+                localSize: 500,
+                isQueueable: false,
+                isStoppable: true,
+                isExtractable: false,
+                isArchive: false,
+                isLocallyDeletable: false,
+                isRemotelyDeletable: true,
+            });
+            const visible = List([del, dl]);
+            const selected = new Set<string>(["del.mkv", "dl.mkv"]);
+
+            setInputsAndDetectChanges(visible, selected);
+
+            expect(component.actionCounts.queueable).toBe(1);
+            expect(component.actionCounts.stoppable).toBe(1);
+            expect(component.actionCounts.extractable).toBe(0);
+            expect(component.actionCounts.locallyDeletable).toBe(0);
+            expect(component.actionCounts.remotelyDeletable).toBe(2);
+
+            spyOn(component.queueAction, "emit");
+            spyOn(component.stopAction, "emit");
+            spyOn(component.extractAction, "emit");
+            spyOn(component.deleteLocalAction, "emit");
+            spyOn(component.deleteRemoteAction, "emit");
+
+            component.onQueueClick();
+            expect(component.queueAction.emit).toHaveBeenCalledWith(["del.mkv"]);
+
+            component.onStopClick();
+            expect(component.stopAction.emit).toHaveBeenCalledWith(["dl.mkv"]);
+
+            component.onDeleteRemoteClick();
+            expect(component.deleteRemoteAction.emit).toHaveBeenCalledWith(
+                jasmine.arrayContaining(["del.mkv", "dl.mkv"])
+            );
+            expect((component.deleteRemoteAction.emit as jasmine.Spy).calls.mostRecent().args[0].length)
+                .toBe(2);
+
+            component.onExtractClick();
+            expect(component.extractAction.emit).not.toHaveBeenCalled();
+
+            component.onDeleteLocalClick();
+            expect(component.deleteLocalAction.emit).not.toHaveBeenCalled();
+        });
+
+        it("DELETED + DOWNLOADED + STOPPED union: Queue (2), Extract (1), DeleteLocal (2), DeleteRemote (3); Stop disabled (FIX-01 D-09 case 3)", () => {
+            const del = new ViewFile({
+                name: "del.mkv",
+                status: ViewFile.Status.DELETED,
+                remoteSize: 1000,
+                localSize: 0,
+                isQueueable: true,
+                isStoppable: false,
+                isExtractable: false,
+                isArchive: false,
+                isLocallyDeletable: false,
+                isRemotelyDeletable: true,
+            });
+            const dled = new ViewFile({
+                name: "dled.rar",
+                status: ViewFile.Status.DOWNLOADED,
+                remoteSize: 3000,
+                localSize: 3000,
+                isQueueable: false,
+                isStoppable: false,
+                isExtractable: true,
+                isArchive: true,
+                isLocallyDeletable: true,
+                isRemotelyDeletable: true,
+            });
+            const stp = new ViewFile({
+                name: "stp.mkv",
+                status: ViewFile.Status.STOPPED,
+                remoteSize: 4000,
+                localSize: 2000,
+                isQueueable: true,
+                isStoppable: false,
+                isExtractable: false,
+                isArchive: false,
+                isLocallyDeletable: true,
+                isRemotelyDeletable: true,
+            });
+            const visible = List([del, dled, stp]);
+            const selected = new Set<string>(["del.mkv", "dled.rar", "stp.mkv"]);
+
+            setInputsAndDetectChanges(visible, selected);
+
+            expect(component.actionCounts.queueable).toBe(2);
+            expect(component.actionCounts.stoppable).toBe(0);
+            expect(component.actionCounts.extractable).toBe(1);
+            expect(component.actionCounts.locallyDeletable).toBe(2);
+            expect(component.actionCounts.remotelyDeletable).toBe(3);
+
+            spyOn(component.queueAction, "emit");
+            spyOn(component.stopAction, "emit");
+            spyOn(component.extractAction, "emit");
+            spyOn(component.deleteLocalAction, "emit");
+            spyOn(component.deleteRemoteAction, "emit");
+
+            component.onQueueClick();
+            expect(component.queueAction.emit).toHaveBeenCalledWith(
+                jasmine.arrayContaining(["del.mkv", "stp.mkv"])
+            );
+            expect((component.queueAction.emit as jasmine.Spy).calls.mostRecent().args[0].length)
+                .toBe(2);
+
+            component.onExtractClick();
+            expect(component.extractAction.emit).toHaveBeenCalledWith(["dled.rar"]);
+
+            component.onDeleteLocalClick();
+            expect(component.deleteLocalAction.emit).toHaveBeenCalledWith(
+                jasmine.arrayContaining(["dled.rar", "stp.mkv"])
+            );
+            expect((component.deleteLocalAction.emit as jasmine.Spy).calls.mostRecent().args[0].length)
+                .toBe(2);
+
+            component.onDeleteRemoteClick();
+            expect(component.deleteRemoteAction.emit).toHaveBeenCalledWith(
+                jasmine.arrayContaining(["del.mkv", "dled.rar", "stp.mkv"])
+            );
+            expect((component.deleteRemoteAction.emit as jasmine.Spy).calls.mostRecent().args[0].length)
+                .toBe(3);
+
+            component.onStopClick();
+            expect(component.stopAction.emit).not.toHaveBeenCalled();
+        });
+    });
+
+    // =========================================================================
     // Variant B DOM Contract Tests
     // =========================================================================
 
