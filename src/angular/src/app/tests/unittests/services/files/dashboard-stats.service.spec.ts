@@ -11,17 +11,19 @@ import {ConnectedService} from "../../../../services/utils/connected.service";
 import {MockModelFileService} from "../../../mocks/mock-model-file.service";
 import {ModelFile} from "../../../../services/files/model-file";
 import {FileSelectionService} from "../../../../services/files/file-selection.service";
-import {BehaviorSubject} from "rxjs";
+import {BehaviorSubject, Observable} from "rxjs";
 import {ServerStatusService} from "../../../../services/server/server-status.service";
 import {ServerStatus} from "../../../../services/server/server-status";
 
 
 class MockServerStatusService implements Pick<ServerStatusService, "status"> {
     _status$ = new BehaviorSubject<ServerStatus>(new ServerStatus({}));
-    get status() {
+    get status(): Observable<ServerStatus> {
         return this._status$.asObservable();
     }
-    pushStatus(storage: {localTotal: number | null; localUsed: number | null; remoteTotal: number | null; remoteUsed: number | null}) {
+    pushStatus(
+        storage: {localTotal: number | null; localUsed: number | null; remoteTotal: number | null; remoteUsed: number | null}
+    ): void {
         // Carry server/controller forward so a future DashboardStatsService dependency
         // on either block doesn't get silently reset to defaults by this test helper.
         const current = this._status$.getValue();

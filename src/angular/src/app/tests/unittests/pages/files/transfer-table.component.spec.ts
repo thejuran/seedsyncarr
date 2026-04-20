@@ -11,7 +11,7 @@ import {ViewFile} from "../../../../services/files/view-file";
 import {ViewFileOptions} from "../../../../services/files/view-file-options";
 import {FileSelectionService} from "../../../../services/files/file-selection.service";
 import {BulkActionDispatcher} from "../../../../services/files/bulk-action-dispatcher.service";
-import {BulkCommandService, BulkActionResult} from "../../../../services/server/bulk-command.service";
+import {BulkCommandService, BulkActionResult, BulkActionResponse} from "../../../../services/server/bulk-command.service";
 import {ConfirmModalService} from "../../../../services/utils/confirm-modal.service";
 import {NotificationService} from "../../../../services/utils/notification.service";
 import {Localization} from "../../../../common/localization";
@@ -136,7 +136,7 @@ describe("TransferTableComponent", () => {
     const mockQueryParamMap: { [k: string]: string | null } = {};
     const mockActivatedRoute = {
         snapshot: {
-            queryParamMap: { get: (k: string) => mockQueryParamMap[k] ?? null }
+            queryParamMap: { get: (k: string): string | null => mockQueryParamMap[k] ?? null }
         }
     };
     let mockRouter: { navigate: jasmine.Spy };
@@ -151,7 +151,7 @@ describe("TransferTableComponent", () => {
         const defaultResult = new BulkActionResult(true, {
             results: [],
             summary: {total: 0, succeeded: 0, failed: 0}
-        } as any, null);
+        } as BulkActionResponse, null);
         bulkCommandMock = {
             executeBulkAction: jasmine.createSpy("executeBulkAction").and.returnValue(of(defaultResult))
         };
@@ -765,7 +765,7 @@ describe("TransferTableComponent", () => {
         it("onHeaderCheckboxClick selects all paged files when none selected", () => {
             const a = makeFile("a", ViewFile.Status.DOWNLOADED);
             const b = makeFile("b", ViewFile.Status.DOWNLOADED);
-            (component as any)._currentPagedFiles = Immutable.List([a, b]);
+            (component as unknown as {_currentPagedFiles: Immutable.List<ViewFile>})._currentPagedFiles = Immutable.List([a, b]);
             selectionService.clearSelection();
 
             component.onHeaderCheckboxClick();
@@ -776,7 +776,7 @@ describe("TransferTableComponent", () => {
         it("onHeaderCheckboxClick clears selection when all paged files already selected", () => {
             const a = makeFile("a", ViewFile.Status.DOWNLOADED);
             const b = makeFile("b", ViewFile.Status.DOWNLOADED);
-            (component as any)._currentPagedFiles = Immutable.List([a, b]);
+            (component as unknown as {_currentPagedFiles: Immutable.List<ViewFile>})._currentPagedFiles = Immutable.List([a, b]);
             selectionService.setSelection(["a", "b"]);
 
             component.onHeaderCheckboxClick();
@@ -798,7 +798,7 @@ describe("TransferTableComponent", () => {
             b = makeFile("b", ViewFile.Status.DOWNLOADED);
             c = makeFile("c", ViewFile.Status.DOWNLOADED);
             d = makeFile("d", ViewFile.Status.DOWNLOADED);
-            (component as any)._currentPagedFiles = Immutable.List([a, b, c, d]);
+            (component as unknown as {_currentPagedFiles: Immutable.List<ViewFile>})._currentPagedFiles = Immutable.List([a, b, c, d]);
         });
 
         it("selects single file on first click (no prior anchor)", () => {

@@ -3,7 +3,7 @@ import {Observable, of} from "rxjs";
 
 import {BulkActionDispatcher} from "../../../../services/files/bulk-action-dispatcher.service";
 import {FileSelectionService} from "../../../../services/files/file-selection.service";
-import {BulkCommandService, BulkActionResult} from "../../../../services/server/bulk-command.service";
+import {BulkCommandService, BulkActionResult, BulkActionResponse} from "../../../../services/server/bulk-command.service";
 import {ConfirmModalService} from "../../../../services/utils/confirm-modal.service";
 import {NotificationService} from "../../../../services/utils/notification.service";
 import {Notification} from "../../../../services/utils/notification";
@@ -12,7 +12,7 @@ import {Notification} from "../../../../services/utils/notification";
 function okResult(succeeded = 1, failed = 0): BulkActionResult {
     return new BulkActionResult(
         true,
-        {results: [], summary: {total: succeeded + failed, succeeded, failed}} as any,
+        {results: [], summary: {total: succeeded + failed, succeeded, failed}} as BulkActionResponse,
         null
     );
 }
