@@ -261,8 +261,8 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
   3. Timer-fire logic enumerates on-disk children via BFS and skips+logs deletion when coverage is partial; full coverage still deletes as before.
   4. New unit tests cover: single-file import (fully covered → delete), partial-coverage pack (skip+log), post-restart rehydration of per-child state.
 **Plans**: 4 plans
-  - [ ] 75-01-PLAN.md — ControllerPersist: imported_children field + JSON round-trip + persist unit tests (Wave 1, parallel)
-  - [ ] 75-02-PLAN.md — WebhookManager.process: widen return type to List[Tuple[str, str]] + test migration (Wave 1, parallel)
+  - [x] 75-01-PLAN.md — ControllerPersist: imported_children field + JSON round-trip + persist unit tests (Wave 1, parallel)
+  - [x] 75-02-PLAN.md — WebhookManager.process: widen return type to List[Tuple[str, str]] + test migration (Wave 1, parallel)
   - [ ] 75-03-PLAN.md — Controller integration: _VIDEO_EXTENSIONS + per-child Window-2 write + coverage guard + clear-on-success (Wave 2)
   - [ ] 75-04-PLAN.md — test_auto_delete.py: 6 D-19 cases + D-20 rehydration case + 3 mock-return_value migrations (Wave 3)
 
