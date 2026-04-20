@@ -25,7 +25,7 @@ class TestWebhookManager(unittest.TestCase):
     def test_enqueue_and_process_matching_file(self):
         self.manager.enqueue_import("Sonarr", "File.A")
         result = self.manager.process(self.name_to_root)
-        self.assertEqual(["File.A"], result)
+        self.assertEqual([("File.A", "File.A")], result)
 
     def test_enqueue_and_process_no_match(self):
         self.manager.enqueue_import("Sonarr", "Unknown.File")
@@ -35,14 +35,14 @@ class TestWebhookManager(unittest.TestCase):
     def test_case_insensitive_matching(self):
         self.manager.enqueue_import("Sonarr", "file.a")
         result = self.manager.process(self.name_to_root)
-        self.assertEqual(["File.A"], result)
+        self.assertEqual([("File.A", "file.a")], result)
 
     def test_multiple_enqueues_processed_in_one_call(self):
         self.manager.enqueue_import("Sonarr", "File.A")
         self.manager.enqueue_import("Radarr", "File.B")
         result = self.manager.process(self.name_to_root)
-        self.assertIn("File.A", result)
-        self.assertIn("File.B", result)
+        self.assertIn(("File.A", "File.A"), result)
+        self.assertIn(("File.B", "File.B"), result)
         self.assertEqual(2, len(result))
 
     def test_queue_drained_after_process(self):
@@ -86,7 +86,7 @@ class TestWebhookManager(unittest.TestCase):
         }
         self.manager.enqueue_import("Sonarr", "Episode.S01E01.mkv")
         result = self.manager.process(name_to_root)
-        self.assertEqual(["ShowDir"], result)
+        self.assertEqual([("ShowDir", "Episode.S01E01.mkv")], result)
 
     def test_child_file_match_logs_root_name(self):
         """Matched child file log shows the root model file name."""
@@ -99,3 +99,17 @@ class TestWebhookManager(unittest.TestCase):
         self.manager.logger.info.assert_any_call(
             "Sonarr import detected: 'Episode.S01E01.mkv' (matched SeedSyncarr file 'ShowDir')"
         )
+
+    def test_child_file_match_returns_root_and_child_tuple(self):
+        """When webhook file matches a child basename, process() returns (root, child) tuple with child != root."""
+        name_to_root = {
+            "showdir": "ShowDir",
+            "episode.s01e01.mkv": "ShowDir",  # child mapped to root
+        }
+        self.manager.enqueue_import("Sonarr", "Episode.S01E01.mkv")
+        result = self.manager.process(name_to_root)
+        self.assertEqual(1, len(result))
+        root_name, matched_name = result[0]
+        self.assertEqual("ShowDir", root_name)
+        self.assertEqual("Episode.S01E01.mkv", matched_name)
+        self.assertNotEqual(root_name, matched_name)
