@@ -345,10 +345,10 @@ export class ViewFileService implements OnDestroy {
             }
         }
 
-        const isQueueable: boolean = [ViewFile.Status.DEFAULT,
-                                    ViewFile.Status.STOPPED,
-                                    ViewFile.Status.DELETED].includes(status)
-                                    && remoteSize > 0;
+        const isQueueable: boolean = status === ViewFile.Status.DELETED
+                                    || ([ViewFile.Status.DEFAULT,
+                                         ViewFile.Status.STOPPED].includes(status)
+                                        && remoteSize > 0);
         const isStoppable: boolean = [ViewFile.Status.QUEUED,
                                     ViewFile.Status.DOWNLOADING].includes(status);
         const isExtractable: boolean = [ViewFile.Status.DEFAULT,
@@ -361,12 +361,12 @@ export class ViewFileService implements OnDestroy {
                                     ViewFile.Status.DOWNLOADED,
                                     ViewFile.Status.EXTRACTED].includes(status)
                                     && localSize > 0;
-        const isRemotelyDeletable: boolean = [ViewFile.Status.DEFAULT,
-                                    ViewFile.Status.STOPPED,
-                                    ViewFile.Status.DOWNLOADED,
-                                    ViewFile.Status.EXTRACTED,
-                                    ViewFile.Status.DELETED].includes(status)
-                                    && remoteSize > 0;
+        const isRemotelyDeletable: boolean = status === ViewFile.Status.DELETED
+                                    || ([ViewFile.Status.DEFAULT,
+                                         ViewFile.Status.STOPPED,
+                                         ViewFile.Status.DOWNLOADED,
+                                         ViewFile.Status.EXTRACTED].includes(status)
+                                        && remoteSize > 0);
 
         return new ViewFile({
             name: modelFile.name,

@@ -2,8 +2,8 @@
 phase: 76-multiselect-bulk-bar-action-union
 plan: 02
 subsystem: angular-view-file-service
-tags: [root-cause, fix-01, d-02, d-03, wave-2, awaiting-checkpoint]
-status: "Task 1 complete — awaiting human-verify checkpoint before fix applied"
+tags: [root-cause, fix-01, d-02, d-03, wave-2, fix-applied]
+status: "Task 3 complete — fix applied, Wave 1 RED now GREEN, full suite 596/596 passing"
 requirements: [FIX-01]
 dependency_graph:
   requires:
@@ -27,10 +27,10 @@ decisions:
   - "Candidate #3 (ngOnChanges cache-miss) disqualified — Wave 1 RED reproduces in a deterministic single-tick model push through view-file.service, never touches the bar"
   - "Candidate #4 (bar intersection) disqualified by Wave 1 Option A relocation — the bar faithfully forwards whatever eligibility flags the ViewFile carries; bug fires upstream of the bar"
 metrics:
-  duration: "~8 minutes (Task 1 analysis only)"
+  duration: "~12 minutes (Task 1 analysis + Task 3 fix + full suite verification)"
   completed_date: "2026-04-20"
-  tasks_completed: 1
-  files_modified: 0
+  tasks_completed: 2
+  files_modified: 1
   tests_added: 0
 ---
 
@@ -213,3 +213,86 @@ per D-08) independently validates every action it receives, so a stale
 DELETED row that is no longer present on the remote will fail
 per-file with the existing partial-success toast path — not a new
 surface, not a new threat.
+
+## Task 3: Fix Applied
+
+**File changed:** `src/angular/src/app/services/files/view-file.service.ts`
+**Lines changed:** 10 insertions, 10 deletions (net 0; structural restructure of two predicates)
+**Hunks:** 2 (`isQueueable` at lines 348-351, `isRemotelyDeletable` at lines 364-369)
+**FIX-01 tests:** PASS — Wave 1 RED (`DELETED + remote_size=null must be queueable`) is now GREEN; GREEN control (`DELETED + remote_size>0 is queueable`) stays GREEN
+**Full Angular suite:** 596 passing, 0 failing (was 595 passing, 1 failing before fix)
+**DOM/visual diff:** none — `bulk-actions-bar.component.html` and `bulk-actions-bar.component.scss` byte-identical to HEAD
+**git diff --stat:** exactly ONE production file changed (`view-file.service.ts`)
+**Approval basis:** two-hunk version approved in checkpoint resume signal
+
+### Verification Commands
+
+```
+$ git diff -- src/angular/src/app/pages/files/bulk-actions-bar.component.html
+(empty)
+$ git diff -- src/angular/src/app/pages/files/bulk-actions-bar.component.scss
+(empty)
+$ git diff --stat
+ .../src/app/services/files/view-file.service.ts      | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+```
+
+### Full Diff (for the record)
+
+```diff
+diff --git a/src/angular/src/app/services/files/view-file.service.ts b/src/angular/src/app/services/files/view-file.service.ts
+index 1441241..8de65f9 100644
+--- a/src/angular/src/app/services/files/view-file.service.ts
++++ b/src/angular/src/app/services/files/view-file.service.ts
+@@ -345,10 +345,10 @@ export class ViewFileService implements OnDestroy {
+             }
+         }
+ 
+-        const isQueueable: boolean = [ViewFile.Status.DEFAULT,
+-                                    ViewFile.Status.STOPPED,
+-                                    ViewFile.Status.DELETED].includes(status)
+-                                    && remoteSize > 0;
++        const isQueueable: boolean = status === ViewFile.Status.DELETED
++                                    || ([ViewFile.Status.DEFAULT,
++                                         ViewFile.Status.STOPPED].includes(status)
++                                        && remoteSize > 0);
+         const isStoppable: boolean = [ViewFile.Status.QUEUED,
+                                     ViewFile.Status.DOWNLOADING].includes(status);
+         const isExtractable: boolean = [ViewFile.Status.DEFAULT,
+@@ -361,12 +361,12 @@ export class ViewFileService implements OnDestroy {
+                                     ViewFile.Status.DOWNLOADED,
+                                     ViewFile.Status.EXTRACTED].includes(status)
+                                     && localSize > 0;
+-        const isRemotelyDeletable: boolean = [ViewFile.Status.DEFAULT,
+-                                    ViewFile.Status.STOPPED,
+-                                    ViewFile.Status.DOWNLOADED,
+-                                    ViewFile.Status.EXTRACTED,
+-                                    ViewFile.Status.DELETED].includes(status)
+-                                    && remoteSize > 0;
++        const isRemotelyDeletable: boolean = status === ViewFile.Status.DELETED
++                                    || ([ViewFile.Status.DEFAULT,
++                                         ViewFile.Status.STOPPED,
++                                         ViewFile.Status.DOWNLOADED,
++                                         ViewFile.Status.EXTRACTED].includes(status)
++                                        && remoteSize > 0);
+ 
+         return new ViewFile({
+             name: modelFile.name,
+```
+
+### Karma Output (FIX-01 describe block)
+
+```
+FIX-01 DELETED isQueueable regression
+  ✓ DELETED + remote_size=null must be queueable (RED target)
+  ✓ DELETED + remote_size>0 is queueable (GREEN control)
+
+Chrome Headless 147.0.0.0 (Mac OS 10.15.7): Executed 23 of 23 SUCCESS (0.026 secs / 0.022 secs)
+TOTAL: 23 SUCCESS
+```
+
+Full-suite totals:
+```
+Chrome Headless 147.0.0.0 (Mac OS 10.15.7): Executed 596 of 596 SUCCESS (1.033 secs / 0.974 secs)
+TOTAL: 596 SUCCESS
+```
