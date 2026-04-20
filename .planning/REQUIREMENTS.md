@@ -13,7 +13,7 @@
 
 - [ ] **FIX-01**: When the multiselect bulk-actions bar shows for a selection that includes one or more deleted files, "Re-Queue from Remote" is available in the bar. For mixed selections, the bar shows the union of applicable actions across the selection, disabling individual actions only for rows where they do not apply. Regression from v1.1.0.
 
-- [ ] **FIX-02**: Auto-delete on a pack root does not execute while any child on disk is missing from the per-pack imported-children set. Tracks per-child import state (root, child basename) persisted across restarts, bounded, enumerates on-disk children via BFS at Timer-fire time, and skips+logs on partial coverage. Covers GH #19 (Sonarr silent-rejects leaving orphaned episodes that previously triggered pack-wide deletion).
+- [x] **FIX-02**: Auto-delete on a pack root does not execute while any child on disk is missing from the per-pack imported-children set. Tracks per-child import state (root, child basename) persisted across restarts, bounded, enumerates on-disk children via BFS at Timer-fire time, and skips+logs on partial coverage. Covers GH #19 (Sonarr silent-rejects leaving orphaned episodes that previously triggered pack-wide deletion).
 
 ### Deferred UAT from v1.1.0 (UAT)
 
@@ -74,7 +74,7 @@ _Filled by roadmapper — maps each REQ-ID to its owning phase._
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
 | FIX-01 | Phase 76 | Pending |
-| FIX-02 | Phase 75 | Pending |
+| FIX-02 | Phase 75 | Complete |
 | UAT-01 | Phase 77 | Pending |
 | UAT-02 | Phase 77 | Pending |
 | UAT-03 | Phase 78 | Pending |

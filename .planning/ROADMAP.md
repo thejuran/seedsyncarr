@@ -240,7 +240,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 
 ### v1.1.1 Post-Redesign Cleanup & Outstanding Work (Phases 75-82) - PLANNING
 
-- [ ] **Phase 75: Per-Child Import State (GH #19)** - Data-loss bug fix: per-child import tracking prevents pack-wide auto-delete on Sonarr silent-reject
+- [x] **Phase 75: Per-Child Import State (GH #19)** - Data-loss bug fix: per-child import tracking prevents pack-wide auto-delete on Sonarr silent-reject (completed 2026-04-20)
 - [ ] **Phase 76: Multiselect Bulk-Bar Action Union** - Restore "Re-Queue from Remote" in mixed selections; union-of-applicable-actions with per-row disable
 - [ ] **Phase 77: Deferred Playwright E2E (Phases 72 + 73)** - 15 E2E specs covering selection + bulk bar + dashboard filter + URL round-trip
 - [ ] **Phase 78: Storage Tile Live-Seedbox UAT** - 6 manual UAT items against live remote (df-over-SSH, thresholds, graceful fallback)
@@ -378,7 +378,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 | 60. Dependency Updates | v1.0.0 | 2/2 | Complete | 2026-04-09 |
 | 61. Branding Integration | v1.0.0 | 0/0 | Complete | 2026-04-13 |
 | 62-74. v1.1.0 UI Redesign — Triggarr Style | v1.1.0 | 30/30 | Complete | 2026-04-19 |
-| 75. Per-Child Import State (GH #19) | v1.1.1 | 0/0 | Not started | - |
+| 75. Per-Child Import State (GH #19) | v1.1.1 | 4/4 | Complete    | 2026-04-20 |
 | 76. Multiselect Bulk-Bar Action Union | v1.1.1 | 0/0 | Not started | - |
 | 77. Deferred Playwright E2E (72+73) | v1.1.1 | 0/0 | Not started | - |
 | 78. Storage Tile Live-Seedbox UAT | v1.1.1 | 0/0 | Not started | - |
