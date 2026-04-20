@@ -16,13 +16,16 @@ import {ServerStatusService} from "../../../../services/server/server-status.ser
 import {ServerStatus} from "../../../../services/server/server-status";
 
 
-class MockServerStatusService {
+class MockServerStatusService implements Pick<ServerStatusService, "status"> {
     _status$ = new BehaviorSubject<ServerStatus>(new ServerStatus({}));
     get status() {
         return this._status$.asObservable();
     }
     pushStatus(storage: {localTotal: number | null; localUsed: number | null; remoteTotal: number | null; remoteUsed: number | null}) {
-        this._status$.next(new ServerStatus({storage}));
+        // Carry server/controller forward so a future DashboardStatsService dependency
+        // on either block doesn't get silently reset to defaults by this test helper.
+        const current = this._status$.getValue();
+        this._status$.next(new ServerStatus({server: current.server, controller: current.controller, storage}));
     }
 }
 

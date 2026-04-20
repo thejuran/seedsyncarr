@@ -43,7 +43,7 @@ class ScannerResult:
                  timestamp: datetime,
                  files: List[SystemFile],
                  failed: bool = False,
-                 error_message: str = None,
+                 error_message: Optional[str] = None,
                  total_bytes: Optional[int] = None,
                  used_bytes: Optional[int] = None):
         self.timestamp = timestamp

@@ -1,6 +1,6 @@
 import logging
 import json
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 import os
 import hashlib
 import shlex
@@ -28,7 +28,7 @@ class RemoteScanner(IScanner):
         return any(pattern in msg for pattern in PERMANENT_ERROR_PATTERNS)
 
     @staticmethod
-    def _parse_df_output(out) -> Tuple[Optional[int], Optional[int]]:
+    def _parse_df_output(out: Union[bytes, str]) -> Tuple[Optional[int], Optional[int]]:
         """
         Parse `df -B1 <path>` output. Returns (total_bytes, used_bytes), or
         (None, None) on any parse failure (silent fallback per D-16). Never raises.
