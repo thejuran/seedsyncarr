@@ -39,8 +39,8 @@ jobs:
       - name: Run Angular unit tests
         run: make run-tests-angular
 
-  lint:
-    name: Lint
+  lint-python:
+    name: Lint (Python)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -57,10 +57,19 @@ jobs:
       - name: Python lint
         run: ruff check src/python/
 
+  lint-angular:
+    name: Lint (Angular)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: "npm"
+          cache-dependency-path: src/angular/package-lock.json
 
       - name: Install Angular dependencies
         run: cd src/angular && npm ci
@@ -82,10 +91,6 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            image=moby/buildkit:master
-            network=host
       - name: Show buildx builder instance name
         run: echo ${{ steps.buildx.outputs.name }}
       - name: Show buildx available platforms
@@ -106,12 +111,13 @@ jobs:
     name: End-to-end tests on Docker Image (${{ matrix.arch }})
     needs: [ build-docker-image ]
     strategy:
+      fail-fast: false
+      # arm64 E2E only runs on main push + release tags (where it gates
+      # image publish). PRs run amd64 only — arm64 regressions are rare
+      # for code changes that don't touch native deps, and arm64 E2E via
+      # hosted runner adds ~10 min to PR feedback.
       matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-latest
-          - arch: arm64
-            runner: ubuntu-24.04-arm
+        include: ${{ fromJSON((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) && '[{"arch":"amd64","runner":"ubuntu-latest"},{"arch":"arm64","runner":"ubuntu-24.04-arm"}]' || '[{"arch":"amd64","runner":"ubuntu-latest"}]') }}
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
@@ -121,10 +127,6 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            image=moby/buildkit:master
-            network=host
       - name: Show buildx builder instance name
         run: echo ${{ steps.buildx.outputs.name }}
       - name: Show buildx available platforms
@@ -161,10 +163,6 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            image=moby/buildkit:master
-            network=host
       - name: Show buildx builder instance name
         run: echo ${{ steps.buildx.outputs.name }}
       - name: Show buildx available platforms
@@ -206,10 +204,6 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: |
-            image=moby/buildkit:master
-            network=host
       - name: Show buildx builder instance name
         run: echo ${{ steps.buildx.outputs.name }}
       - name: Show buildx available platforms
