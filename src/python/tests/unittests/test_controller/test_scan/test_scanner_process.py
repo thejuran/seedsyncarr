@@ -2,17 +2,19 @@ import unittest
 import multiprocessing
 import logging
 import sys
+import tempfile
 from unittest.mock import MagicMock
 
 import timeout_decorator
 
 from controller import IScanner, ScannerProcess, ScannerError
+from controller.scan import ActiveScanner
 from system import SystemFile
 
 
 class DummyScanner(IScanner):
     def scan(self):
-        return []
+        return [], None, None
 
     def set_base_logger(self, base_logger: logging.Logger):
         pass
@@ -59,17 +61,17 @@ class TestScannerProcess(unittest.TestCase):
         mock_scanner.scan = MagicMock()
 
         def _scan():
-            ret = None
+            files = None
             if self.scan_signal.value == 0:
-                ret = [a]
+                files = [a]
             elif self.scan_signal.value == 1:
-                ret = [a, b]
+                files = [a, b]
             elif self.scan_signal.value == 2:
-                ret = [c]
+                files = [c]
             elif self.scan_signal.value == 3:
-                ret = []
+                files = []
             self.scan_counter.value += 1
-            return ret
+            return files, None, None
         mock_scanner.scan.side_effect = _scan
 
         self.process = ScannerProcess(scanner=mock_scanner,
@@ -171,3 +173,21 @@ class TestScannerProcess(unittest.TestCase):
             while True:
                 self.process.propagate_exception()
         self.assertEqual("non-recoverable error", str(ctx.exception))
+
+
+class TestIScannerContract(unittest.TestCase):
+    """
+    Phase 74-02 widened IScanner.scan() to return (files, total_bytes, used_bytes).
+    Regression guard: every IScanner implementation must return a 3-tuple so that
+    ScannerProcess.run_loop unpacking does not raise ValueError.
+    """
+
+    def test_active_scanner_returns_three_tuple(self):
+        scanner = ActiveScanner(tempfile.gettempdir())
+        result = scanner.scan()
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(3, len(result))
+        files, total, used = result
+        self.assertIsInstance(files, list)
+        self.assertIsNone(total)
+        self.assertIsNone(used)

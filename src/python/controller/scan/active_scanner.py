@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional, Tuple
 import multiprocessing
 import queue
 
@@ -31,7 +31,7 @@ class ActiveScanner(IScanner):
         self.__active_files_queue.put(file_names)
 
     @overrides(IScanner)
-    def scan(self) -> List[SystemFile]:
+    def scan(self) -> Tuple[List[SystemFile], Optional[int], Optional[int]]:
         # Grab the latest list of active files, if any
         try:
             while True:
@@ -48,4 +48,5 @@ class ActiveScanner(IScanner):
             except SystemScannerError as ex:
                 # Ignore errors here, file may have been deleted
                 self.logger.warning(str(ex))
-        return result
+        # Capacity is irrelevant for the active scanner; return None per IScanner contract.
+        return result, None, None
