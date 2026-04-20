@@ -551,24 +551,27 @@ Plans:
 **Goal:** Extend the dashboard transfer-table segment filter so every operationally-meaningful ViewFile.Status (DEFAULT, DOWNLOADED, EXTRACTED) is reachable as a filter sub-button under a new Done parent + Pending sub under Active, and persist active filter state via URL query params with silent fallback on invalid values.
 **Requirements**: D-01, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12, D-13, D-14, D-15
 **Depends on:** Phase 72
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 
 Plans:
-- [ ] 73-01-PLAN.md — Widen activeSegment union to include 'done' + add Done branch (DOWNLOADED ∪ EXTRACTED) + add DEFAULT (Pending) to Active branch in segmentedFiles$
-- [ ] 73-02-PLAN.md — Insert Done parent button + Done expand block (Downloaded, Extracted) + Pending sub-button (first under Active) into transfer-table template, reusing existing .btn-segment / .btn-sub classes verbatim
-- [ ] 73-03-PLAN.md — Inject Router + ActivatedRoute, add ngOnInit URL hydration with enum-validated silent fallback (D-11), add _writeFilterToUrl helper called from onSegmentChange / onSubStatusChange with queryParamsHandling: "merge" + replaceUrl: true
-- [ ] 73-04-PLAN.md — Update TestBed providers (Router/ActivatedRoute mocks) + TEST_TEMPLATE; add 6 filter-logic tests (Done branch, Pending under Active, 3 new sub-status filters, selection-clear-on-Done) + 11 URL persistence tests covering D-09/D-10/D-11
-- [ ] 73-05-PLAN.md — Add getSegmentButton + getSubButton page-object locators; add 3 e2e tests (Done expand, Pending reveal, URL round-trip persistence)
+- [x] 73-01-PLAN.md — Widen activeSegment union to include 'done' + add Done branch (DOWNLOADED ∪ EXTRACTED) + add DEFAULT (Pending) to Active branch in segmentedFiles$
+- [x] 73-02-PLAN.md — Insert Done parent button + Done expand block (Downloaded, Extracted) + Pending sub-button (first under Active) into transfer-table template, reusing existing .btn-segment / .btn-sub classes verbatim
+- [x] 73-03-PLAN.md — Inject Router + ActivatedRoute, add ngOnInit URL hydration with enum-validated silent fallback (D-11), add _writeFilterToUrl helper called from onSegmentChange / onSubStatusChange with queryParamsHandling: "merge" + replaceUrl: true
+- [x] 73-04-PLAN.md — Update TestBed providers (Router/ActivatedRoute mocks) + TEST_TEMPLATE; add 6 filter-logic tests (Done branch, Pending under Active, 3 new sub-status filters, selection-clear-on-Done) + 11 URL persistence tests covering D-09/D-10/D-11
+- [x] 73-05-PLAN.md — Add getSegmentButton + getSubButton page-object locators; add 3 e2e tests (Done expand, Pending reveal, URL round-trip persistence)
 
 ### Phase 74: Storage capacity tiles
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Add disk-capacity awareness to Remote and Local Storage dashboard tiles via a new `StorageStatus` component (fed by `shutil.disk_usage()` locally and `df -B1 <remote_path>` over the existing SSH session remotely), piggybacked onto the existing SSE status stream, with silent-fallback to tracked-bytes when capacity is unavailable and Bootstrap warning/danger color shifts at 80%/95% thresholds.
+**Requirements**: D-01..D-16 (CONTEXT.md decisions — no ROADMAP REQ-IDs mapped)
 **Depends on:** Phase 73
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 74 to break down)
+- [ ] 74-01-PLAN.md — Backend: Add `StorageStatus` component to `Status` model + extend `SerializeStatusJson.status()` to emit `storage` block (wave 1)
+- [ ] 74-02-PLAN.md — Backend: Wire `shutil.disk_usage` + `df -B1 <shlex.quote(path)>` into scanners; apply >1% change gate in `_update_controller_status` with per-side independence (wave 2, depends on 74-01)
+- [ ] 74-03-PLAN.md — Frontend: Extend `ServerStatus` DTO with `storage` block (snake→camel) + widen `DashboardStats` with four `*Capacity*` fields + rewire `DashboardStatsService` to `combineLatest([files, status])` (wave 1, parallel with 74-01)
+- [ ] 74-04-PLAN.md — Frontend: Port capacity-mode template to Remote/Local tiles per locked design spec + add `--warning`/`--danger` SCSS modifiers + threshold-boundary unit tests + human visual verification checkpoint (wave 2, depends on 74-03)
 
 ---
 
