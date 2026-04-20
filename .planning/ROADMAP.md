@@ -568,9 +568,9 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 74-01-PLAN.md — Backend: Add `StorageStatus` component to `Status` model + extend `SerializeStatusJson.status()` to emit `storage` block (wave 1)
+- [x] 74-01-PLAN.md — Backend: Add `StorageStatus` component to `Status` model + extend `SerializeStatusJson.status()` to emit `storage` block (wave 1)
 - [ ] 74-02-PLAN.md — Backend: Wire `shutil.disk_usage` + `df -B1 <shlex.quote(path)>` into scanners; apply >1% change gate in `_update_controller_status` with per-side independence (wave 2, depends on 74-01)
-- [ ] 74-03-PLAN.md — Frontend: Extend `ServerStatus` DTO with `storage` block (snake→camel) + widen `DashboardStats` with four `*Capacity*` fields + rewire `DashboardStatsService` to `combineLatest([files, status])` (wave 1, parallel with 74-01)
+- [x] 74-03-PLAN.md — Frontend: Extend `ServerStatus` DTO with `storage` block (snake→camel) + widen `DashboardStats` with four `*Capacity*` fields + rewire `DashboardStatsService` to `combineLatest([files, status])` (wave 1, parallel with 74-01)
 - [ ] 74-04-PLAN.md — Frontend: Port capacity-mode template to Remote/Local tiles per locked design spec + add `--warning`/`--danger` SCSS modifiers + threshold-boundary unit tests + human visual verification checkpoint (wave 2, depends on 74-03)
 
 ---
