@@ -721,3 +721,109 @@ class TestRemoteScanner(unittest.TestCase):
             str(ctx.exception)
         )
         self.assertFalse(ctx.exception.recoverable)
+
+
+# ============================================================================
+# Phase 74-02: capacity (df -B1) parser + SSH-failure fallback + shlex.quote
+# ============================================================================
+
+class TestParseDfOutput(unittest.TestCase):
+    def test_happy_path(self):
+        out = (b"Filesystem     1B-blocks       Used Available Use% Mounted on\n"
+               b"/dev/sda1  2000000000000 1300000000000 700000000000  65% /mnt/seedbox\n")
+        total, used = RemoteScanner._parse_df_output(out)
+        self.assertEqual(2000000000000, total)
+        self.assertEqual(1300000000000, used)
+
+    def test_trailing_whitespace(self):
+        out = (b"Filesystem 1B-blocks Used Available Use% Mounted on\n"
+               b"/dev/sda1 2000000000000 1300000000000 700000000000 65% /mnt\n\n")
+        total, used = RemoteScanner._parse_df_output(out)
+        self.assertEqual(2000000000000, total)
+        self.assertEqual(1300000000000, used)
+
+    def test_missing_data_row(self):
+        out = b"Filesystem 1B-blocks Used Available Use% Mounted on\n"
+        total, used = RemoteScanner._parse_df_output(out)
+        self.assertIsNone(total)
+        self.assertIsNone(used)
+
+    def test_non_numeric_sizes(self):
+        out = b"Filesystem 1B-blocks Used\n/dev/sda1 not_a_number also_not_a_number 0 0% /mnt\n"
+        total, used = RemoteScanner._parse_df_output(out)
+        self.assertIsNone(total)
+        self.assertIsNone(used)
+
+    def test_empty_output(self):
+        total, used = RemoteScanner._parse_df_output(b"")
+        self.assertIsNone(total)
+        self.assertIsNone(used)
+
+    def test_unicode_decode_error(self):
+        total, used = RemoteScanner._parse_df_output(b"\xff\xfe\xff")
+        self.assertIsNone(total)
+        self.assertIsNone(used)
+
+    def test_too_few_columns(self):
+        out = b"Filesystem 1B-blocks\n/dev/sda1\n"
+        total, used = RemoteScanner._parse_df_output(out)
+        self.assertIsNone(total)
+        self.assertIsNone(used)
+
+
+class TestRemoteScannerShleQuote(unittest.TestCase):
+    """Regression guard: df command MUST use shlex.quote on user-controlled path (T-74-05)."""
+
+    def test_df_command_quotes_remote_path(self):
+        ssh_patcher = patch('controller.scan.remote_scanner.Sshcp')
+        self.addCleanup(ssh_patcher.stop)
+        mock_ssh_cls = ssh_patcher.start()
+        mock_ssh = mock_ssh_cls.return_value
+
+        scanner = RemoteScanner(
+            remote_address="host",
+            remote_username="user",
+            remote_password="pw",
+            remote_port=22,
+            remote_path_to_scan="/mnt/seedbox; rm -rf /",
+            local_path_to_scan_script="/tmp/scanfs",
+            remote_path_to_scan_script="/tmp/scanfs",
+        )
+        scanner._RemoteScanner__install_done = True
+        mock_ssh.shell.side_effect = [
+            b"[]",
+            b"Filesystem 1B-blocks Used Available Use% Mounted on\n/dev/sda1 1000 500 500 50% /mnt\n",
+        ]
+
+        files, total, used = scanner.scan()
+        self.assertEqual([], files)
+        self.assertEqual(1000, total)
+        self.assertEqual(500, used)
+        df_cmd = mock_ssh.shell.call_args_list[1][0][0]
+        self.assertIn("df -B1 ", df_cmd)
+        self.assertIn("'/mnt/seedbox; rm -rf /'", df_cmd)
+
+
+class TestRemoteScannerDfSshFailure(unittest.TestCase):
+    def test_df_ssh_error_returns_none_capacity_but_preserves_files(self):
+        ssh_patcher = patch('controller.scan.remote_scanner.Sshcp')
+        self.addCleanup(ssh_patcher.stop)
+        mock_ssh_cls = ssh_patcher.start()
+        mock_ssh = mock_ssh_cls.return_value
+
+        scanner = RemoteScanner(
+            remote_address="host", remote_username="user", remote_password="pw",
+            remote_port=22, remote_path_to_scan="/mnt/path",
+            local_path_to_scan_script="/tmp/scanfs",
+            remote_path_to_scan_script="/tmp/scanfs",
+        )
+        scanner._RemoteScanner__install_done = True
+        mock_ssh.shell.side_effect = [
+            b"[]",
+            SshcpError("df connection reset"),
+        ]
+
+        files, total, used = scanner.scan()
+        self.assertEqual([], files)
+        self.assertIsNone(total)
+        self.assertIsNone(used)
