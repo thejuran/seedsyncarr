@@ -1,0 +1,95 @@
+Phase 77 Plan 04 Task 1 — Preflight environmental audit
+Run at: 2026-04-20 (executor sequential, main worktree)
+
+Plan invocation (as written):
+  SEEDSYNCARR_ARCH=amd64 STAGING_VERSION=latest make run-tests-e2e
+
+Environment discovered:
+  - Host arch: arm64 (Apple Silicon)
+  - Target arch: amd64 (requires QEMU emulation for builds + run)
+  - Docker: 29.2.0 running
+  - Docker disk: 20.17 GB images used, 193 Gi host free → sufficient
+  - STAGING_REGISTRY default: localhost:5000 (DEFAULT_STAGING_REGISTRY in Makefile:17)
+  - STAGING_VERSION: no Makefile ?= default for run-tests-e2e target; target errors if unset.
+    Plan fallback per 77-04-PLAN.md line 76: "STAGING_VERSION=latest"
+
+Blocker A — No local Docker registry running:
+  $ curl -sS -o /dev/null -w "%{http_code}\n" http://localhost:5000/v2/_catalog
+  403  ← not Docker Registry; AirPlay/ControlCenter returns this
+
+  $ lsof -iTCP:5000 -sTCP:LISTEN
+  ControlCe (macOS ControlCenter / AirPlay Receiver) OWNS port 5000
+
+  $ docker ps -a --filter name=registry
+  (empty)  ← no registry container, stopped or running
+
+Blocker B — No pre-built staging image locally:
+  $ docker images --format '{{.Repository}}:{{.Tag}}' | grep -iE "(seedsyncarr|localhost:5000)"
+  (empty)  ← zero seedsyncarr images; no localhost:5000:latest
+
+  Makefile run-tests-e2e:128 executes:
+    docker rmi -f localhost:5000:latest          (harmless if absent)
+    docker pull localhost:5000:latest --platform linux/amd64
+                                                  ↑ will fail — no registry, no image
+
+Blocker C — make docker-image requires --push to a reachable registry:
+  Makefile:48 buildx always pushes; without a reachable registry it fails.
+  The docker-image target cannot populate localhost:5000 until a registry is up
+  on port 5000 (which ControlCenter currently occupies).
+
+What the plan assumed:
+  The plan's Task 1 action reads "make run-tests-e2e 2>&1 | tee 77-04-harness-output.log"
+  with only STAGING_VERSION + SEEDSYNCARR_ARCH set. It does not instruct the
+  executor to build a staging image or spin up a registry. This matches the
+  CI flow (images are built upstream in .github/workflows/ci.yml:108-146 and
+  pushed to ghcr.io, then run-tests-e2e pulls) but does NOT match the local
+  dev flow on a fresh worktree.
+
+Options for unblocking (developer decision — Rule 4 territory):
+
+  Option 1 — Developer provides prerequisites, re-invokes executor.
+    a. Disable macOS AirPlay Receiver (System Settings → General → AirDrop &
+       Handoff → AirPlay Receiver: Off), freeing port 5000.
+    b. Run local registry:  docker run -d -p 5000:5000 --name registry registry:2
+    c. Build + push amd64 staging image (cross-arch emulated, ~20–40 min on M-series):
+         SEEDSYNCARR_ARCH=amd64 STAGING_VERSION=latest \
+           STAGING_REGISTRY=localhost:5000 make docker-image
+       Note: docker-image always pushes linux/amd64,linux/arm64 both — full multi-arch build.
+    d. Re-invoke this plan; Task 1 will then succeed on the fresh harness run.
+    Total wall time ≈ 40–75 min depending on emulation speed and cache state.
+
+  Option 2 — Executor performs steps 1a–1c automatically (SCOPE EXPANSION).
+    Requires developer approval: (i) flipping a system setting (AirPlay),
+    (ii) running a privileged multiarch/qemu-user-static bootstrap container
+    (make docker-buildx target), (iii) ~30–60 min of cross-arch build time
+    before the 8–15 min harness run begins. The plan did not authorize any
+    of this; it is a Rule 4 architectural deviation.
+
+  Option 3 — Defer local harness run to CI (matches VALIDATION.md Manual-Only
+    classification for arm64, and is arguably the correct path for amd64 too
+    on an arm64 dev host). Write the summary (Task 3) citing CI as the
+    harness-run evidence source, with the "approved / arm64-deferred" signal
+    expanded to "approved-CI-as-harness". This mirrors how Plans 72/73 were
+    accepted on structural verification grounds per
+    .planning/milestones/v1.1.0-phases/73-dashboard-filter-for-every-torrent-status/73-HUMAN-UAT.md:22.
+
+  Option 4 — Push to a branch; let CI run `make run-tests-e2e` on both amd64
+    and arm64 matrix rows; executor waits for the green run and then writes
+    the summary citing the CI run log. Zero local Docker work. ~15–30 min CI
+    wall time depending on runner availability. This is the same evidence
+    surface as Option 3 but with an explicit push+wait cycle instead of a
+    "CI has already validated" claim.
+
+Recommendation (executor's read):
+  Options 3 or 4 match the plan's evidence contract with the least surprise.
+  The plan's acceptance criteria (26 passed in log, UAT-01/UAT-02 counts,
+  exit code 0) are satisfied by a CI log just as well as a local one, and
+  CI is the canonical regression gate per D-20. Option 1 is the "fullest
+  fidelity" answer but burns wall-clock time with no material correctness
+  gain over CI. Option 2 silently expands scope and should be avoided.
+
+Exit:
+  Task 1 NOT executed — harness cannot run without a reachable staging image.
+  Preflight check complete; escalating to developer via human-verify checkpoint
+  (Task 2 semantics, invoked one task early because the blocker is an infra
+  gate, not a test outcome).
