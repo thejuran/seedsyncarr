@@ -40,7 +40,8 @@ evidence: "Direction 1 (remote-fail/local-ok): exercised during all three Test 3
 
 ### 6. Download Speed and Active Tasks tiles unchanged
 expected: The other two tiles in the stats strip render identically to before Phase 74 — no layout shift, no new icons, no regression.
-result: pending
+result: pass
+evidence: "Full-page dashboard snapshot in evidence/06-unchanged-tiles.png. Download Speed tile: `0 B/s` main value with `Peak: 0 B/s` sub-line — same pre-phase-74 shape (header icon + main number + sub-line, no capacity fields, no progress bar). Active Tasks tile: `0 Running` main value + `0 DL` + `0 Queued` badge pills — same pre-phase-74 badge-dl/badge-queued shape. Structural proof: `git diff f3a225a -- src/python src/angular` = empty output. f3a225a is the Phase 78 plan-start commit (`docs(78): create phase plan`); every commit on the branch since then has been under `.planning/phases/78-storage-tile-live-seedbox-uat/` — zero source-code changes anywhere under src/. Phase 78's read-only contract preserved."
 
 ## Summary
 

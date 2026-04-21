@@ -44,8 +44,8 @@ followups: ""
 
 ### 6. Download Speed and Active Tasks tiles unchanged
 expected: Both tiles render identical to pre-phase-74 layout (no new icons, no new sub-lines, same class names, same pipes).
-result: pending
-notes: ""
+result: pass
+notes: "Visual anchors all present: Download Speed = fa-arrow-down icon header + big 0 + B/s unit + Peak: 0 B/s sub-line. Active Tasks = fa-tasks icon header + big 0 + Running label + `0 DL` + `0 Queued` badge pills. No capacity fields, no progress bars, no new icons, no layout shifts. The only dashboard-level change from pre-phase-74 is the two upper-left tiles flipping between capacity and fallback modes — the two right-side tiles are fully static. Structural proof via git diff empty output for src/python and src/angular."
 followups: ""
 
 ## Summary
