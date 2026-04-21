@@ -308,7 +308,9 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
   3. Warning (80%+) and danger (95%+) color shifts render against a real disk at each threshold.
   4. Remote tile hides gracefully when `df` fails (network drop, path missing, non-zero exit) without crashing the dashboard.
   5. All 6 UAT items recorded with pass/fail and findings in the milestone log.
-**Plans**: TBD
+**Plans**: 2 plans
+  - [ ] 78-01-PLAN.md — Stand up disposable SSH container + host loop-mount + run-from-source backend/frontend; user-checkpoint confirms both tiles in capacity mode (Wave 1)
+  - [ ] 78-02-PLAN.md — Execute 6 Phase-74-deferred UAT items against live env; record pass/fail in 78-UAT.md + 78-HUMAN-UAT.md; close UAT-03 (Wave 2)
 **UI hint**: yes
 
 ### Phase 79: Test Infra Cleanup
@@ -389,7 +391,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 | 75. Per-Child Import State (GH #19) | v1.1.1 | 4/4 | Complete    | 2026-04-20 |
 | 76. Multiselect Bulk-Bar Action Union | v1.1.1 | 4/4 | Complete    | 2026-04-20 |
 | 77. Deferred Playwright E2E (72+73) | v1.1.1 | 4/4 | Complete    | 2026-04-21 |
-| 78. Storage Tile Live-Seedbox UAT | v1.1.1 | 0/0 | Not started | - |
+| 78. Storage Tile Live-Seedbox UAT | v1.1.1 | 0/2 | Not started | - |
 | 79. Test Infra Cleanup | v1.1.1 | 0/0 | Not started | - |
 | 80. Small Cleanups (Dependabot + arm64 + enum) | v1.1.1 | 0/0 | Not started | - |
 | 81. Optional Fernet Encryption at Rest | v1.1.1 | 0/0 | Not started | - |
