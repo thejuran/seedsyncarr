@@ -95,13 +95,17 @@ export async function seedStatus(page: Page, file: string, target: SeedTarget): 
                 hasText: new RegExp(`^${escapeRegex(file)}$`),
             }),
         });
-        await row
-            .locator('td.cell-status .status-badge')
+        const badge = row.locator('td.cell-status .status-badge');
+        await badge
             .filter({ hasText: new RegExp(`^(${LABEL.DOWNLOADING}|${LABEL.DOWNLOADED})$`) })
             .waitFor({ timeout: 30_000 });
-        // Re-read the badge after the race to detect which branch we landed on.
-        const settledLabel = (await row.locator('td.cell-status .status-badge').textContent())?.trim() ?? '';
-        if (settledLabel === LABEL.DOWNLOADED) {
+        // Detect which branch via a filtered count — avoids a bare textContent() re-read
+        // that can race Angular change detection (the badge element can re-render between
+        // the filtered waitFor and an unfiltered text read, producing a stale miss).
+        const sawDownloading = (await badge
+            .filter({ hasText: new RegExp(`^${LABEL.DOWNLOADING}$`) })
+            .count()) > 0;
+        if (!sawDownloading) {
             throw new Error(
                 `Seed STOPPED for '${file}' missed the transient DOWNLOADING window — ` +
                 `file already reached DOWNLOADED ('${LABEL.DOWNLOADED}'). Stop is a no-op from ` +
