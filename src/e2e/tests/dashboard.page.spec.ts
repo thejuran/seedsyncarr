@@ -357,8 +357,13 @@ test.describe.serial('UAT-02: status filter and URL', () => {
         await expect(page).toHaveURL(/[?&]segment=active(&|$)/);
         await expect(page).toHaveURL(/[?&]sub=pending(&|$)/);
 
-        // Populated: expect >= 1 row visible. The DEFAULT bucket contains every fixture not seeded
-        // by beforeAll (6 of 9 harness files: 'áßç déÀ.mp4', 'crispycat', 'goose', 'joke', 'testing.gif', 'üæÒ').
+        // Populated: expect >= 1 row visible. DEFAULT bucket contains at least one row —
+        // exact composition depends on UAT-01's destructive run order (UAT-01's "all 5
+        // actions" spec fires Delete Remote on 'áßç déÀ.mp4', and its Queue/Stop cycle
+        // mutates 'testing.gif'; when describe.serial blocks run in file order these
+        // rows may be in non-DEFAULT states by the time this spec executes). UAT-02's
+        // beforeAll only re-seeds the DELETED/DOWNLOADED/STOPPED fixtures; it does not
+        // restore rows that UAT-01 mutated into other states. WR-01.
         const rowCount = await page.locator('.transfer-table tbody app-transfer-row').count();
         expect(rowCount).toBeGreaterThanOrEqual(1);
 
