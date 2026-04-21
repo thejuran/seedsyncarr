@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { DashboardPage, FileInfo } from './dashboard.page';
-import { seedMultiple } from './fixtures/seed-state';
+import { seedMultiple, seedStatus } from './fixtures/seed-state';
 
 const TEST_FILE = 'clients.jpg';
 const DELETED_FILE = 'clients.jpg';        // FIX-01 anchor; pre-seeded DELETED via seed-state (RESEARCH Pitfall 2 rejected 'joke' as a directory)
@@ -287,7 +287,14 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
     test('UAT-01: FIX-01 union — DELETED row allows Queue (re-queue from remote), alone and mixed with DEFAULT', async ({ page }) => {
         // Part A: DELETED row alone.
         // clients.jpg was pre-seeded to DELETED in beforeAll (queue → Synced → delete_local → Deleted).
-        await dashboardPage.waitForFileStatus(DELETED_FILE, 'Deleted', 10_000);
+        // Retry-safe re-seed: on Playwright retry (retries: 2) prior specs' LRU churn can evict
+        // clients.jpg from downloaded_files before this spec asserts. If the guard fails, re-seed
+        // DELETED directly rather than flaking on a stale row state.
+        try {
+            await dashboardPage.waitForFileStatus(DELETED_FILE, 'Deleted', 5_000);
+        } catch {
+            await seedStatus(page, DELETED_FILE, 'DELETED');
+        }
 
         await dashboardPage.selectFileByName(DELETED_FILE);
         await expect(dashboardPage.getActionBar()).toBeVisible();
