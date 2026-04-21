@@ -71,10 +71,6 @@ pytest-cov = "^7.1.0"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 timeout = 60
-cache_dir = "/tmp/.pytest_cache"
-filterwarnings = [
-    "ignore:'cgi' is deprecated:DeprecationWarning",
-]
 
 [tool.coverage.run]
 source = ["."]
