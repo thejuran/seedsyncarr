@@ -293,7 +293,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
   4. The FIX-01 union behavior is covered by at least one of the new selection specs.
 **Plans**: 4 plans
   - [x] 77-01-PLAN.md — Wave 1: seed-state fixture module + 9 DashboardPage helpers (D-04, D-11, D-12)
-  - [ ] 77-02-PLAN.md — Wave 2: 5 UAT-01 specs (selection + shift-range + page-select-all + bulk bar + FIX-01 union anchor)
+  - [x] 77-02-PLAN.md — Wave 2: 5 UAT-01 specs (selection + shift-range + page-select-all + bulk bar + FIX-01 union anchor)
   - [ ] 77-03-PLAN.md — Wave 3: 10 UAT-02 specs (8 status-filter + 2 URL round-trip via page.reload)
   - [ ] 77-04-PLAN.md — Wave 4: full `make run-tests-e2e` smoke + diff audit + verification summary (checkpoint-gated)
 **UI hint**: yes
