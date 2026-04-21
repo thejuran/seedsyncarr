@@ -320,3 +320,185 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
         void page;
     });
 });
+
+test.describe.serial('UAT-02: status filter and URL', () => {
+    let dashboardPage: DashboardPage;
+
+    test.beforeAll(async ({ browser }) => {
+        // UAT-02 seed plan: same 3 fixtures as UAT-01's beforeAll. This block has its own independent
+        // seed so state mutations in Plan 02's UAT-01 destructive specs do not leak here.
+        // Plan 02's FIX-01 spec Queue-dispatches clients.jpg, driving it back to DOWNLOADING/DOWNLOADED.
+        // This beforeAll re-runs the DELETED seed path (queue -> Synced -> delete_local -> Deleted) to
+        // restore the FIX-01 fixture state for the Errors->Deleted filter spec below.
+        const ctx = await browser.newContext();
+        const page = await ctx.newPage();
+        const dash = new DashboardPage(page);
+        await dash.navigateTo();
+        await seedMultiple(page, [
+            { file: DELETED_FILE, target: 'DELETED' },
+            { file: DOWNLOADED_FILE, target: 'DOWNLOADED' },
+            { file: STOPPED_FILE, target: 'STOPPED' },
+        ]);
+        await ctx.close();
+    });
+
+    test.beforeEach(async ({ page }) => {
+        dashboardPage = new DashboardPage(page);
+        await dashboardPage.navigateTo();
+    });
+
+    // === 4 populated-filter specs (Task 1) ===
+
+    test('UAT-02: status filter pending — Active → Pending shows DEFAULT-state rows', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Active').click();
+        await dashboardPage.getSubButton('Pending').click();
+
+        // URL written per Phase 73 D-09: ?segment=active&sub=pending
+        await expect(page).toHaveURL(/[?&]segment=active(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=pending(&|$)/);
+
+        // Populated: expect >= 1 row visible. The DEFAULT bucket contains every fixture not seeded
+        // by beforeAll (6 of 9 harness files: 'áßç déÀ.mp4', 'crispycat', 'goose', 'joke', 'testing.gif', 'üæÒ').
+        const rowCount = await page.locator('.transfer-table tbody app-transfer-row').count();
+        expect(rowCount).toBeGreaterThanOrEqual(1);
+
+        // No empty-row placeholder.
+        await expect(dashboardPage.getEmptyRow()).not.toBeVisible();
+    });
+
+    test('UAT-02: status filter synced — Done → Downloaded shows DOWNLOADED-state rows (Synced badge)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Done').click();
+        await dashboardPage.getSubButton('Downloaded').click();
+
+        await expect(page).toHaveURL(/[?&]segment=done(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=downloaded(&|$)/);
+
+        await expect(dashboardPage.getStatusBadge(DOWNLOADED_FILE)).toContainText('Synced');
+        await expect(dashboardPage.getEmptyRow()).not.toBeVisible();
+    });
+
+    test('UAT-02: status filter failed — Errors → Failed shows STOPPED-state rows (Failed badge)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Errors').click();
+        await dashboardPage.getSubButton('Failed').click();
+
+        await expect(page).toHaveURL(/[?&]segment=errors(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=failed(&|$)/);
+
+        await expect(dashboardPage.getStatusBadge(STOPPED_FILE)).toContainText('Failed');
+        await expect(dashboardPage.getEmptyRow()).not.toBeVisible();
+    });
+
+    test('UAT-02: status filter deleted — Errors → Deleted shows DELETED-state rows (Deleted badge, FIX-01 fixture)', async ({ page }) => {
+        // Belt-and-braces: verify beforeAll seed landed before clicking the filter.
+        await dashboardPage.waitForFileStatus(DELETED_FILE, 'Deleted', 10_000);
+
+        await dashboardPage.getSegmentButton('Errors').click();
+        await dashboardPage.getSubButton('Deleted').click();
+
+        await expect(page).toHaveURL(/[?&]segment=errors(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=deleted(&|$)/);
+
+        await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Deleted');
+        await expect(dashboardPage.getEmptyRow()).not.toBeVisible();
+    });
+
+    // === 4 empty-state filter specs (Task 2) ===
+
+    test('UAT-02: status filter syncing — Active → Syncing empty-state (transient on harness)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Active').click();
+        await dashboardPage.getSubButton('Syncing').click();
+
+        await expect(page).toHaveURL(/[?&]segment=active(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=syncing(&|$)/);
+
+        // Pitfall 4: DOWNLOADING is transient — LFTP drains the queue on an idle harness within ms.
+        // After beforeAll completes, no files are in DOWNLOADING state. Assert empty-state.
+        await expect(dashboardPage.getEmptyRow()).toBeVisible();
+        await expect(page.locator('.transfer-table tbody app-transfer-row').filter({ hasNot: page.locator('tr.empty-row') })).toHaveCount(0);
+    });
+
+    test('UAT-02: status filter queued — Active → Queued empty-state (transient on harness)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Active').click();
+        await dashboardPage.getSubButton('Queued').click();
+
+        await expect(page).toHaveURL(/[?&]segment=active(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=queued(&|$)/);
+
+        // Pitfall 4: QUEUED drains immediately on harness (single LFTP slot, no contention).
+        await expect(dashboardPage.getEmptyRow()).toBeVisible();
+    });
+
+    test('UAT-02: status filter extracting — Active → Extracting empty-state (no archive fixtures)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Active').click();
+        await dashboardPage.getSubButton('Extracting').click();
+
+        await expect(page).toHaveURL(/[?&]segment=active(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=extracting(&|$)/);
+
+        // Pitfall 3: All 9 harness fixtures are image/video/directory — patoolib rejects as non-archives.
+        // EXTRACTING is unreachable; assert empty-state.
+        await expect(dashboardPage.getEmptyRow()).toBeVisible();
+    });
+
+    test('UAT-02: status filter extracted — Done → Extracted empty-state (no archive fixtures)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Done').click();
+        await dashboardPage.getSubButton('Extracted').click();
+
+        await expect(page).toHaveURL(/[?&]segment=done(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=extracted(&|$)/);
+
+        await expect(dashboardPage.getEmptyRow()).toBeVisible();
+    });
+
+    // === 2 URL round-trip specs (Task 2) ===
+
+    test('UAT-02: URL round-trip parent — Done segment persists across page.reload()', async ({ page }) => {
+        // Start at All (default on navigateTo). Click Done.
+        await dashboardPage.getSegmentButton('Done').click();
+
+        // URL writes ?segment=done (no sub selected yet).
+        await expect(page).toHaveURL(/[?&]segment=done(&|$)/);
+
+        // Sub-buttons for Done (Downloaded + Extracted) should now be visible per existing expand spec.
+        await expect(dashboardPage.getSubButton('Downloaded')).toBeVisible();
+        await expect(dashboardPage.getSubButton('Extracted')).toBeVisible();
+
+        // Reload the page via browser refresh — exercises Angular's ActivatedRoute.queryParamMap hydration.
+        // Per D-15: page.reload() NOT page.goto(url). Cold-load via goto is out of scope for this phase.
+        await page.reload();
+
+        // Re-await the transfer-table container since navigateTo only runs in beforeEach.
+        await page.locator('.transfer-table').waitFor({ state: 'visible', timeout: 30_000 });
+
+        // Hydration verified: Done is still active (URL preserved), sub-buttons re-rendered visible.
+        await expect(page).toHaveURL(/[?&]segment=done(&|$)/);
+        await expect(dashboardPage.getSubButton('Downloaded')).toBeVisible();
+        await expect(dashboardPage.getSubButton('Extracted')).toBeVisible();
+    });
+
+    test('UAT-02: URL round-trip sub — Errors→Deleted persists across page.reload() (clients.jpg row visible)', async ({ page }) => {
+        // Re-guard DELETED fixture — this is the last UAT-02 spec and mutations in earlier specs
+        // of the block do not touch clients.jpg, but belt-and-braces.
+        await dashboardPage.waitForFileStatus(DELETED_FILE, 'Deleted', 10_000);
+
+        await dashboardPage.getSegmentButton('Errors').click();
+        await dashboardPage.getSubButton('Deleted').click();
+
+        await expect(page).toHaveURL(/[?&]segment=errors(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=deleted(&|$)/);
+
+        // Verify filter scoped to Deleted before reload.
+        await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Deleted');
+
+        // D-15: page.reload() — exercises hydration via queryParamMap.
+        await page.reload();
+        await page.locator('.transfer-table').waitFor({ state: 'visible', timeout: 30_000 });
+
+        // Post-reload: Errors parent expanded + Deleted sub active + clients.jpg DELETED row visible.
+        await expect(page).toHaveURL(/[?&]segment=errors(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=deleted(&|$)/);
+        await expect(dashboardPage.getSubButton('Deleted')).toBeVisible();  // sub buttons visible means Errors parent is expanded
+        await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Deleted');
+    });
+});
+
