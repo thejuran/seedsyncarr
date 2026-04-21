@@ -83,8 +83,31 @@ export async function seedStatus(page: Page, file: string, target: SeedTarget): 
     }
     if (target === 'STOPPED') {
         await expectOk(page, ENDPOINT.queue(file), 'POST');
-        // Must be mid-flight (DOWNLOADING) before stop is accepted.
-        await waitForBadge(page, file, LABEL.DOWNLOADING);
+        // WR-02: DOWNLOADING is transient on the harness (Pitfall 4 — LFTP drains the
+        // queue on an idle harness within ms for small files like clients.jpg at 40 KB
+        // or illusion.jpg at 80 KB). Race DOWNLOADING vs DOWNLOADED: whichever label
+        // appears first ends the wait. If we missed the transient window and landed on
+        // DOWNLOADED, stop is a no-op and the subsequent STOPPED wait would never
+        // resolve — fail fast with a clear, distinguishable error instead of timing
+        // out at 30s on an unreachable state.
+        const row = page.locator('.transfer-table tbody app-transfer-row', {
+            has: page.locator('td.cell-name .file-name', {
+                hasText: new RegExp(`^${escapeRegex(file)}$`),
+            }),
+        });
+        await row
+            .locator('td.cell-status .status-badge')
+            .filter({ hasText: new RegExp(`^(${LABEL.DOWNLOADING}|${LABEL.DOWNLOADED})$`) })
+            .waitFor({ timeout: 30_000 });
+        // Re-read the badge after the race to detect which branch we landed on.
+        const settledLabel = (await row.locator('td.cell-status .status-badge').textContent())?.trim() ?? '';
+        if (settledLabel === LABEL.DOWNLOADED) {
+            throw new Error(
+                `Seed STOPPED for '${file}' missed the transient DOWNLOADING window — ` +
+                `file already reached DOWNLOADED ('${LABEL.DOWNLOADED}'). Stop is a no-op from ` +
+                `this state; cannot reach STOPPED. Pick a larger fixture or re-queue.`,
+            );
+        }
         await expectOk(page, ENDPOINT.stop(file), 'POST');
         await waitForBadge(page, file, LABEL.STOPPED);
         return;
