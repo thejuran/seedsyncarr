@@ -320,3 +320,88 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
         void page;
     });
 });
+
+test.describe.serial('UAT-02: status filter and URL', () => {
+    let dashboardPage: DashboardPage;
+
+    test.beforeAll(async ({ browser }) => {
+        // UAT-02 seed plan: same 3 fixtures as UAT-01's beforeAll. This block has its own independent
+        // seed so state mutations in Plan 02's UAT-01 destructive specs do not leak here.
+        // Plan 02's FIX-01 spec Queue-dispatches clients.jpg, driving it back to DOWNLOADING/DOWNLOADED.
+        // This beforeAll re-runs the DELETED seed path (queue -> Synced -> delete_local -> Deleted) to
+        // restore the FIX-01 fixture state for the Errors->Deleted filter spec below.
+        const ctx = await browser.newContext();
+        const page = await ctx.newPage();
+        const dash = new DashboardPage(page);
+        await dash.navigateTo();
+        await seedMultiple(page, [
+            { file: DELETED_FILE, target: 'DELETED' },
+            { file: DOWNLOADED_FILE, target: 'DOWNLOADED' },
+            { file: STOPPED_FILE, target: 'STOPPED' },
+        ]);
+        await ctx.close();
+    });
+
+    test.beforeEach(async ({ page }) => {
+        dashboardPage = new DashboardPage(page);
+        await dashboardPage.navigateTo();
+    });
+
+    // === 4 populated-filter specs (Task 1) ===
+
+    test('UAT-02: status filter pending — Active → Pending shows DEFAULT-state rows', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Active').click();
+        await dashboardPage.getSubButton('Pending').click();
+
+        // URL written per Phase 73 D-09: ?segment=active&sub=pending
+        await expect(page).toHaveURL(/[?&]segment=active(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=pending(&|$)/);
+
+        // Populated: expect >= 1 row visible. The DEFAULT bucket contains every fixture not seeded
+        // by beforeAll (6 of 9 harness files: 'áßç déÀ.mp4', 'crispycat', 'goose', 'joke', 'testing.gif', 'üæÒ').
+        const rowCount = await page.locator('.transfer-table tbody app-transfer-row').count();
+        expect(rowCount).toBeGreaterThanOrEqual(1);
+
+        // No empty-row placeholder.
+        await expect(dashboardPage.getEmptyRow()).not.toBeVisible();
+    });
+
+    test('UAT-02: status filter synced — Done → Downloaded shows DOWNLOADED-state rows (Synced badge)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Done').click();
+        await dashboardPage.getSubButton('Downloaded').click();
+
+        await expect(page).toHaveURL(/[?&]segment=done(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=downloaded(&|$)/);
+
+        await expect(dashboardPage.getStatusBadge(DOWNLOADED_FILE)).toContainText('Synced');
+        await expect(dashboardPage.getEmptyRow()).not.toBeVisible();
+    });
+
+    test('UAT-02: status filter failed — Errors → Failed shows STOPPED-state rows (Failed badge)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Errors').click();
+        await dashboardPage.getSubButton('Failed').click();
+
+        await expect(page).toHaveURL(/[?&]segment=errors(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=failed(&|$)/);
+
+        await expect(dashboardPage.getStatusBadge(STOPPED_FILE)).toContainText('Failed');
+        await expect(dashboardPage.getEmptyRow()).not.toBeVisible();
+    });
+
+    test('UAT-02: status filter deleted — Errors → Deleted shows DELETED-state rows (Deleted badge, FIX-01 fixture)', async ({ page }) => {
+        // Belt-and-braces: verify beforeAll seed landed before clicking the filter.
+        await dashboardPage.waitForFileStatus(DELETED_FILE, 'Deleted', 10_000);
+
+        await dashboardPage.getSegmentButton('Errors').click();
+        await dashboardPage.getSubButton('Deleted').click();
+
+        await expect(page).toHaveURL(/[?&]segment=errors(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=deleted(&|$)/);
+
+        await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Deleted');
+        await expect(dashboardPage.getEmptyRow()).not.toBeVisible();
+    });
+
+    // === Task 2 will insert 6 more specs (4 empty-state + 2 round-trip) before the closing });. ===
+});
+
