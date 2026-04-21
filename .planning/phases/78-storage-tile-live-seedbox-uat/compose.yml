@@ -1,0 +1,19 @@
+# Phase 78 UAT — disposable SSH target + bounded /data.
+# Bring up:  cd .planning/phases/78-storage-tile-live-seedbox-uat && docker compose up -d --build
+# Tear down: docker compose down -v
+services:
+  ssh-target:
+    image: seedsyncarr/phase78/ssh-target
+    container_name: seedsyncarr_phase78_ssh_target
+    platform: ${SEEDSYNCARR_PLATFORM:-linux/amd64}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # D-01 security: bind to loopback only so credentials never reach the LAN.
+    ports:
+      - "127.0.0.1:2222:1234"
+    # D-04: bounded FS at watched path — tmpfs sized to ~100 MB.
+    # 100 MiB = 104857600 bytes; df -B1 /data will report total=104857600.
+    tmpfs:
+      - /data:size=100m,mode=0755,uid=1000,gid=1000
+    restart: "no"
