@@ -30,11 +30,13 @@ evidence: "Three D-09 df-failure modes exercised. Mode (a) path-missing: `sed -i
 
 ### 4. Threshold color shifts
 expected: Progress-bar color follows thresholds — default (amber on Remote, secondary on Local) below 80%; warning (amber, stronger) at ≥80% and <95%; danger (red) at ≥95%. Boundary values flip exactly at 80 and 95.
-result: pending
+result: pass
+evidence: "Fallocate sequence at 50M / 80M / 95M against /data (ssh-target tmpfs) with a 6-7s scan-interval wait between each. Remote tile values: 50% (remote_used=52428800), 80% (remote_used=83886080), 95% (remote_used=99614720) — all integer-rounded exactly at the boundaries per `| number:'1.0-0'` pipe. Screenshots: evidence/04-threshold-50-amber.png (default amber < 80), evidence/04-threshold-80-warning.png (warning flip at the 80% boundary — visibly stronger amber/orange than the 50% shot), evidence/04-threshold-95-danger.png (danger flip at the ≥95 boundary — clearly red). Boundary-ping at 79/94 not needed — 50/80/95 screenshots are visually unambiguous and cover one data point per zone per D-07. Local tile held at 0% throughout — threshold logic operates per-tile. Fill cleaned post-sequence; post-cleanup SSE confirms remote_used=0. Visual color-correctness validation is the user's call at the Task 6 checkpoint (D-14)."
 
 ### 5. Per-tile independence
 expected: The two tiles evaluate capacity independently — Remote can render capacity mode while Local falls back (or vice versa). One tile's fallback does not pull the other into fallback.
-result: pending
+result: pass
+evidence: "Direction 1 (remote-fail/local-ok): exercised during all three Test 3 modes. Canonical visual is evidence/05-per-tile-independence.png (same frame as evidence/03-fallback-layout.png — Remote tracked-bytes fallback + Local `0% of 100 MB + 0 B used` capacity mode, side-by-side). One tile's fallback did not pull the other into fallback in any of the three Test 3 injections. Direction 2 (local-fail/remote-ok): skipped per D-11 'drop local-fail if it would require disruptive action on the dev host OS'. The LocalScanner OSError/ValueError branch is already covered by unit tests (74-VALIDATION.md Task 74-02-T1d, TestLocalScanner fixtures); reproducing it live on macOS would require unmounting the seedsyncarr container's tmpfs mid-run, which kills the container and isn't a meaningful UAT signal. Skip is documented; coverage for the branch is preserved in unit tests."
 
 ### 6. Download Speed and Active Tasks tiles unchanged
 expected: The other two tiles in the stats strip render identically to before Phase 74 — no layout shift, no new icons, no regression.

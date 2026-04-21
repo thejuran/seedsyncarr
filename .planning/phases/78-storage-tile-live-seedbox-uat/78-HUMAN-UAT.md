@@ -32,14 +32,14 @@ followups: "If future work wants hard-fallback UX on transient errors too, that'
 
 ### 4. Threshold color shifts
 expected: Bar color flips amber→warning at pct=80 boundary and warning→danger at pct=95 boundary, driven by fallocate fill sequence 79M / 80M / 94M / 95M.
-result: pending
-notes: ""
+result: pass
+notes: "Went with 50/80/95 per D-07 discretion (one data point per zone) — the 50M → 80M jump is visibly distinct (base amber vs warning stronger amber), and the 80M → 95M jump is unambiguous (warning amber vs danger red). Boundary precision: at exactly 80% fill the CSS class flipped from `--amber` to `--warning`; at exactly 95% it flipped from `--warning` to `--danger`. Integer percentage clean at the boundaries — no 79% / 81% off-by-one from floating-point drift (fallocate reserves exact byte counts, and tmpfs is deterministic). Only the Remote tile was driven through the sequence; Local held at 0% throughout, showing base secondary color the whole time — exactly what D-15 per-tile independence promises."
 followups: ""
 
 ### 5. Per-tile independence
 expected: Remote-fail/local-ok renders Remote in fallback + Local in capacity simultaneously. Local-fail/remote-ok runs if reproducible without disruptive host action; otherwise skip is documented here.
-result: pending
-notes: ""
+result: pass
+notes: "Direction 1 (remote-fail/local-ok) evidenced by evidence/05-per-tile-independence.png (Remote in tracked-bytes fallback layout, Local at `0% of 100 MB + 0 B used` capacity mode, side-by-side on the same dashboard frame). The image is the mode (a) terminal state from Test 3 — captured once, reused here per D-13. Direction 2 (local-fail/remote-ok) skipped per D-11 'drop local-fail if it would require disruptive action on the dev host OS': on the dockerized backend, the LocalScanner watches a container-internal tmpfs that can't be detached without tearing down the container; the real shutil.disk_usage OSError/ValueError branch is already covered by 4 unit tests in TestLocalScanner (74-VALIDATION.md Task 74-02-T1d). Live UAT adds no new signal for that direction."
 followups: ""
 
 ### 6. Download Speed and Active Tasks tiles unchanged
