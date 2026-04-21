@@ -291,7 +291,11 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
   2. `make run-tests-e2e` runs the 10 new Phase 73 specs (every `ViewFile.Status`, URL round-trip, drill-down expansion, invalid-value fallback) green.
   3. Specs execute in CI (`make run-tests-e2e` job) and fail the build on regression.
   4. The FIX-01 union behavior is covered by at least one of the new selection specs.
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 77-01-PLAN.md — Wave 1: seed-state fixture module + 9 DashboardPage helpers (D-04, D-11, D-12)
+  - [ ] 77-02-PLAN.md — Wave 2: 5 UAT-01 specs (selection + shift-range + page-select-all + bulk bar + FIX-01 union anchor)
+  - [ ] 77-03-PLAN.md — Wave 3: 10 UAT-02 specs (8 status-filter + 2 URL round-trip via page.reload)
+  - [ ] 77-04-PLAN.md — Wave 4: full `make run-tests-e2e` smoke + diff audit + verification summary (checkpoint-gated)
 **UI hint**: yes
 
 ### Phase 78: Storage Tile Live-Seedbox UAT
@@ -384,7 +388,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 | 62-74. v1.1.0 UI Redesign — Triggarr Style | v1.1.0 | 30/30 | Complete | 2026-04-19 |
 | 75. Per-Child Import State (GH #19) | v1.1.1 | 4/4 | Complete    | 2026-04-20 |
 | 76. Multiselect Bulk-Bar Action Union | v1.1.1 | 4/4 | Complete    | 2026-04-20 |
-| 77. Deferred Playwright E2E (72+73) | v1.1.1 | 0/0 | Not started | - |
+| 77. Deferred Playwright E2E (72+73) | v1.1.1 | 0/4 | Planned    | - |
 | 78. Storage Tile Live-Seedbox UAT | v1.1.1 | 0/0 | Not started | - |
 | 79. Test Infra Cleanup | v1.1.1 | 0/0 | Not started | - |
 | 80. Small Cleanups (Dependabot + arm64 + enum) | v1.1.1 | 0/0 | Not started | - |
@@ -393,4 +397,4 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 
 ---
 
-*Last updated: 2026-04-20 — Phase 76 planned (4 plans covering Waves 1-4: red characterization → root-cause+fix → D-09 coverage → full-suite verification).*
+*Last updated: 2026-04-20 — Phase 77 planned (4 plans covering Waves 1-4: Wave 1 helpers + seed module, Wave 2 UAT-01 selection specs, Wave 3 UAT-02 filter+URL specs, Wave 4 full-harness verification).*
