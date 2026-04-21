@@ -248,8 +248,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 **v1.1.1 Post-Redesign Cleanup & Outstanding Work (planned 2026-04-20):**
 
 - ✓ Multiselect bulk bar computes union of applicable actions across selection — DELETED rows with null `remote_size` now surface Queue (Re-Queue from Remote) + Delete Remote; fix in `view-file.service.ts` `isQueueable`/`isRemotelyDeletable` predicates; 5 FIX-01 regression tests across 2 spec files. Validated in Phase 76.
-- Phase 72 deferred: 5 Playwright E2E tests for per-file selection + 5-action bulk bar
-- Phase 73 deferred: 10 Playwright E2E tests for dashboard filter + URL round-trip
+- ✓ Deferred v1.1.0 Playwright E2E coverage restored — 15 new specs (5 UAT-01 selection + 5-action bulk bar, 10 UAT-02 dashboard filter + URL round-trip) land in `dashboard.page.spec.ts` behind two `describe.serial` blocks, sharing a typed `seed-state.ts` fixture module and 9 new `DashboardPage` helpers; existing 11 tests preserved verbatim (D-10). Harness run deferred to CI per D-20; structural verification complete, runtime green pending first push. Validated in Phase 77.
 - Phase 74 deferred: 6 manual UAT items for storage capacity tiles against live seedbox
 - GH #19: Per-child import state tracking so auto-delete cannot wipe packs with Sonarr silent-rejects
 - Dependabot alert #3: audit/override transitive `basic-ftp` to ≥5.3.0 (DoS via unbounded `Client.list()`)
@@ -365,4 +364,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-20 — Phase 76 complete (FIX-01 multiselect bulk-bar action union shipped).*
+*Last updated: 2026-04-21 — Phase 77 complete (UAT-01 + UAT-02 Playwright coverage restored; CI-as-evidence runtime pending).*
