@@ -1,6 +1,16 @@
-# Phase 78 UAT — disposable SSH target + bounded /data.
+# Phase 78 UAT — disposable SSH target + bounded /data + dockerized seedsyncarr.
 # Bring up:  cd .planning/phases/78-storage-tile-live-seedbox-uat && docker compose up -d --build
 # Tear down: docker compose down -v
+#
+# Two services:
+#   - ssh-target: the disposable SSH seedbox with a 100 MB tmpfs at /data
+#   - seedsyncarr: the app, built from the repo root Dockerfile; talks to
+#     ssh-target over the compose network on the internal port 1234.
+#
+# The seedsyncarr backend is dockerized on macOS because the app hardcodes
+# /usr/bin/lftp (src/python/lftp/lftp.py:62), which SIP-protected macOS cannot
+# provide. Linux dev hosts can still "run from source" per Plan 01 Task 3 by
+# removing the seedsyncarr service and launching it manually from src/python.
 services:
   ssh-target:
     image: seedsyncarr/phase78/ssh-target
@@ -10,10 +20,43 @@ services:
       context: .
       dockerfile: Dockerfile
     # D-01 security: bind to loopback only so credentials never reach the LAN.
+    # The app reaches this service via compose DNS (ssh-target:1234), not
+    # 127.0.0.1:2222 — the host-port mapping is kept for manual sshpass/ssh
+    # smoke checks.
     ports:
       - "127.0.0.1:2222:1234"
     # D-04: bounded FS at watched path — tmpfs sized to ~100 MB.
     # 100 MiB = 104857600 bytes; df -B1 /data will report total=104857600.
     tmpfs:
       - /data:size=100m,mode=0755,uid=1000,gid=1000
+    restart: "no"
+
+  seedsyncarr:
+    image: seedsyncarr/phase78/app
+    container_name: seedsyncarr_phase78_app
+    platform: ${SEEDSYNCARR_PLATFORM:-linux/amd64}
+    build:
+      # Build context = repo root so COPY src/... lines in the production
+      # Dockerfile resolve correctly.
+      context: ../../..
+      dockerfile: src/docker/build/docker-image/Dockerfile
+    # Publish backend so the host's `ng serve` proxy can reach it.
+    ports:
+      - "127.0.0.1:8800:8800"
+    # Mount the Phase 78 config dir into /config. The image's CMD passes
+    # -c /config, so this overrides the default config generated at build
+    # time by setup_default_config.sh.
+    volumes:
+      # rw (not :ro) because seedsyncarr's Persist layer chmods settings.cfg
+      # to 0600 on load. The host-side file keeps its committed state in git.
+      - ./seedsyncarr-test-config:/config
+    # D-05: bounded local FS for the Local Storage tile — 100 MB tmpfs
+    # inside the backend container. Satisfies the Plan 01 "bounded local
+    # watched path" goal without relying on Docker Desktop's macOS-shared
+    # /tmp mount (which would not expose a size-bounded filesystem to
+    # shutil.disk_usage).
+    tmpfs:
+      - /data/local:size=100m,mode=0755,uid=1000,gid=1000
+    depends_on:
+      - ssh-target
     restart: "no"

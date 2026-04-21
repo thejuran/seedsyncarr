@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+# Phase 78 UAT — self-contained scanfs for the disposable SSH target.
+#
+# The repo's real scan_fs.py imports `system` + `common` from src/python, so
+# running it on a bare Ubuntu container without the full src/ tree fails
+# (ModuleNotFoundError: system). Since Phase 78 explicitly excludes src/ code
+# changes, this fixture re-implements the minimum scan -> JSON contract that
+# RemoteScanner (src/python/controller/scan/remote_scanner.py) consumes via
+# SystemFile.from_dict (src/python/system/file.py).
+#
+# Output: JSON list of objects with keys name/size/is_dir/time_created/
+# time_modified/children. Alphabetically sorted children. Skips files ending
+# in `.lftp-pget-status` (mirrors SystemScanner.__LFTP_STATUS_FILE_SUFFIX).
+import argparse
+import json
+import os
+import sys
+from datetime import datetime
+
+
+LFTP_STATUS_SUFFIX = ".lftp-pget-status"
+
+
+def scan(path):
+    if not os.path.exists(path):
+        sys.exit("SystemScannerError: Path does not exist: {}".format(path))
+    if not os.path.isdir(path):
+        sys.exit("SystemScannerError: Path is not a directory: {}".format(path))
+    return _children(path)
+
+
+def _children(path):
+    out = []
+    for entry in os.scandir(path):
+        if entry.name.endswith(LFTP_STATUS_SUFFIX):
+            continue
+        try:
+            out.append(_file(entry))
+        except FileNotFoundError:
+            continue
+    out.sort(key=lambda d: d["name"])
+    return out
+
+
+def _file(entry):
+    st = entry.stat()
+    try:
+        time_created = datetime.fromtimestamp(st.st_birthtime).isoformat()
+    except AttributeError:
+        time_created = datetime.fromtimestamp(st.st_ctime).isoformat()
+    time_modified = datetime.fromtimestamp(st.st_mtime).isoformat()
+    name = entry.name.encode("utf-8", "surrogateescape").decode("utf-8", "replace")
+    if entry.is_dir():
+        kids = _children(entry.path)
+        size = sum(k["size"] for k in kids)
+        d = {
+            "name": name,
+            "size": size,
+            "is_dir": True,
+            "time_created": time_created,
+            "time_modified": time_modified,
+        }
+        if kids:
+            d["children"] = kids
+        return d
+    return {
+        "name": name,
+        "size": st.st_size,
+        "is_dir": False,
+        "time_created": time_created,
+        "time_modified": time_modified,
+    }
+
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser(description="File size scanner (Phase 78 UAT fixture)")
+    p.add_argument("path", help="Root directory to scan")
+    p.add_argument("-e", "--exclude-hidden", action="store_true", default=False)
+    p.add_argument("-H", "--human-readable", action="store_true", default=False)
+    args = p.parse_args()
+    tree = scan(args.path)
+    if args.exclude_hidden:
+        tree = [f for f in tree if not f["name"].startswith(".")]
+    sys.stdout.write(json.dumps(tree))
