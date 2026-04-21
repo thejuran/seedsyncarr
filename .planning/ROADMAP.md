@@ -323,8 +323,8 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
   3. A seeded inline-script violation in a test verifies the listener fails the spec (verification test can then be removed or marked as a regression guard).
   4. No existing specs fail after the listener lands (current CSP is clean).
 **Plans**: 2 plans
-  - [ ] 79-01-PLAN.md — TEST-01: suppress pytest-cache warnings (-p no:cacheprovider) + cgi DeprecationWarning (PYTHONWARNINGS ENV); remove dead pyproject.toml config (Wave 1, parallel)
-  - [ ] 79-02-PLAN.md — TEST-02: CSP-listener fixture (exposeFunction bridge + console filter + allowViolations opt-out) + 6 spec import swaps + permanent canary spec (Wave 1, parallel)
+  - [x] 79-01-PLAN.md — TEST-01: suppress pytest-cache warnings (-p no:cacheprovider) + cgi DeprecationWarning (PYTHONWARNINGS ENV); remove dead pyproject.toml config (Wave 1, parallel)
+  - [x] 79-02-PLAN.md — TEST-02: CSP-listener fixture (exposeFunction bridge + console filter + allowViolations opt-out) + 6 spec import swaps + permanent canary spec (Wave 1, parallel)
 
 ### Phase 80: Small Cleanups (Dependabot + arm64 + enum)
 **Goal**: Three independent small cleanups land together — Dependabot alert #3 closed, `make run-tests-python` runs on Apple Silicon, and the WAITING_FOR_IMPORT enum is either used or gone.
