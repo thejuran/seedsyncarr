@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1.1
 milestone_name: Post-Redesign Cleanup & Outstanding Work
 status: executing
-last_updated: "2026-04-21T00:10:57.437Z"
-last_activity: 2026-04-21 -- Phase 77 execution started
+last_updated: "2026-04-21T00:30:00.000Z"
+last_activity: 2026-04-21 -- Phase 77 Plan 04 closed (CI-as-evidence); awaiting phase-level /gsd-verify-work
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 12
-  completed_plans: 8
-  percent: 67
+  completed_plans: 9
+  percent: 75
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-20)
 ## Current Position
 
 Phase: 77 (Deferred Playwright E2E (Phases 72+73)) — EXECUTING
-Plan: 4 of 4 — PAUSED at Task 1 infra gate
-Status: Awaiting developer resume-signal (Plan 04 checkpoint)
-Last activity: 2026-04-21 -- Phase 77 Plan 04 preflight surfaced harness blocker (no local registry + no staging image on arm64 dev host)
+Plan: 4 of 4 — COMPLETE (CI-as-evidence closeout)
+Status: Awaiting orchestrator-level `/gsd-verify-work` for phase close
+Last activity: 2026-04-21 -- Phase 77 Plan 04 SUMMARY committed (2663fab); 26/26 tests expected green on CI via ci.yml:144
 
 ## v1.1.1 Phase List
 
@@ -58,7 +58,7 @@ Last activity: 2026-04-21 -- Phase 77 Plan 04 preflight surfaced harness blocker
 
 ### Open Blockers
 
-- **Phase 77 Plan 04 Task 1 — E2E harness cannot run locally on this arm64 dev host.** No Docker registry on :5000 (macOS AirPlay Receiver owns the port), no pre-built staging image at `localhost:5000:latest`, and `make run-tests-e2e:129` fails at `docker pull` before tests begin. Surfaced in `.planning/phases/77-deferred-playwright-e2e-phases-72-73/77-04-preflight.log` (commit `110533c`). Awaiting developer resume-signal to pick between: (1) local infra stand-up + cross-arch build (~45–75 min, scope expansion), (3) cite CI as harness evidence and write summary, (4) push branch, wait for CI green, cite CI log as harness evidence.
+_None — Plan 04 harness-run blocker resolved via developer resume-signal `"ci-as-evidence"` (2026-04-20). Canonical harness evidence surface is `.github/workflows/ci.yml:144` per D-20 and the 73-HUMAN-UAT.md:22 precedent._
 
 ## Tech Debt
 
@@ -85,8 +85,8 @@ Infrastructure-gated items carried forward from v1.1.0 close are now scheduled i
 
 ## Session Continuity
 
-Last session: 2026-04-21 -- paused at Phase 77 Plan 04 Task 1 infra gate
-Next action: Developer picks resume-signal for Plan 04 harness strategy (see Open Blockers); then re-invoke executor with chosen option.
+Last session: 2026-04-21 -- Phase 77 Plan 04 closed via ci-as-evidence path (commit 2663fab)
+Next action: Orchestrator runs `/gsd-verify-work` for phase-level close.
 
 ---
 

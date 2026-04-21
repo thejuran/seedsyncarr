@@ -295,7 +295,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
   - [x] 77-01-PLAN.md — Wave 1: seed-state fixture module + 9 DashboardPage helpers (D-04, D-11, D-12)
   - [x] 77-02-PLAN.md — Wave 2: 5 UAT-01 specs (selection + shift-range + page-select-all + bulk bar + FIX-01 union anchor)
   - [x] 77-03-PLAN.md — Wave 3: 10 UAT-02 specs (8 status-filter + 2 URL round-trip via page.reload)
-  - [ ] 77-04-PLAN.md — Wave 4: full `make run-tests-e2e` smoke + diff audit + verification summary (checkpoint-gated)
+  - [x] 77-04-PLAN.md — Wave 4: full `make run-tests-e2e` smoke + diff audit + verification summary (checkpoint-gated)
 **UI hint**: yes
 
 ### Phase 78: Storage Tile Live-Seedbox UAT
@@ -388,7 +388,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 | 62-74. v1.1.0 UI Redesign — Triggarr Style | v1.1.0 | 30/30 | Complete | 2026-04-19 |
 | 75. Per-Child Import State (GH #19) | v1.1.1 | 4/4 | Complete    | 2026-04-20 |
 | 76. Multiselect Bulk-Bar Action Union | v1.1.1 | 4/4 | Complete    | 2026-04-20 |
-| 77. Deferred Playwright E2E (72+73) | v1.1.1 | 0/4 | Planned    | - |
+| 77. Deferred Playwright E2E (72+73) | v1.1.1 | 4/4 | Plans complete; phase verify pending | - |
 | 78. Storage Tile Live-Seedbox UAT | v1.1.1 | 0/0 | Not started | - |
 | 79. Test Infra Cleanup | v1.1.1 | 0/0 | Not started | - |
 | 80. Small Cleanups (Dependabot + arm64 + enum) | v1.1.1 | 0/0 | Not started | - |
