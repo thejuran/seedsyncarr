@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-20)
 ## Current Position
 
 Phase: 77 (Deferred Playwright E2E (Phases 72+73)) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 77
-Last activity: 2026-04-21 -- Phase 77 execution started
+Plan: 4 of 4 — PAUSED at Task 1 infra gate
+Status: Awaiting developer resume-signal (Plan 04 checkpoint)
+Last activity: 2026-04-21 -- Phase 77 Plan 04 preflight surfaced harness blocker (no local registry + no staging image on arm64 dev host)
 
 ## v1.1.1 Phase List
 
@@ -58,7 +58,7 @@ Last activity: 2026-04-21 -- Phase 77 execution started
 
 ### Open Blockers
 
-None.
+- **Phase 77 Plan 04 Task 1 — E2E harness cannot run locally on this arm64 dev host.** No Docker registry on :5000 (macOS AirPlay Receiver owns the port), no pre-built staging image at `localhost:5000:latest`, and `make run-tests-e2e:129` fails at `docker pull` before tests begin. Surfaced in `.planning/phases/77-deferred-playwright-e2e-phases-72-73/77-04-preflight.log` (commit `110533c`). Awaiting developer resume-signal to pick between: (1) local infra stand-up + cross-arch build (~45–75 min, scope expansion), (3) cite CI as harness evidence and write summary, (4) push branch, wait for CI green, cite CI log as harness evidence.
 
 ## Tech Debt
 
@@ -85,8 +85,8 @@ Infrastructure-gated items carried forward from v1.1.0 close are now scheduled i
 
 ## Session Continuity
 
-Last session: --stopped-at
-Next action: Execute Plan 04 of Phase 76 (phase verification — final FIX-01 sweep)
+Last session: 2026-04-21 -- paused at Phase 77 Plan 04 Task 1 infra gate
+Next action: Developer picks resume-signal for Plan 04 harness strategy (see Open Blockers); then re-invoke executor with chosen option.
 
 ---
 
