@@ -77,6 +77,27 @@ export class DashboardPage extends App {
         return this.page.locator('.segment-filters button.btn-sub').getByText(name, { exact: true });
     }
 
+    getStatusBadge(fileName: string): Locator {
+        const row = this.page.locator('.transfer-table tbody app-transfer-row', {
+            has: this.page.locator('td.cell-name .file-name', { hasText: new RegExp(`^${this._escapeRegex(fileName)}$`) })
+        });
+        return row.locator('td.cell-status .status-badge');
+    }
+
+    getEmptyRow(): Locator {
+        return this.page.locator('.transfer-table tbody tr.empty-row');
+    }
+
+    getToast(variant?: 'success' | 'danger' | 'warning' | 'info'): Locator {
+        return variant
+            ? this.page.locator(`.toast.moss-toast[data-type="${variant}"]`)
+            : this.page.locator('.toast.moss-toast');
+    }
+
+    getClearSelectionLink(): Locator {
+        return this.page.locator('app-bulk-actions-bar button.clear-btn');
+    }
+
     async selectFileByName(fileName: string): Promise<void> {
         await this.getRowCheckbox(fileName).click();
     }
@@ -86,6 +107,32 @@ export class DashboardPage extends App {
         if (await clearBtn.isVisible()) {
             await clearBtn.click();
         }
+    }
+
+    async shiftClickFile(name: string): Promise<void> {
+        await this.getRowCheckbox(name).click({ modifiers: ['Shift'] });
+    }
+
+    async clickHeaderCheckbox(): Promise<void> {
+        await this.getHeaderCheckbox().click();
+    }
+
+    async getSelectedCount(): Promise<number> {
+        const label = this.page.locator('app-bulk-actions-bar .selection-label');
+        if (!(await label.isVisible())) {
+            return 0;
+        }
+        const text = (await label.textContent()) ?? '';
+        const match = text.trim().match(/^(\d+)\s+selected$/);
+        return match ? Number(match[1]) : 0;
+    }
+
+    async waitForFileStatus(name: string, label: string, timeout: number = 10_000): Promise<void> {
+        await this.getStatusBadge(name).filter({ hasText: label }).waitFor({ timeout });
+    }
+
+    async clickConfirmModalConfirm(): Promise<void> {
+        await this.page.locator('.modal button[data-action="ok"]').click();
     }
 
     private _escapeRegex(s: string): string {
