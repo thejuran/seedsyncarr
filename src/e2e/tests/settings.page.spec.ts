@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/csp-listener';
 import { SettingsPage } from './settings.page';
 
 test.describe('Testing settings page', () => {
