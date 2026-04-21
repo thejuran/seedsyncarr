@@ -243,7 +243,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 - [x] **Phase 75: Per-Child Import State (GH #19)** - Data-loss bug fix: per-child import tracking prevents pack-wide auto-delete on Sonarr silent-reject (completed 2026-04-20)
 - [x] **Phase 76: Multiselect Bulk-Bar Action Union** - Restore "Re-Queue from Remote" in mixed selections; union-of-applicable-actions with per-row disable (completed 2026-04-20)
 - [x] **Phase 77: Deferred Playwright E2E (Phases 72 + 73)** - 15 E2E specs covering selection + bulk bar + dashboard filter + URL round-trip (completed 2026-04-21)
-- [ ] **Phase 78: Storage Tile Live-Seedbox UAT** - 6 manual UAT items against live remote (df-over-SSH, thresholds, graceful fallback)
+- [x] **Phase 78: Storage Tile Live-Seedbox UAT** - 6 manual UAT items against live remote (df-over-SSH, thresholds, graceful fallback) (completed 2026-04-21)
 - [ ] **Phase 79: Test Infra Cleanup** - Zero CI warnings (pytest-cache + webob/cgi) + Playwright CSP violation listener
 - [ ] **Phase 80: Small Cleanups (Dependabot + arm64 + enum)** - basic-ftp override, arm64 `rar` resolution, WAITING_FOR_IMPORT wire-or-remove
 - [ ] **Phase 81: Optional Fernet Encryption at Rest** - Opt-in encryption for 5 config secrets, transparent decrypt, backward-compat
@@ -309,8 +309,8 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
   4. Remote tile hides gracefully when `df` fails (network drop, path missing, non-zero exit) without crashing the dashboard.
   5. All 6 UAT items recorded with pass/fail and findings in the milestone log.
 **Plans**: 2 plans
-  - [ ] 78-01-PLAN.md — Stand up disposable SSH container + host loop-mount + run-from-source backend/frontend; user-checkpoint confirms both tiles in capacity mode (Wave 1)
-  - [ ] 78-02-PLAN.md — Execute 6 Phase-74-deferred UAT items against live env; record pass/fail in 78-UAT.md + 78-HUMAN-UAT.md; close UAT-03 (Wave 2)
+  - [x] 78-01-PLAN.md — Stand up disposable SSH container + host loop-mount + run-from-source backend/frontend; user-checkpoint confirms both tiles in capacity mode (Wave 1)
+  - [x] 78-02-PLAN.md — Execute 6 Phase-74-deferred UAT items against live env; record pass/fail in 78-UAT.md + 78-HUMAN-UAT.md; close UAT-03 (Wave 2)
 **UI hint**: yes
 
 ### Phase 79: Test Infra Cleanup
