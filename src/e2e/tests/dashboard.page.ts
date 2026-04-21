@@ -118,13 +118,17 @@ export class DashboardPage extends App {
     }
 
     async getSelectedCount(): Promise<number> {
-        const label = this.page.locator('app-bulk-actions-bar .selection-label');
-        if (!(await label.isVisible())) {
-            return 0;
-        }
-        const text = (await label.textContent()) ?? '';
-        const match = text.trim().match(/^(\d+)\s+selected$/);
-        return match ? Number(match[1]) : 0;
+        // WR-03: stabilize against bulk-bar show/hide animation + Angular change-detection
+        // windows. isVisible() is a point-in-time snapshot; when the bar is mid-transition
+        // (either appearing after a select or hiding after a dispatch clears selection)
+        // it can return stale truthy/falsy values, yielding either a stale count or a
+        // false 0. Derive the count from the DOM row state (checked checkboxes) which is
+        // the authoritative source of truth and does not depend on the bar's animation
+        // timing. Row checkboxes are under .transfer-table tbody app-transfer-row — see
+        // transfer-row.component.html td.cell-checkbox input.ss-checkbox.
+        return await this.page
+            .locator('.transfer-table tbody app-transfer-row td.cell-checkbox input.ss-checkbox:checked')
+            .count();
     }
 
     async waitForFileStatus(name: string, label: string, timeout: number = 10_000): Promise<void> {
