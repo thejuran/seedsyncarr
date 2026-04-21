@@ -23,7 +23,7 @@
 
 - [x] **UAT-02**: Playwright E2E suite covers dashboard filter across every `ViewFile.Status` value (Done parent + Pending sub), URL query-param round-trip (select → URL → reload → state restored), drill-down segment expansion, and silent fallback on invalid filter values. Ten specs from Phase 73 deferred scope, CI-gated.
 
-- [ ] **UAT-03**: Manual runtime UAT validates storage capacity tiles against a live seedbox — local disk via `shutil.disk_usage`, remote via `df -B1 <shlex.quote>` over SSH, `>1%` change gate suppresses spam updates, 80%/95% warning/danger threshold color shifts render correctly, tile hides gracefully when SSH `df` fails. Six items from Phase 74 deferred scope, executed against live infra with findings recorded.
+- [x] **UAT-03**: Manual runtime UAT validates storage capacity tiles against a live seedbox — local disk via `shutil.disk_usage`, remote via `df -B1 <shlex.quote>` over SSH, `>1%` change gate suppresses spam updates, 80%/95% warning/danger threshold color shifts render correctly, tile hides gracefully when SSH `df` fails. Six items from Phase 74 deferred scope, executed against live infra with findings recorded.
 
 ### Security (SEC)
 
@@ -79,7 +79,7 @@ _Filled by roadmapper — maps each REQ-ID to its owning phase._
 | FIX-02 | Phase 75 | Complete |
 | UAT-01 | Phase 77 | Complete |
 | UAT-02 | Phase 77 | Complete |
-| UAT-03 | Phase 78 | Pending |
+| UAT-03 | Phase 78 | Complete |
 | SEC-01 | Phase 80 | Pending |
 | SEC-02 | Phase 81 | Pending |
 | TEST-01 | Phase 79 | Pending |

@@ -1,14 +1,14 @@
 ---
-status: partial
+status: complete
 phase: 78-storage-tile-live-seedbox-uat
 source: [78-UAT.md]
 started: 2026-04-21T18:50:50Z
-updated: 2026-04-21T18:50:50Z
+updated: 2026-04-21T19:27:36Z
 ---
 
 ## Current Test
 
-[awaiting Task 2 — Test 1 execution]
+[complete — all 6 tests approved at Task 6 checkpoint; see Teardown below]
 
 ## Tests
 
@@ -51,12 +51,22 @@ followups: ""
 ## Summary
 
 total: 6
-passed: 0
+passed: 6
 issues: 0
-pending: 6
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-[pending — filled at test-run completion]
+[none — every Phase 74 Test 1-6 passed against the live environment. User approved the Task 6 checkpoint on 2026-04-21. One documented design discovery: transient scan failures exercise the capacity-retention branch (`controller.py:_should_update_capacity` None-guard) rather than immediate tile fallback. This matches the Phase 74 D-16 'silent fallback' contract as-designed; the original plan text implied immediate null-out, which was a spec simplification. Captured in Test 3 notes.]
+
+## Teardown
+
+Stack torn down at the end of Task 7:
+- `docker compose down -v` removed both containers (ssh-target + seedsyncarr) and their networks.
+- `ng serve` on :4200 and any residual browser automation sessions stopped.
+- Host-side hdiutil DMG from the original Linux-from-source plan was already detached during Plan 01 Task 2 (the dockerized backend used an in-container tmpfs at /data/local instead).
+- `scripts/bound-local-fs.sh down` is a no-op on macOS; only referenced for Linux dev hosts running via README-setup.md §3b.
+
+UAT-03 closed in REQUIREMENTS.md (row updated to Complete, checkbox ticked). Phase 78 is ready for /gsd-ship or /gsd-next.

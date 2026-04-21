@@ -1,15 +1,15 @@
 ---
-status: partial
+status: complete
 phase: 78-storage-tile-live-seedbox-uat
 source: [78-HUMAN-UAT.md]
 started: 2026-04-21T18:50:50Z
-updated: 2026-04-21T18:50:50Z
+updated: 2026-04-21T19:27:36Z
 resolution: runtime-execution-on-disposable-seedbox
 ---
 
 ## Current Test
 
-[test 0/6 — scaffold written; ready to execute]
+[complete — all 6 tests pass; user approved checkpoint; UAT-03 closed]
 
 ## Tests
 
@@ -46,12 +46,12 @@ evidence: "Full-page dashboard snapshot in evidence/06-unchanged-tiles.png. Down
 ## Summary
 
 total: 6
-passed: 0
+passed: 6
 issues: 0
-pending: 6
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-[pending — filled at test-run completion]
+[none — all 6 runtime items executed against live seedbox; 74-UAT.md Tests 1-6 promoted from `blocked: 6` → `blocked: 0` by this phase. Test 5 direction-2 (local-fail/remote-ok) documented as skipped with rationale per D-11; unit-test coverage in TestLocalScanner (74-VALIDATION.md Task 74-02-T1d) preserved. Spec clarification recorded in Test 3 evidence: transient-scan failures correctly exercise the controller.py:_should_update_capacity retention branch (last-known capacity retained to prevent UI flicker) rather than immediate null-out — this is Phase 74 D-16 'silent fallback' as designed, not a bug.]
