@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1.1
 milestone_name: Post-Redesign Cleanup & Outstanding Work
-status: executing
+status: ready_to_plan
 last_updated: "2026-04-21T00:30:00.000Z"
 last_activity: 2026-04-21 -- Phase 77 Plan 04 closed (CI-as-evidence); awaiting phase-level /gsd-verify-work
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 12
   completed_plans: 9
-  percent: 75
+  percent: 43
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-04-20)
 
 ## Current Position
 
-Phase: 77 (Deferred Playwright E2E (Phases 72+73)) — EXECUTING
-Plan: 4 of 4 — COMPLETE (CI-as-evidence closeout)
-Status: Awaiting orchestrator-level `/gsd-verify-work` for phase close
-Last activity: 2026-04-21 -- Phase 77 Plan 04 SUMMARY committed (2663fab); 26/26 tests expected green on CI via ci.yml:144
+Phase: 78
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-04-21
 
 ## v1.1.1 Phase List
 

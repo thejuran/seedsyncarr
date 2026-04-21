@@ -19,9 +19,9 @@
 
 ### Deferred UAT from v1.1.0 (UAT)
 
-- [ ] **UAT-01**: Playwright E2E suite covers per-file selection, shift-range select, page-scoped header select-all, bulk-actions-bar visibility/hiding, and each of the 5 bulk actions (Queue, Stop, Extract, Delete Local, Delete Remote). Five specs from Phase 72 deferred scope, CI-gated via `make run-tests-e2e`.
+- [x] **UAT-01**: Playwright E2E suite covers per-file selection, shift-range select, page-scoped header select-all, bulk-actions-bar visibility/hiding, and each of the 5 bulk actions (Queue, Stop, Extract, Delete Local, Delete Remote). Five specs from Phase 72 deferred scope, CI-gated via `make run-tests-e2e`.
 
-- [ ] **UAT-02**: Playwright E2E suite covers dashboard filter across every `ViewFile.Status` value (Done parent + Pending sub), URL query-param round-trip (select → URL → reload → state restored), drill-down segment expansion, and silent fallback on invalid filter values. Ten specs from Phase 73 deferred scope, CI-gated.
+- [x] **UAT-02**: Playwright E2E suite covers dashboard filter across every `ViewFile.Status` value (Done parent + Pending sub), URL query-param round-trip (select → URL → reload → state restored), drill-down segment expansion, and silent fallback on invalid filter values. Ten specs from Phase 73 deferred scope, CI-gated.
 
 - [ ] **UAT-03**: Manual runtime UAT validates storage capacity tiles against a live seedbox — local disk via `shutil.disk_usage`, remote via `df -B1 <shlex.quote>` over SSH, `>1%` change gate suppresses spam updates, 80%/95% warning/danger threshold color shifts render correctly, tile hides gracefully when SSH `df` fails. Six items from Phase 74 deferred scope, executed against live infra with findings recorded.
 
@@ -77,8 +77,8 @@ _Filled by roadmapper — maps each REQ-ID to its owning phase._
 |--------|-------|--------|
 | FIX-01 | Phase 76 | Complete |
 | FIX-02 | Phase 75 | Complete |
-| UAT-01 | Phase 77 | Pending |
-| UAT-02 | Phase 77 | Pending |
+| UAT-01 | Phase 77 | Complete |
+| UAT-02 | Phase 77 | Complete |
 | UAT-03 | Phase 78 | Pending |
 | SEC-01 | Phase 80 | Pending |
 | SEC-02 | Phase 81 | Pending |
