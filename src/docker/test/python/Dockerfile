@@ -40,6 +40,7 @@ EXPOSE 22
 # src needs to be mounted on /src/
 WORKDIR /src/
 ENV PYTHONPATH=/src
+ENV PYTHONWARNINGS="ignore::DeprecationWarning:cgi"
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["pytest", "-v"]
+CMD ["pytest", "-v", "-p", "no:cacheprovider"]
