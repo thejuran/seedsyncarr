@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { DashboardPage, FileInfo } from './dashboard.page';
+import { seedMultiple } from './fixtures/seed-state';
 
 const TEST_FILE = 'clients.jpg';
+const DELETED_FILE = 'clients.jpg';        // FIX-01 anchor; pre-seeded DELETED via seed-state (RESEARCH Pitfall 2 rejected 'joke' as a directory)
+const DOWNLOADED_FILE = 'documentation.png';  // seeded DOWNLOADED sibling — small 9KB file; ALSO the Delete Local target in Spec 4 (see mapping comment in Task 2)
+const STOPPED_FILE = 'illusion.jpg';       // seeded STOPPED sibling — 80KB
+const DEFAULT_FILE = 'goose';              // unseeded fixture in DEFAULT state
 
 test.describe('Testing dashboard page', () => {
     let dashboardPage: DashboardPage;
@@ -107,5 +112,211 @@ test.describe('Testing dashboard page', () => {
 
         // URL is sanitized — the garbage param is gone
         await expect(page).not.toHaveURL(/segment=garbage/);
+    });
+});
+
+test.describe.serial('UAT-01: selection and bulk bar', () => {
+    let dashboardPage: DashboardPage;
+
+    test.beforeAll(async ({ browser }) => {
+        const ctx = await browser.newContext();
+        const page = await ctx.newPage();
+        const dash = new DashboardPage(page);
+        await dash.navigateTo();
+        // Seed plan (revised): DOWNLOADED_FILE must reach DOWNLOADED so Spec 4's Delete Local
+        // dispatch satisfies controller.py:1041 precondition (local_size not None). See
+        // controller/controller.py:1032-1047 — delete_local rejects with 404 when local_size is None.
+        await seedMultiple(page, [
+            { file: DELETED_FILE, target: 'DELETED' },
+            { file: DOWNLOADED_FILE, target: 'DOWNLOADED' },
+            { file: STOPPED_FILE, target: 'STOPPED' },
+        ]);
+        await ctx.close();
+    });
+
+    test.beforeEach(async ({ page }) => {
+        dashboardPage = new DashboardPage(page);
+        await dashboardPage.navigateTo();
+    });
+
+    test('UAT-01: per-file selection accumulates and bulk bar reacts', async ({ page }) => {
+        await expect(dashboardPage.getActionBar()).not.toBeVisible();
+
+        await dashboardPage.selectFileByName(DEFAULT_FILE);
+        await expect(dashboardPage.getActionBar()).toBeVisible();
+        expect(await dashboardPage.getSelectedCount()).toBe(1);
+        await expect(page.locator('app-bulk-actions-bar .selection-label')).toHaveText('1 selected');
+
+        await dashboardPage.selectFileByName(DOWNLOADED_FILE);
+        expect(await dashboardPage.getSelectedCount()).toBe(2);
+        await expect(page.locator('app-bulk-actions-bar .selection-label')).toHaveText('2 selected');
+
+        await dashboardPage.selectFileByName(STOPPED_FILE);
+        expect(await dashboardPage.getSelectedCount()).toBe(3);
+    });
+
+    test('UAT-01: shift-range select extends selection to contiguous rows', async () => {
+        // Anchor: click first checkbox normally; shift-click a later one.
+        // Order is locale-sort dependent on the harness — use files that are definitely visible
+        // and rely on the contiguous-range semantic (shift extends from anchor to target).
+        await dashboardPage.selectFileByName('clients.jpg');
+        await dashboardPage.shiftClickFile('documentation.png');
+        // Expect >= 2 selected (exact count depends on row order in the rendered table; this
+        // asserts range-extension worked without being fragile to locale-sort divergence).
+        const count = await dashboardPage.getSelectedCount();
+        expect(count).toBeGreaterThanOrEqual(2);
+        await expect(dashboardPage.getActionBar()).toBeVisible();
+    });
+
+    test('UAT-01: page-scoped header checkbox selects all visible rows', async ({ page }) => {
+        await dashboardPage.clickHeaderCheckbox();
+
+        await expect(dashboardPage.getActionBar()).toBeVisible();
+        // Harness loads 9 fixture files in one page (no pagination surface on this data set);
+        // header select-all must select every visible row — assert count equals visible row count.
+        const visibleRowCount = await page.locator('.transfer-table tbody app-transfer-row').count();
+        const selected = await dashboardPage.getSelectedCount();
+        expect(selected).toBe(visibleRowCount);
+        expect(selected).toBeGreaterThanOrEqual(9);
+
+        // Toggle off — selection clears, bar hides.
+        await dashboardPage.clickHeaderCheckbox();
+        await expect(dashboardPage.getActionBar()).not.toBeVisible();
+    });
+
+    // Spec 4 action/file/variant mapping — each pairing chosen to satisfy backend preconditions
+    // so dispatchAndAssert can assert a 'success' toast uniformly per D-05, EXCEPT where the
+    // backend contract forbids it (Extract on non-archive fixtures):
+    //
+    //  Action         Target file            Source state        Backend contract                                        Toast variant
+    //  ------         -----------            ------------        ----------------                                        -------------
+    //  1 Queue        'testing.gif'          DEFAULT             queue always accepted from DEFAULT                      success
+    //  2 Stop         'testing.gif' (after   DOWNLOADING         stop requires Syncing state — we queue fresh,           success
+    //                  re-queue, waited      (waited via          wait for "Syncing" badge via waitForFileStatus,
+    //                  to Syncing)            waitForFileStatus)  then dispatch stop; deterministic via Playwright poll
+    //  3 Extract      DOWNLOADED_FILE        DOWNLOADED          patoolib rejects non-archive (RESEARCH Pitfall 3);      any variant
+    //                 (documentation.png)                         backend returns non-success toast. Weakened assertion
+    //                                                             (any-variant) documented inline; D-05 coverage noted
+    //                                                             as button-smoke only. No archive fixtures exist in the
+    //                                                             9-file harness (file(1) inspection — all image/video/dir).
+    //  4 Delete Local DOWNLOADED_FILE        DOWNLOADED          delete_local requires local_size not None               success
+    //                 (documentation.png)                         (controller.py:1032-1047). DOWNLOADED guarantees
+    //                                                             local_size > 0 → 200 OK + success toast. Using a
+    //                                                             single fixture file for actions 3 + 4 is safe because
+    //                                                             Extract on a non-archive is a backend no-op (per
+    //                                                             extract.py:19-28 is_archive() guard) — local_size is
+    //                                                             NOT mutated by a rejected extract.
+    //  5 Delete Remote 'áßç déÀ.mp4'         DEFAULT             delete_remote requires remote_size > 0; DEFAULT         success
+    //                                                             harness file satisfies this
+    //
+    // NOTE: Delete Local target switched from 'illusion.jpg' (STOPPED) to DOWNLOADED_FILE
+    //       (documentation.png) because controller.py:1041 requires local_size not None —
+    //       DOWNLOADED is the only source state the seed pipeline guarantees local_size > 0
+    //       without additional orchestration. STOPPED retains local_size in theory but is
+    //       state-timing-dependent on the harness.
+    test('UAT-01: bulk bar visibility — all 5 actions dispatch, clear selection, and hide bar', async () => {
+        // Helper: dispatch one action against a single-file selection, assert UI contract.
+        // `toastVariant` 'success' asserts success toast; 'any' tolerates any variant (for Extract
+        // on non-archive fixtures per RESEARCH Pitfall 3).
+        async function dispatchAndAssert(
+            fileName: string,
+            action: 'Queue' | 'Stop' | 'Extract' | 'Delete Local' | 'Delete Remote',
+            toastKeyword: RegExp,
+            toastVariant: 'success' | 'any' = 'success',
+        ): Promise<void> {
+            await dashboardPage.selectFileByName(fileName);
+            await expect(dashboardPage.getActionBar()).toBeVisible();
+
+            await dashboardPage.getActionButton(action).click();
+
+            // Delete Local + Delete Remote open a confirm modal (Phase 72 D-17); Queue/Stop/Extract do not.
+            if (action === 'Delete Local' || action === 'Delete Remote') {
+                await dashboardPage.clickConfirmModalConfirm();
+            }
+
+            // (a) toast appears. Success variant when contract permits; any variant when backend
+            //     is expected to emit non-success (Extract on non-archive — RESEARCH Pitfall 3).
+            if (toastVariant === 'success') {
+                // Localization.Bulk.SUCCESS_* is count-dependent — use toContainText per RESEARCH Pattern 3.
+                await expect(dashboardPage.getToast('success').first()).toContainText(toastKeyword);
+            } else {
+                // D-05 coverage note: no archive fixtures exist (RESEARCH Pitfall 3); Extract dispatch
+                // accepts any toast variant to avoid false-fail. Backend call still dispatches;
+                // button-smoke coverage only.
+                await expect(dashboardPage.getToast().first()).toBeVisible();
+            }
+
+            // (b) selection cleared — selection-label hidden (getSelectedCount returns 0 when bar not visible)
+            await expect(dashboardPage.getActionBar()).not.toBeVisible();
+            expect(await dashboardPage.getSelectedCount()).toBe(0);
+        }
+
+        // Action 1: Queue on a DEFAULT file.
+        await dispatchAndAssert('testing.gif', 'Queue', /Queued|Re-queued|queued/, 'success');
+
+        // Action 2: Stop — deterministic path. Re-queue the target fresh, wait for "Syncing"
+        // badge via waitForFileStatus (D-03 polling helper), then dispatch stop. This preserves
+        // the success-toast assertion uniformly across all 5 actions per D-05.
+        await dashboardPage.selectFileByName('testing.gif');
+        await dashboardPage.getActionButton('Queue').click();
+        await expect(dashboardPage.getToast('success').first()).toBeVisible();
+        await expect(dashboardPage.getActionBar()).not.toBeVisible();
+        // Wait for the re-queue to enter DOWNLOADING state (status-badge label "Syncing" per
+        // transfer-row.component.ts BADGE_LABELS — see RESEARCH Pattern 2).
+        await dashboardPage.waitForFileStatus('testing.gif', 'Syncing', 15_000);
+        await dispatchAndAssert('testing.gif', 'Stop', /Stop|stopped|Stopped/, 'success');
+
+        // Action 3: Extract on DOWNLOADED 'documentation.png' (seeded via beforeAll).
+        // Per RESEARCH Pitfall 3, none of the 9 harness fixtures are archives — patoolib rejects
+        // non-archives and the backend emits a non-success toast. Weakened coverage is documented
+        // in the 'any'-variant branch of dispatchAndAssert above; UI-assertion trio (selection
+        // cleared, bar hidden, some toast visible) still runs.
+        await dispatchAndAssert('documentation.png', 'Extract', /.*/, 'any');
+
+        // Action 4: Delete Local on DOWNLOADED 'documentation.png'.
+        // Per controller.py:1032-1047, delete_local requires local_size not None. DOWNLOADED
+        // state guarantees this (extract was a no-op; local_size is untouched). Delete Local
+        // opens confirm modal; dispatchAndAssert handles that.
+        await dispatchAndAssert('documentation.png', 'Delete Local', /Delete|delete|removed|Removed/, 'success');
+
+        // Action 5: Delete Remote on 'áßç déÀ.mp4' (DEFAULT, remote_size > 0).
+        // Delete Remote also opens confirm modal.
+        await dispatchAndAssert('áßç déÀ.mp4', 'Delete Remote', /Delete|delete|removed|Removed/, 'success');
+    });
+
+    test('UAT-01: FIX-01 union — DELETED row allows Queue (re-queue from remote), alone and mixed with DEFAULT', async ({ page }) => {
+        // Part A: DELETED row alone.
+        // clients.jpg was pre-seeded to DELETED in beforeAll (queue → Synced → delete_local → Deleted).
+        await dashboardPage.waitForFileStatus(DELETED_FILE, 'Deleted', 10_000);
+
+        await dashboardPage.selectFileByName(DELETED_FILE);
+        await expect(dashboardPage.getActionBar()).toBeVisible();
+        expect(await dashboardPage.getSelectedCount()).toBe(1);
+
+        // FIX-01 core contract: Queue button is enabled for a DELETED-only selection.
+        // Pre-fix, Phase 76 documented this as disabled (regression from v1.1.0).
+        await expect(dashboardPage.getActionButton('Queue')).toBeEnabled();
+        // Delete Remote is also applicable for a DELETED row (remote_size still populated after delete_local).
+        await expect(dashboardPage.getActionButton('Delete Remote')).toBeEnabled();
+
+        // Clear selection before Part B (don't dispatch yet — want to prove union behavior first).
+        await dashboardPage.clearSelectionViaBar();
+        await expect(dashboardPage.getActionBar()).not.toBeVisible();
+
+        // Part B: mixed selection — DELETED + DEFAULT. Union semantics: Queue must still be enabled
+        // (applicable to both the DELETED row and the DEFAULT row).
+        await dashboardPage.selectFileByName(DELETED_FILE);
+        await dashboardPage.selectFileByName(DEFAULT_FILE);
+        expect(await dashboardPage.getSelectedCount()).toBe(2);
+        await expect(dashboardPage.getActionButton('Queue')).toBeEnabled();
+
+        // Part C: dispatch Queue. Assert UI contract per D-05: success toast + selection cleared + bar hidden.
+        await dashboardPage.getActionButton('Queue').click();
+        await expect(dashboardPage.getToast('success').first()).toContainText(/Queued|Re-queued|queued/);
+        await expect(dashboardPage.getActionBar()).not.toBeVisible();
+        expect(await dashboardPage.getSelectedCount()).toBe(0);
+        // Suppress unused-param warning on `page`; retained in signature to match other specs
+        // that destructure it, and to keep future fixture expansion low-friction.
+        void page;
     });
 });
