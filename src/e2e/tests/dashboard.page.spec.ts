@@ -402,6 +402,103 @@ test.describe.serial('UAT-02: status filter and URL', () => {
         await expect(dashboardPage.getEmptyRow()).not.toBeVisible();
     });
 
-    // === Task 2 will insert 6 more specs (4 empty-state + 2 round-trip) before the closing });. ===
+    // === 4 empty-state filter specs (Task 2) ===
+
+    test('UAT-02: status filter syncing — Active → Syncing empty-state (transient on harness)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Active').click();
+        await dashboardPage.getSubButton('Syncing').click();
+
+        await expect(page).toHaveURL(/[?&]segment=active(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=syncing(&|$)/);
+
+        // Pitfall 4: DOWNLOADING is transient — LFTP drains the queue on an idle harness within ms.
+        // After beforeAll completes, no files are in DOWNLOADING state. Assert empty-state.
+        await expect(dashboardPage.getEmptyRow()).toBeVisible();
+        await expect(page.locator('.transfer-table tbody app-transfer-row').filter({ hasNot: page.locator('tr.empty-row') })).toHaveCount(0);
+    });
+
+    test('UAT-02: status filter queued — Active → Queued empty-state (transient on harness)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Active').click();
+        await dashboardPage.getSubButton('Queued').click();
+
+        await expect(page).toHaveURL(/[?&]segment=active(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=queued(&|$)/);
+
+        // Pitfall 4: QUEUED drains immediately on harness (single LFTP slot, no contention).
+        await expect(dashboardPage.getEmptyRow()).toBeVisible();
+    });
+
+    test('UAT-02: status filter extracting — Active → Extracting empty-state (no archive fixtures)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Active').click();
+        await dashboardPage.getSubButton('Extracting').click();
+
+        await expect(page).toHaveURL(/[?&]segment=active(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=extracting(&|$)/);
+
+        // Pitfall 3: All 9 harness fixtures are image/video/directory — patoolib rejects as non-archives.
+        // EXTRACTING is unreachable; assert empty-state.
+        await expect(dashboardPage.getEmptyRow()).toBeVisible();
+    });
+
+    test('UAT-02: status filter extracted — Done → Extracted empty-state (no archive fixtures)', async ({ page }) => {
+        await dashboardPage.getSegmentButton('Done').click();
+        await dashboardPage.getSubButton('Extracted').click();
+
+        await expect(page).toHaveURL(/[?&]segment=done(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=extracted(&|$)/);
+
+        await expect(dashboardPage.getEmptyRow()).toBeVisible();
+    });
+
+    // === 2 URL round-trip specs (Task 2) ===
+
+    test('UAT-02: URL round-trip parent — Done segment persists across page.reload()', async ({ page }) => {
+        // Start at All (default on navigateTo). Click Done.
+        await dashboardPage.getSegmentButton('Done').click();
+
+        // URL writes ?segment=done (no sub selected yet).
+        await expect(page).toHaveURL(/[?&]segment=done(&|$)/);
+
+        // Sub-buttons for Done (Downloaded + Extracted) should now be visible per existing expand spec.
+        await expect(dashboardPage.getSubButton('Downloaded')).toBeVisible();
+        await expect(dashboardPage.getSubButton('Extracted')).toBeVisible();
+
+        // Reload the page via browser refresh — exercises Angular's ActivatedRoute.queryParamMap hydration.
+        // Per D-15: page.reload() NOT page.goto(url). Cold-load via goto is out of scope for this phase.
+        await page.reload();
+
+        // Re-await the transfer-table container since navigateTo only runs in beforeEach.
+        await page.locator('.transfer-table').waitFor({ state: 'visible', timeout: 30_000 });
+
+        // Hydration verified: Done is still active (URL preserved), sub-buttons re-rendered visible.
+        await expect(page).toHaveURL(/[?&]segment=done(&|$)/);
+        await expect(dashboardPage.getSubButton('Downloaded')).toBeVisible();
+        await expect(dashboardPage.getSubButton('Extracted')).toBeVisible();
+    });
+
+    test('UAT-02: URL round-trip sub — Errors→Deleted persists across page.reload() (clients.jpg row visible)', async ({ page }) => {
+        // Re-guard DELETED fixture — this is the last UAT-02 spec and mutations in earlier specs
+        // of the block do not touch clients.jpg, but belt-and-braces.
+        await dashboardPage.waitForFileStatus(DELETED_FILE, 'Deleted', 10_000);
+
+        await dashboardPage.getSegmentButton('Errors').click();
+        await dashboardPage.getSubButton('Deleted').click();
+
+        await expect(page).toHaveURL(/[?&]segment=errors(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=deleted(&|$)/);
+
+        // Verify filter scoped to Deleted before reload.
+        await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Deleted');
+
+        // D-15: page.reload() — exercises hydration via queryParamMap.
+        await page.reload();
+        await page.locator('.transfer-table').waitFor({ state: 'visible', timeout: 30_000 });
+
+        // Post-reload: Errors parent expanded + Deleted sub active + clients.jpg DELETED row visible.
+        await expect(page).toHaveURL(/[?&]segment=errors(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=deleted(&|$)/);
+        await expect(dashboardPage.getSubButton('Deleted')).toBeVisible();  // sub buttons visible means Errors parent is expanded
+        await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Deleted');
+    });
 });
 
