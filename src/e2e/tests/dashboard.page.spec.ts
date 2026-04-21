@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/csp-listener';
 import { DashboardPage, FileInfo } from './dashboard.page';
 import { seedMultiple, seedStatus } from './fixtures/seed-state';
 
