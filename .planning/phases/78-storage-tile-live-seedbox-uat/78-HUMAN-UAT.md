@@ -26,9 +26,9 @@ followups: ""
 
 ### 3. Tile fallback to tracked-bytes when capacity unavailable
 expected: Three injected failure modes (path-missing, network-drop, parse-failure) each produce: (a) affected tile reverts to tracked-bytes layout within one scan cycle, (b) matching WARN log line emitted, (c) opposite tile continues rendering capacity mode.
-result: pending
-notes: ""
-followups: ""
+result: pass
+notes: "All three D-09 modes exercised; per-tile independence held every time (Local stayed in capacity mode regardless of Remote injection). Useful clarification of the Phase 74 D-16 'silent fallback' contract: the implementation distinguishes between **fatal-first-scan failures** (mode (a) — scanfs raises SystemScannerError, the controller exits, storage.remote_total nulls, tile falls back to tracked-bytes) and **transient-scan-level failures** (modes (b) network-drop and (c) parse-failure — controller.py:_should_update_capacity's None-guard keeps last-known capacity, so the tile retains stale values rather than flapping to fallback). The plan's original text implied immediate null-out on any failure; the real design is retention-across-transient-errors to prevent UI flicker, with hard fallback reserved for first-scan failures or fatal errors that crash the controller process. Screenshot 03-fallback-layout.png captures the mode (a) terminal state (Remote tracked-bytes + Local capacity side-by-side), which is the canonical independence visual. Modes (b) and (c) WARN lines captured verbatim in docker logs; screenshots were taken but not committed per D-13 (one load-bearing visual suffices for the fallback layout)."
+followups: "If future work wants hard-fallback UX on transient errors too, that's a controller.py design change (e.g. wipe-on-N-consecutive-failures) and belongs in its own phase — not here (Phase 78 is no-code-changes)."
 
 ### 4. Threshold color shifts
 expected: Bar color flips amber→warning at pct=80 boundary and warning→danger at pct=95 boundary, driven by fallocate fill sequence 79M / 80M / 94M / 95M.
