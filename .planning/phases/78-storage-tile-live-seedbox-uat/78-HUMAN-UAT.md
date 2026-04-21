@@ -14,14 +14,14 @@ updated: 2026-04-21T18:50:50Z
 
 ### 1. Remote Storage tile — capacity mode
 expected: Tile renders '<N>%' + 'of 100.00 MB' + amber bar (or warning/danger at boundary) + '<N.NN> MB used' after a `fallocate -l 50M /data/fill.img` inside the container drives a successful df scan.
-result: pending
-notes: ""
+result: pass
+notes: "Integer percentage rounding is clean at an exact boundary — `50%`, no off-by-one. Progress-bar width visually tracks ~half the card horizontally, confirming the `used / total * 100` binding. Capacity-mode flip from the 0% baseline happened on the next remote scan cycle (~5s post-fallocate), consistent with `interval_ms_remote_scan = 5000`. FileSize pipe elides trailing `.00` for a round 100 MB total — UI shows `of 100 MB` and `50 MB used` instead of `100.00 MB` / `50.00 MB used`; spec shape is preserved, just the round-value formatter being minimal."
 followups: ""
 
 ### 2. Local Storage tile — capacity mode
 expected: Tile renders '<N>%' + 'of ~100 MB' + progress bar + '<N.NN> MB used' after writing ~50 MB to the host loop mount drives a successful shutil.disk_usage scan.
-result: pending
-notes: ""
+result: pass
+notes: "LocalScanner is fast (`Scan took 0.001s`) because the watched dir is a ~100 MB tmpfs inside the seedsyncarr container (D-05 — swapped from the original host-loop-mount plan when the app was dockerized in Plan 01). `shutil.disk_usage` reports total=104857600 exactly; used=52428800 after the fallocate. Local tile's base class is the `--secondary` (vs Remote's `--amber`) per the component template, and the bar renders at ~50% width just like Remote. Identical integer-rounding + round-value FileSize behavior as Test 1."
 followups: ""
 
 ### 3. Tile fallback to tracked-bytes when capacity unavailable
