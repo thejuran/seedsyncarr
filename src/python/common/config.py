@@ -1,5 +1,5 @@
 import configparser
-from typing import Dict
+from typing import Dict, Optional
 from io import StringIO
 import collections
 from abc import ABC
@@ -8,6 +8,20 @@ from typing import Type, TypeVar, Callable, Any
 from .error import AppError
 from .persist import Persist, PersistError
 from .types import overrides
+
+# Module-level tuple listing the 5 secret field paths used for encryption.
+# Format: (inner_attr_name_on_Config, field_name, INI_section_name)
+# INI sections are TitleCase; Config attrs are lowercase.
+# The [Encryption] section itself is intentionally NOT listed here —
+# the enabled boolean is not a secret and must never be encrypted (T-81-02-07).
+_SECRET_FIELD_PATHS = (
+    ("general", "webhook_secret", "General"),
+    ("general", "api_token", "General"),
+    ("lftp", "remote_password", "Lftp"),
+    ("sonarr", "sonarr_api_key", "Sonarr"),
+    ("radarr", "radarr_api_key", "Radarr"),
+)
+
 
 def _strtobool(value: str) -> int:
     """Convert a string representation of a boolean to 1 or 0.
@@ -331,6 +345,18 @@ class Config(Persist):
             self.dry_run = None
             self.delay_seconds = None
 
+    class Encryption(IC):
+        enabled = PROP("enabled", Checkers.null, Converters.bool)
+
+        def __init__(self):
+            super().__init__()
+            self.enabled = None
+
+    # Class-level keyfile path; injected via set_keyfile_path() before any
+    # from_file / to_file call when encryption may be enabled. Pass None to reset
+    # (test isolation). See RESEARCH §9.3 and §A2.
+    _keyfile_path: Optional[str] = None
+
     def __init__(self):
         self.general = Config.General()
         self.lftp = Config.Lftp()
@@ -340,6 +366,19 @@ class Config(Persist):
         self.sonarr = Config.Sonarr()
         self.radarr = Config.Radarr()
         self.autodelete = Config.AutoDelete()
+        self.encryption = Config.Encryption()
+        # List of "Section.field" strings populated during from_str when a value
+        # looks like ciphertext but fails to decrypt. Read by plan 03's startup
+        # hook to emit per-field warnings (T-81-02-03, T-81-02-04).
+        self._decrypt_errors: list = []
+
+    @classmethod
+    def set_keyfile_path(cls, path: Optional[str]) -> None:
+        """
+        Inject the keyfile path before any from_file/to_file call when encryption
+        may be enabled. Pass None to reset (test isolation).
+        """
+        cls._keyfile_path = path
 
     @staticmethod
     def _check_section(dct: OuterConfigType, name: str) -> InnerConfigType:
@@ -437,6 +476,15 @@ class Config(Persist):
             config.autodelete.dry_run = False
             config.autodelete.delay_seconds = 60
 
+        # Encryption section is optional for backward compatibility (SEC-02 criterion #3)
+        if "Encryption" in config_dict:
+            config.encryption = Config.Encryption.from_dict(
+                Config._check_section(config_dict, "Encryption")
+            )
+        else:
+            # Default values for existing installs missing [Encryption] section
+            config.encryption.enabled = False
+
         Config._check_empty_outer_dict(config_dict)
         return config
 
@@ -452,6 +500,7 @@ class Config(Persist):
         config_dict["Sonarr"] = self.sonarr.as_dict()
         config_dict["Radarr"] = self.radarr.as_dict()
         config_dict["AutoDelete"] = self.autodelete.as_dict()
+        config_dict["Encryption"] = self.encryption.as_dict()
         return config_dict
 
     def has_section(self, name: str) -> bool:
