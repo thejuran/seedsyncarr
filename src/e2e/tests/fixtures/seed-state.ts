@@ -97,13 +97,13 @@ export async function seedStatus(page: Page, file: string, target: SeedTarget): 
         });
         const badge = row.locator('td.cell-status .status-badge');
         await badge
-            .filter({ hasText: new RegExp(`^(${LABEL.DOWNLOADING}|${LABEL.DOWNLOADED})$`) })
+            .filter({ hasText: new RegExp(`^\\s*(${LABEL.DOWNLOADING}|${LABEL.DOWNLOADED})\\s*$`) })
             .waitFor({ timeout: 30_000 });
         // Detect which branch via a filtered count — avoids a bare textContent() re-read
         // that can race Angular change detection (the badge element can re-render between
         // the filtered waitFor and an unfiltered text read, producing a stale miss).
         const sawDownloading = (await badge
-            .filter({ hasText: new RegExp(`^${LABEL.DOWNLOADING}$`) })
+            .filter({ hasText: new RegExp(`^\\s*${LABEL.DOWNLOADING}\\s*$`) })
             .count()) > 0;
         if (!sawDownloading) {
             throw new Error(
