@@ -9,8 +9,6 @@
     "verifier": true,
     "_auto_chain_active": false
   },
-  "agents": {
-    "research_enabled": false
-  },
-  "granularity": "standard"
+  "granularity": "standard",
+  "resolve_model_ids": true
 }
