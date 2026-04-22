@@ -5,7 +5,7 @@ import { seedMultiple, seedStatus } from './fixtures/seed-state';
 const TEST_FILE = 'clients.jpg';
 const DELETED_FILE = 'clients.jpg';        // FIX-01 anchor; pre-seeded DELETED via seed-state (RESEARCH Pitfall 2 rejected 'joke' as a directory)
 const DOWNLOADED_FILE = 'documentation.png';  // seeded DOWNLOADED sibling — small 9KB file; ALSO the Delete Local target in Spec 4 (see mapping comment in Task 2)
-const STOPPED_FILE = 'illusion.jpg';       // seeded STOPPED sibling — 80KB
+const STOPPED_FILE = 'illusion.jpg';       // seeded STOPPED sibling — 2MB
 const DEFAULT_FILE = 'goose';              // unseeded fixture in DEFAULT state
 
 test.describe('Testing dashboard page', () => {
@@ -28,7 +28,7 @@ test.describe('Testing dashboard page', () => {
             { name: 'crispycat', status: '', size: '2 MB' },
             { name: 'documentation.png', status: '', size: '9 KB' },
             { name: 'goose', status: '', size: '3 MB' },
-            { name: 'illusion.jpg', status: '', size: '80 KB' },
+            { name: 'illusion.jpg', status: '', size: '2 MB' },
             { name: 'joke', status: '', size: '200 KB' },
             { name: 'testing.gif', status: '', size: '9 MB' },
             { name: 'üæÒ', status: '', size: '70 KB' },
