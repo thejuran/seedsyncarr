@@ -4,11 +4,16 @@ RUN ls -l /app/python
 
 # Install dependencies
 # Note: The base image (seedsyncarr_run_python_env) already has non-free repos enabled via DEB822 format
+# ARM64: skip `rar` (Debian ships rar for amd64/i386 only; RARLAB has no aarch64 Linux build)
+# AMD64: install `rar` normally for test-fixture archive creation
 RUN apt-get update && \
-    apt-get install -y \
-        openssh-server \
-        rar \
-        unrar
+    apt-get install -y openssh-server unrar && \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "i386" ]; then \
+        apt-get install -y rar; \
+    else \
+        echo "Skipping rar install on $ARCH (Debian rar is amd64/i386 only)"; \
+    fi
 
 ADD src/docker/test/python/entrypoint.sh /app/
 
