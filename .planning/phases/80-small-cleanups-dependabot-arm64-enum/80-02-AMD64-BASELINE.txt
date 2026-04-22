@@ -1,0 +1,4 @@
+BASELINE_COLLECT_COUNT=1202
+captured_at=2026-04-22T03:26:42Z
+image=seedsyncarr/test/python:baseline-amd64
+note=Count from source grep (def test_ in *.py). docker run was not available during automated execution. Task 4 human verifier should confirm actual pytest --collect-only count against this baseline-amd64 image (already built and available on host).
