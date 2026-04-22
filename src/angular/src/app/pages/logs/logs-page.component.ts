@@ -266,8 +266,18 @@ export class LogsPageComponent implements OnInit {
         // Detect patterns like (x+)+, (x*)+, (x+)*, (x{n})+, (a|b+)+, ((a+))+ that cause catastrophic backtracking
         if (/\([^)]*[+*}][^)]*\)\s*[+*{]/.test(pattern)) { return true; }
         if (/[+*]\s*[+*]/.test(pattern)) { return true; }
-        // Deeply nested groups with inner quantifier: ((a+))+
-        if (/\((?:[^()]*\([^)]*[+*}][^)]*\)[^()]*)+\)\s*[+*{]/.test(pattern)) { return true; }
+        // Deeply nested groups: scan for paren depth > 1 with inner quantifier followed by outer quantifier
+        let depth = 0;
+        let hasInnerQuantifier = false;
+        for (let i = 0; i < pattern.length; i++) {
+            const ch = pattern[i];
+            if (ch === '(') { depth++; }
+            else if (ch === ')') {
+                depth--;
+                if (depth > 0 && hasInnerQuantifier && i + 1 < pattern.length && /[+*{]/.test(pattern[i + 1])) { return true; }
+                if (depth === 0) { hasInnerQuantifier = false; }
+            } else if (depth > 1 && /[+*}]/.test(ch)) { hasInnerQuantifier = true; }
+        }
         return false;
     }
 
