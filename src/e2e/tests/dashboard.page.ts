@@ -70,7 +70,7 @@ export class DashboardPage extends App {
     }
 
     getSegmentButton(name: 'All' | 'Active' | 'Done' | 'Errors'): Locator {
-        return this.page.locator('.segment-filters').getByRole('button', { name, exact: true });
+        return this.page.locator(`.segment-filters button.btn-segment`, { hasText: new RegExp(`^${name}`) });
     }
 
     getSubButton(name: 'Pending' | 'Syncing' | 'Queued' | 'Extracting' | 'Downloaded' | 'Extracted' | 'Failed' | 'Deleted'): Locator {

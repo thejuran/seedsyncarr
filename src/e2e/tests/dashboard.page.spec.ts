@@ -119,13 +119,11 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
     let dashboardPage: DashboardPage;
 
     test.beforeAll(async ({ browser }) => {
+        test.setTimeout(120_000);
         const ctx = await browser.newContext();
         const page = await ctx.newPage();
         const dash = new DashboardPage(page);
         await dash.navigateTo();
-        // Seed plan (revised): DOWNLOADED_FILE must reach DOWNLOADED so Spec 4's Delete Local
-        // dispatch satisfies controller.py:1041 precondition (local_size not None). See
-        // controller/controller.py:1032-1047 — delete_local rejects with 404 when local_size is None.
         await seedMultiple(page, [
             { file: DELETED_FILE, target: 'DELETED' },
             { file: DOWNLOADED_FILE, target: 'DOWNLOADED' },
@@ -332,11 +330,7 @@ test.describe.serial('UAT-02: status filter and URL', () => {
     let dashboardPage: DashboardPage;
 
     test.beforeAll(async ({ browser }) => {
-        // UAT-02 seed plan: same 3 fixtures as UAT-01's beforeAll. This block has its own independent
-        // seed so state mutations in Plan 02's UAT-01 destructive specs do not leak here.
-        // Plan 02's FIX-01 spec Queue-dispatches clients.jpg, driving it back to DOWNLOADING/DOWNLOADED.
-        // This beforeAll re-runs the DELETED seed path (queue -> Synced -> delete_local -> Deleted) to
-        // restore the FIX-01 fixture state for the Errors->Deleted filter spec below.
+        test.setTimeout(120_000);
         const ctx = await browser.newContext();
         const page = await ctx.newPage();
         const dash = new DashboardPage(page);

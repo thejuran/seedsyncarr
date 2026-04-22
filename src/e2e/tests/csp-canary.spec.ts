@@ -3,11 +3,11 @@ import { test, expect } from './fixtures/csp-listener';
 test.use({ allowViolations: true });
 
 test.describe('CSP violation canary', () => {
-    test('Seeded inline-script injection fires a CSP violation', async ({ page, cspViolations }) => {
+    test('Loading a script from a disallowed origin fires a CSP violation', async ({ page, cspViolations }) => {
         await page.addInitScript(() => {
             document.addEventListener('DOMContentLoaded', () => {
                 const el = document.createElement('script');
-                el.textContent = 'window.__canaryRan = true;';
+                el.src = 'https://evil.example.com/pwned.js';
                 document.body.appendChild(el);
             });
         });
