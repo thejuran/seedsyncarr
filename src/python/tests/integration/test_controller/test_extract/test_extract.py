@@ -9,6 +9,10 @@ from common import overrides
 from controller.extract import Extract, ExtractError
 
 
+@unittest.skipIf(
+    shutil.which("rar") is None,
+    "rar binary not available on this architecture (Debian ships rar for amd64/i386 only, RARLAB has no aarch64 Linux build)"
+)
 class TestExtract(unittest.TestCase):
     temp_root = None
     temp_dir = None
