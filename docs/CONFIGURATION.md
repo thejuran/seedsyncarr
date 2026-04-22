@@ -63,6 +63,9 @@ radarr_api_key =
 enabled = False
 dry_run = False
 delay_seconds = 60
+
+[Encryption]
+enabled = False
 ```
 
 ---
@@ -148,6 +151,20 @@ Settings marked **Required** contain the placeholder value `<replace me>` by def
 | `enabled` | Optional | `False` | Automatically delete files from the remote server after a successful download. |
 | `dry_run` | Optional | `False` | When `True`, log what would be deleted without actually deleting. |
 | `delay_seconds` | Optional | `60` | Seconds to wait after a download completes before deleting the remote file. Must be ≥ 1. |
+
+### [Encryption]
+
+| Setting | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | Optional | `False` | When `True`, the five secret fields (`webhook_secret`, `api_token`, `remote_password`, `sonarr_api_key`, `radarr_api_key`) are encrypted at rest in `settings.cfg` using Fernet (AES-128-CBC + HMAC-SHA256). A keyfile is created at `<config_dir>/secrets.key` with `0600` permissions on first enable. **The keyfile is critical — back it up alongside `settings.cfg`.** Losing it makes the encrypted secrets unrecoverable. |
+
+#### Keyfile operations
+
+- **Back up `secrets.key`.** Losing the keyfile makes every encrypted secret unrecoverable. Back it up alongside `settings.cfg` using the same secure channel.
+- **Disabling for manual editing.** Set `enabled = False` with the app stopped, restart, then edit `settings.cfg`. The next startup writes the five fields back to disk as plaintext. Re-enable by reversing: edit plaintext values, set `enabled = True`, restart; the app re-encrypts in place on boot.
+- **Live flag flips.** Toggling the flag while the app is running is supported but the on-disk state lags until the next periodic persist. Operators who need a deterministic on-disk state should stop the app before editing.
+- **Key rotation** is out of scope for v1.1.1. Track this against a future milestone if you need it.
+- **Decrypt failures** (wrong keyfile, corrupted token) surface as `WARNING` log lines on startup mentioning the field path; the app continues to run with the affected value unreadable.
 
 ---
 
