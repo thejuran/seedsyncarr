@@ -1,7 +1,7 @@
 import collections
 import json
 import logging
-from typing import Dict, Optional
+from typing import Optional
 
 from common import overrides, Constants, Persist, PersistError, BoundedOrderedSet
 
