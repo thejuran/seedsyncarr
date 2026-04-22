@@ -33,9 +33,9 @@
 
 ### Test Infrastructure (TEST)
 
-- [ ] **TEST-01**: CI Python test run produces zero pytest-cache warnings (`-p no:cacheprovider` suppresses the 3 cache-write warnings from the read-only `/src` mount) and zero `webob` `cgi` deprecation warnings (update `webob` or its consumer `bottle` to a version that no longer imports the deprecated `cgi` module). Verified by inspecting CI log stderr.
+- [x] **TEST-01**: CI Python test run produces zero pytest-cache warnings (`-p no:cacheprovider` suppresses the 3 cache-write warnings from the read-only `/src` mount) and zero `webob` `cgi` deprecation warnings (update `webob` or its consumer `bottle` to a version that no longer imports the deprecated `cgi` module). Verified by inspecting CI log stderr.
 
-- [ ] **TEST-02**: Main Playwright E2E suite fails the test run on any CSP violation logged to the browser console. Implemented via a shared fixture that registers `page.on('console')` and the `securitypolicyviolation` DOM event, collects violations, and fails in `afterEach`. Verified by seeding an inline script that violates CSP and asserting the spec fails.
+- [x] **TEST-02**: Main Playwright E2E suite fails the test run on any CSP violation logged to the browser console. Implemented via a shared fixture that registers `page.on('console')` and the `securitypolicyviolation` DOM event, collects violations, and fails in `afterEach`. Verified by seeding an inline script that violates CSP and asserting the spec fails.
 
 ### Tech Debt (TECH)
 
@@ -82,8 +82,8 @@ _Filled by roadmapper — maps each REQ-ID to its owning phase._
 | UAT-03 | Phase 78 | Complete |
 | SEC-01 | Phase 80 | Pending |
 | SEC-02 | Phase 81 | Pending |
-| TEST-01 | Phase 79 | Pending |
-| TEST-02 | Phase 79 | Pending |
+| TEST-01 | Phase 79 | Complete |
+| TEST-02 | Phase 79 | Complete |
 | TECH-01 | Phase 80 | Pending |
 | TECH-02 | Phase 80 | Pending |
 | DOCS-01 | Phase 82 | Pending |

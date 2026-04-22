@@ -244,7 +244,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 - [x] **Phase 76: Multiselect Bulk-Bar Action Union** - Restore "Re-Queue from Remote" in mixed selections; union-of-applicable-actions with per-row disable (completed 2026-04-20)
 - [x] **Phase 77: Deferred Playwright E2E (Phases 72 + 73)** - 15 E2E specs covering selection + bulk bar + dashboard filter + URL round-trip (completed 2026-04-21)
 - [x] **Phase 78: Storage Tile Live-Seedbox UAT** - 6 manual UAT items against live remote (df-over-SSH, thresholds, graceful fallback) (completed 2026-04-21)
-- [ ] **Phase 79: Test Infra Cleanup** - Zero CI warnings (pytest-cache + webob/cgi) + Playwright CSP violation listener
+- [x] **Phase 79: Test Infra Cleanup** - Zero CI warnings (pytest-cache + webob/cgi) + Playwright CSP violation listener (completed 2026-04-22)
 - [ ] **Phase 80: Small Cleanups (Dependabot + arm64 + enum)** - basic-ftp override, arm64 `rar` resolution, WAITING_FOR_IMPORT wire-or-remove
 - [ ] **Phase 81: Optional Fernet Encryption at Rest** - Opt-in encryption for 5 config secrets, transparent decrypt, backward-compat
 - [ ] **Phase 82: Release Prep (Retro v1.1.0 Notes + v1.1.1 Tag)** - Retroactive v1.1.0 CHANGELOG + GitHub Release, version bump, tag
@@ -394,7 +394,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 | 76. Multiselect Bulk-Bar Action Union | v1.1.1 | 4/4 | Complete    | 2026-04-20 |
 | 77. Deferred Playwright E2E (72+73) | v1.1.1 | 4/4 | Complete    | 2026-04-21 |
 | 78. Storage Tile Live-Seedbox UAT | v1.1.1 | 0/2 | Not started | - |
-| 79. Test Infra Cleanup | v1.1.1 | 0/0 | Not started | - |
+| 79. Test Infra Cleanup | v1.1.1 | 2/2 | Complete    | 2026-04-22 |
 | 80. Small Cleanups (Dependabot + arm64 + enum) | v1.1.1 | 0/0 | Not started | - |
 | 81. Optional Fernet Encryption at Rest | v1.1.1 | 0/0 | Not started | - |
 | 82. Release Prep (v1.1.0 retro + v1.1.1 tag) | v1.1.1 | 0/0 | Not started | - |
