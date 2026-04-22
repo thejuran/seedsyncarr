@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1.1
 milestone_name: Post-Redesign Cleanup & Outstanding Work
-status: ready_to_plan
-last_updated: "2026-04-21T21:31:32.568Z"
-last_activity: 2026-04-21 -- Phase 79 execution started
+status: executing
+last_updated: "2026-04-22T04:05:00.000Z"
+last_activity: 2026-04-22 -- Phase 80 Wave 1 merged: 80-01 + 80-03 complete; 80-02 awaiting arm64 human-verify at Task 4
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 16
-  completed_plans: 14
-  percent: 71
+  total_plans: 19
+  completed_plans: 16
+  percent: 84
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-20)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 79 — test-infra-cleanup
+**Current focus:** Phase 80 — small-cleanups-dependabot-arm64-enum
 
 ## Current Position
 
-Phase: 80
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-04-22
+Phase: 80 (small-cleanups-dependabot-arm64-enum) — EXECUTING (wave 1 merged, checkpoint pending)
+Plan: 2 of 3 complete (80-01 ✓, 80-03 ✓); 80-02 paused at Task 4 human-verify
+Status: Awaiting arm64 host run of `make run-tests-python` + 3 Docker parity checks (see 80-02-SUMMARY.md)
+Last activity: 2026-04-22 -- Phase 80 Wave 1 merged
 
 ## v1.1.1 Phase List
 
@@ -90,4 +90,4 @@ Next action: Orchestrator runs `/gsd-verify-work` for phase-level close.
 
 ---
 
-**Planned Phase:** 79 (Test Infra Cleanup) — 2 plans — 2026-04-21T21:28:30.126Z
+**Planned Phase:** 80 (Small Cleanups (Dependabot + arm64 + enum)) — 3 plans — 2026-04-22T03:19:08.911Z

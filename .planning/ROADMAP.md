@@ -336,9 +336,9 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
   3. WAITING_FOR_IMPORT enum is either (a) set by real business logic with unit-test coverage, or (b) removed from the model along with every reference — chosen resolution logged in `PROJECT.md` Key Decisions.
   4. All existing Python and Angular test suites remain green.
 **Plans**: 3 plans
-  - [ ] 80-01-PLAN.md — SEC-01: root package.json basic-ftp overrides pin (^5.3.0) + lockfile refresh + Dependabot alert #3 state check (Wave 1, parallel, autonomous)
-  - [ ] 80-02-PLAN.md — TECH-01: arm64 support via dpkg-arch-gated rar install in test Dockerfile + class-level skipIf decorators on TestExtract/TestController + amd64 parity baseline (Wave 1, parallel, autonomous:false — requires Apple Silicon host for final verification)
-  - [ ] 80-03-PLAN.md — TECH-02: remove WAITING_FOR_IMPORT from 5 source files (Python enum + serializer + 2 TS enums + switch case) + PROJECT.md Key Decisions row (Wave 1, parallel, autonomous)
+  - [x] 80-01-PLAN.md — SEC-01: root package.json basic-ftp overrides pin (^5.3.0) + lockfile refresh + Dependabot alert #3 state check (Wave 1, parallel, autonomous)
+  - [ ] 80-02-PLAN.md — TECH-01: arm64 support via dpkg-arch-gated rar install in test Dockerfile + class-level skipIf decorators on TestExtract/TestController + amd64 parity baseline (Wave 1, parallel, autonomous:false — requires Apple Silicon host for final verification) **[Tasks 1-3 complete; Task 4 human-verify pending]**
+  - [x] 80-03-PLAN.md — TECH-02: remove WAITING_FOR_IMPORT from 5 source files (Python enum + serializer + 2 TS enums + switch case) + PROJECT.md Key Decisions row (Wave 1, parallel, autonomous)
 
 ### Phase 81: Optional Fernet Encryption at Rest
 **Goal**: Users who opt in have their 5 config secrets encrypted at rest with zero disruption to existing plaintext installs.
