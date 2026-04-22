@@ -30,7 +30,6 @@ class ModelFile:
     class ImportStatus(Enum):
         NONE = 0                    # Not tracked by *arr / no import detected
         IMPORTED = 1                # Imported by Sonarr/Radarr
-        WAITING_FOR_IMPORT = 2      # Detected by *arr, awaiting import
 
     def __init__(self, name: str, is_dir: bool):
         self.__name = name  # file or folder name
