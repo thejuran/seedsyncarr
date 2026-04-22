@@ -59,8 +59,7 @@ class SerializeModel(Serialize):
     __KEY_FILE_IMPORT_STATUS = "import_status"
     __VALUES_FILE_IMPORT_STATUS = {
         ModelFile.ImportStatus.NONE: "none",
-        ModelFile.ImportStatus.IMPORTED: "imported",
-        ModelFile.ImportStatus.WAITING_FOR_IMPORT: "waiting_for_import"
+        ModelFile.ImportStatus.IMPORTED: "imported"
     }
 
     @staticmethod
