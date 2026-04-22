@@ -82,34 +82,23 @@ export async function seedStatus(page: Page, file: string, target: SeedTarget): 
         return;
     }
     if (target === 'STOPPED') {
-        const MAX_ATTEMPTS = 3;
-        const row = page.locator('.transfer-table tbody app-transfer-row', {
-            has: page.locator('td.cell-name .file-name', {
-                hasText: new RegExp(`^${escapeRegex(file)}$`),
-            }),
-        });
-        const badge = row.locator('td.cell-status .status-badge');
+        const MAX_ATTEMPTS = 5;
         for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             await expectOk(page, ENDPOINT.queue(file), 'POST');
-            await badge
-                .filter({ hasText: new RegExp(`^\\s*(${LABEL.DOWNLOADING}|${LABEL.DOWNLOADED})\\s*$`) })
-                .waitFor({ timeout: 30_000 });
-            const sawDownloading = (await badge
-                .filter({ hasText: new RegExp(`^\\s*${LABEL.DOWNLOADING}\\s*$`) })
-                .count()) > 0;
-            if (sawDownloading) {
-                await expectOk(page, ENDPOINT.stop(file), 'POST');
+            const stopRes = await page.request.post(ENDPOINT.stop(file));
+            if (stopRes.ok()) {
                 await waitForBadge(page, file, LABEL.STOPPED);
                 return;
             }
             if (attempt < MAX_ATTEMPTS) {
+                await waitForBadge(page, file, LABEL.DOWNLOADED, 30_000);
                 await expectOk(page, ENDPOINT.deleteLocal(file), 'DELETE');
                 await waitForBadge(page, file, LABEL.DELETED);
             }
         }
         throw new Error(
-            `Seed STOPPED for '${file}' missed the transient DOWNLOADING window ` +
-            `${MAX_ATTEMPTS} times — file completes too fast to stop.`,
+            `Seed STOPPED for '${file}' failed after ${MAX_ATTEMPTS} attempts — ` +
+            `stop command never caught the file in QUEUED/DOWNLOADING state.`,
         );
     }
     if (target === 'DELETED') {
