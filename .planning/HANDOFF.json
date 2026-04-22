@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-04-22T20:55:46.725Z",
+  "phase": "82",
+  "phase_name": "release-prep-retro-v110-notes-v111-tag",
+  "phase_dir": ".planning/phases/82-release-prep-retro-v110-notes-v111-tag",
+  "plan": 4,
+  "task": 2,
+  "total_tasks": 6,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": "82-01-T1", "name": "Write v1.1.0 CHANGELOG.md entry and create GitHub Release", "status": "done", "commit": "b9e70a3"},
+    {"id": "82-02-T1", "name": "Create debian/DEBIAN/control file", "status": "done", "commit": "fcfcaf6"},
+    {"id": "82-02-T2", "name": "Add publish-deb-package CI job and release-notes.md template", "status": "done", "commit": "88cf332"},
+    {"id": "82-03-T1", "name": "Write v1.1.1 CHANGELOG entry and populate release-notes.md", "status": "done", "commit": "c0b0531"},
+    {"id": "82-03-T2", "name": "Bump version strings from 1.0.0 to 1.1.1", "status": "done", "commit": "3a81af3"},
+    {"id": "82-04-T1", "name": "Create and push v1.1.1 git tag", "status": "done", "commit": "28d94f4"},
+    {"id": "82-04-T2", "name": "Verify CI pipeline and release artifacts", "status": "in_progress", "progress": "Tag pushed, CI re-triggered after lint fixes, awaiting CI completion"}
+  ],
+  "remaining_tasks": [
+    {"id": "82-04-T2", "name": "Verify CI pipeline and release artifacts", "status": "in_progress"}
+  ],
+  "blockers": [
+    {"description": "Waiting for CI pipeline to complete on v1.1.1 tag (3rd attempt after lint fixes)", "type": "external", "workaround": "Check gh run list --limit 5 for completion"}
+  ],
+  "human_actions_pending": [
+    {"action": "Verify 5 CI artifacts after pipeline completes", "context": "gh release view v1.1.1, .deb asset, Docker image, v1.1.0 release, CI green", "blocking": true}
+  ],
+  "decisions": [
+    {"decision": "Moved v1.1.1 tag twice to include lint fixes", "rationale": "Pre-existing lint failures in Python and Angular needed fixing before release", "phase": "82"},
+    {"decision": "Added lint jobs as gate for Docker build in CI", "rationale": "Lint failures should block releases; change pushed to main, not in v1.1.1 tag (will be picked up by future tags)", "phase": "82"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Wait for v1.1.1 CI run to complete (run ID 24801608802 or newer), then verify 5 release artifacts. If all pass, create 82-04-SUMMARY.md and proceed to phase verification.",
+  "context_notes": "Plans 82-01 through 82-03 fully complete. Plan 82-04 Task 1 (tag push) done. Task 2 is a human-verify checkpoint awaiting CI completion. The v1.1.1 tag has been moved twice: first to fix unused Python/Angular imports, second to fix an additional unused Dict import. CI lint gate (lint -> build-docker-image) was added to main but NOT in the v1.1.1 tag — it will apply to future releases."
+}
