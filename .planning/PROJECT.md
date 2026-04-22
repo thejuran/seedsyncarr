@@ -339,6 +339,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 | Host header allowlist for DNS rebinding | Minimal default (localhost); user adds reverse proxy hostname | ✓ Good |
 | Keep bare except in config.py test handlers | CI mock prevents RequestException class resolution | ✓ Good |
 | pexpect close uses explicit except, not finally | Preserves post-close attribute access for error reporting | ✓ Good |
+| Remove WAITING_FOR_IMPORT enum value (TECH-02) | Placeholder since v2.0 (2026-02-12); never set by business logic; Phase 73 explicitly deferred wiring; re-add alongside future Sonarr Grab-event ingestion if prioritized | ✓ Good |
 
 ## Project Status
 
