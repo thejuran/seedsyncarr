@@ -27,6 +27,7 @@ class Seedsyncarr:
     __FILE_CONFIG = "settings.cfg"
     __FILE_AUTO_QUEUE_PERSIST = "autoqueue.persist"
     __FILE_CONTROLLER_PERSIST = "controller.persist"
+    __FILE_SECRETS_KEY = "secrets.key"
     __CONFIG_DUMMY_VALUE = "<replace me>"
 
     # This logger is used to print any exceptions caught at top module
@@ -39,6 +40,7 @@ class Seedsyncarr:
         # Create/load config
         config = None
         self.config_path = os.path.join(args.config_dir, Seedsyncarr.__FILE_CONFIG)
+        Config.set_keyfile_path(os.path.join(args.config_dir, Seedsyncarr.__FILE_SECRETS_KEY))
         create_default_config = False
         if os.path.isfile(self.config_path):
             try:
@@ -107,8 +109,16 @@ class Seedsyncarr:
         self.context.logger.info("Starting SeedSyncarr")
         self.context.logger.info("Platform: {}".format(platform.machine()))
 
+        # SEC-02 #3a: re-encrypt plaintext secrets in place when encryption is on
+        Seedsyncarr._reencrypt_plaintext_if_needed(
+            self.context.config, self.config_path, self.context.logger
+        )
+
         # Startup security warnings (WHOOK-02, WARN-01, WARN-02, WARN-03)
         Seedsyncarr._emit_startup_warnings(self.context.logger, self.context.config)
+
+        # SEC-02 #5b: emit per-field warnings for decrypt failures from from_str
+        Seedsyncarr._emit_decrypt_warnings(self.context.logger, self.context.config)
 
         # Create webhook manager (shared between controller and web app)
         webhook_manager = WebhookManager(self.context)
@@ -341,6 +351,8 @@ class Seedsyncarr:
         config.autodelete.dry_run = False
         config.autodelete.delay_seconds = 60
 
+        config.encryption.enabled = False
+
         return config
 
     @staticmethod
@@ -373,6 +385,47 @@ class Seedsyncarr:
             logger.info(
                 "Security: API token configured — "
                 "all /server/* endpoints require Bearer authentication."
+            )
+
+    @staticmethod
+    def _reencrypt_plaintext_if_needed(config, config_path: str, logger) -> None:
+        """Re-encrypt any plaintext secret fields in place when encryption is enabled.
+
+        Runs once per startup (SEC-02 criterion #3a). If encryption.enabled is True
+        and any of the 5 secret fields are still in plaintext, writes the config back
+        to disk via to_file() so the on-disk settings.cfg gets ciphertext values.
+
+        Never raises — logs at INFO level when re-encryption fires.
+        """
+        if not config.encryption.enabled:
+            return
+        from common.encryption import is_ciphertext
+        from common.config import _SECRET_FIELD_PATHS
+        has_plaintext = False
+        for attr, field, _ in _SECRET_FIELD_PATHS:
+            value = getattr(getattr(config, attr), field, None)
+            if value and not is_ciphertext(value):
+                has_plaintext = True
+                break
+        if has_plaintext:
+            logger.info(
+                "Encryption: re-encrypting plaintext secrets in settings.cfg"
+            )
+            config.to_file(config_path)
+
+    @staticmethod
+    def _emit_decrypt_warnings(logger, config) -> None:
+        """Emit warnings for decrypt failures detected during Config.from_str.
+
+        Never raises — advisory only (SEC-02 #5b). Mirrors the contract of
+        _emit_startup_warnings: log-only, no exceptions propagated.
+        """
+        for field_path in getattr(config, "_decrypt_errors", []):
+            logger.warning(
+                f"Security: Failed to decrypt '{field_path}' in settings.cfg. "
+                f"The value looks like ciphertext but could not be decrypted with "
+                f"the current keyfile. Check that secrets.key matches the keyfile "
+                f"used to originally encrypt this value."
             )
 
     @staticmethod
