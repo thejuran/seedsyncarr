@@ -365,7 +365,11 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
   3. `CHANGELOG.md` has a v1.1.1 entry summarizing the 12 requirements shipped in this milestone.
   4. Version strings in `version.ts` / `pyproject` / Debian control files are bumped to `1.1.1` and remain consistent across artifacts.
   5. Git tag `v1.1.1` pushed; Docker and Deb release artifacts published by CI; GitHub Release v1.1.1 created with the v1.1.1 changelog body.
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 82-01-PLAN.md — Retroactive v1.1.0 CHANGELOG entry + GitHub Release on existing tag + v1.1.0-dev cleanup (Wave 1, autonomous)
+  - [ ] 82-02-PLAN.md — Debian packaging infrastructure: debian/DEBIAN/control + publish-deb-package CI job (Wave 1, parallel, autonomous)
+  - [ ] 82-03-PLAN.md — v1.1.1 CHANGELOG entry + version bump (4 files) + release-notes.md (Wave 2, autonomous, depends on 82-01 + 82-02)
+  - [ ] 82-04-PLAN.md — Push v1.1.1 tag + verify CI publishes Docker + Deb + GitHub Release (Wave 3, checkpoint, depends on 82-02 + 82-03)
 
 ## Progress
 
@@ -403,8 +407,8 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 | 79. Test Infra Cleanup | v1.1.1 | 2/2 | Complete    | 2026-04-22 |
 | 80. Small Cleanups (Dependabot + arm64 + enum) | v1.1.1 | 0/0 | Not started | - |
 | 81. Optional Fernet Encryption at Rest | v1.1.1 | 0/3 | Not started | - |
-| 82. Release Prep (v1.1.0 retro + v1.1.1 tag) | v1.1.1 | 0/0 | Not started | - |
+| 82. Release Prep (v1.1.0 retro + v1.1.1 tag) | v1.1.1 | 0/4 | Not started | - |
 
 ---
 
-*Last updated: 2026-04-20 — Phase 77 planned (4 plans covering Waves 1-4: Wave 1 helpers + seed module, Wave 2 UAT-01 selection specs, Wave 3 UAT-02 filter+URL specs, Wave 4 full-harness verification).*
+*Last updated: 2026-04-22 — Phase 82 planned (4 plans covering Waves 1-3: Wave 1 retro v1.1.0 changelog + Deb infra, Wave 2 v1.1.1 changelog + version bump, Wave 3 tag push + CI verification).*
