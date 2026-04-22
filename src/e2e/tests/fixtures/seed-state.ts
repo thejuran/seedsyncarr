@@ -82,39 +82,35 @@ export async function seedStatus(page: Page, file: string, target: SeedTarget): 
         return;
     }
     if (target === 'STOPPED') {
-        await expectOk(page, ENDPOINT.queue(file), 'POST');
-        // WR-02: DOWNLOADING is transient on the harness (Pitfall 4 — LFTP drains the
-        // queue on an idle harness within ms for small files like clients.jpg at 40 KB
-        // or illusion.jpg at 80 KB). Race DOWNLOADING vs DOWNLOADED: whichever label
-        // appears first ends the wait. If we missed the transient window and landed on
-        // DOWNLOADED, stop is a no-op and the subsequent STOPPED wait would never
-        // resolve — fail fast with a clear, distinguishable error instead of timing
-        // out at 30s on an unreachable state.
+        const MAX_ATTEMPTS = 3;
         const row = page.locator('.transfer-table tbody app-transfer-row', {
             has: page.locator('td.cell-name .file-name', {
                 hasText: new RegExp(`^${escapeRegex(file)}$`),
             }),
         });
         const badge = row.locator('td.cell-status .status-badge');
-        await badge
-            .filter({ hasText: new RegExp(`^\\s*(${LABEL.DOWNLOADING}|${LABEL.DOWNLOADED})\\s*$`) })
-            .waitFor({ timeout: 30_000 });
-        // Detect which branch via a filtered count — avoids a bare textContent() re-read
-        // that can race Angular change detection (the badge element can re-render between
-        // the filtered waitFor and an unfiltered text read, producing a stale miss).
-        const sawDownloading = (await badge
-            .filter({ hasText: new RegExp(`^\\s*${LABEL.DOWNLOADING}\\s*$`) })
-            .count()) > 0;
-        if (!sawDownloading) {
-            throw new Error(
-                `Seed STOPPED for '${file}' missed the transient DOWNLOADING window — ` +
-                `file already reached DOWNLOADED ('${LABEL.DOWNLOADED}'). Stop is a no-op from ` +
-                `this state; cannot reach STOPPED. Pick a larger fixture or re-queue.`,
-            );
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            await expectOk(page, ENDPOINT.queue(file), 'POST');
+            await badge
+                .filter({ hasText: new RegExp(`^\\s*(${LABEL.DOWNLOADING}|${LABEL.DOWNLOADED})\\s*$`) })
+                .waitFor({ timeout: 30_000 });
+            const sawDownloading = (await badge
+                .filter({ hasText: new RegExp(`^\\s*${LABEL.DOWNLOADING}\\s*$`) })
+                .count()) > 0;
+            if (sawDownloading) {
+                await expectOk(page, ENDPOINT.stop(file), 'POST');
+                await waitForBadge(page, file, LABEL.STOPPED);
+                return;
+            }
+            if (attempt < MAX_ATTEMPTS) {
+                await expectOk(page, ENDPOINT.deleteLocal(file), 'DELETE');
+                await waitForBadge(page, file, LABEL.DELETED);
+            }
         }
-        await expectOk(page, ENDPOINT.stop(file), 'POST');
-        await waitForBadge(page, file, LABEL.STOPPED);
-        return;
+        throw new Error(
+            `Seed STOPPED for '${file}' missed the transient DOWNLOADING window ` +
+            `${MAX_ATTEMPTS} times — file completes too fast to stop.`,
+        );
     }
     if (target === 'DELETED') {
         // FIX-01 fixture survival: must reach DOWNLOADED first so the file
