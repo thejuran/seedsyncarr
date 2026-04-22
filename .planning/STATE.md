@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1.1
 milestone_name: Post-Redesign Cleanup & Outstanding Work
 status: executing
-last_updated: "2026-04-22T04:05:00.000Z"
-last_activity: 2026-04-22 -- Phase 80 Wave 1 merged: 80-01 + 80-03 complete; 80-02 awaiting arm64 human-verify at Task 4
+last_updated: "2026-04-22T04:25:00.000Z"
+last_activity: 2026-04-22 -- Phase 80 Wave 1 complete: all 3 plans verified (80-02 arm64 human-verify passed, 64 rar-skips, 1247 amd64 parity)
 progress:
   total_phases: 7
   completed_phases: 5
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-04-20)
 
 ## Current Position
 
-Phase: 80 (small-cleanups-dependabot-arm64-enum) — EXECUTING (wave 1 merged, checkpoint pending)
-Plan: 2 of 3 complete (80-01 ✓, 80-03 ✓); 80-02 paused at Task 4 human-verify
-Status: Awaiting arm64 host run of `make run-tests-python` + 3 Docker parity checks (see 80-02-SUMMARY.md)
-Last activity: 2026-04-22 -- Phase 80 Wave 1 merged
+Phase: 80 (small-cleanups-dependabot-arm64-enum) — EXECUTION COMPLETE
+Plan: 3 of 3 complete (80-01 ✓, 80-02 ✓, 80-03 ✓)
+Status: Ready for code-review / verify-work close-out
+Last activity: 2026-04-22 -- Phase 80 execution complete, human-verify passed
 
 ## v1.1.1 Phase List
 
