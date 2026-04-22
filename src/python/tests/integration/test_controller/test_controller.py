@@ -44,6 +44,10 @@ class DummyCommandCallback(Controller.Command.ICallback):
         pass
 
 
+@unittest.skipIf(
+    shutil.which("rar") is None,
+    "rar binary not available on this architecture (Debian ships rar for amd64/i386 only, RARLAB has no aarch64 Linux build)"
+)
 class TestController(unittest.TestCase):
     __KEEP_FILES = False  # for debugging
 
