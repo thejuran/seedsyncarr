@@ -114,8 +114,9 @@ class TestEncryption(unittest.TestCase):
         """encrypt_field must raise EncryptionError (not DecryptionError) when the
         key is malformed — e.g. a truncated or non-base64 keyfile."""
         bad_key = b"not_a_valid_fernet_key"
-        with self.assertRaises(EncryptionError):
+        with self.assertRaises(EncryptionError) as ctx:
             encrypt_field(bad_key, "any_plaintext")
+        self.assertIsNone(ctx.exception.__cause__)
 
     def test_is_ciphertext_rejects_short_decoded_length(self):
         """is_ciphertext must return False for a string that passes the prefix and

@@ -13,7 +13,8 @@ import platform
 from common import ServiceExit, Context, Constants, Config, Args, AppError
 from common import ServiceRestart
 from common import Localization, Status, ConfigError, Persist, PersistError
-from common.encryption import is_ciphertext, EncryptionError
+from common import EncryptionError
+from common.encryption import is_ciphertext
 from common.config import _SECRET_FIELD_PATHS
 from controller import Controller, ControllerJob, ControllerPersist, AutoQueue, AutoQueuePersist
 from controller.webhook_manager import WebhookManager
@@ -413,7 +414,7 @@ class Seedsyncarr:
             )
             try:
                 config.to_file(config_path)
-            except (OSError, EncryptionError) as exc:
+            except (OSError, EncryptionError, ConfigError) as exc:
                 logger.warning("Encryption: failed to write re-encrypted config: %s", exc)
 
     @staticmethod
