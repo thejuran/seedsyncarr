@@ -71,6 +71,11 @@ pytest-cov = "^7.1.0"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 timeout = 60
+# Redirect cache to /tmp so ad-hoc pytest invocations that omit the CMD's
+# `-p no:cacheprovider` flag don't write .pytest_cache into the host-mounted
+# /src/ volume. Reviewer feedback reversed Phase 79 D-02 which had removed
+# this as "dead config" — defense-in-depth for non-default invocations.
+cache_dir = "/tmp/.pytest_cache"
 
 [tool.coverage.run]
 source = ["."]

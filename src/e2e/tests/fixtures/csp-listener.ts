@@ -24,13 +24,23 @@ export const test = base.extend<Fixtures>({
     },
 
     page: async ({ page, cspViolations, allowViolations }, use) => {
-        await page.exposeFunction('__reportCspViolation', (v: CspViolation) => {
-            cspViolations.push({ ...v, source: 'event' });
+        await page.exposeFunction('__reportCspViolation', (v: unknown) => {
+            if (!v || typeof v !== 'object') return;
+            const obj = v as Record<string, unknown>;
+            cspViolations.push({
+                source: 'event',
+                blockedURI:        typeof obj.blockedURI        === 'string' ? obj.blockedURI        : undefined,
+                violatedDirective: typeof obj.violatedDirective === 'string' ? obj.violatedDirective : undefined,
+                originalPolicy:    typeof obj.originalPolicy    === 'string' ? obj.originalPolicy    : undefined,
+                sourceFile:        typeof obj.sourceFile        === 'string' ? obj.sourceFile        : undefined,
+                lineNumber:        typeof obj.lineNumber        === 'number' ? obj.lineNumber        : undefined,
+                sample:            typeof obj.sample            === 'string' ? obj.sample            : undefined,
+            });
         });
 
         await page.addInitScript(() => {
             document.addEventListener('securitypolicyviolation', (e) => {
-                // @ts-ignore — exposed function on window at runtime
+                // @ts-expect-error — exposed function on window at runtime
                 window.__reportCspViolation({
                     blockedURI: e.blockedURI,
                     violatedDirective: e.violatedDirective,
