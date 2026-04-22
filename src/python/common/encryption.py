@@ -135,10 +135,10 @@ def encrypt_field(key: bytes, plaintext: str) -> str:
     """
     try:
         return Fernet(key).encrypt(plaintext.encode("utf-8")).decode("ascii")
-    except ValueError as exc:
+    except ValueError:
         raise EncryptionError(
             "Invalid Fernet key — the keyfile may be corrupted or truncated"
-        ) from exc
+        ) from None
 
 
 def decrypt_field(key: bytes, token: str) -> str:

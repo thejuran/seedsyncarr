@@ -13,7 +13,7 @@ import platform
 from common import ServiceExit, Context, Constants, Config, Args, AppError
 from common import ServiceRestart
 from common import Localization, Status, ConfigError, Persist, PersistError
-from common.encryption import is_ciphertext
+from common.encryption import is_ciphertext, EncryptionError
 from common.config import _SECRET_FIELD_PATHS
 from controller import Controller, ControllerJob, ControllerPersist, AutoQueue, AutoQueuePersist
 from controller.webhook_manager import WebhookManager
@@ -413,7 +413,7 @@ class Seedsyncarr:
             )
             try:
                 config.to_file(config_path)
-            except OSError as exc:
+            except (OSError, EncryptionError) as exc:
                 logger.warning("Encryption: failed to write re-encrypted config: %s", exc)
 
     @staticmethod
@@ -425,10 +425,11 @@ class Seedsyncarr:
         """
         for field_path in getattr(config, "_decrypt_errors", []):
             logger.warning(
-                f"Security: Failed to decrypt '{field_path}' in settings.cfg. "
-                f"The value looks like ciphertext but could not be decrypted with "
-                f"the current keyfile. Check that secrets.key matches the keyfile "
-                f"used to originally encrypt this value."
+                "Security: Failed to decrypt '%s' in settings.cfg. "
+                "The value looks like ciphertext but could not be decrypted with "
+                "the current keyfile. Check that secrets.key matches the keyfile "
+                "used to originally encrypt this value.",
+                field_path,
             )
 
     @staticmethod

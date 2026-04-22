@@ -1074,6 +1074,7 @@ enabled=True
         config = Config.from_str(content)
         self.assertFalse(os.path.isfile(self.keyfile), "keyfile must NOT be created")
         self.assertIn("Lftp.remote_password", config._decrypt_errors)
+        self.assertEqual(1, len(config._decrypt_errors), "expected exactly one decrypt error")
         self.assertEqual(encrypted_pass, config.lftp.remote_password)
 
     # ── end SEC-02 encryption tests ───────────────────────────────────────────

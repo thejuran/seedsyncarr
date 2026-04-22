@@ -109,3 +109,21 @@ class TestEncryption(unittest.TestCase):
         garbage_token = "gAAAAA" + "A" * 194
         self.assertTrue(is_ciphertext(garbage_token), "precondition: garbage token must pass is_ciphertext")
         self.assertRaises(DecryptionError, decrypt_field, key, garbage_token)
+
+    def test_encrypt_bad_key_raises_encryption_error(self):
+        """encrypt_field must raise EncryptionError (not DecryptionError) when the
+        key is malformed — e.g. a truncated or non-base64 keyfile."""
+        bad_key = b"not_a_valid_fernet_key"
+        with self.assertRaises(EncryptionError):
+            encrypt_field(bad_key, "any_plaintext")
+
+    def test_is_ciphertext_rejects_short_decoded_length(self):
+        """is_ciphertext must return False for a string that passes the prefix and
+        length gates but whose decoded content is under the 73-byte Fernet minimum.
+
+        'gAAAAA' + 'A'*90 + '====' = 100 chars, valid url-safe base64,
+        decodes to 72 bytes — one byte below the 73-byte threshold.
+        """
+        short_decoded = "gAAAAA" + "A" * 90 + "===="
+        self.assertEqual(100, len(short_decoded))
+        self.assertFalse(is_ciphertext(short_decoded))
