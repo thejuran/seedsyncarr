@@ -21,6 +21,7 @@
     "@angular/platform-browser": "^21.2.9",
     "@angular/platform-browser-dynamic": "^21.2.9",
     "@angular/router": "^21.2.9",
+    "@phosphor-icons/web": "^2.1.2",
     "@popperjs/core": "^2.11.8",
     "bootstrap": "^5.3.3",
     "compare-versions": "^6.1.1",

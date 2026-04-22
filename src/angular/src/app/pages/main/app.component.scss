@@ -84,7 +84,7 @@
 
 .brand-version {
     font-size: 0.75rem;
-    font-family: 'JetBrains Mono', $font-family-monospace;
+    font-family: var(--bs-font-monospace);
     color: #9aaa8a;
     background: #2c3629;
     border: 1px solid #3e4a38;
@@ -168,7 +168,7 @@
     padding: 6px 12px;
     border-radius: 4px;
     font-size: 0.75rem;
-    font-family: 'JetBrains Mono', $font-family-monospace;
+    font-family: var(--bs-font-monospace);
     font-weight: 500;
     white-space: nowrap;
 

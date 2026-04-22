@@ -43,7 +43,7 @@ input[type="password"] {
     padding: 8px 12px;
     color: var(--app-text-color, #e0e8d6);
     font-size: 0.875rem;
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-family: var(--bs-font-monospace);
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
     transition: border-color 0.2s, box-shadow 0.2s;
 

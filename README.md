@@ -65,6 +65,23 @@ docker run -d \
   ghcr.io/thejuran/seedsyncarr:latest
 ```
 
+### pip
+
+Install system dependencies first, then install via pip:
+
+```bash
+# System dependencies (Debian/Ubuntu)
+sudo apt install lftp openssh-client p7zip-full unrar bzip2
+
+# Install SeedSyncarr
+pip install seedsyncarr
+
+# Run
+seedsyncarr
+```
+
+Requires Python 3.11 or 3.12.
+
 For detailed setup instructions, see the [documentation](https://thejuran.github.io/seedsyncarr).
 
 ## Configuration

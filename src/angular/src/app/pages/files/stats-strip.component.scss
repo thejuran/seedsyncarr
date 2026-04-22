@@ -108,7 +108,7 @@
 .stat-unit {
   font-size: 0.875rem;
   color: #9aaa8a;
-  font-family: 'JetBrains Mono', $font-family-monospace;
+  font-family: var(--bs-font-monospace);
 }
 
 // ============================================================================
@@ -155,7 +155,7 @@
 .stat-sub {
   font-size: 10px;
   color: #9aaa8a;
-  font-family: 'JetBrains Mono', $font-family-monospace;
+  font-family: var(--bs-font-monospace);
   margin-top: auto;
   position: relative;
 }

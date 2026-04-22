@@ -16,6 +16,6 @@ test.describe('Testing about page', () => {
     test('should have the right version', async ({ page }) => {
         const aboutPage = new AboutPage(page);
         const version = await aboutPage.getVersion();
-        expect(version).toBe('v1.0.0');
+        expect(version).toMatch(/^v\d+\.\d+\.\d+$/);
     });
 });

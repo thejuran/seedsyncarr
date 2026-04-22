@@ -112,7 +112,7 @@ $check-green: #5cb85c;  // Bootstrap check green — copy confirmation
 
                 .webhook-url-input {
                     flex: 1;
-                    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+                    font-family: var(--bs-font-monospace);
                     font-size: 0.8rem;
                     background: var(--bs-dark);
                     color: var(--bs-light);
@@ -149,7 +149,7 @@ $check-green: #5cb85c;  // Bootstrap check green — copy confirmation
         display: flex;
         align-items: center;
         gap: 6px;
-        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-family: var(--bs-font-monospace);
         font-size: 0.7rem;
         color: $success;
         padding: 2px 8px;
@@ -412,7 +412,7 @@ $check-green: #5cb85c;  // Bootstrap check green — copy confirmation
             }
 
             .pattern-chip-text {
-                font-family: 'JetBrains Mono', 'Fira Code', monospace;
+                font-family: var(--bs-font-monospace);
                 font-size: 0.875rem;
             }
 
@@ -523,7 +523,7 @@ $check-green: #5cb85c;  // Bootstrap check green — copy confirmation
                 border: none;
                 border-radius: 0;
                 box-shadow: none;
-                font-family: 'JetBrains Mono', 'Fira Code', monospace;
+                font-family: var(--bs-font-monospace);
                 letter-spacing: 0.1em;
 
                 &:focus {

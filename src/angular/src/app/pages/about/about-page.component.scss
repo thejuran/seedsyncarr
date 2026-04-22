@@ -132,7 +132,7 @@
 
 .version-badge {
     font-size: 0.75rem;
-    font-family: 'JetBrains Mono', var(--bs-font-monospace);
+    font-family: var(--bs-font-monospace);
     color: $textsec;
     background: $muted;
     border: 1px solid $border;
@@ -210,7 +210,7 @@
 
 .sysinfo-value {
     font-size: 0.8125rem;
-    font-family: 'JetBrains Mono', var(--bs-font-monospace);
+    font-family: var(--bs-font-monospace);
     color: $text;
     width: 66.666%;
     text-align: right;
@@ -297,7 +297,7 @@
 
     span {
         font-size: 0.75rem;
-        font-family: 'JetBrains Mono', var(--bs-font-monospace);
+        font-family: var(--bs-font-monospace);
         color: rgba(154, 170, 138, 0.80);
         text-transform: uppercase;
         letter-spacing: 0.1em;

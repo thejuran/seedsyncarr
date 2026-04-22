@@ -1,9 +1,0 @@
-Package: seedsyncarr
-Version: 1.1.1
-Architecture: amd64
-Maintainer: thejuran
-Description: Fast file syncing from remote seedbox with media library integration
- LFTP-based file synchronization from a remote seedbox to local storage,
- with a web UI, Sonarr/Radarr webhook integration, and auto-delete.
-Depends: python3 (>= 3.11), lftp, openssh-client, p7zip-full, unrar, bzip2
-Homepage: https://github.com/thejuran/seedsyncarr
