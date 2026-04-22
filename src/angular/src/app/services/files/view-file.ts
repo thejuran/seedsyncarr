@@ -101,7 +101,6 @@ export namespace ViewFile {
 
     export enum ImportStatus {
         NONE                = "none",
-        IMPORTED            = "imported",
-        WAITING_FOR_IMPORT  = "waiting_for_import"
+        IMPORTED            = "imported"
     }
 }
