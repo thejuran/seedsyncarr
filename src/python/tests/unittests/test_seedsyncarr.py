@@ -319,10 +319,8 @@ class TestSeedsyncarrReencrypt(unittest.TestCase):
         self.keyfile = os.path.join(self.temp_dir, "secrets.key")
         self.settings_path = os.path.join(self.temp_dir, "settings.cfg")
         Config.set_keyfile_path(self.keyfile)
-
-    def tearDown(self):
-        Config.set_keyfile_path(None)
-        shutil.rmtree(self.temp_dir)
+        self.addCleanup(Config.set_keyfile_path, None)
+        self.addCleanup(shutil.rmtree, self.temp_dir)
 
     def _build_config_with_plaintext(self) -> Config:
         """Return a Config instance with encryption.enabled=True and 5 plaintext secrets."""

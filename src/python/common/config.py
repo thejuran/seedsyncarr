@@ -372,7 +372,7 @@ class Config(Persist):
         # List of "Section.field" strings populated during from_str when a value
         # looks like ciphertext but fails to decrypt. Read by plan 03's startup
         # hook to emit per-field warnings (T-81-02-03, T-81-02-04).
-        self._decrypt_errors: list = []
+        self._decrypt_errors: list[str] = []
 
     @classmethod
     def set_keyfile_path(cls, path: Optional[str]) -> None:
@@ -419,12 +419,15 @@ class Config(Persist):
         # Resolve encryption flag BEFORE from_dict so plaintext values reach the
         # PROP/Checker/Converter layer. The [Encryption] section itself is never
         # in _SECRET_FIELD_PATHS (T-81-02-07).
-        _decrypt_errors_local: list = []
-        encryption_enabled = bool(
-            _strtobool(
-                config_dict.get("Encryption", {}).get("enabled", "False")
+        _decrypt_errors_local: list[str] = []
+        try:
+            encryption_enabled = bool(
+                _strtobool(
+                    config_dict.get("Encryption", {}).get("enabled", "False")
+                )
             )
-        )
+        except ValueError:
+            encryption_enabled = False
         if encryption_enabled and cls._keyfile_path is not None:
             # Pitfall 8.4 guard: if the keyfile is missing AND any of the 5
             # fields are already ciphertext-shaped, refuse to create a new key
@@ -481,13 +484,13 @@ class Config(Persist):
                     "Encryption enabled but no keyfile path set. "
                     "Call Config.set_keyfile_path() before saving."
                 )
-            key = load_or_create_key(Config._keyfile_path)
+            fernet_key = load_or_create_key(Config._keyfile_path)
             for (_, field_name, ini_section) in _SECRET_FIELD_PATHS:
                 if ini_section in config_dict and field_name in config_dict[ini_section]:
                     value = config_dict[ini_section][field_name]
                     # Encrypt only non-empty plaintext values (research §6.3).
                     if value and not is_ciphertext(value):
-                        config_dict[ini_section][field_name] = encrypt_field(key, str(value))
+                        config_dict[ini_section][field_name] = encrypt_field(fernet_key, str(value))
         # ──────────────────────────────────────────────────────────────────────
 
         for section in config_dict:

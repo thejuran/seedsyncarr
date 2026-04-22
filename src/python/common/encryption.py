@@ -62,7 +62,14 @@ def load_or_create_key(keyfile_path: str) -> bytes:
     fd = os.open(keyfile_path, flags, 0o600)
     try:
         os.write(fd, key)
-    finally:
+    except BaseException:
+        os.close(fd)
+        try:
+            os.unlink(keyfile_path)
+        except OSError:
+            pass
+        raise
+    else:
         os.close(fd)
     # Defensive second chmod — guards against platforms that ignore the mode
     # argument to os.open (e.g. some Windows environments).

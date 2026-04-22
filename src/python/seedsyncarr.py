@@ -411,7 +411,10 @@ class Seedsyncarr:
             logger.info(
                 "Encryption: re-encrypting plaintext secrets in settings.cfg"
             )
-            config.to_file(config_path)
+            try:
+                config.to_file(config_path)
+            except OSError as exc:
+                logger.warning("Encryption: failed to write re-encrypted config: %s", exc)
 
     @staticmethod
     def _emit_decrypt_warnings(logger, config) -> None:

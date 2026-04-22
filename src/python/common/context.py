@@ -51,7 +51,8 @@ class Context:
         return child_context
 
     # Keys whose values must be redacted in log output
-    _REDACTED_KEYS = {"password", "api_key", "api_token", "secret", "webhook_secret", "remote_password"}
+    _REDACTED_KEYS = {"password", "api_key", "api_token", "secret", "webhook_secret", "remote_password",
+                      "sonarr_api_key", "radarr_api_key"}
 
     def print_to_log(self):
         # Print the config (redacting credentials)

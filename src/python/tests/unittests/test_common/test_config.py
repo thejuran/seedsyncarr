@@ -102,11 +102,8 @@ class TestConfig(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp(prefix="test_config_enc")
         self.keyfile = os.path.join(self.temp_dir, "secrets.key")
         Config.set_keyfile_path(self.keyfile)
-
-    def tearDown(self):
-        """Reset class-level keyfile path to avoid cross-test pollution (T-81-02-09)."""
-        Config.set_keyfile_path(None)
-        shutil.rmtree(self.temp_dir)
+        self.addCleanup(Config.set_keyfile_path, None)
+        self.addCleanup(shutil.rmtree, self.temp_dir)
 
     def __check_unknown_error(self, cls, good_dict):
         """
