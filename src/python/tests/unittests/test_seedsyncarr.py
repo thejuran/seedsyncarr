@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from common import Config
-from common.encryption import encrypt_field, is_ciphertext, load_or_create_key
+from common.encryption import is_ciphertext
 from seedsyncarr import Seedsyncarr
 
 

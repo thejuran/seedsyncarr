@@ -271,8 +271,8 @@ export class LogsPageComponent implements OnInit {
         let hasInnerQuantifier = false;
         for (let i = 0; i < pattern.length; i++) {
             const ch = pattern[i];
-            if (ch === '(') { depth++; }
-            else if (ch === ')') {
+            if (ch === "(") { depth++; }
+            else if (ch === ")") {
                 depth--;
                 if (depth > 0 && hasInnerQuantifier && i + 1 < pattern.length && /[+*{]/.test(pattern[i + 1])) { return true; }
                 if (depth === 0) { hasInnerQuantifier = false; }

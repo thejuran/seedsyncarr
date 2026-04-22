@@ -426,7 +426,8 @@ describe("BulkActionsBarComponent", () => {
             expect(component.deleteLocalAction.emit).not.toHaveBeenCalled();
         });
 
-        it("DELETED + DOWNLOADING union: Queue (1) + Stop (1) + DeleteRemote (2); Extract/DeleteLocal disabled (FIX-01 D-09 case 2)", () => {
+        it("DELETED + DOWNLOADING union: Queue (1) + Stop (1) + DeleteRemote (2); " +
+            "Extract/DeleteLocal disabled (FIX-01 D-09 case 2)", () => {
             const del = new ViewFile({
                 name: "del.mkv",
                 status: ViewFile.Status.DELETED,
@@ -488,7 +489,8 @@ describe("BulkActionsBarComponent", () => {
             expect(component.deleteLocalAction.emit).not.toHaveBeenCalled();
         });
 
-        it("DELETED + DOWNLOADED + STOPPED union: Queue (2), Extract (1), DeleteLocal (2), DeleteRemote (3); Stop disabled (FIX-01 D-09 case 3)", () => {
+        it("DELETED + DOWNLOADED + STOPPED union: Queue (2), Extract (1), DeleteLocal (2), " +
+            "DeleteRemote (3); Stop disabled (FIX-01 D-09 case 3)", () => {
             const del = new ViewFile({
                 name: "del.mkv",
                 status: ViewFile.Status.DELETED,
