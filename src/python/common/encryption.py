@@ -107,8 +107,18 @@ def encrypt_field(key: bytes, plaintext: str) -> str:
 
     Returns a str-typed Fernet token.  The token always starts with "gAAAAA"
     and is url-safe base64 encoded, making it safe to store in an INI file.
+
+    Raises:
+        DecryptionError: if the key is malformed (corrupted or truncated
+            keyfile).  The raw ValueError from the Fernet constructor is
+            never allowed to escape the module boundary.
     """
-    return Fernet(key).encrypt(plaintext.encode("utf-8")).decode("ascii")
+    try:
+        return Fernet(key).encrypt(plaintext.encode("utf-8")).decode("ascii")
+    except ValueError:
+        raise DecryptionError(
+            "Invalid Fernet key — the keyfile may be corrupted or truncated"
+        ) from None
 
 
 def decrypt_field(key: bytes, token: str) -> str:
@@ -126,5 +136,5 @@ def decrypt_field(key: bytes, token: str) -> str:
     """
     try:
         return Fernet(key).decrypt(token.encode("ascii")).decode("utf-8")
-    except InvalidToken:
+    except (InvalidToken, ValueError):
         raise DecryptionError("Failed to decrypt Fernet token") from None
