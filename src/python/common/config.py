@@ -1,13 +1,29 @@
 import configparser
-from typing import Dict
+import os
+from typing import Dict, Optional
 from io import StringIO
 import collections
 from abc import ABC
 from typing import Type, TypeVar, Callable, Any
 
+from .encryption import load_or_create_key, is_ciphertext, encrypt_field, decrypt_field, DecryptionError
 from .error import AppError
 from .persist import Persist, PersistError
 from .types import overrides
+
+# Module-level tuple listing the 5 secret field paths used for encryption.
+# Format: (inner_attr_name_on_Config, field_name, INI_section_name)
+# INI sections are TitleCase; Config attrs are lowercase.
+# The [Encryption] section itself is intentionally NOT listed here —
+# the enabled boolean is not a secret and must never be encrypted (T-81-02-07).
+_SECRET_FIELD_PATHS = (
+    ("general", "webhook_secret", "General"),
+    ("general", "api_token", "General"),
+    ("lftp", "remote_password", "Lftp"),
+    ("sonarr", "sonarr_api_key", "Sonarr"),
+    ("radarr", "radarr_api_key", "Radarr"),
+)
+
 
 def _strtobool(value: str) -> int:
     """Convert a string representation of a boolean to 1 or 0.
@@ -331,6 +347,18 @@ class Config(Persist):
             self.dry_run = None
             self.delay_seconds = None
 
+    class Encryption(IC):
+        enabled = PROP("enabled", Checkers.null, Converters.bool)
+
+        def __init__(self):
+            super().__init__()
+            self.enabled = None
+
+    # Class-level keyfile path; injected via set_keyfile_path() before any
+    # from_file / to_file call when encryption may be enabled. Pass None to reset
+    # (test isolation). See RESEARCH §9.3 and §A2.
+    _keyfile_path: Optional[str] = None
+
     def __init__(self):
         self.general = Config.General()
         self.lftp = Config.Lftp()
@@ -340,6 +368,19 @@ class Config(Persist):
         self.sonarr = Config.Sonarr()
         self.radarr = Config.Radarr()
         self.autodelete = Config.AutoDelete()
+        self.encryption = Config.Encryption()
+        # List of "Section.field" strings populated during from_str when a value
+        # looks like ciphertext but fails to decrypt. Read by plan 03's startup
+        # hook to emit per-field warnings (T-81-02-03, T-81-02-04).
+        self._decrypt_errors: list = []
+
+    @classmethod
+    def set_keyfile_path(cls, path: Optional[str]) -> None:
+        """
+        Inject the keyfile path before any from_file/to_file call when encryption
+        may be enabled. Pass None to reset (test isolation).
+        """
+        cls._keyfile_path = path
 
     @staticmethod
     def _check_section(dct: OuterConfigType, name: str) -> InnerConfigType:
@@ -373,12 +414,82 @@ class Config(Persist):
             config_dict[section] = {}
             for option in config_parser.options(section):
                 config_dict[section][option] = config_parser.get(section, option)
-        return Config.from_dict(config_dict)
+
+        # ── Decrypt hook (SEC-02 criterion #2) ────────────────────────────────
+        # Resolve encryption flag BEFORE from_dict so plaintext values reach the
+        # PROP/Checker/Converter layer. The [Encryption] section itself is never
+        # in _SECRET_FIELD_PATHS (T-81-02-07).
+        _decrypt_errors_local: list = []
+        encryption_enabled = bool(
+            _strtobool(
+                config_dict.get("Encryption", {}).get("enabled", "False")
+            )
+        )
+        if encryption_enabled and cls._keyfile_path is not None:
+            # Pitfall 8.4 guard: if the keyfile is missing AND any of the 5
+            # fields are already ciphertext-shaped, refuse to create a new key
+            # (a new key would orphan the existing ciphertext and cause data
+            # loss). Only call load_or_create_key when the keyfile exists OR
+            # all 5 fields are plaintext (first-enable case).
+            keyfile_exists = os.path.isfile(cls._keyfile_path)
+            has_existing_ciphertext = any(
+                is_ciphertext(config_dict.get(ini_section, {}).get(field_name, ""))
+                for (_, field_name, ini_section) in _SECRET_FIELD_PATHS
+            )
+            if not keyfile_exists and has_existing_ciphertext:
+                # Cannot decrypt — keyfile is gone and values are already
+                # ciphertext. Record errors for plan 03's startup warning hook.
+                for (_, field_name, ini_section) in _SECRET_FIELD_PATHS:
+                    value = config_dict.get(ini_section, {}).get(field_name, "")
+                    if is_ciphertext(value):
+                        _decrypt_errors_local.append("{}.{}".format(ini_section, field_name))
+            else:
+                key = load_or_create_key(cls._keyfile_path)
+                for (_, field_name, ini_section) in _SECRET_FIELD_PATHS:
+                    if ini_section in config_dict and field_name in config_dict[ini_section]:
+                        value = config_dict[ini_section][field_name]
+                        if is_ciphertext(value):
+                            try:
+                                config_dict[ini_section][field_name] = decrypt_field(key, value)
+                            except DecryptionError:
+                                # Leave value as-is; record for startup warning.
+                                _decrypt_errors_local.append(
+                                    "{}.{}".format(ini_section, field_name)
+                                )
+                        # Else: plaintext fallback — value stays plaintext in
+                        # memory; re-encryption happens on next to_str call if
+                        # encryption stays enabled (plan 03's startup hook).
+        # ──────────────────────────────────────────────────────────────────────
+
+        config = Config.from_dict(config_dict)
+        config._decrypt_errors.extend(_decrypt_errors_local)
+        return config
 
     @overrides(Persist)
     def to_str(self) -> str:
         config_parser = configparser.ConfigParser()
         config_dict = self.as_dict()
+
+        # ── Encrypt hook (SEC-02 criterion #1b, T-81-02-01, T-81-02-05) ──────
+        # Walk the 5 secret field paths and encrypt any non-empty, non-ciphertext
+        # value when encryption is enabled. Already-ciphertext values are left
+        # untouched (idempotent). Empty strings remain empty — never encrypted.
+        # The [Encryption] section itself is not in _SECRET_FIELD_PATHS (T-81-02-07).
+        if self.encryption.enabled:
+            if Config._keyfile_path is None:
+                raise ConfigError(
+                    "Encryption enabled but no keyfile path set. "
+                    "Call Config.set_keyfile_path() before saving."
+                )
+            key = load_or_create_key(Config._keyfile_path)
+            for (_, field_name, ini_section) in _SECRET_FIELD_PATHS:
+                if ini_section in config_dict and field_name in config_dict[ini_section]:
+                    value = config_dict[ini_section][field_name]
+                    # Encrypt only non-empty plaintext values (research §6.3).
+                    if value and not is_ciphertext(value):
+                        config_dict[ini_section][field_name] = encrypt_field(key, str(value))
+        # ──────────────────────────────────────────────────────────────────────
+
         for section in config_dict:
             config_parser.add_section(section)
             section_dict = config_dict[section]
@@ -437,6 +548,15 @@ class Config(Persist):
             config.autodelete.dry_run = False
             config.autodelete.delay_seconds = 60
 
+        # Encryption section is optional for backward compatibility (SEC-02 criterion #3)
+        if "Encryption" in config_dict:
+            config.encryption = Config.Encryption.from_dict(
+                Config._check_section(config_dict, "Encryption")
+            )
+        else:
+            # Default values for existing installs missing [Encryption] section
+            config.encryption.enabled = False
+
         Config._check_empty_outer_dict(config_dict)
         return config
 
@@ -452,6 +572,7 @@ class Config(Persist):
         config_dict["Sonarr"] = self.sonarr.as_dict()
         config_dict["Radarr"] = self.radarr.as_dict()
         config_dict["AutoDelete"] = self.autodelete.as_dict()
+        config_dict["Encryption"] = self.encryption.as_dict()
         return config_dict
 
     def has_section(self, name: str) -> bool:

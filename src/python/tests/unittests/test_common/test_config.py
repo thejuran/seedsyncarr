@@ -1,9 +1,12 @@
-import unittest
+import configparser
 import os
+import shutil
 import tempfile
+import unittest
 
 from common import Config, ConfigError, PersistError
 from common.config import InnerConfig, Checkers, Converters
+from common.encryption import load_or_create_key, encrypt_field, is_ciphertext
 
 
 class TestConverters(unittest.TestCase):
@@ -94,6 +97,17 @@ class TestInnerConfig(unittest.TestCase):
 
 
 class TestConfig(unittest.TestCase):
+    def setUp(self):
+        """Create a temp dir + keyfile path; inject into Config class state."""
+        self.temp_dir = tempfile.mkdtemp(prefix="test_config_enc")
+        self.keyfile = os.path.join(self.temp_dir, "secrets.key")
+        Config.set_keyfile_path(self.keyfile)
+
+    def tearDown(self):
+        """Reset class-level keyfile path to avoid cross-test pollution (T-81-02-09)."""
+        Config.set_keyfile_path(None)
+        shutil.rmtree(self.temp_dir)
+
     def __check_unknown_error(self, cls, good_dict):
         """
         Helper method to check that a config class raises an error on
@@ -518,6 +532,7 @@ class TestConfig(unittest.TestCase):
         config.autodelete.enabled = False
         config.autodelete.dry_run = True
         config.autodelete.delay_seconds = 60
+        config.encryption.enabled = False
         config.to_file(config_file_path)
         with open(config_file_path, "r") as f:
             actual_str = f.read()
@@ -577,6 +592,9 @@ class TestConfig(unittest.TestCase):
         enabled = False
         dry_run = True
         delay_seconds = 60
+
+        [Encryption]
+        enabled = False
         """
 
         golden_lines = [s.strip() for s in golden_str.splitlines()]
@@ -587,6 +605,372 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(len(golden_lines), len(actual_lines))
         for i, _ in enumerate(golden_lines):
             self.assertEqual(golden_lines[i], actual_lines[i])
+
+    # ── SEC-02 encryption tests ───────────────────────────────────────────────
+
+    def _build_plaintext_config(self) -> "Config":
+        """Return a fully-populated Config with encryption disabled and plaintext secrets.
+
+        Used as a fixture by the 6 encryption tests so field population is not
+        repeated in each test body. Matches the field set used in test_to_file.
+        """
+        c = Config()
+        c.general.debug = False
+        c.general.verbose = False
+        c.general.webhook_secret = "my_webhook"
+        c.general.api_token = "my_token"
+        c.general.allowed_hostname = ""
+        c.lftp.remote_address = "remote.host"
+        c.lftp.remote_username = "remote_user"
+        c.lftp.remote_password = "my_pass"
+        c.lftp.remote_port = 22
+        c.lftp.remote_path = "/remote"
+        c.lftp.local_path = "/local"
+        c.lftp.remote_path_to_scan_script = "/remote/scan.sh"
+        c.lftp.use_ssh_key = False
+        c.lftp.num_max_parallel_downloads = 2
+        c.lftp.num_max_parallel_files_per_download = 3
+        c.lftp.num_max_connections_per_root_file = 4
+        c.lftp.num_max_connections_per_dir_file = 5
+        c.lftp.num_max_total_connections = 6
+        c.lftp.use_temp_file = False
+        c.controller.interval_ms_remote_scan = 30000
+        c.controller.interval_ms_local_scan = 10000
+        c.controller.interval_ms_downloading_scan = 2000
+        c.controller.extract_path = "/extract"
+        c.controller.use_local_path_as_extract_path = False
+        c.controller.max_tracked_files = 5000
+        c.web.port = 8800
+        c.autoqueue.enabled = False
+        c.autoqueue.patterns_only = False
+        c.autoqueue.auto_extract = False
+        c.sonarr.enabled = False
+        c.sonarr.sonarr_url = ""
+        c.sonarr.sonarr_api_key = "my_sonarr_key"
+        c.radarr.enabled = False
+        c.radarr.radarr_url = ""
+        c.radarr.radarr_api_key = "my_radarr_key"
+        c.autodelete.enabled = False
+        c.autodelete.dry_run = False
+        c.autodelete.delay_seconds = 60
+        c.encryption.enabled = False
+        return c
+
+    def test_encryption_disabled_by_default(self):
+        """81-02-03 / SEC-02 #3b: Config loaded without [Encryption] section defaults to disabled.
+
+        Proves backward compatibility: existing installs that never heard of
+        encryption load normally with encryption.enabled == False.
+        This test intentionally does NOT call set_keyfile_path — the setUp value
+        is irrelevant; backward compat must work regardless of keyfile state.
+        """
+        # Build a full config string WITHOUT any [Encryption] section
+        content = """
+[General]
+debug=False
+verbose=True
+webhook_secret=my_secret
+api_token=my_token
+allowed_hostname=
+
+[Lftp]
+remote_address=remote.host
+remote_username=user
+remote_password=pass
+remote_port=22
+remote_path=/remote
+local_path=/local
+remote_path_to_scan_script=/scan.sh
+use_ssh_key=False
+num_max_parallel_downloads=2
+num_max_parallel_files_per_download=3
+num_max_connections_per_root_file=4
+num_max_connections_per_dir_file=5
+num_max_total_connections=6
+use_temp_file=False
+
+[Controller]
+interval_ms_remote_scan=30000
+interval_ms_local_scan=10000
+interval_ms_downloading_scan=2000
+extract_path=/extract
+use_local_path_as_extract_path=False
+max_tracked_files=5000
+
+[Web]
+port=8800
+
+[AutoQueue]
+enabled=False
+patterns_only=False
+auto_extract=False
+"""
+        config = Config.from_str(content)
+        self.assertEqual(False, config.encryption.enabled)
+        self.assertEqual([], config._decrypt_errors)
+
+    def test_enable_new_install_encrypts_on_write(self):
+        """81-02-01 / SEC-02 #1b: First run with flag enabled encrypts all 5 secrets in to_str().
+
+        setUp injects self.keyfile as the keyfile path; the keyfile is created
+        on first load_or_create_key call inside to_str.
+        """
+        c = self._build_plaintext_config()
+        c.encryption.enabled = True
+
+        serialized = c.to_str()
+
+        # Parse the output to inspect individual field values
+        parser = configparser.ConfigParser()
+        parser.read_string(serialized)
+
+        # All 5 secret fields must be Fernet tokens (start with gAAAAA)
+        self.assertTrue(
+            is_ciphertext(parser.get("General", "webhook_secret")),
+            "General.webhook_secret not encrypted"
+        )
+        self.assertTrue(
+            is_ciphertext(parser.get("General", "api_token")),
+            "General.api_token not encrypted"
+        )
+        self.assertTrue(
+            is_ciphertext(parser.get("Lftp", "remote_password")),
+            "Lftp.remote_password not encrypted"
+        )
+        self.assertTrue(
+            is_ciphertext(parser.get("Sonarr", "sonarr_api_key")),
+            "Sonarr.sonarr_api_key not encrypted"
+        )
+        self.assertTrue(
+            is_ciphertext(parser.get("Radarr", "radarr_api_key")),
+            "Radarr.radarr_api_key not encrypted"
+        )
+        # Keyfile must have been created
+        self.assertTrue(os.path.isfile(self.keyfile), "Keyfile not created by to_str")
+
+    def test_from_file_enabled_decrypts(self):
+        """81-02-02 / SEC-02 #2: Read path transparently decrypts; callers see plaintext.
+
+        Writes an INI with [Encryption] enabled=True and pre-encrypted values,
+        then calls Config.from_file and asserts all 5 fields come back as plaintext.
+        """
+        key = load_or_create_key(self.keyfile)
+
+        encrypted_webhook = encrypt_field(key, "known_webhook")
+        encrypted_token = encrypt_field(key, "known_token")
+        encrypted_pass = encrypt_field(key, "known_pass")
+        encrypted_sonarr = encrypt_field(key, "known_sonarr")
+        encrypted_radarr = encrypt_field(key, "known_radarr")
+
+        content = """
+[General]
+debug=False
+verbose=False
+webhook_secret={webhook}
+api_token={token}
+allowed_hostname=
+
+[Lftp]
+remote_address=host
+remote_username=user
+remote_password={password}
+remote_port=22
+remote_path=/remote
+local_path=/local
+remote_path_to_scan_script=/scan.sh
+use_ssh_key=False
+num_max_parallel_downloads=2
+num_max_parallel_files_per_download=3
+num_max_connections_per_root_file=4
+num_max_connections_per_dir_file=5
+num_max_total_connections=6
+use_temp_file=False
+
+[Controller]
+interval_ms_remote_scan=30000
+interval_ms_local_scan=10000
+interval_ms_downloading_scan=2000
+extract_path=/extract
+use_local_path_as_extract_path=False
+max_tracked_files=5000
+
+[Web]
+port=8800
+
+[AutoQueue]
+enabled=False
+patterns_only=False
+auto_extract=False
+
+[Sonarr]
+enabled=False
+sonarr_url=
+sonarr_api_key={sonarr}
+
+[Radarr]
+enabled=False
+radarr_url=
+radarr_api_key={radarr}
+
+[AutoDelete]
+enabled=False
+dry_run=False
+delay_seconds=60
+
+[Encryption]
+enabled=True
+""".format(
+            webhook=encrypted_webhook,
+            token=encrypted_token,
+            password=encrypted_pass,
+            sonarr=encrypted_sonarr,
+            radarr=encrypted_radarr,
+        )
+
+        # Write to a temp file and read back via from_file (exercises Persist.from_file)
+        cfg_file = os.path.join(self.temp_dir, "settings.cfg")
+        with open(cfg_file, "w") as f:
+            f.write(content)
+
+        config = Config.from_file(cfg_file)
+
+        self.assertEqual("known_webhook", config.general.webhook_secret)
+        self.assertEqual("known_token", config.general.api_token)
+        self.assertEqual("known_pass", config.lftp.remote_password)
+        self.assertEqual("known_sonarr", config.sonarr.sonarr_api_key)
+        self.assertEqual("known_radarr", config.radarr.radarr_api_key)
+        self.assertEqual([], config._decrypt_errors)
+
+    def test_disable_restores_plaintext(self):
+        """81-02-04 / SEC-02 #4: enable→disable round-trip preserves all 5 values.
+
+        After disabling encryption the next to_str() output must contain plaintext
+        values (no gAAAAA prefix) for all 5 secret fields.
+        """
+        # Step 1: build config with encryption enabled → serialize to get ciphertext
+        c = self._build_plaintext_config()
+        c.encryption.enabled = True
+        encrypted_serialized = c.to_str()
+
+        # Step 2: parse back → all 5 fields are decrypted in memory
+        c2 = Config.from_str(encrypted_serialized)
+        self.assertEqual("my_webhook", c2.general.webhook_secret)
+        self.assertEqual("my_token", c2.general.api_token)
+        self.assertEqual("my_pass", c2.lftp.remote_password)
+        self.assertEqual("my_sonarr_key", c2.sonarr.sonarr_api_key)
+        self.assertEqual("my_radarr_key", c2.radarr.radarr_api_key)
+
+        # Step 3: flip flag off and serialize → must produce plaintext
+        c2.encryption.enabled = False
+        plaintext_serialized = c2.to_str()
+
+        parser = configparser.ConfigParser()
+        parser.read_string(plaintext_serialized)
+
+        self.assertEqual("my_webhook", parser.get("General", "webhook_secret"))
+        self.assertEqual("my_token", parser.get("General", "api_token"))
+        self.assertEqual("my_pass", parser.get("Lftp", "remote_password"))
+        self.assertEqual("my_sonarr_key", parser.get("Sonarr", "sonarr_api_key"))
+        self.assertEqual("my_radarr_key", parser.get("Radarr", "radarr_api_key"))
+
+        # None of the fields should start with gAAAAA
+        self.assertFalse(is_ciphertext(parser.get("General", "webhook_secret")))
+        self.assertFalse(is_ciphertext(parser.get("General", "api_token")))
+        self.assertFalse(is_ciphertext(parser.get("Lftp", "remote_password")))
+        self.assertFalse(is_ciphertext(parser.get("Sonarr", "sonarr_api_key")))
+        self.assertFalse(is_ciphertext(parser.get("Radarr", "radarr_api_key")))
+
+    def test_from_str_enabled_with_plaintext_falls_back(self):
+        """SEC-02 criterion #3 in-memory half: plaintext values on an encryption-enabled
+        config are preserved as plaintext in memory (no error).
+
+        The re-encrypt-on-next-write is plan 03's startup hook; this test only
+        verifies the read path does NOT corrupt plaintext values and does NOT
+        populate _decrypt_errors for them (plaintext is not a decrypt error).
+        """
+        content = """
+[General]
+debug=False
+verbose=False
+webhook_secret=my_webhook
+api_token=my_token
+allowed_hostname=
+
+[Lftp]
+remote_address=host
+remote_username=user
+remote_password=my_pass
+remote_port=22
+remote_path=/remote
+local_path=/local
+remote_path_to_scan_script=/scan.sh
+use_ssh_key=False
+num_max_parallel_downloads=2
+num_max_parallel_files_per_download=3
+num_max_connections_per_root_file=4
+num_max_connections_per_dir_file=5
+num_max_total_connections=6
+use_temp_file=False
+
+[Controller]
+interval_ms_remote_scan=30000
+interval_ms_local_scan=10000
+interval_ms_downloading_scan=2000
+extract_path=/extract
+use_local_path_as_extract_path=False
+max_tracked_files=5000
+
+[Web]
+port=8800
+
+[AutoQueue]
+enabled=False
+patterns_only=False
+auto_extract=False
+
+[Sonarr]
+enabled=False
+sonarr_url=
+sonarr_api_key=my_sonarr_key
+
+[Radarr]
+enabled=False
+radarr_url=
+radarr_api_key=my_radarr_key
+
+[AutoDelete]
+enabled=False
+dry_run=False
+delay_seconds=60
+
+[Encryption]
+enabled=True
+"""
+        config = Config.from_str(content)
+        # Plaintext values must survive the read path untouched
+        self.assertEqual("my_webhook", config.general.webhook_secret)
+        self.assertEqual("my_token", config.general.api_token)
+        self.assertEqual("my_pass", config.lftp.remote_password)
+        self.assertEqual("my_sonarr_key", config.sonarr.sonarr_api_key)
+        self.assertEqual("my_radarr_key", config.radarr.radarr_api_key)
+        # Plaintext is NOT a decrypt error
+        self.assertEqual([], config._decrypt_errors)
+
+    def test_to_str_raises_when_enabled_without_keyfile_path(self):
+        """T-81-02-05: to_str raises ConfigError when encryption.enabled=True but
+        _keyfile_path is None (prevents silent no-op that leaves plaintext on disk).
+        """
+        # Explicitly reset the keyfile path set by setUp
+        Config.set_keyfile_path(None)
+
+        c = self._build_plaintext_config()
+        c.encryption.enabled = True
+
+        with self.assertRaises(ConfigError) as ctx:
+            c.to_str()
+        self.assertIn("keyfile path", str(ctx.exception))
+
+    # ── end SEC-02 encryption tests ───────────────────────────────────────────
 
     def test_persist_read_error(self):
         # bad section
