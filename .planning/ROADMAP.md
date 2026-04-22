@@ -350,7 +350,10 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
   3. Plaintext values detected on startup (post-enable) are re-encrypted in place; plaintext installs with the flag disabled continue working unchanged.
   4. A config flag lets users disable encryption for manual editing without data loss (round-trip enable→disable preserves all 5 values).
   5. Unit tests cover: enable-new, enable-existing-plaintext, disable-restore-plaintext, keyfile permissions, and decrypt failure surfaces a clear startup warning.
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 81-01-PLAN.md — common/encryption.py primitive + cryptography dep + test_encryption.py (Wave 1, autonomous)
+  - [ ] 81-02-PLAN.md — config.py widening (Encryption section + from_str/to_str seam + _SECRET_FIELD_PATHS + set_keyfile_path) + 5 test_config.py tests + golden-string update (Wave 2, autonomous, depends on 81-01)
+  - [ ] 81-03-PLAN.md — seedsyncarr.py startup hooks (keyfile inject + re-encrypt + decrypt warnings) + test_seedsyncarr.py + docs/CONFIGURATION.md (Wave 3, autonomous, depends on 81-02)
 
 ### Phase 82: Release Prep (Retro v1.1.0 Notes + v1.1.1 Tag)
 **Goal**: v1.1.0 has retroactive release notes on record, and v1.1.1 ships as a tagged release with a categorized changelog covering every milestone REQ.
@@ -399,7 +402,7 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 | 78. Storage Tile Live-Seedbox UAT | v1.1.1 | 0/2 | Not started | - |
 | 79. Test Infra Cleanup | v1.1.1 | 2/2 | Complete    | 2026-04-22 |
 | 80. Small Cleanups (Dependabot + arm64 + enum) | v1.1.1 | 0/0 | Not started | - |
-| 81. Optional Fernet Encryption at Rest | v1.1.1 | 0/0 | Not started | - |
+| 81. Optional Fernet Encryption at Rest | v1.1.1 | 0/3 | Not started | - |
 | 82. Release Prep (v1.1.0 retro + v1.1.1 tag) | v1.1.1 | 0/0 | Not started | - |
 
 ---
