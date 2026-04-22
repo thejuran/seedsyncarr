@@ -967,6 +967,115 @@ enabled=True
             c.to_str()
         self.assertIn("keyfile path", str(ctx.exception))
 
+    def test_from_str_invalid_encryption_enabled_value(self):
+        """TC-2: A non-boolean value for Encryption.enabled defaults to disabled
+        rather than raising a ValueError through _strtobool."""
+        content = """
+[General]
+debug=False
+verbose=False
+webhook_secret=my_secret
+api_token=my_token
+allowed_hostname=
+
+[Lftp]
+remote_address=remote.host
+remote_username=user
+remote_password=pass
+remote_port=22
+remote_path=/remote
+local_path=/local
+remote_path_to_scan_script=/scan.sh
+use_ssh_key=False
+num_max_parallel_downloads=2
+num_max_parallel_files_per_download=3
+num_max_connections_per_root_file=4
+num_max_connections_per_dir_file=5
+num_max_total_connections=6
+use_temp_file=False
+
+[Controller]
+interval_ms_remote_scan=30000
+interval_ms_local_scan=10000
+interval_ms_downloading_scan=2000
+extract_path=/extract
+use_local_path_as_extract_path=False
+max_tracked_files=5000
+
+[Web]
+port=8800
+
+[AutoQueue]
+enabled=False
+patterns_only=False
+auto_extract=False
+
+[Encryption]
+enabled=not_a_bool
+"""
+        config = Config.from_str(content)
+        self.assertEqual(False, config.encryption.enabled)
+        self.assertEqual([], config._decrypt_errors)
+
+    def test_from_str_keyfile_gone_with_ciphertext(self):
+        """Architecture-6: When the keyfile is missing but config contains ciphertext,
+        from_str must NOT create a new key (which would orphan the existing ciphertext).
+        Instead it records decrypt errors for every ciphertext field."""
+        key = load_or_create_key(self.keyfile)
+        encrypted_pass = encrypt_field(key, "my_pass")
+
+        os.remove(self.keyfile)
+        self.assertFalse(os.path.isfile(self.keyfile))
+
+        content = """
+[General]
+debug=False
+verbose=False
+webhook_secret=plain_secret
+api_token=plain_token
+allowed_hostname=
+
+[Lftp]
+remote_address=host
+remote_username=user
+remote_password={password}
+remote_port=22
+remote_path=/remote
+local_path=/local
+remote_path_to_scan_script=/scan.sh
+use_ssh_key=False
+num_max_parallel_downloads=2
+num_max_parallel_files_per_download=3
+num_max_connections_per_root_file=4
+num_max_connections_per_dir_file=5
+num_max_total_connections=6
+use_temp_file=False
+
+[Controller]
+interval_ms_remote_scan=30000
+interval_ms_local_scan=10000
+interval_ms_downloading_scan=2000
+extract_path=/extract
+use_local_path_as_extract_path=False
+max_tracked_files=5000
+
+[Web]
+port=8800
+
+[AutoQueue]
+enabled=False
+patterns_only=False
+auto_extract=False
+
+[Encryption]
+enabled=True
+""".format(password=encrypted_pass)
+
+        config = Config.from_str(content)
+        self.assertFalse(os.path.isfile(self.keyfile), "keyfile must NOT be created")
+        self.assertIn("Lftp.remote_password", config._decrypt_errors)
+        self.assertEqual(encrypted_pass, config.lftp.remote_password)
+
     # ── end SEC-02 encryption tests ───────────────────────────────────────────
 
     def test_persist_read_error(self):

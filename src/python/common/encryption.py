@@ -1,6 +1,7 @@
 import os
 import base64
 import binascii
+from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -13,6 +14,16 @@ from .error import AppError
 # performance — see RESEARCH §6.4 and threat model T-81-01-05.
 _FERNET_TOKEN_PREFIX = "gAAAAA"
 _FERNET_TOKEN_MIN_LEN = 100
+
+# Fernet tokens are version(1) + timestamp(8) + IV(16) + ciphertext(>=16) +
+# HMAC(32) = 73+ bytes raw, which base64-encodes to ceil(73/3)*4 = 100+ chars.
+# We use 73 as the minimum decoded length to reject truncated tokens early.
+_FERNET_TOKEN_MIN_DECODED_LEN = 73
+
+
+class EncryptionError(AppError):
+    """Raised when a Fernet encrypt operation fails (e.g. malformed key)."""
+    pass
 
 
 class DecryptionError(AppError):
@@ -57,6 +68,8 @@ def load_or_create_key(keyfile_path: str) -> bytes:
 
     # First-time creation: use O_EXCL so the file is created directly at 0600,
     # never existing at a world-readable permission even for one syscall.
+    # Note: CPython bytes objects are immutable and cannot be zeroed in place;
+    # explicit key wiping is not possible without ctypes/mmap (accepted risk).
     key = Fernet.generate_key()  # 44 bytes, url-safe base64, os.urandom-backed
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     fd = os.open(keyfile_path, flags, 0o600)
@@ -80,7 +93,7 @@ def load_or_create_key(keyfile_path: str) -> bytes:
     return key
 
 
-def is_ciphertext(s: str) -> bool:
+def is_ciphertext(s: Optional[str]) -> bool:
     """
     Best-effort discriminator: returns True iff s has the shape of a Fernet token.
 
@@ -89,6 +102,7 @@ def is_ciphertext(s: str) -> bool:
       2. len(s) < 100     → False  (O(1), caps CPU before b64 decode)
       3. prefix != gAAAAA → False
       4. not valid url-safe base64 → False
+      5. decoded length < 73 bytes → False  (Fernet minimum: ver+ts+IV+block+HMAC)
 
     Caveat: a user-chosen plaintext that begins with "gAAAAA" and is ≥100 chars
     of valid base64 is a false positive.  The subsequent decrypt_field call will
@@ -100,10 +114,9 @@ def is_ciphertext(s: str) -> bool:
         return False
     if not s.startswith(_FERNET_TOKEN_PREFIX):
         return False
-    # Final shape check: must decode as valid url-safe base64.
     try:
-        base64.urlsafe_b64decode(s.encode("ascii"))
-        return True
+        decoded = base64.urlsafe_b64decode(s.encode("ascii"))
+        return len(decoded) >= _FERNET_TOKEN_MIN_DECODED_LEN
     except (ValueError, binascii.Error):
         return False
 
@@ -116,16 +129,16 @@ def encrypt_field(key: bytes, plaintext: str) -> str:
     and is url-safe base64 encoded, making it safe to store in an INI file.
 
     Raises:
-        DecryptionError: if the key is malformed (corrupted or truncated
+        EncryptionError: if the key is malformed (corrupted or truncated
             keyfile).  The raw ValueError from the Fernet constructor is
             never allowed to escape the module boundary.
     """
     try:
         return Fernet(key).encrypt(plaintext.encode("utf-8")).decode("ascii")
-    except ValueError:
-        raise DecryptionError(
+    except ValueError as exc:
+        raise EncryptionError(
             "Invalid Fernet key — the keyfile may be corrupted or truncated"
-        ) from None
+        ) from exc
 
 
 def decrypt_field(key: bytes, token: str) -> str:

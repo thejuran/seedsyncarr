@@ -4,7 +4,7 @@ import shutil
 import os
 import sys
 
-from common.encryption import load_or_create_key, is_ciphertext, encrypt_field, decrypt_field, DecryptionError
+from common.encryption import load_or_create_key, is_ciphertext, encrypt_field, decrypt_field, EncryptionError, DecryptionError
 
 
 class TestEncryption(unittest.TestCase):
@@ -104,7 +104,8 @@ class TestEncryption(unittest.TestCase):
         """Feeding a valid-looking but corrupt token to decrypt_field must raise
         DecryptionError, never the raw InvalidToken from the PyCA library."""
         key = load_or_create_key(self.keyfile)
-        # "gAAAAA" + 200 'x' chars passes the is_ciphertext prefix+length gate
-        # but will fail HMAC verification inside Fernet.
-        garbage_token = "gAAAAA" + "x" * 200
+        # "gAAAAA" + 194 'A' chars = 200 chars total (valid base64 padding),
+        # passes the is_ciphertext gates but will fail HMAC verification inside Fernet.
+        garbage_token = "gAAAAA" + "A" * 194
+        self.assertTrue(is_ciphertext(garbage_token), "precondition: garbage token must pass is_ciphertext")
         self.assertRaises(DecryptionError, decrypt_field, key, garbage_token)

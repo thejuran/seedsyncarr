@@ -13,6 +13,8 @@ import platform
 from common import ServiceExit, Context, Constants, Config, Args, AppError
 from common import ServiceRestart
 from common import Localization, Status, ConfigError, Persist, PersistError
+from common.encryption import is_ciphertext
+from common.config import _SECRET_FIELD_PATHS
 from controller import Controller, ControllerJob, ControllerPersist, AutoQueue, AutoQueuePersist
 from controller.webhook_manager import WebhookManager
 from web import WebAppJob, WebAppBuilder
@@ -365,7 +367,7 @@ class Seedsyncarr:
         return False
 
     @staticmethod
-    def _emit_startup_warnings(logger, config) -> None:
+    def _emit_startup_warnings(logger: logging.Logger, config: Config) -> None:
         """Emit security warnings for insecure configuration states."""
         if not config.general.webhook_secret:
             logger.warning(
@@ -388,7 +390,7 @@ class Seedsyncarr:
             )
 
     @staticmethod
-    def _reencrypt_plaintext_if_needed(config, config_path: str, logger) -> None:
+    def _reencrypt_plaintext_if_needed(config: Config, config_path: str, logger: logging.Logger) -> None:
         """Re-encrypt any plaintext secret fields in place when encryption is enabled.
 
         Runs once per startup (SEC-02 criterion #3a). If encryption.enabled is True
@@ -399,8 +401,6 @@ class Seedsyncarr:
         """
         if not config.encryption.enabled:
             return
-        from common.encryption import is_ciphertext
-        from common.config import _SECRET_FIELD_PATHS
         has_plaintext = False
         for attr, field, _ in _SECRET_FIELD_PATHS:
             value = getattr(getattr(config, attr), field, None)
@@ -417,7 +417,7 @@ class Seedsyncarr:
                 logger.warning("Encryption: failed to write re-encrypted config: %s", exc)
 
     @staticmethod
-    def _emit_decrypt_warnings(logger, config) -> None:
+    def _emit_decrypt_warnings(logger: logging.Logger, config: Config) -> None:
         """Emit warnings for decrypt failures detected during Config.from_str.
 
         Never raises — advisory only (SEC-02 #5b). Mirrors the contract of

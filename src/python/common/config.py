@@ -428,6 +428,8 @@ class Config(Persist):
             )
         except ValueError:
             encryption_enabled = False
+            if "Encryption" in config_dict:
+                config_dict["Encryption"]["enabled"] = "False"
         if encryption_enabled and cls._keyfile_path is not None:
             # Pitfall 8.4 guard: if the keyfile is missing AND any of the 5
             # fields are already ciphertext-shaped, refuse to create a new key
