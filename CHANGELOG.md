@@ -4,6 +4,21 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.1] - 2026-04-22
+
+### Added
+
+- Optional encryption at rest for config secrets (API token, webhook secret, Sonarr/Radarr API keys, remote password). Enable via `[Encryption]` section in config; a keyfile is generated on first enable with restrictive permissions.
+
+### Fixed
+
+- Bulk-actions bar now shows "Re-Queue from Remote" when the selection includes deleted files, matching the single-file behavior.
+- Auto-delete for multi-file packs waits until every child file is confirmed as imported before deleting, preventing premature deletion when an import is silently rejected.
+
+### Security
+
+- Updated `basic-ftp` transitive dependency to 5.3.0+ to close a denial-of-service advisory (GHSA-rp42-5vxx-qpwr).
+
 ## [1.1.0] - 2026-04-20
 
 ### Added
@@ -35,5 +50,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - API token authentication (Bearer tokens)
 - Security hardening: HMAC webhooks, CSP, DNS rebinding prevention, credential redaction
 
+[1.1.1]: https://github.com/thejuran/seedsyncarr/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/thejuran/seedsyncarr/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/thejuran/seedsyncarr/releases/tag/v1.0.0
