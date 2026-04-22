@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1.1
 milestone_name: Post-Redesign Cleanup & Outstanding Work
-status: executing
-last_updated: "2026-04-22T04:25:00.000Z"
-last_activity: 2026-04-22 -- Phase 80 Wave 1 complete: all 3 plans verified (80-02 arm64 human-verify passed, 64 rar-skips, 1247 amd64 parity)
+status: phase-complete
+last_updated: "2026-04-22T04:45:00.000Z"
+last_activity: 2026-04-22 -- Phase 80 complete (SEC-01, TECH-01, TECH-02); verifier pass, review clean
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 19
-  completed_plans: 16
-  percent: 84
+  completed_plans: 19
+  percent: 100
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-20)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 80 — small-cleanups-dependabot-arm64-enum
+**Current focus:** Phase 80 complete — next phase 81 (Optional Fernet Encryption at Rest, SEC-02)
 
 ## Current Position
 
-Phase: 80 (small-cleanups-dependabot-arm64-enum) — EXECUTION COMPLETE
+Phase: 80 (small-cleanups-dependabot-arm64-enum) — COMPLETE (verifier pass, review clean)
 Plan: 3 of 3 complete (80-01 ✓, 80-02 ✓, 80-03 ✓)
-Status: Ready for code-review / verify-work close-out
-Last activity: 2026-04-22 -- Phase 80 execution complete, human-verify passed
+Status: Phase 80 closed. Ready to begin Phase 81 planning.
+Last activity: 2026-04-22 -- Phase 80 complete
 
 ## v1.1.1 Phase List
 
@@ -38,7 +38,7 @@ Last activity: 2026-04-22 -- Phase 80 execution complete, human-verify passed
 | 77 | Deferred Playwright E2E (72+73) | UAT-01, UAT-02 | Not started |
 | 78 | Storage Tile Live-Seedbox UAT | UAT-03 | Not started |
 | 79 | Test Infra Cleanup | TEST-01, TEST-02 | Not started |
-| 80 | Small Cleanups (Dependabot + arm64 + enum) | SEC-01, TECH-01, TECH-02 | Not started |
+| 80 | Small Cleanups (Dependabot + arm64 + enum) | SEC-01, TECH-01, TECH-02 | ✓ Complete |
 | 81 | Optional Fernet Encryption at Rest | SEC-02 | Not started |
 | 82 | Release Prep (v1.1.0 retro + v1.1.1 tag) | DOCS-01 | Not started |
 
