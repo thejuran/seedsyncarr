@@ -398,7 +398,7 @@ class Config(Persist):
 
     @classmethod
     @overrides(Persist)
-    def from_str(cls: "Config", content: str) -> "Config":
+    def from_str(cls: Type["Config"], content: str) -> "Config":
         config_parser = configparser.ConfigParser()
         try:
             config_parser.read_string(content)
