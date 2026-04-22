@@ -32,16 +32,16 @@
     "zone.js": "^0.16.1"
   },
   "devDependencies": {
-    "@angular/build": "^21.2.7",
-    "@angular/cli": "^21.2.7",
+    "@angular/build": "^21.2.8",
+    "@angular/cli": "^21.2.8",
     "@angular/compiler-cli": "^21.2.9",
     "@angular/language-service": "^21.2.9",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.59.1",
     "@types/jasmine": "^6.0.0",
     "@types/node": "^25.6.0",
-    "@typescript-eslint/eslint-plugin": "^8.58.2",
-    "@typescript-eslint/parser": "^8.58.2",
+    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/parser": "^8.59.0",
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
     "jasmine-core": "^6.2.0",
@@ -57,7 +57,7 @@
     "sass": "^1.99.0",
     "ts-node": "~10.9.0",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.58.2"
+    "typescript-eslint": "^8.59.0"
   },
   "overrides": {
     "undici": "^7.24.0",
