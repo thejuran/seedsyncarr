@@ -27,9 +27,9 @@
 
 ### Security (SEC)
 
-- [ ] **SEC-01**: Dependabot alert #3 (`basic-ftp@<=5.2.2` DoS, GHSA-rp42-5vxx-qpwr) is closed by either: (a) adding an npm override to `^5.3.0` at the root `package.json`, (b) dropping the transitive path, or (c) documenting why the code path is unreachable and dismissing with justification. Verified via `npm ls basic-ftp` and `gh api dependabot/alerts`.
+- [x] **SEC-01**: Dependabot alert #3 (`basic-ftp@<=5.2.2` DoS, GHSA-rp42-5vxx-qpwr) is closed by either: (a) adding an npm override to `^5.3.0` at the root `package.json`, (b) dropping the transitive path, or (c) documenting why the code path is unreachable and dismissing with justification. Verified via `npm ls basic-ftp` and `gh api dependabot/alerts`.
 
-- [ ] **SEC-02**: Config file supports optional Fernet encryption at rest for `api_token`, `webhook_secret`, `sonarr_api_key`, `radarr_api_key`, and `remote_password`. Keyfile generated on first run with restrictive permissions (0600), decrypt is transparent in `config.py` read path, plaintext values detected at startup are encrypted in place, and users can disable via a config flag to allow manual editing. Backward-compatible with existing plaintext installs.
+- [x] **SEC-02**: Config file supports optional Fernet encryption at rest for `api_token`, `webhook_secret`, `sonarr_api_key`, `radarr_api_key`, and `remote_password`. Keyfile generated on first run with restrictive permissions (0600), decrypt is transparent in `config.py` read path, plaintext values detected at startup are encrypted in place, and users can disable via a config flag to allow manual editing. Backward-compatible with existing plaintext installs.
 
 ### Test Infrastructure (TEST)
 
@@ -39,9 +39,9 @@
 
 ### Tech Debt (TECH)
 
-- [ ] **TECH-01**: `make run-tests-python` builds and runs to completion on arm64 (Apple Silicon) — either by sourcing `rar` from a package that ships arm64 binaries, replacing `rar` with an arm64-available substitute (`unrar`, `unar`), or conditionally skipping the `rar` install on arm64 with a matching skip of any tests that require it. CI amd64 behavior unchanged.
+- [x] **TECH-01**: `make run-tests-python` builds and runs to completion on arm64 (Apple Silicon) — either by sourcing `rar` from a package that ships arm64 binaries, replacing `rar` with an arm64-available substitute (`unrar`, `unar`), or conditionally skipping the `rar` install on arm64 with a matching skip of any tests that require it. CI amd64 behavior unchanged.
 
-- [ ] **TECH-02**: `WAITING_FOR_IMPORT` enum value is either wired up to the business logic that should set it (with tests) or removed from the model along with any dead code that references it. Chosen resolution is recorded in `PROJECT.md` Key Decisions.
+- [x] **TECH-02**: `WAITING_FOR_IMPORT` enum value is either wired up to the business logic that should set it (with tests) or removed from the model along with any dead code that references it. Chosen resolution is recorded in `PROJECT.md` Key Decisions.
 
 ### Documentation (DOCS)
 
@@ -80,12 +80,12 @@ _Filled by roadmapper — maps each REQ-ID to its owning phase._
 | UAT-01 | Phase 77 | Complete |
 | UAT-02 | Phase 77 | Complete |
 | UAT-03 | Phase 78 | Complete |
-| SEC-01 | Phase 80 | Pending |
-| SEC-02 | Phase 81 | Pending |
+| SEC-01 | Phase 80 | Complete |
+| SEC-02 | Phase 81 | Complete |
 | TEST-01 | Phase 79 | Complete |
 | TEST-02 | Phase 79 | Complete |
-| TECH-01 | Phase 80 | Pending |
-| TECH-02 | Phase 80 | Pending |
+| TECH-01 | Phase 80 | Complete |
+| TECH-02 | Phase 80 | Complete |
 | DOCS-01 | Phase 82 | Pending |
 
 **Coverage:** 12/12 requirements mapped across 8 phases. No orphans, no duplicates.
