@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "seedsyncarr"
-version = "1.1.1"
+version = "1.1.2"
 description = "Fast file syncing from remote servers with a web UI, powered by LFTP"
 authors = [{name = "thejuran"}]
 requires-python = ">=3.11,<3.13"
@@ -42,7 +42,7 @@ packages = ["."]
 
 [tool.poetry]
 name = "seedsyncarr"
-version = "1.1.1"
+version = "1.1.2"
 description = "Fast file syncing from remote servers with a web UI, powered by LFTP"
 authors = ["thejuran"]
 package-mode = false

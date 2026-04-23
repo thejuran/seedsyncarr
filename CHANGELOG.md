@@ -4,6 +4,12 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.2] - 2026-04-23
+
+### Fixed
+
+- Bulk-actions bar now sticks to the bottom of the viewport instead of rendering inline below the table, making it visible without scrolling.
+
 ## [1.1.1] - 2026-04-22
 
 ### Added
@@ -58,6 +64,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - API token authentication (Bearer tokens)
 - Security hardening: HMAC webhooks, CSP, DNS rebinding prevention, credential redaction
 
+[1.1.2]: https://github.com/thejuran/seedsyncarr/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/thejuran/seedsyncarr/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/thejuran/seedsyncarr/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/thejuran/seedsyncarr/releases/tag/v1.0.0
