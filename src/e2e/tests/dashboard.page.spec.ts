@@ -468,7 +468,7 @@ test.describe.serial('UAT-02: status filter and URL', () => {
         await dashboardPage.getSubButton('Syncing').click();
 
         await expect(page).toHaveURL(/[?&]segment=active(&|$)/);
-        await expect(page).toHaveURL(/[?&]sub=syncing(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=downloading(&|$)/);
 
         // Pitfall 4: DOWNLOADING is transient — LFTP drains the queue on an idle harness within ms.
         // After beforeAll completes, no files are in DOWNLOADING state. Assert empty-state.
