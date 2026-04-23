@@ -188,10 +188,10 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
     //
     //  Action         Target file            Source state        Backend contract                                        Toast variant
     //  ------         -----------            ------------        ----------------                                        -------------
-    //  1 Queue        'testing.gif'          DEFAULT             queue always accepted from DEFAULT                      success
-    //  2 Stop         'testing.gif' (after   DOWNLOADING         stop requires Syncing state — we queue fresh,           success
-    //                  re-queue, waited      (waited via          wait for "Syncing" badge via waitForFileStatus,
-    //                  to Syncing)            waitForFileStatus)  then dispatch stop; deterministic via Playwright poll
+    //  1 Queue        'testing.gif'          DEFAULT/STOPPED     queue accepted from DEFAULT or STOPPED (remoteSize>0)   success
+    //  2 Stop         'testing.gif'          DOWNLOADING         testing.gif is still Syncing from Action 1 (throttled)  success
+    //                                        (throttled via       rate_limit=100 ensures file stays Syncing during
+    //                                         rate_limit=100)     Action 1 bell interaction and is still Syncing for Stop
     //  3 Extract      DOWNLOADED_FILE        DOWNLOADED          patoolib rejects non-archive (RESEARCH Pitfall 3);      any variant
     //                 (documentation.png)                         backend returns non-success toast. Weakened assertion
     //                                                             (any-variant) documented inline; D-05 coverage noted
@@ -212,7 +212,7 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
     //       DOWNLOADED is the only source state the seed pipeline guarantees local_size > 0
     //       without additional orchestration. STOPPED retains local_size in theory but is
     //       state-timing-dependent on the harness.
-    test('UAT-01: bulk bar visibility — all 5 actions dispatch, clear selection, and hide bar', async () => {
+    test('UAT-01: bulk bar visibility — all 5 actions dispatch, clear selection, and hide bar', async ({ page }) => {
         // Helper: dispatch one action against a single-file selection, assert UI contract.
         // Bulk actions emit notifications (NotificationService / bell dropdown), not toasts.
         // `notifLevel` 'success' asserts a success notification; 'any' tolerates any level
@@ -249,19 +249,63 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
             expect(await dashboardPage.getSelectedCount()).toBe(0);
         }
 
-        // Action 1: Queue on a DEFAULT file.
-        await dispatchAndAssert('testing.gif', 'Queue', /Queued|Re-queued|queued/, 'success');
+        // Retry-safe guard: on Playwright retry (retries: 2) the prior attempt may have left
+        // testing.gif in DOWNLOADING or DOWNLOADED state, which disables the Queue button.
+        // Force-stop any active download so testing.gif returns to a queueable state.
+        // Ignore non-OK responses (stop is a no-op if the file is not QUEUED/DOWNLOADING).
+        await page.request.post(`/server/command/stop/${encodeURIComponent('testing.gif')}`);
+        // Wait briefly for any stop to propagate before proceeding. The file might already be
+        // DEFAULT (never queued), STOPPED (just stopped), or DOWNLOADED (finished earlier).
+        // We proceed regardless — Queue is enabled for DEFAULT and STOPPED states.
+        await page.waitForTimeout(500);
 
-        // Action 2: Stop — deterministic path. Re-queue the target fresh, wait for "Syncing"
-        // badge via waitForFileStatus (D-03 polling helper), then dispatch stop.
-        await dashboardPage.selectFileByName('testing.gif');
-        await dashboardPage.getActionButton('Queue').click();
-        await expect(dashboardPage.getNotificationBadgeDot()).toBeVisible();
-        await expect(dashboardPage.getActionBar()).not.toBeVisible();
-        // Wait for the re-queue to enter DOWNLOADING state (status-badge label "Syncing" per
-        // transfer-row.component.ts BADGE_LABELS — see RESEARCH Pattern 2).
-        await dashboardPage.waitForFileStatus('testing.gif', 'Syncing', 15_000);
-        await dispatchAndAssert('testing.gif', 'Stop', /Stop|stopped|Stopped/, 'success');
+        // Action 1 + 2 share a throttled lftp window.
+        //
+        // Problem: 'testing.gif' (9 MB) downloads in < 1 s at Docker localhost speeds.
+        // After Action 1 dispatches Queue, the file transitions DEFAULT → QUEUED →
+        // DOWNLOADING (Syncing) → DOWNLOADED (Synced) before the bell interaction
+        // completes (~1-2 s). By the time Action 2 tries to re-queue, the file is
+        // DOWNLOADED — Queue is disabled (only DEFAULT/STOPPED are queueable).
+        //
+        // Fix: throttle lftp to 100 B/s before Action 1's Queue so testing.gif stays
+        // in DOWNLOADING (Syncing) throughout Action 1's badge/bell assertions AND
+        // is still Syncing when Action 2's Stop is dispatched. This eliminates the
+        // re-queue step entirely — Action 2 reuses the same lftp job started by Action 1.
+        //
+        // The throttle is always restored in the finally block so Actions 3-5 and
+        // subsequent tests run at full speed.
+        await page.request.get('/server/config/set/lftp/rate_limit/100');
+        try {
+            // Action 1: Queue testing.gif (now throttled — stays Syncing indefinitely).
+            await dashboardPage.selectFileByName('testing.gif');
+            await expect(dashboardPage.getActionBar()).toBeVisible();
+            await expect(dashboardPage.getActionButton('Queue')).toBeEnabled();
+            await dashboardPage.getActionButton('Queue').click();
+
+            // Wait for DOWNLOADING state before checking notification so we confirm the
+            // file entered the transfer pipeline (not just acknowledged by the backend).
+            await dashboardPage.waitForFileStatus('testing.gif', 'Syncing', 15_000);
+
+            // (a) notification badge dot.
+            await expect(dashboardPage.getNotificationBadgeDot()).toBeVisible();
+
+            // Open bell and verify Queue notification text.
+            await dashboardPage.openNotificationBell();
+            await expect(dashboardPage.getNotification('success').first()).toContainText(/Queued|Re-queued|queued/);
+            await dashboardPage.closeNotificationBell();
+
+            // (b) selection cleared.
+            await expect(dashboardPage.getActionBar()).not.toBeVisible();
+            expect(await dashboardPage.getSelectedCount()).toBe(0);
+
+            // Action 2: Stop — testing.gif is still Syncing (100 B/s throttle keeps it in
+            // DOWNLOADING state; Stop requires QUEUED or DOWNLOADING via lftp.kill()).
+            await dispatchAndAssert('testing.gif', 'Stop', /Stop|stopped|Stopped/, 'success');
+        } finally {
+            // Always restore unlimited speed so Actions 3-5 and subsequent tests are not
+            // affected by the throttle even if the try block throws.
+            await page.request.get('/server/config/set/lftp/rate_limit/0');
+        }
 
         // Action 3: Extract on DOWNLOADED 'documentation.png' (seeded via beforeAll).
         // Per RESEARCH Pitfall 3, none of the 9 harness fixtures are archives — patoolib rejects
@@ -387,6 +431,15 @@ test.describe.serial('UAT-02: status filter and URL', () => {
     });
 
     test('UAT-02: status filter failed — Errors → Failed shows STOPPED-state rows (Failed badge)', async ({ page }) => {
+        // Belt-and-braces: UAT-01 may have left lftp in a throttled or active-transfer state
+        // that caused illusion.jpg to be re-queued after the beforeAll seed. Re-seed STOPPED
+        // if the badge does not already show 'Failed'.
+        try {
+            await dashboardPage.waitForFileStatus(STOPPED_FILE, 'Failed', 3_000);
+        } catch {
+            await seedStatus(page, STOPPED_FILE, 'STOPPED');
+        }
+
         await dashboardPage.getSegmentButton('Errors').click();
         await dashboardPage.getSubButton('Failed').click();
 
@@ -510,4 +563,3 @@ test.describe.serial('UAT-02: status filter and URL', () => {
         await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Deleted');
     });
 });
-
