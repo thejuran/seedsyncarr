@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.1.1
 milestone_name: Post-Redesign Cleanup & Outstanding Work
 status: completed
-stopped_at: Milestone v1.1.1 close in progress
+stopped_at: Milestone v1.1.1 archived
 last_updated: "2026-04-23T14:10:21.739Z"
 last_activity: 2026-04-23
 progress:
@@ -99,6 +99,6 @@ Items acknowledged and deferred at milestone close on 2026-04-23:
 ## Session Continuity
 
 Last session: 2026-04-23
-Stopped at: Milestone v1.1.1 close in progress
+Stopped at: Milestone v1.1.1 archived
 Resume file: None
-Next action: milestone close completing
+Next action: /gsd-new-milestone to start next milestone
