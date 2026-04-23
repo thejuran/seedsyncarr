@@ -66,6 +66,7 @@ export class TransferTableComponent implements OnInit {
 
     pagedFilesList$!: Observable<List<ViewFile>>;
     selectedFiles$!: Observable<Set<string>>;
+    hasSelection$!: Observable<boolean>;
     headerCheckboxState$!: Observable<"none" | "some" | "all">;
 
     // Exposed to the template as a computed (signal-backed) so the bar can disable
@@ -133,6 +134,7 @@ export class TransferTableComponent implements OnInit {
 
         this.pagedFilesList$ = this.pagedFiles$.pipe(map(arr => List(arr)), shareReplay(1));
         this.selectedFiles$ = this.fileSelectionService.selectedFiles$;
+        this.hasSelection$ = this.selectedFiles$.pipe(map(s => s.size > 0));
 
         this.pagedFilesList$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(files => {
             this._currentPagedFiles = files;

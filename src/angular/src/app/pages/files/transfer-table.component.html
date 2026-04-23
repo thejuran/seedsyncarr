@@ -1,6 +1,6 @@
 @if ({paged: pagedFiles$ | async, totalPages: totalPages$ | async, totalCount: totalCount$ | async}; as vm) {
 
-<div class="transfer-card">
+<div class="transfer-card" [class.has-selection]="hasSelection$ | async">
 
   <!-- Card Header: Title + Search + Segment Filters -->
   <div class="card-header">
