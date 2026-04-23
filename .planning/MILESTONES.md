@@ -1,5 +1,28 @@
 # Project Milestones: SeedSync
 
+## v1.1.1 Post-Redesign Cleanup & Outstanding Work (Shipped: 2026-04-23)
+
+**Phases completed:** 8 phases, 26 plans
+**Git range:** 331 commits, 305 files changed, +48,231/-4,342 lines
+**Timeline:** 2026-04-19 to 2026-04-23
+
+**Delivered:** Closed all outstanding work from prior milestones — a critical auto-delete data-loss bug, multiselect regression, deferred E2E and UAT, CI noise cleanup, a Dependabot alert, opt-in encryption at rest, and retroactive release notes — without introducing new user-facing features.
+
+**Key accomplishments:**
+
+- Per-child import state tracking prevents pack-wide auto-delete on Sonarr silent-rejects; per-child state persisted across restarts with bounded eviction (GH #19 fix, Phase 75)
+- Multiselect bulk-bar union fix — DELETED files now surface Queue/Delete Remote in mixed selections; 5 FIX-01 regression tests across 2 spec files (Phase 76)
+- 15 new Playwright E2E specs — 5 selection+bulk-bar, 10 dashboard-filter+URL-roundtrip; CI-gated on amd64+arm64 (37 total specs, Phase 77)
+- Storage capacity tiles validated against live seedbox — local disk, remote SSH df, thresholds, graceful fallback; all 6 UAT items passed (Phase 78)
+- CI noise elimination — zero pytest-cache/cgi warnings; CSP violation listener fails E2E on policy breaches with permanent canary spec (Phase 79)
+- Dependabot alert #3 closed (basic-ftp ^5.3.0), arm64 Docker test build support, WAITING_FOR_IMPORT dead enum removed (Phase 80)
+- Optional Fernet encryption at rest for 5 config secrets — keyfile with 0600 permissions, transparent decrypt, backward-compatible plaintext installs (Phase 81)
+- Retroactive v1.1.0 release notes + v1.1.1 release — both versions tagged, CHANGELOG entries, Docker+Deb+GitHub Releases published (Phase 82)
+
+Known deferred items at close: 6 (see STATE.md Deferred Items)
+
+---
+
 ## v1.1.0 UI Redesign — Triggarr Style (Shipped: 2026-04-19)
 
 **Phases completed:** 12 phases (62-70, 72-74; Phase 71 dropped), 30 plans total

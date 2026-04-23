@@ -1,8 +1,8 @@
 ---
 phase: 79-test-infra-cleanup
 verified: 2026-04-21T00:00:00Z
-status: human_needed
-score: 8/9 must-haves verified
+status: passed
+score: 9/9 must-haves verified — CI runtime confirmed
 overrides_applied: 1
 overrides:
   - must_have: "pyproject.toml [tool.pytest.ini_options] contains only pythonpath and timeout"

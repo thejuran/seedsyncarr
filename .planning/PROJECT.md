@@ -10,7 +10,14 @@ Reliable file sync from seedbox to local with automated media library integratio
 
 ## Previous State
 
-**v1.1.0 (2026-04-19)** — UI Redesign — Triggarr Style. All 4 pages ported from AIDesigner mockups (nav bar with backdrop blur, dashboard stats+table+log pane, settings masonry, terminal log viewer, about page); SCSS palette consolidated, clickable version badges, brand favicon; drill-down segment filters. Addendum (phases 72-74) restored per-file selection + 5-action bulk bar, extended dashboard filter to cover every torrent status with URL query-param persistence, and added disk-capacity awareness to storage tiles (local via `shutil.disk_usage`, remote via `df -B1` over SSH) with 80%/95% threshold color shifts.
+**v1.1.1 (2026-04-23)** — Post-Redesign Cleanup & Outstanding Work. Per-child import state tracking (GH #19 data-loss fix), multiselect bulk-bar union fix, 15 new Playwright E2E specs (37 total), live-seedbox UAT, CI noise elimination + CSP enforcement, Dependabot alert closed, arm64 Docker test support, WAITING_FOR_IMPORT dead enum removed, optional Fernet encryption at rest for 5 config secrets, retroactive v1.1.0 release notes + v1.1.1 release.
+
+<details>
+<summary>v1.1.0 (2026-04-19)</summary>
+
+UI Redesign — Triggarr Style. All 4 pages ported from AIDesigner mockups (nav bar with backdrop blur, dashboard stats+table+log pane, settings masonry, terminal log viewer, about page); SCSS palette consolidated, clickable version badges, brand favicon; drill-down segment filters. Addendum (phases 72-74) restored per-file selection + 5-action bulk bar, extended dashboard filter to cover every torrent status with URL query-param persistence, and added disk-capacity awareness to storage tiles (local via `shutil.disk_usage`, remote via `df -B1` over SSH) with 80%/95% threshold color shifts.
+
+</details>
 
 <details>
 <summary>v4.0.3 (released 2026-04-08)</summary>
@@ -243,21 +250,22 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Dashboard filter covers every `ViewFile.Status` (Done parent + Pending sub) with URL query-param persistence and silent fallback on invalid values — v1.1.0
 - ✓ Storage capacity tiles — `StorageStatus` on `Status` model, `shutil.disk_usage` local + `df -B1 <shlex.quote>` over SSH remote, `>1%` change gate, 80%/95% warning/danger thresholds — v1.1.0
 
+**v1.1.1 (Shipped 2026-04-23):**
+
+- ✓ Multiselect bulk-bar union fix — DELETED rows surface Queue + Delete Remote in mixed selections — v1.1.1
+- ✓ Per-child import state tracking — auto-delete blocked on partial Sonarr imports (GH #19) — v1.1.1
+- ✓ 15 Playwright E2E specs (selection+bulk-bar, dashboard-filter+URL-roundtrip), CI-gated amd64+arm64 — v1.1.1
+- ✓ Storage tile live-seedbox UAT — 6 items validated against live infra — v1.1.1
+- ✓ Dependabot alert #3 closed — basic-ftp ^5.3.0 override — v1.1.1
+- ✓ CI noise elimination — zero pytest-cache/cgi warnings, CSP violation listener — v1.1.1
+- ✓ arm64 Docker test build support — conditional rar install + class-level skip — v1.1.1
+- ✓ WAITING_FOR_IMPORT dead enum removed (was never set by business logic) — v1.1.1
+- ✓ Optional Fernet encryption at rest for 5 config secrets — v1.1.1
+- ✓ Retroactive v1.1.0 release notes + v1.1.1 CHANGELOG + GitHub Releases — v1.1.1
+
 ### Active
 
-**v1.1.1 Post-Redesign Cleanup & Outstanding Work (planned 2026-04-20):**
-
-- ✓ Multiselect bulk bar computes union of applicable actions across selection — DELETED rows with null `remote_size` now surface Queue (Re-Queue from Remote) + Delete Remote; fix in `view-file.service.ts` `isQueueable`/`isRemotelyDeletable` predicates; 5 FIX-01 regression tests across 2 spec files. Validated in Phase 76.
-- ✓ Deferred v1.1.0 Playwright E2E coverage restored — 15 new specs (5 UAT-01 selection + 5-action bulk bar, 10 UAT-02 dashboard filter + URL round-trip) land in `dashboard.page.spec.ts` behind two `describe.serial` blocks, sharing a typed `seed-state.ts` fixture module and 9 new `DashboardPage` helpers; existing 11 tests preserved verbatim (D-10). Harness run deferred to CI per D-20; structural verification complete, runtime green pending first push. Validated in Phase 77.
-- Phase 74 deferred: 6 manual UAT items for storage capacity tiles against live seedbox
-- GH #19: Per-child import state tracking so auto-delete cannot wipe packs with Sonarr silent-rejects
-- Dependabot alert #3: audit/override transitive `basic-ftp` to ≥5.3.0 (DoS via unbounded `Client.list()`)
-- Clean up CI test runner warnings (pytest cache + webob cgi deprecation)
-- Playwright CSP violation detection in main E2E suite
-- Optional Fernet encryption at rest for config credentials (`api_token`, `webhook_secret`, `sonarr_api_key`, `radarr_api_key`, `remote_password`)
-- arm64 Docker test build: resolve `rar` package availability for Apple Silicon local dev
-- `WAITING_FOR_IMPORT` enum: wire business logic or remove placeholder
-- Retroactive v1.1.0 release notes (CHANGELOG + GitHub Release) — missing at ship time
+(No active requirements — next milestone not yet planned.)
 
 ### Out of Scope
 
@@ -272,9 +280,10 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 ## Context
 
 **Codebase state:**
-- ~32,871 Python LOC, ~15,472 TypeScript LOC
-- 1,133 Python tests, 84% coverage (fail_under enforced)
-- 552 Angular unit tests passing
+- ~33k Python LOC, ~15.5k TypeScript LOC
+- 1,262 Python tests, 84% coverage (fail_under enforced)
+- 599 Angular unit tests passing
+- 37 Playwright E2E specs (amd64+arm64), CI-gated
 - Zero TypeScript lint errors
 - Angular 21.x, TypeScript 6, Python 3.12+ compatible
 
@@ -285,10 +294,12 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - System font stack (no Google Fonts dependency)
 - Top nav bar (Triggarr-style), flat file rows, card-based Settings
 - AutoQueue merged into Settings page
-- `make run-tests-python` Docker build fails on arm64 (Apple Silicon) — `rar` package only available for amd64. CI unaffected.
+- `make run-tests-python` Docker build works on arm64 (Apple Silicon) — `rar` install gated by `dpkg --print-architecture`, rar-dependent tests skipped via class-level `skipIf`
+- Per-child import state tracking prevents pack-wide auto-delete on Sonarr silent-rejects (GH #19)
+- Optional Fernet encryption at rest for `api_token`, `webhook_secret`, `sonarr_api_key`, `radarr_api_key`, `remote_password` (opt-in via `[Encryption]` config section)
 - Bearer token API auth (auto-generated, timing-safe comparison, meta tag injection)
 - SSE and webhook endpoints exempt from Bearer auth (EventSource limitation / HMAC respectively)
-- Hash-based CSP via Angular autoCsp (no unsafe-inline)
+- Hash-based CSP via Angular autoCsp (no unsafe-inline); Playwright CSP violation listener fails E2E on breaches
 - DNS rebinding prevention via Host header allowlist
 - Path traversal guards (realpath-based) on delete/extract endpoints
 - Security headers (CSP, X-Frame-Options, X-Content-Type-Options) on all API responses
@@ -343,9 +354,9 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Project Status
 
-**Status:** v1.1.1 in planning — cleanup & outstanding-work milestone (no net-new features).
+**Status:** v1.1.1 shipped (2026-04-23). All outstanding work from prior milestones closed.
 
-28 milestones planned (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup as SeedSyncarr).
+29 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup as SeedSyncarr).
 
 ## Evolution
 
@@ -365,4 +376,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-22 — Phase 79 complete (TEST-01 + TEST-02: Python CI stderr cleanup + Playwright CSP fail-the-build fixture; runtime verification CI-gated via 79-HUMAN-UAT.md).*
+*Last updated: 2026-04-23 after v1.1.1 milestone*

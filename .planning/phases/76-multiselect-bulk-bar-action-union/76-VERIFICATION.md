@@ -1,8 +1,8 @@
 ---
 phase: 76-multiselect-bulk-bar-action-union
 verified: 2026-04-20T00:00:00Z
-status: human_needed
-score: 4/4 roadmap success criteria verified at unit-test level
+status: passed
+score: 4/4 roadmap success criteria verified — unit-test + browser UAT complete
 overrides_applied: 0
 re_verification:
   previous_status: null

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1.1
 milestone_name: Post-Redesign Cleanup & Outstanding Work
-status: complete
-stopped_at: Milestone complete — all 8 phases, 26 plans executed
-last_updated: "2026-04-23T12:30:00Z"
-last_activity: 2026-04-23 -- Phase 82 complete, v1.1.1 released
+status: completed
+stopped_at: Milestone v1.1.1 close in progress
+last_updated: "2026-04-23T14:10:21.739Z"
+last_activity: 2026-04-23
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 26
-  completed_plans: 26
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 22
+  completed_plans: 22
   percent: 100
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-20)
 Phase: 82 (release-prep-retro-v110-notes-v111-tag) — COMPLETE
 Plan: 4 of 4 complete (82-01 ✓, 82-02 ✓, 82-03 ✓, 82-04 ✓)
 Status: Milestone complete
-Last activity: 2026-04-23 -- Phase 82 complete, v1.1.1 released
+Last activity: 2026-04-23
 
 ## v1.1.1 Phase List
 
@@ -83,9 +83,22 @@ All v1.1.0 deferred items have been completed in v1.1.1:
 - 2026-04-14-encrypt-credentials-at-rest → Phase 81 ✓
 - 2026-04-14-rate-limiting-all-endpoints → Out of Scope (reverse-proxy concern per PROJECT.md)
 
+## Deferred Items (acknowledged at milestone close)
+
+Items acknowledged and deferred at milestone close on 2026-04-23:
+
+| Category | Item | Status |
+|----------|------|--------|
+| debug | test_fix-resolved | unknown (stale) |
+| todo | 2026-02-08-clean-up-test-warnings.md | resolved in Phase 79 |
+| todo | 2026-02-24-e2e-csp-violation-detection.md | resolved in Phase 79 |
+| todo | 2026-04-14-encrypt-credentials-at-rest.md | resolved in Phase 81 |
+| todo | 2026-04-14-rate-limiting-all-endpoints.md | Out of Scope |
+| todo | 2026-04-21-webob-cgi-upstream-unblock.md | monitoring (upstream) |
+
 ## Session Continuity
 
 Last session: 2026-04-23
-Stopped at: Milestone v1.1.1 complete
-Resume file: —
-Next action: `/gsd-complete-milestone`
+Stopped at: Milestone v1.1.1 close in progress
+Resume file: None
+Next action: milestone close completing

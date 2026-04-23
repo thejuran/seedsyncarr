@@ -28,7 +28,7 @@
 - v4.0.3 Dependency Fixes & CI - Phase 52 (shipped 2026-04-08)
 - v1.0.0 SeedSyncarr Rebrand - Phases 53-61 (shipped 2026-04-13)
 - v1.1.0 UI Redesign — Triggarr Style - Phases 62-74 (shipped 2026-04-19; Phase 71 dropped)
-- **v1.1.1 Post-Redesign Cleanup & Outstanding Work - Phases 75-82 (planning 2026-04-20)**
+- v1.1.1 Post-Redesign Cleanup & Outstanding Work - Phases 75-82 (shipped 2026-04-23)
 
 ## Phases
 
@@ -238,138 +238,21 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 
 </details>
 
-### v1.1.1 Post-Redesign Cleanup & Outstanding Work (Phases 75-82) - PLANNING
+<details>
+<summary>v1.1.1 Post-Redesign Cleanup & Outstanding Work (Phases 75-82) - SHIPPED 2026-04-23</summary>
 
-- [x] **Phase 75: Per-Child Import State (GH #19)** - Data-loss bug fix: per-child import tracking prevents pack-wide auto-delete on Sonarr silent-reject (completed 2026-04-20)
-- [x] **Phase 76: Multiselect Bulk-Bar Action Union** - Restore "Re-Queue from Remote" in mixed selections; union-of-applicable-actions with per-row disable (completed 2026-04-20)
-- [x] **Phase 77: Deferred Playwright E2E (Phases 72 + 73)** - 15 E2E specs covering selection + bulk bar + dashboard filter + URL round-trip (completed 2026-04-21)
-- [x] **Phase 78: Storage Tile Live-Seedbox UAT** - 6 manual UAT items against live remote (df-over-SSH, thresholds, graceful fallback) (completed 2026-04-21)
-- [x] **Phase 79: Test Infra Cleanup** - Zero CI warnings (pytest-cache + webob/cgi) + Playwright CSP violation listener (completed 2026-04-22)
-- [ ] **Phase 80: Small Cleanups (Dependabot + arm64 + enum)** - basic-ftp override, arm64 `rar` resolution, WAITING_FOR_IMPORT wire-or-remove
-- [ ] **Phase 81: Optional Fernet Encryption at Rest** - Opt-in encryption for 5 config secrets, transparent decrypt, backward-compat
-- [ ] **Phase 82: Release Prep (Retro v1.1.0 Notes + v1.1.1 Tag)** - Retroactive v1.1.0 CHANGELOG + GitHub Release, version bump, tag
+- [x] Phase 75: Per-Child Import State (GH #19) (4/4 plans) - completed 2026-04-20
+- [x] Phase 76: Multiselect Bulk-Bar Action Union (4/4 plans) - completed 2026-04-20
+- [x] Phase 77: Deferred Playwright E2E (Phases 72+73) (4/4 plans) - completed 2026-04-21
+- [x] Phase 78: Storage Tile Live-Seedbox UAT (2/2 plans) - completed 2026-04-21
+- [x] Phase 79: Test Infra Cleanup (2/2 plans) - completed 2026-04-22
+- [x] Phase 80: Small Cleanups (Dependabot + arm64 + enum) (3/3 plans) - completed 2026-04-22
+- [x] Phase 81: Optional Fernet Encryption at Rest (3/3 plans) - completed 2026-04-22
+- [x] Phase 82: Release Prep (Retro v1.1.0 Notes + v1.1.1 Tag) (4/4 plans) - completed 2026-04-23
 
-## Phase Details
+See `.planning/milestones/v1.1.1-ROADMAP.md` for full details.
 
-### Phase 75: Per-Child Import State (GH #19)
-**Goal**: Auto-delete never wipes a pack with incomplete Sonarr imports — every on-disk child must be individually confirmed as imported before the pack root is deletable.
-**Depends on**: Nothing (first phase of milestone)
-**Requirements**: FIX-02
-**Success Criteria** (what must be TRUE):
-  1. When Sonarr silently rejects one episode from a multi-episode pack, auto-delete does not run on the pack root at Timer-fire time.
-  2. Per-child import state (root, child basename) is persisted across app restarts and bounded in size.
-  3. Timer-fire logic enumerates on-disk children via BFS and skips+logs deletion when coverage is partial; full coverage still deletes as before.
-  4. New unit tests cover: single-file import (fully covered → delete), partial-coverage pack (skip+log), post-restart rehydration of per-child state.
-**Plans**: 4 plans
-  - [x] 75-01-PLAN.md — ControllerPersist: imported_children field + JSON round-trip + persist unit tests (Wave 1, parallel)
-  - [x] 75-02-PLAN.md — WebhookManager.process: widen return type to List[Tuple[str, str]] + test migration (Wave 1, parallel)
-  - [x] 75-03-PLAN.md — Controller integration: _VIDEO_EXTENSIONS + per-child Window-2 write + coverage guard + clear-on-success (Wave 2)
-  - [x] 75-04-PLAN.md — test_auto_delete.py: 6 D-19 cases + D-20 rehydration case + 3 mock-return_value migrations (Wave 3)
-
-### Phase 76: Multiselect Bulk-Bar Action Union
-**Goal**: Users selecting any mix of file states (including deleted files) see every action that applies to at least one selected row, with inapplicable actions disabled per-row rather than hidden wholesale.
-**Depends on**: Nothing (independent UI fix)
-**Requirements**: FIX-01
-**Success Criteria** (what must be TRUE):
-  1. Selecting a deleted file (alone or mixed with others) exposes "Re-Queue from Remote" in the bulk-actions bar.
-  2. Mixed selections show the union of applicable actions across the selection.
-  3. Each action dispatches only to rows where it is valid; non-applicable rows in the selection are unaffected.
-  4. Unit tests cover the union logic for at least three representative mixed selections.
-**Plans**: 4 plans
-  - [x] 76-01-PLAN.md — Wave 1: failing characterization tests for FIX-01 DELETED union regression (red-first per D-01)
-  - [x] 76-02-PLAN.md — Wave 2: root-cause analysis + minimal one-file fix that drives Wave 1 green (D-02/D-03, checkpoint-gated)
-  - [x] 76-03-PLAN.md — Wave 3: three D-09 mixed-selection coverage tests (All-DELETED, DELETED+DOWNLOADING, DELETED+DOWNLOADED+STOPPED)
-  - [x] 76-04-PLAN.md — Wave 4: full Angular suite verification + D-06/D-07 visual-freeze audit + regression-guard report
-**UI hint**: yes
-
-### Phase 77: Deferred Playwright E2E (Phases 72 + 73)
-**Goal**: Every deferred v1.1.0 UI behavior (per-file selection + 5-action bulk bar + dashboard filter + URL round-trip) is covered by CI-gated Playwright specs so regressions surface automatically.
-**Depends on**: Phase 76 (multiselect fix lands before its E2E covers it)
-**Requirements**: UAT-01, UAT-02
-**Success Criteria** (what must be TRUE):
-  1. `make run-tests-e2e` runs the 5 new Phase 72 specs (selection, shift-range, page-select-all, bulk-bar visibility, all 5 bulk actions) green.
-  2. `make run-tests-e2e` runs the 10 new Phase 73 specs (every `ViewFile.Status`, URL round-trip, drill-down expansion, invalid-value fallback) green.
-  3. Specs execute in CI (`make run-tests-e2e` job) and fail the build on regression.
-  4. The FIX-01 union behavior is covered by at least one of the new selection specs.
-**Plans**: 4 plans
-  - [x] 77-01-PLAN.md — Wave 1: seed-state fixture module + 9 DashboardPage helpers (D-04, D-11, D-12)
-  - [x] 77-02-PLAN.md — Wave 2: 5 UAT-01 specs (selection + shift-range + page-select-all + bulk bar + FIX-01 union anchor)
-  - [x] 77-03-PLAN.md — Wave 3: 10 UAT-02 specs (8 status-filter + 2 URL round-trip via page.reload)
-  - [x] 77-04-PLAN.md — Wave 4: full `make run-tests-e2e` smoke + diff audit + verification summary (checkpoint-gated)
-**UI hint**: yes
-
-### Phase 78: Storage Tile Live-Seedbox UAT
-**Goal**: Storage capacity tiles are validated against real remote infrastructure — thresholds trigger, change-gate suppresses spam, graceful fallback hides the tile on SSH `df` failure.
-**Depends on**: Nothing (manual, independent)
-**Requirements**: UAT-03
-**Success Criteria** (what must be TRUE):
-  1. Local tile shows correct used/total/percent against `shutil.disk_usage` on the host.
-  2. Remote tile shows correct used/total/percent against `df -B1` over live SSH; changes <1% suppressed.
-  3. Warning (80%+) and danger (95%+) color shifts render against a real disk at each threshold.
-  4. Remote tile hides gracefully when `df` fails (network drop, path missing, non-zero exit) without crashing the dashboard.
-  5. All 6 UAT items recorded with pass/fail and findings in the milestone log.
-**Plans**: 2 plans
-  - [x] 78-01-PLAN.md — Stand up disposable SSH container + host loop-mount + run-from-source backend/frontend; user-checkpoint confirms both tiles in capacity mode (Wave 1)
-  - [x] 78-02-PLAN.md — Execute 6 Phase-74-deferred UAT items against live env; record pass/fail in 78-UAT.md + 78-HUMAN-UAT.md; close UAT-03 (Wave 2)
-**UI hint**: yes
-
-### Phase 79: Test Infra Cleanup
-**Goal**: CI test output is signal-only — zero noise warnings in Python runs, and any CSP violation during Playwright E2E fails the build.
-**Depends on**: Phase 77 (CSP listener attaches to the main E2E suite which includes the new UAT specs)
-**Requirements**: TEST-01, TEST-02
-**Success Criteria** (what must be TRUE):
-  1. CI Python test stderr contains zero pytest-cache warnings and zero webob/cgi deprecation warnings.
-  2. Playwright E2E suite registers a shared fixture that listens for `console` CSP messages and the `securitypolicyviolation` DOM event.
-  3. A seeded inline-script violation in a test verifies the listener fails the spec (verification test can then be removed or marked as a regression guard).
-  4. No existing specs fail after the listener lands (current CSP is clean).
-**Plans**: 2 plans
-  - [x] 79-01-PLAN.md — TEST-01: suppress pytest-cache warnings (-p no:cacheprovider) + cgi DeprecationWarning (PYTHONWARNINGS ENV); remove dead pyproject.toml config (Wave 1, parallel)
-  - [x] 79-02-PLAN.md — TEST-02: CSP-listener fixture (exposeFunction bridge + console filter + allowViolations opt-out) + 6 spec import swaps + permanent canary spec (Wave 1, parallel)
-
-### Phase 80: Small Cleanups (Dependabot + arm64 + enum)
-**Goal**: Three independent small cleanups land together — Dependabot alert #3 closed, `make run-tests-python` runs on Apple Silicon, and the WAITING_FOR_IMPORT enum is either used or gone.
-**Depends on**: Nothing (independent cleanups)
-**Requirements**: SEC-01, TECH-01, TECH-02
-**Success Criteria** (what must be TRUE):
-  1. `gh api repos/.../dependabot/alerts` shows alert #3 closed (override, path-drop, or documented dismissal), with `npm ls basic-ftp` confirming ≥5.3.0 or path removed.
-  2. `make run-tests-python` builds and runs to completion on arm64 (Apple Silicon) locally; CI amd64 run is unchanged.
-  3. WAITING_FOR_IMPORT enum is either (a) set by real business logic with unit-test coverage, or (b) removed from the model along with every reference — chosen resolution logged in `PROJECT.md` Key Decisions.
-  4. All existing Python and Angular test suites remain green.
-**Plans**: 3 plans
-  - [x] 80-01-PLAN.md — SEC-01: root package.json basic-ftp overrides pin (^5.3.0) + lockfile refresh + Dependabot alert #3 state check (Wave 1, parallel, autonomous)
-  - [x] 80-02-PLAN.md — TECH-01: arm64 support via dpkg-arch-gated rar install in test Dockerfile + class-level skipIf decorators on TestExtract/TestController + amd64 parity baseline (Wave 1, parallel, autonomous:false — requires Apple Silicon host for final verification) **[all 4 tasks complete, human-verify passed 2026-04-22]**
-  - [x] 80-03-PLAN.md — TECH-02: remove WAITING_FOR_IMPORT from 5 source files (Python enum + serializer + 2 TS enums + switch case) + PROJECT.md Key Decisions row (Wave 1, parallel, autonomous)
-
-### Phase 81: Optional Fernet Encryption at Rest
-**Goal**: Users who opt in have their 5 config secrets encrypted at rest with zero disruption to existing plaintext installs.
-**Depends on**: Nothing (new opt-in capability, no migration required)
-**Requirements**: SEC-02
-**Success Criteria** (what must be TRUE):
-  1. On first run with the feature enabled, a keyfile is generated with 0600 permissions and the 5 listed secrets (`api_token`, `webhook_secret`, `sonarr_api_key`, `radarr_api_key`, `remote_password`) are encrypted in place.
-  2. Config read path transparently decrypts on load; rest of the app sees plaintext values with no code changes outside `config.py`.
-  3. Plaintext values detected on startup (post-enable) are re-encrypted in place; plaintext installs with the flag disabled continue working unchanged.
-  4. A config flag lets users disable encryption for manual editing without data loss (round-trip enable→disable preserves all 5 values).
-  5. Unit tests cover: enable-new, enable-existing-plaintext, disable-restore-plaintext, keyfile permissions, and decrypt failure surfaces a clear startup warning.
-**Plans**: 3 plans
-  - [ ] 81-01-PLAN.md — common/encryption.py primitive + cryptography dep + test_encryption.py (Wave 1, autonomous)
-  - [ ] 81-02-PLAN.md — config.py widening (Encryption section + from_str/to_str seam + _SECRET_FIELD_PATHS + set_keyfile_path) + 5 test_config.py tests + golden-string update (Wave 2, autonomous, depends on 81-01)
-  - [ ] 81-03-PLAN.md — seedsyncarr.py startup hooks (keyfile inject + re-encrypt + decrypt warnings) + test_seedsyncarr.py + docs/CONFIGURATION.md (Wave 3, autonomous, depends on 81-02)
-
-### Phase 82: Release Prep (Retro v1.1.0 Notes + v1.1.1 Tag)
-**Goal**: v1.1.0 has retroactive release notes on record, and v1.1.1 ships as a tagged release with a categorized changelog covering every milestone REQ.
-**Depends on**: Phases 75-81 (all milestone work must be merged before release)
-**Requirements**: DOCS-01
-**Success Criteria** (what must be TRUE):
-  1. `CHANGELOG.md` has a v1.1.0 entry summarizing Phases 62-74 (UI redesign, selection + bulk bar, dashboard filter + URL persistence, storage capacity tiles, SCSS consolidation).
-  2. A GitHub Release exists for tag `v1.1.0` with matching categorized notes.
-  3. `CHANGELOG.md` has a v1.1.1 entry summarizing the 12 requirements shipped in this milestone.
-  4. Version strings in `version.ts` / `pyproject` / Debian control files are bumped to `1.1.1` and remain consistent across artifacts.
-  5. Git tag `v1.1.1` pushed; Docker and Deb release artifacts published by CI; GitHub Release v1.1.1 created with the v1.1.1 changelog body.
-**Plans**: 4 plans
-  - [ ] 82-01-PLAN.md — Retroactive v1.1.0 CHANGELOG entry + GitHub Release on existing tag + v1.1.0-dev cleanup (Wave 1, autonomous)
-  - [ ] 82-02-PLAN.md — Debian packaging infrastructure: debian/DEBIAN/control + publish-deb-package CI job (Wave 1, parallel, autonomous)
-  - [ ] 82-03-PLAN.md — v1.1.1 CHANGELOG entry + version bump (4 files) + release-notes.md (Wave 2, autonomous, depends on 82-01 + 82-02)
-  - [ ] 82-04-PLAN.md — Push v1.1.1 tag + verify CI publishes Docker + Deb + GitHub Release (Wave 3, checkpoint, depends on 82-02 + 82-03)
+</details>
 
 ## Progress
 
@@ -400,15 +283,8 @@ See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
 | 60. Dependency Updates | v1.0.0 | 2/2 | Complete | 2026-04-09 |
 | 61. Branding Integration | v1.0.0 | 0/0 | Complete | 2026-04-13 |
 | 62-74. v1.1.0 UI Redesign — Triggarr Style | v1.1.0 | 30/30 | Complete | 2026-04-19 |
-| 75. Per-Child Import State (GH #19) | v1.1.1 | 4/4 | Complete    | 2026-04-20 |
-| 76. Multiselect Bulk-Bar Action Union | v1.1.1 | 4/4 | Complete    | 2026-04-20 |
-| 77. Deferred Playwright E2E (72+73) | v1.1.1 | 4/4 | Complete    | 2026-04-21 |
-| 78. Storage Tile Live-Seedbox UAT | v1.1.1 | 0/2 | Not started | - |
-| 79. Test Infra Cleanup | v1.1.1 | 2/2 | Complete    | 2026-04-22 |
-| 80. Small Cleanups (Dependabot + arm64 + enum) | v1.1.1 | 0/0 | Not started | - |
-| 81. Optional Fernet Encryption at Rest | v1.1.1 | 0/3 | Not started | - |
-| 82. Release Prep (v1.1.0 retro + v1.1.1 tag) | v1.1.1 | 0/4 | Not started | - |
+| 75-82. Post-Redesign Cleanup | v1.1.1 | 22/22 | Complete | 2026-04-23 |
 
 ---
 
-*Last updated: 2026-04-22 — Phase 82 planned (4 plans covering Waves 1-3: Wave 1 retro v1.1.0 changelog + Deb infra, Wave 2 v1.1.1 changelog + version bump, Wave 3 tag push + CI verification).*
+*Last updated: 2026-04-23 — v1.1.1 milestone archived.*

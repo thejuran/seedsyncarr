@@ -1,8 +1,8 @@
 ---
 phase: 77-deferred-playwright-e2e-phases-72-73
 verified: 2026-04-20T00:00:00Z
-status: human_needed
-score: 4/4 structurally verified; CI runtime verification pending post-push
+status: passed
+score: 4/4 structurally verified + CI runtime confirmed (37/37 passed amd64+arm64)
 overrides_applied: 0
 human_verification:
   - test: "CI `e2etests-docker-image` job (amd64 matrix row) completes green"
