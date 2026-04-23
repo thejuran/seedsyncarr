@@ -53,6 +53,14 @@ class LftpManager:
         self.__lftp.temp_file_name = "*" + Constants.LFTP_TEMP_FILE_SUFFIX
         self.__lftp.set_verbose_logging(context.config.general.verbose)
 
+        # Apply rate limit from config (0 = unlimited)
+        if context.config.lftp.rate_limit is not None and context.config.lftp.rate_limit > 0:
+            self.__lftp.rate_limit = context.config.lftp.rate_limit
+
+        # Track the last-applied rate_limit so we only send the lftp command
+        # when the config value actually changes at runtime.
+        self.__applied_rate_limit = context.config.lftp.rate_limit
+
     @property
     def lftp(self) -> Lftp:
         """
@@ -66,9 +74,31 @@ class LftpManager:
         """
         return self.__lftp
 
+    def __sync_rate_limit(self) -> None:
+        """
+        Re-apply rate_limit from the live config if it changed since the last
+        queue() call.  The config set REST API updates config.lftp.rate_limit
+        in memory; this method propagates that change to the running lftp
+        process so e2e tests (and users) can throttle downloads at runtime
+        without restarting the app.
+
+        A value of 0 means unlimited (lftp default).
+        """
+        current = self.__context.config.lftp.rate_limit
+        if current != self.__applied_rate_limit:
+            self.logger.info("rate_limit changed: {} -> {}".format(
+                self.__applied_rate_limit, current
+            ))
+            self.__lftp.rate_limit = current if current is not None else 0
+            self.__applied_rate_limit = current
+
     def queue(self, file_name: str, is_dir: bool) -> None:
         """
         Queue a file or directory for download.
+
+        Syncs the rate_limit from config before issuing the lftp queue command
+        so that runtime config changes (via the REST API) take effect on the
+        next download without requiring an app restart.
 
         Args:
             file_name: Name of the file/directory to queue
@@ -77,6 +107,7 @@ class LftpManager:
         Raises:
             LftpError: If LFTP fails to queue the file
         """
+        self.__sync_rate_limit()
         self.__lftp.queue(file_name, is_dir)
 
     def kill(self, file_name: str) -> None:

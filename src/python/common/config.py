@@ -261,6 +261,7 @@ class Config(Persist):
                                                 Converters.int)
         num_max_total_connections = PROP("num_max_total_connections", Checkers.int_non_negative, Converters.int)
         use_temp_file = PROP("use_temp_file", Checkers.null, Converters.bool)
+        rate_limit = PROP("rate_limit", Checkers.int_non_negative, Converters.int)
 
         def __init__(self):
             super().__init__()
@@ -278,6 +279,7 @@ class Config(Persist):
             self.num_max_connections_per_dir_file = None
             self.num_max_total_connections = None
             self.use_temp_file = None
+            self.rate_limit = None
 
     class Controller(IC):
         interval_ms_remote_scan = PROP("interval_ms_remote_scan", Checkers.int_positive, Converters.int)
@@ -415,7 +417,7 @@ class Config(Persist):
             for option in config_parser.options(section):
                 config_dict[section][option] = config_parser.get(section, option)
 
-        # ── Decrypt hook (SEC-02 criterion #2) ────────────────────────────────
+        # ── Decrypt hook (SEC-02 criterion #2) ───────���────────────────────────
         # Resolve encryption flag BEFORE from_dict so plaintext values reach the
         # PROP/Checker/Converter layer. The [Encryption] section itself is never
         # in _SECRET_FIELD_PATHS (T-81-02-07).
@@ -464,7 +466,7 @@ class Config(Persist):
                         # Else: plaintext fallback — value stays plaintext in
                         # memory; re-encryption happens on next to_str call if
                         # encryption stays enabled (plan 03's startup hook).
-        # ──────────────────────────────────────────────────────────────────────
+        # ────────���───────────────────────��─────────────────────────────────────
 
         config = Config.from_dict(config_dict)
         config._decrypt_errors.extend(_decrypt_errors_local)
@@ -475,7 +477,7 @@ class Config(Persist):
         config_parser = configparser.ConfigParser()
         config_dict = self.as_dict()
 
-        # ── Encrypt hook (SEC-02 criterion #1b, T-81-02-01, T-81-02-05) ──────
+        # ── Encrypt hook (SEC-02 criterion #1b, T-81-02-01, T-81-02-05) ──���───
         # Walk the 5 secret field paths and encrypt any non-empty, non-ciphertext
         # value when encryption is enabled. Already-ciphertext values are left
         # untouched (idempotent). Empty strings remain empty — never encrypted.
@@ -493,7 +495,7 @@ class Config(Persist):
                     # Encrypt only non-empty plaintext values (research §6.3).
                     if value and not is_ciphertext(value):
                         config_dict[ini_section][field_name] = encrypt_field(fernet_key, str(value))
-        # ──────────────────────────────────────────────────────────────────────
+        # ────────────────────────��────────────────────────────���────────────────
 
         for section in config_dict:
             config_parser.add_section(section)
@@ -519,7 +521,11 @@ class Config(Persist):
         if "allowed_hostname" not in general_dict:
             general_dict["allowed_hostname"] = ""
         config.general = Config.General.from_dict(general_dict)
-        config.lftp = Config.Lftp.from_dict(Config._check_section(config_dict, "Lftp"))
+        lftp_dict = Config._check_section(config_dict, "Lftp")
+        # Backward compatibility: rate_limit added for e2e throttling — default 0 (unlimited)
+        if "rate_limit" not in lftp_dict:
+            lftp_dict["rate_limit"] = "0"
+        config.lftp = Config.Lftp.from_dict(lftp_dict)
         config.controller = Config.Controller.from_dict(Config._check_section(config_dict, "Controller"))
         config.web = Config.Web.from_dict(Config._check_section(config_dict, "Web"))
         config.autoqueue = Config.AutoQueue.from_dict(Config._check_section(config_dict, "AutoQueue"))

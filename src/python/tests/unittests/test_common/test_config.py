@@ -261,7 +261,8 @@ class TestConfig(unittest.TestCase):
             "num_max_connections_per_root_file": "4",
             "num_max_connections_per_dir_file": "6",
             "num_max_total_connections": "7",
-            "use_temp_file": "True"
+            "use_temp_file": "True",
+            "rate_limit": "0"
         }
         lftp = Config.Lftp.from_dict(good_dict)
         self.assertEqual("remote.server.com", lftp.remote_address)
@@ -278,6 +279,13 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(6, lftp.num_max_connections_per_dir_file)
         self.assertEqual(7, lftp.num_max_total_connections)
         self.assertEqual(True, lftp.use_temp_file)
+        self.assertEqual(0, lftp.rate_limit)
+
+        # rate_limit with positive value
+        good_dict_throttled = dict(good_dict)
+        good_dict_throttled["rate_limit"] = "1024"
+        lftp_throttled = Config.Lftp.from_dict(good_dict_throttled)
+        self.assertEqual(1024, lftp_throttled.rate_limit)
 
         self.check_common(Config.Lftp,
                           good_dict,
@@ -295,7 +303,8 @@ class TestConfig(unittest.TestCase):
                               "num_max_connections_per_root_file",
                               "num_max_connections_per_dir_file",
                               "num_max_total_connections",
-                              "use_temp_file"
+                              "use_temp_file",
+                              "rate_limit"
                           })
 
         # bad values
@@ -314,6 +323,7 @@ class TestConfig(unittest.TestCase):
         self.check_bad_value_error(Config.Lftp, good_dict, "num_max_total_connections", "-1")
         self.check_bad_value_error(Config.Lftp, good_dict, "use_temp_file", "-1")
         self.check_bad_value_error(Config.Lftp, good_dict, "use_temp_file", "SomeString")
+        self.check_bad_value_error(Config.Lftp, good_dict, "rate_limit", "-1")
 
     def test_controller(self):
         good_dict = {
@@ -459,6 +469,8 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(5, config.lftp.num_max_connections_per_dir_file)
         self.assertEqual(7, config.lftp.num_max_total_connections)
         self.assertEqual(False, config.lftp.use_temp_file)
+        # Backward compatibility: rate_limit defaults to 0 when missing from INI
+        self.assertEqual(0, config.lftp.rate_limit)
 
         self.assertEqual(30000, config.controller.interval_ms_remote_scan)
         self.assertEqual(10000, config.controller.interval_ms_local_scan)
@@ -510,6 +522,7 @@ class TestConfig(unittest.TestCase):
         config.lftp.num_max_connections_per_dir_file = 3
         config.lftp.num_max_total_connections = 4
         config.lftp.use_temp_file = True
+        config.lftp.rate_limit = 0
         config.controller.interval_ms_remote_scan = 1234
         config.controller.interval_ms_local_scan = 5678
         config.controller.interval_ms_downloading_scan = 9012
@@ -558,6 +571,7 @@ class TestConfig(unittest.TestCase):
         num_max_connections_per_dir_file = 3
         num_max_total_connections = 4
         use_temp_file = True
+        rate_limit = 0
 
         [Controller]
         interval_ms_remote_scan = 1234
@@ -631,6 +645,7 @@ class TestConfig(unittest.TestCase):
         c.lftp.num_max_connections_per_dir_file = 5
         c.lftp.num_max_total_connections = 6
         c.lftp.use_temp_file = False
+        c.lftp.rate_limit = 0
         c.controller.interval_ms_remote_scan = 30000
         c.controller.interval_ms_local_scan = 10000
         c.controller.interval_ms_downloading_scan = 2000
@@ -705,6 +720,8 @@ auto_extract=False
         config = Config.from_str(content)
         self.assertEqual(False, config.encryption.enabled)
         self.assertEqual([], config._decrypt_errors)
+        # Backward compatibility: rate_limit defaults to 0 when missing from INI
+        self.assertEqual(0, config.lftp.rate_limit)
 
     def test_enable_new_install_encrypts_on_write(self):
         """81-02-01 / SEC-02 #1b: First run with flag enabled encrypts all 5 secrets in to_str().

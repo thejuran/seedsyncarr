@@ -20,6 +20,11 @@ const ENDPOINT = {
     deleteRemote: (n: string) => `/server/command/delete_remote/${encodeURIComponent(n)}`,
 };
 
+// Config set endpoint — used to throttle lftp downloads so the stop command
+// can catch a file in QUEUED/DOWNLOADING state (rate_limit in bytes/sec).
+const CONFIG_SET = (section: string, key: string, value: string) =>
+    `/server/config/set/${section}/${key}/${encodeURIComponent(value)}`;
+
 // Display labels rendered by transfer-row.component.ts:49-58. Seed helpers
 // poll for these strings in td.cell-status .status-badge — never raw enum names.
 const LABEL = {
@@ -30,14 +35,25 @@ const LABEL = {
     QUEUED:      'Queued',
 } as const;
 
+// Rate limit applied before the STOPPED seed loop to ensure lftp downloads
+// slowly enough for the stop command to catch the file mid-transfer.
+// 100 bytes/sec is aggressive but reliable on fast Docker networks where
+// even 10MB files finish in <100ms at full speed.
+const STOPPED_SEED_RATE_LIMIT = '100';
+
 function escapeRegex(s: string): string {
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-async function expectOk(page: Page, url: string, method: 'POST' | 'DELETE'): Promise<void> {
-    const res = method === 'POST'
-        ? await page.request.post(url)
-        : await page.request.delete(url);
+async function expectOk(page: Page, url: string, method: 'POST' | 'DELETE' | 'GET'): Promise<void> {
+    let res;
+    if (method === 'POST') {
+        res = await page.request.post(url);
+    } else if (method === 'DELETE') {
+        res = await page.request.delete(url);
+    } else {
+        res = await page.request.get(url);
+    }
     if (!res.ok()) {
         throw new Error(`Seed call ${method} ${url} failed: ${res.status()} ${await res.text()}`);
     }
@@ -53,6 +69,10 @@ async function waitForBadge(page: Page, name: string, label: string, timeout = 3
         }),
     });
     await row.locator('td.cell-status .status-badge').filter({ hasText: label }).waitFor({ timeout });
+}
+
+async function setRateLimit(page: Page, bytesPerSec: string): Promise<void> {
+    await expectOk(page, CONFIG_SET('lftp', 'rate_limit', bytesPerSec), 'GET');
 }
 
 export async function queueFile(page: Page, name: string): Promise<void> {
@@ -82,24 +102,35 @@ export async function seedStatus(page: Page, file: string, target: SeedTarget): 
         return;
     }
     if (target === 'STOPPED') {
-        const MAX_ATTEMPTS = 5;
-        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-            await expectOk(page, ENDPOINT.queue(file), 'POST');
-            const stopRes = await page.request.post(ENDPOINT.stop(file));
-            if (stopRes.ok()) {
-                await waitForBadge(page, file, LABEL.STOPPED);
-                return;
+        // Throttle lftp to 100 B/s so the download takes long enough for the
+        // stop command to catch it in QUEUED or DOWNLOADING state. Without
+        // throttling, even multi-MB files finish in <100ms on fast Docker
+        // networks, making the stop race unwinnable.
+        await setRateLimit(page, STOPPED_SEED_RATE_LIMIT);
+        try {
+            const MAX_ATTEMPTS = 5;
+            for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+                await expectOk(page, ENDPOINT.queue(file), 'POST');
+                const stopRes = await page.request.post(ENDPOINT.stop(file));
+                if (stopRes.ok()) {
+                    await waitForBadge(page, file, LABEL.STOPPED);
+                    return;
+                }
+                if (attempt < MAX_ATTEMPTS) {
+                    await waitForBadge(page, file, LABEL.DOWNLOADED, 30_000);
+                    await expectOk(page, ENDPOINT.deleteLocal(file), 'DELETE');
+                    await waitForBadge(page, file, LABEL.DELETED);
+                }
             }
-            if (attempt < MAX_ATTEMPTS) {
-                await waitForBadge(page, file, LABEL.DOWNLOADED, 30_000);
-                await expectOk(page, ENDPOINT.deleteLocal(file), 'DELETE');
-                await waitForBadge(page, file, LABEL.DELETED);
-            }
+            throw new Error(
+                `Seed STOPPED for '${file}' failed after ${MAX_ATTEMPTS} attempts — ` +
+                `stop command never caught the file in QUEUED/DOWNLOADING state.`,
+            );
+        } finally {
+            // Always restore unlimited speed so subsequent seeds (DOWNLOADED,
+            // DELETED) are not artificially slow.
+            await setRateLimit(page, '0');
         }
-        throw new Error(
-            `Seed STOPPED for '${file}' failed after ${MAX_ATTEMPTS} attempts — ` +
-            `stop command never caught the file in QUEUED/DOWNLOADING state.`,
-        );
     }
     if (target === 'DELETED') {
         // FIX-01 fixture survival: must reach DOWNLOADED first so the file
