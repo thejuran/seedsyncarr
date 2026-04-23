@@ -192,18 +192,13 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
     //  2 Stop         'testing.gif'          DOWNLOADING         testing.gif is still Syncing from Action 1 (throttled)  success
     //                                        (throttled via       rate_limit=100 ensures file stays Syncing during
     //                                         rate_limit=100)     Action 1 bell interaction and is still Syncing for Stop
-    //  3 Extract      DOWNLOADED_FILE        DOWNLOADED          patoolib rejects non-archive (RESEARCH Pitfall 3);      any variant
-    //                 (documentation.png)                         backend returns non-success toast. Weakened assertion
-    //                                                             (any-variant) documented inline; D-05 coverage noted
-    //                                                             as button-smoke only. No archive fixtures exist in the
-    //                                                             9-file harness (file(1) inspection — all image/video/dir).
+    //  3 Extract      DOWNLOADED_FILE        DOWNLOADED          No archive fixtures in harness (RESEARCH Pitfall 3).     (disabled)
+    //                 (documentation.png)                         Bulk bar disables Extract when extractable === 0
+    //                                                             (isExtractable && isArchive). Assert button disabled,
+    //                                                             deselect, and move on.
     //  4 Delete Local DOWNLOADED_FILE        DOWNLOADED          delete_local requires local_size not None               success
     //                 (documentation.png)                         (controller.py:1032-1047). DOWNLOADED guarantees
-    //                                                             local_size > 0 → 200 OK + success toast. Using a
-    //                                                             single fixture file for actions 3 + 4 is safe because
-    //                                                             Extract on a non-archive is a backend no-op (per
-    //                                                             extract.py:19-28 is_archive() guard) — local_size is
-    //                                                             NOT mutated by a rejected extract.
+    //                                                             local_size > 0 → 200 OK + success toast.
     //  5 Delete Remote 'áßç déÀ.mp4'         DEFAULT             delete_remote requires remote_size > 0; DEFAULT         success
     //                                                             harness file satisfies this
     //
@@ -212,7 +207,7 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
     //       DOWNLOADED is the only source state the seed pipeline guarantees local_size > 0
     //       without additional orchestration. STOPPED retains local_size in theory but is
     //       state-timing-dependent on the harness.
-    test('UAT-01: bulk bar visibility — all 5 actions dispatch, clear selection, and hide bar', async ({ page }) => {
+    test('UAT-01: bulk bar visibility — 4 actions dispatch + Extract disabled, clear selection, and hide bar', async ({ page }) => {
         // Helper: dispatch one action against a single-file selection, assert UI contract.
         // Bulk actions emit notifications (NotificationService / bell dropdown), not toasts.
         // `notifLevel` 'success' asserts a success notification; 'any' tolerates any level
@@ -307,12 +302,14 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
             await page.request.get('/server/config/set/lftp/rate_limit/0');
         }
 
-        // Action 3: Extract on DOWNLOADED 'documentation.png' (seeded via beforeAll).
-        // Per RESEARCH Pitfall 3, none of the 9 harness fixtures are archives — patoolib rejects
-        // non-archives and the backend emits a non-success notification. Weakened coverage is
-        // documented in the 'any'-level branch of dispatchAndAssert above; UI-assertion trio
-        // (selection cleared, bar hidden, notification visible) still runs.
-        await dispatchAndAssert('documentation.png', 'Extract', /.*/, 'any');
+        // Action 3: Extract — no harness fixtures are archives (RESEARCH Pitfall 3).
+        // The bulk bar disables Extract when extractable === 0 (isExtractable && isArchive).
+        // Verify the button is correctly disabled for non-archive files, then deselect.
+        await dashboardPage.selectFileByName('documentation.png');
+        await expect(dashboardPage.getActionBar()).toBeVisible();
+        await expect(dashboardPage.getActionButton('Extract')).toBeDisabled();
+        await dashboardPage.selectFileByName('documentation.png'); // deselect
+        await expect(dashboardPage.getActionBar()).not.toBeVisible();
 
         // Action 4: Delete Local on DOWNLOADED 'documentation.png'.
         // Per controller.py:1032-1047, delete_local requires local_size not None. DOWNLOADED
@@ -444,7 +441,7 @@ test.describe.serial('UAT-02: status filter and URL', () => {
         await dashboardPage.getSubButton('Failed').click();
 
         await expect(page).toHaveURL(/[?&]segment=errors(&|$)/);
-        await expect(page).toHaveURL(/[?&]sub=failed(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=stopped(&|$)/);
 
         await expect(dashboardPage.getStatusBadge(STOPPED_FILE)).toContainText('Failed');
         await expect(dashboardPage.getEmptyRow()).not.toBeVisible();
