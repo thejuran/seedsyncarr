@@ -214,35 +214,35 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
     //       state-timing-dependent on the harness.
     test('UAT-01: bulk bar visibility — all 5 actions dispatch, clear selection, and hide bar', async () => {
         // Helper: dispatch one action against a single-file selection, assert UI contract.
-        // `toastVariant` 'success' asserts success toast; 'any' tolerates any variant (for Extract
-        // on non-archive fixtures per RESEARCH Pitfall 3).
+        // Bulk actions emit notifications (NotificationService / bell dropdown), not toasts.
+        // `notifLevel` 'success' asserts a success notification; 'any' tolerates any level
+        // (for Extract on non-archive fixtures per RESEARCH Pitfall 3).
         async function dispatchAndAssert(
             fileName: string,
             action: 'Queue' | 'Stop' | 'Extract' | 'Delete Local' | 'Delete Remote',
-            toastKeyword: RegExp,
-            toastVariant: 'success' | 'any' = 'success',
+            notifKeyword: RegExp,
+            notifLevel: 'success' | 'any' = 'success',
         ): Promise<void> {
             await dashboardPage.selectFileByName(fileName);
             await expect(dashboardPage.getActionBar()).toBeVisible();
 
             await dashboardPage.getActionButton(action).click();
 
-            // Delete Local + Delete Remote open a confirm modal (Phase 72 D-17); Queue/Stop/Extract do not.
             if (action === 'Delete Local' || action === 'Delete Remote') {
                 await dashboardPage.clickConfirmModalConfirm();
             }
 
-            // (a) toast appears. Success variant when contract permits; any variant when backend
-            //     is expected to emit non-success (Extract on non-archive — RESEARCH Pitfall 3).
-            if (toastVariant === 'success') {
-                // Localization.Bulk.SUCCESS_* is count-dependent — use toContainText per RESEARCH Pattern 3.
-                await expect(dashboardPage.getToast('success').first()).toContainText(toastKeyword);
+            // (a) notification badge dot appears, confirming the backend responded.
+            await expect(dashboardPage.getNotificationBadgeDot()).toBeVisible();
+
+            // Open bell and verify notification text.
+            await dashboardPage.openNotificationBell();
+            if (notifLevel === 'success') {
+                await expect(dashboardPage.getNotification('success').first()).toContainText(notifKeyword);
             } else {
-                // D-05 coverage note: no archive fixtures exist (RESEARCH Pitfall 3); Extract dispatch
-                // accepts any toast variant to avoid false-fail. Backend call still dispatches;
-                // button-smoke coverage only.
-                await expect(dashboardPage.getToast().first()).toBeVisible();
+                await expect(dashboardPage.getNotification().first()).toBeVisible();
             }
+            await dashboardPage.closeNotificationBell();
 
             // (b) selection cleared — selection-label hidden (getSelectedCount returns 0 when bar not visible)
             await expect(dashboardPage.getActionBar()).not.toBeVisible();
@@ -253,11 +253,10 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
         await dispatchAndAssert('testing.gif', 'Queue', /Queued|Re-queued|queued/, 'success');
 
         // Action 2: Stop — deterministic path. Re-queue the target fresh, wait for "Syncing"
-        // badge via waitForFileStatus (D-03 polling helper), then dispatch stop. This preserves
-        // the success-toast assertion uniformly across all 5 actions per D-05.
+        // badge via waitForFileStatus (D-03 polling helper), then dispatch stop.
         await dashboardPage.selectFileByName('testing.gif');
         await dashboardPage.getActionButton('Queue').click();
-        await expect(dashboardPage.getToast('success').first()).toBeVisible();
+        await expect(dashboardPage.getNotificationBadgeDot()).toBeVisible();
         await expect(dashboardPage.getActionBar()).not.toBeVisible();
         // Wait for the re-queue to enter DOWNLOADING state (status-badge label "Syncing" per
         // transfer-row.component.ts BADGE_LABELS — see RESEARCH Pattern 2).
@@ -266,9 +265,9 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
 
         // Action 3: Extract on DOWNLOADED 'documentation.png' (seeded via beforeAll).
         // Per RESEARCH Pitfall 3, none of the 9 harness fixtures are archives — patoolib rejects
-        // non-archives and the backend emits a non-success toast. Weakened coverage is documented
-        // in the 'any'-variant branch of dispatchAndAssert above; UI-assertion trio (selection
-        // cleared, bar hidden, some toast visible) still runs.
+        // non-archives and the backend emits a non-success notification. Weakened coverage is
+        // documented in the 'any'-level branch of dispatchAndAssert above; UI-assertion trio
+        // (selection cleared, bar hidden, notification visible) still runs.
         await dispatchAndAssert('documentation.png', 'Extract', /.*/, 'any');
 
         // Action 4: Delete Local on DOWNLOADED 'documentation.png'.
@@ -315,9 +314,12 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
         expect(await dashboardPage.getSelectedCount()).toBe(2);
         await expect(dashboardPage.getActionButton('Queue')).toBeEnabled();
 
-        // Part C: dispatch Queue. Assert UI contract per D-05: success toast + selection cleared + bar hidden.
+        // Part C: dispatch Queue. Assert UI contract per D-05: success notification + selection cleared + bar hidden.
         await dashboardPage.getActionButton('Queue').click();
-        await expect(dashboardPage.getToast('success').first()).toContainText(/Queued|Re-queued|queued/);
+        await expect(dashboardPage.getNotificationBadgeDot()).toBeVisible();
+        await dashboardPage.openNotificationBell();
+        await expect(dashboardPage.getNotification('success').first()).toContainText(/Queued|Re-queued|queued/);
+        await dashboardPage.closeNotificationBell();
         await expect(dashboardPage.getActionBar()).not.toBeVisible();
         expect(await dashboardPage.getSelectedCount()).toBe(0);
         // Suppress unused-param warning on `page`; retained in signature to match other specs
@@ -354,9 +356,10 @@ test.describe.serial('UAT-02: status filter and URL', () => {
         await dashboardPage.getSegmentButton('Active').click();
         await dashboardPage.getSubButton('Pending').click();
 
-        // URL written per Phase 73 D-09: ?segment=active&sub=pending
+        // URL written per Phase 73 D-09: ?segment=active&sub=default
+        // The sub-filter key is the internal state name "default", not the UI label "Pending".
         await expect(page).toHaveURL(/[?&]segment=active(&|$)/);
-        await expect(page).toHaveURL(/[?&]sub=pending(&|$)/);
+        await expect(page).toHaveURL(/[?&]sub=default(&|$)/);
 
         // Populated: expect >= 1 row visible. DEFAULT bucket contains at least one row —
         // exact composition depends on UAT-01's destructive run order (UAT-01's "all 5

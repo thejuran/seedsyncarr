@@ -94,6 +94,32 @@ export class DashboardPage extends App {
             : this.page.locator('.toast.moss-toast');
     }
 
+    getNotificationBadgeDot(): Locator {
+        return this.page.locator('.bell-badge-dot');
+    }
+
+    getNotification(level?: 'success' | 'danger' | 'warning' | 'info'): Locator {
+        return level
+            ? this.page.locator(`.bell-notif[data-level="${level}"]`)
+            : this.page.locator('.bell-notif');
+    }
+
+    async openNotificationBell(): Promise<void> {
+        const dropdown = this.page.locator('.bell-dropdown');
+        if (!await dropdown.isVisible()) {
+            await this.page.locator('.bell-btn').click();
+            await dropdown.waitFor({ state: 'visible' });
+        }
+    }
+
+    async closeNotificationBell(): Promise<void> {
+        const dropdown = this.page.locator('.bell-dropdown');
+        if (await dropdown.isVisible()) {
+            await this.page.locator('.bell-btn').click();
+            await dropdown.waitFor({ state: 'hidden' });
+        }
+    }
+
     getClearSelectionLink(): Locator {
         return this.page.locator('app-bulk-actions-bar button.clear-btn');
     }
