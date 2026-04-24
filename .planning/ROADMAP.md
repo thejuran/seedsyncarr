@@ -259,7 +259,7 @@ See `.planning/milestones/v1.1.1-ROADMAP.md` for full details.
 
 **Milestone Goal:** Identify and remove stale, redundant, or dead-path tests inherited from the original SeedSync repo — lean the test suite to only test current behavior.
 
-- [ ] **Phase 83: Python Test Audit** - Identify and remove stale Python backend tests
+- [x] **Phase 83: Python Test Audit** - Identify and remove stale Python backend tests (completed 2026-04-24)
 - [ ] **Phase 84: Angular Test Audit** - Identify and remove stale Angular unit tests
 - [ ] **Phase 85: E2E Test Audit** - Identify and remove redundant Playwright specs
 - [ ] **Phase 86: Final Validation** - Full CI green and coverage baseline documented
@@ -275,9 +275,9 @@ See `.planning/milestones/v1.1.1-ROADMAP.md` for full details.
   2. `pytest` exits green with zero failures after removals
   3. Coverage remains at or above the 84% fail_under threshold
   4. The stale test inventory is documented (file paths, reason for removal) so removals are reviewable
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 83-01-PLAN.md — Verify zero staleness and record coverage baseline
+- [x] 83-01-PLAN.md — Verify zero staleness and record coverage baseline
 
 ### Phase 84: Angular Test Audit
 **Goal**: The Angular unit test suite contains only tests that exercise components and services present in the current SeedSyncarr UI
@@ -345,7 +345,7 @@ Plans:
 | 61. Branding Integration | v1.0.0 | 0/0 | Complete | 2026-04-13 |
 | 62-74. v1.1.0 UI Redesign — Triggarr Style | v1.1.0 | 30/30 | Complete | 2026-04-19 |
 | 75-82. Post-Redesign Cleanup | v1.1.1 | 22/22 | Complete | 2026-04-23 |
-| 83. Python Test Audit | v1.1.2 | 0/1 | Planned | - |
+| 83. Python Test Audit | v1.1.2 | 1/1 | Complete    | 2026-04-24 |
 | 84. Angular Test Audit | v1.1.2 | 0/TBD | Not started | - |
 | 85. E2E Test Audit | v1.1.2 | 0/TBD | Not started | - |
 | 86. Final Validation | v1.1.2 | 0/TBD | Not started | - |
