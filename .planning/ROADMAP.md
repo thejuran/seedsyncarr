@@ -287,9 +287,10 @@ Plans:
   1. Every removed Angular test maps to a deleted component, removed service, or superseded UI pattern
   2. `ng test --watch=false` exits green with zero failures after removals
   3. No currently-used component or service loses meaningful test coverage as a result of the audit
-**Plans:** 1 plan
+**Plans:** 2 plans
 Plans:
-- [ ] 83-01-PLAN.md — Verify zero staleness and record coverage baseline
+- [ ] 84-01-PLAN.md — Verify zero staleness, run test suite, capture coverage baseline
+- [ ] 84-02-PLAN.md — Migrate HttpClientTestingModule, clean CI noise, post-migration coverage
 
 ### Phase 85: E2E Test Audit
 **Goal**: The Playwright E2E suite contains only specs that verify distinct, current user-facing behaviors with no redundant coverage
@@ -346,7 +347,7 @@ Plans:
 | 62-74. v1.1.0 UI Redesign — Triggarr Style | v1.1.0 | 30/30 | Complete | 2026-04-19 |
 | 75-82. Post-Redesign Cleanup | v1.1.1 | 22/22 | Complete | 2026-04-23 |
 | 83. Python Test Audit | v1.1.2 | 1/1 | Complete    | 2026-04-24 |
-| 84. Angular Test Audit | v1.1.2 | 0/TBD | Not started | - |
+| 84. Angular Test Audit | v1.1.2 | 0/2 | Planned | - |
 | 85. E2E Test Audit | v1.1.2 | 0/TBD | Not started | - |
 | 86. Final Validation | v1.1.2 | 0/TBD | Not started | - |
 
