@@ -296,25 +296,27 @@ Plans:
 **Goal**: The Playwright E2E suite contains only specs that verify distinct, current user-facing behaviors with no redundant coverage
 **Depends on**: Phase 84
 **Requirements**: E2E-01, E2E-02, E2E-03
+**Gap Closure:** Closes E2E-01, E2E-02, E2E-03 from audit; wires Phase 84 → 85 integration
 **Success Criteria** (what must be TRUE):
   1. Every removed spec either duplicates a remaining spec or targets a UI pattern that no longer exists
   2. All remaining specs pass in the CI E2E harness on both amd64 and arm64
   3. The CSP canary spec and all v1.1.1 selection/filter/URL-roundtrip specs remain in place
-**Plans:** 1 plan
+**Plans:** 0/TBD
 Plans:
-- [ ] 83-01-PLAN.md — Verify zero staleness and record coverage baseline
+- [ ] 85-01-PLAN.md — TBD (run `/gsd-plan-phase 85`)
 
 ### Phase 86: Final Validation
 **Goal**: All three test layers are green end-to-end in CI and the post-audit coverage baseline is recorded
 **Depends on**: Phase 85
 **Requirements**: VAL-01, VAL-02
+**Gap Closure:** Closes VAL-01, VAL-02 from audit; wires Phase 85 → 86 and Phase 83 → 86 (coverage baseline) integration
 **Success Criteria** (what must be TRUE):
   1. CI pipeline completes green across all jobs: Python tests, Angular tests, E2E (amd64 + arm64), lint (ruff + eslint)
   2. Python coverage percentage before and after the audit is documented in the milestone notes
   3. Coverage does not drop below 84% (fail_under enforced in CI)
-**Plans:** 1 plan
+**Plans:** 0/TBD
 Plans:
-- [ ] 83-01-PLAN.md — Verify zero staleness and record coverage baseline
+- [ ] 86-01-PLAN.md — TBD (run `/gsd-plan-phase 86`)
 
 ## Progress
 

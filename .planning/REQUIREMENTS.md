@@ -9,15 +9,15 @@ Requirements for v1.1.2 Test Suite Audit. Each maps to roadmap phases.
 
 ### Python Test Audit
 
-- [ ] **PY-01**: Identify Python test files/cases testing removed or rewritten SeedSync code paths
-- [ ] **PY-02**: Remove identified stale Python tests without dropping coverage below fail_under (84%)
-- [ ] **PY-03**: Verify all remaining Python tests pass and coverage threshold holds
+- [x] **PY-01**: Identify Python test files/cases testing removed or rewritten SeedSync code paths
+- [x] **PY-02**: Remove identified stale Python tests without dropping coverage below fail_under (84%)
+- [x] **PY-03**: Verify all remaining Python tests pass and coverage threshold holds
 
 ### Angular Test Audit
 
-- [ ] **NG-01**: Identify Angular test files/cases testing deleted components or superseded UI patterns
-- [ ] **NG-02**: Remove identified stale Angular tests without breaking the test suite
-- [ ] **NG-03**: Verify all remaining Angular tests pass
+- [x] **NG-01**: Identify Angular test files/cases testing deleted components or superseded UI patterns
+- [x] **NG-02**: Remove identified stale Angular tests without breaking the test suite
+- [x] **NG-03**: Verify all remaining Angular tests pass
 
 ### E2E Test Audit
 
@@ -47,12 +47,12 @@ None — this is a one-shot cleanup milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PY-01 | Phase 83 | Pending |
-| PY-02 | Phase 83 | Pending |
-| PY-03 | Phase 83 | Pending |
-| NG-01 | Phase 84 | Pending |
-| NG-02 | Phase 84 | Pending |
-| NG-03 | Phase 84 | Pending |
+| PY-01 | Phase 83 | Satisfied |
+| PY-02 | Phase 83 | Satisfied |
+| PY-03 | Phase 83 | Satisfied |
+| NG-01 | Phase 84 | Satisfied |
+| NG-02 | Phase 84 | Satisfied |
+| NG-03 | Phase 84 | Satisfied |
 | E2E-01 | Phase 85 | Pending |
 | E2E-02 | Phase 85 | Pending |
 | E2E-03 | Phase 85 | Pending |
@@ -61,8 +61,10 @@ None — this is a one-shot cleanup milestone.
 
 **Coverage:**
 - v1 requirements: 11 total
+- Satisfied: 6 (PY-01–PY-03, NG-01–NG-03)
+- Pending: 5 (E2E-01–E2E-03, VAL-01, VAL-02)
 - Mapped to phases: 11
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-24*
