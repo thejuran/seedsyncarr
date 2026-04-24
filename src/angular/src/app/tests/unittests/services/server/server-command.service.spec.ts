@@ -1,5 +1,6 @@
 import {TestBed} from "@angular/core/testing";
-import {HttpClientTestingModule, HttpTestingController} from "@angular/common/http/testing";
+import {provideHttpClient} from "@angular/common/http";
+import {HttpTestingController, provideHttpClientTesting} from "@angular/common/http/testing";
 
 import {LoggerService} from "../../../../services/utils/logger.service";
 import {ServerCommandService} from "../../../../services/server/server-command.service";
@@ -16,10 +17,9 @@ describe("Testing server command service", () => {
 
     beforeEach(() => {
         TestBed.configureTestingModule({
-            imports: [
-                HttpClientTestingModule
-            ],
             providers: [
+                provideHttpClient(),
+                provideHttpClientTesting(),
                 ServerCommandService,
                 LoggerService,
                 RestService,
