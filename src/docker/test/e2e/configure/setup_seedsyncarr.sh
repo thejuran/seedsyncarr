@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 # Force rebuild: 2026-01-21-v2
 ./wait-for-it.sh myapp:8800 -t 60 -- echo "Seedsync app is up (before configuring)"
 curl -sS "http://myapp:8800/server/config/set/general/debug/true"; echo
