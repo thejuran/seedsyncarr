@@ -1,5 +1,6 @@
 import {fakeAsync, TestBed, tick} from "@angular/core/testing";
-import {HttpClientTestingModule, HttpTestingController} from "@angular/common/http/testing";
+import {provideHttpClient} from "@angular/common/http";
+import {HttpTestingController, provideHttpClientTesting} from "@angular/common/http/testing";
 
 import * as Immutable from "immutable";
 
@@ -24,10 +25,9 @@ describe("Testing autoqueue service", () => {
 
     beforeEach(fakeAsync(() => {
         TestBed.configureTestingModule({
-            imports: [
-                HttpClientTestingModule
-            ],
             providers: [
+                provideHttpClient(),
+                provideHttpClientTesting(),
                 AutoQueueService,
                 LoggerService,
                 RestService,

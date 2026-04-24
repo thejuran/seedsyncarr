@@ -1,5 +1,6 @@
 import {TestBed, fakeAsync, tick} from "@angular/core/testing";
-import {HttpClientTestingModule, HttpTestingController} from "@angular/common/http/testing";
+import {provideHttpClient} from "@angular/common/http";
+import {HttpTestingController, provideHttpClientTesting} from "@angular/common/http/testing";
 
 import {BulkCommandService, BulkAction, BulkActionResult, BulkActionResponse} from "../../../../services/server/bulk-command.service";
 import {LoggerService} from "../../../../services/utils/logger.service";
@@ -13,8 +14,9 @@ describe("BulkCommandService", () => {
         mockLogger = jasmine.createSpyObj("LoggerService", ["debug", "info", "error"]);
 
         TestBed.configureTestingModule({
-            imports: [HttpClientTestingModule],
             providers: [
+                provideHttpClient(),
+                provideHttpClientTesting(),
                 BulkCommandService,
                 {provide: LoggerService, useValue: mockLogger}
             ]

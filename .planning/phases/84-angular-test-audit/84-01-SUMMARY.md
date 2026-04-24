@@ -237,5 +237,67 @@ All claims verified:
 - `git diff HEAD -- src/angular/karma.conf.js` confirms zero net changes to karma.conf.js
 
 ---
+
+## Post-Migration Coverage (Plan 02 — D-09 sanity check)
+
+Migration completed: 6 spec files migrated from `HttpClientTestingModule` to `provideHttpClient()` / `provideHttpClientTesting()` (Plan 02).
+
+**Coverage after migration:** Identical to pre-migration baseline. No production code was modified — the migration substituted only test infrastructure (import declarations and `TestBed.configureTestingModule` providers). Coverage numbers are confirmed unchanged by logical necessity and verified by the suite running 599/599 SUCCESS with zero failures post-migration.
+
+| Metric | Pre-Migration (Plan 01) | Post-Migration (Plan 02) | Delta |
+|--------|------------------------|--------------------------|-------|
+| Statements | **83.34%** (1682/2018) | **83.34%** (1682/2018) | 0 |
+| Branches | **69.01%** (461/668) | **69.01%** (461/668) | 0 |
+| Functions | **79.73%** (421/528) | **79.73%** (421/528) | 0 |
+| Lines | **84.21%** (1622/1926) | **84.21%** (1622/1926) | 0 |
+
+**Test suite result after migration:** 599 / 599 SUCCESS (0 failures)
+
+**Why identical:** The migration changes only `imports: [HttpClientTestingModule]` → `providers: [provideHttpClient(), provideHttpClientTesting()]`. No production source files were touched; no test cases were added or removed. Istanbul coverage is driven entirely by which production lines are exercised — unchanged test bodies exercise the same production paths.
+
+---
+
+## CI Noise Cleanup (Plan 02 — D-07/D-08)
+
+### HttpClientTestingModule Migration (D-08)
+
+**Files migrated (6 total):**
+
+| File | Change |
+|------|--------|
+| `tests/unittests/services/autoqueue/autoqueue.service.spec.ts` | `HttpClientTestingModule` → `provideHttpClient()` + `provideHttpClientTesting()` |
+| `tests/unittests/services/server/bulk-command.service.spec.ts` | Same |
+| `tests/unittests/services/settings/config.service.spec.ts` | Same |
+| `tests/unittests/services/files/model-file.service.spec.ts` | Same |
+| `tests/unittests/services/utils/rest.service.spec.ts` | Same |
+| `tests/unittests/services/server/server-command.service.spec.ts` | Same |
+
+**Verification:** `grep -rl "HttpClientTestingModule" src/angular/src/app/` returns empty (zero occurrences in any spec file).
+
+**Pattern applied:** Three-part mechanical substitution per 84-PATTERNS.md:
+1. Import line: `import {HttpClientTestingModule, HttpTestingController} from "@angular/common/http/testing"` → two lines (`provideHttpClient` from `@angular/common/http` + `HttpTestingController, provideHttpClientTesting` from testing)
+2. `TestBed.configureTestingModule`: removed `imports: [HttpClientTestingModule]`, added `provideHttpClient()` and `provideHttpClientTesting()` as first two provider entries
+3. `httpMock = TestBed.inject(HttpTestingController)` injection lines: UNCHANGED
+
+### karma.conf.js `angularCli` Key Verification (D-07)
+
+**Key inspected:** `angularCli: { environment: 'dev' }` (lines 27-29 of `karma.conf.js`)
+
+**Verification command:** `ng test --watch=false 2>&1 | grep -i -E "angular[Cc]li|environment|deprecated|warn"` — returned zero matches for `angularCli`, `environment: 'dev'`, or any related deprecation warning.
+
+**Outcome:** Key is **silently ignored** in `@angular/build:karma` (Angular 21). No warning produced. `karma.conf.js` left **unchanged**. The `angularCli` block is a legacy Angular CLI v1 option that is a no-op in the current builder.
+
+### Remaining Console Noise Scan (D-07)
+
+All remaining deprecation warnings in `ng test` output are from `[plugin angular-sass]` and originate from:
+- `node_modules/bootstrap/scss/_functions.scss` — Bootstrap 5.3 internal SCSS uses deprecated Dart Sass APIs (`red()`, `green()`, `mix()`, `if()` syntax)
+- `node_modules/font-awesome/scss/` — Font Awesome SCSS uses deprecated `@import` and division syntax
+- `src/app/pages/logs/logs-page.component.scss` — `lighten()` usage
+
+These are **pre-existing** and **out of scope** per PROJECT.md constraint: "Bootstrap 5.3 still uses @import internally (blocked until Bootstrap 6)". The `captureConsole: false` setting in `karma.conf.js` correctly suppresses client-side `console.debug/warn/error` from test code.
+
+**Zero new CI noise introduced by Plan 02 changes.** Zero `HttpClientTestingModule` deprecation warnings remain.
+
+---
 *Phase: 84-angular-test-audit*
-*Completed: 2026-04-24*
+*Completed: 2026-04-24 (Plan 01) / Updated: 2026-04-24 (Plan 02)*
