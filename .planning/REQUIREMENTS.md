@@ -47,23 +47,23 @@ None — this is a one-shot cleanup milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PY-01 | — | Pending |
-| PY-02 | — | Pending |
-| PY-03 | — | Pending |
-| NG-01 | — | Pending |
-| NG-02 | — | Pending |
-| NG-03 | — | Pending |
-| E2E-01 | — | Pending |
-| E2E-02 | — | Pending |
-| E2E-03 | — | Pending |
-| VAL-01 | — | Pending |
-| VAL-02 | — | Pending |
+| PY-01 | Phase 83 | Pending |
+| PY-02 | Phase 83 | Pending |
+| PY-03 | Phase 83 | Pending |
+| NG-01 | Phase 84 | Pending |
+| NG-02 | Phase 84 | Pending |
+| NG-03 | Phase 84 | Pending |
+| E2E-01 | Phase 85 | Pending |
+| E2E-02 | Phase 85 | Pending |
+| E2E-03 | Phase 85 | Pending |
+| VAL-01 | Phase 86 | Pending |
+| VAL-02 | Phase 86 | Pending |
 
 **Coverage:**
 - v1 requirements: 11 total
-- Mapped to phases: 0
-- Unmapped: 11 ⚠️
+- Mapped to phases: 11
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-24*
-*Last updated: 2026-04-24 after initial definition*
+*Last updated: 2026-04-24 — traceability mapped to phases 83-86*

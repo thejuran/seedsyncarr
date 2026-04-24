@@ -29,6 +29,7 @@
 - v1.0.0 SeedSyncarr Rebrand - Phases 53-61 (shipped 2026-04-13)
 - v1.1.0 UI Redesign — Triggarr Style - Phases 62-74 (shipped 2026-04-19; Phase 71 dropped)
 - v1.1.1 Post-Redesign Cleanup & Outstanding Work - Phases 75-82 (shipped 2026-04-23)
+- v1.1.2 Test Suite Audit - Phases 83-86 (in progress)
 
 ## Phases
 
@@ -254,6 +255,58 @@ See `.planning/milestones/v1.1.1-ROADMAP.md` for full details.
 
 </details>
 
+### v1.1.2 Test Suite Audit (Phases 83-86) - IN PROGRESS
+
+**Milestone Goal:** Identify and remove stale, redundant, or dead-path tests inherited from the original SeedSync repo — lean the test suite to only test current behavior.
+
+- [ ] **Phase 83: Python Test Audit** - Identify and remove stale Python backend tests
+- [ ] **Phase 84: Angular Test Audit** - Identify and remove stale Angular unit tests
+- [ ] **Phase 85: E2E Test Audit** - Identify and remove redundant Playwright specs
+- [ ] **Phase 86: Final Validation** - Full CI green and coverage baseline documented
+
+## Phase Details
+
+### Phase 83: Python Test Audit
+**Goal**: The Python test suite contains only tests that exercise current SeedSyncarr behavior
+**Depends on**: Phase 82 (previous milestone complete)
+**Requirements**: PY-01, PY-02, PY-03
+**Success Criteria** (what must be TRUE):
+  1. Every removed Python test is traceable to a removed or rewritten code path (no live code is left untested as a result)
+  2. `pytest` exits green with zero failures after removals
+  3. Coverage remains at or above the 84% fail_under threshold
+  4. The stale test inventory is documented (file paths, reason for removal) so removals are reviewable
+**Plans**: TBD
+
+### Phase 84: Angular Test Audit
+**Goal**: The Angular unit test suite contains only tests that exercise components and services present in the current SeedSyncarr UI
+**Depends on**: Phase 83
+**Requirements**: NG-01, NG-02, NG-03
+**Success Criteria** (what must be TRUE):
+  1. Every removed Angular test maps to a deleted component, removed service, or superseded UI pattern
+  2. `ng test --watch=false` exits green with zero failures after removals
+  3. No currently-used component or service loses meaningful test coverage as a result of the audit
+**Plans**: TBD
+
+### Phase 85: E2E Test Audit
+**Goal**: The Playwright E2E suite contains only specs that verify distinct, current user-facing behaviors with no redundant coverage
+**Depends on**: Phase 84
+**Requirements**: E2E-01, E2E-02, E2E-03
+**Success Criteria** (what must be TRUE):
+  1. Every removed spec either duplicates a remaining spec or targets a UI pattern that no longer exists
+  2. All remaining specs pass in the CI E2E harness on both amd64 and arm64
+  3. The CSP canary spec and all v1.1.1 selection/filter/URL-roundtrip specs remain in place
+**Plans**: TBD
+
+### Phase 86: Final Validation
+**Goal**: All three test layers are green end-to-end in CI and the post-audit coverage baseline is recorded
+**Depends on**: Phase 85
+**Requirements**: VAL-01, VAL-02
+**Success Criteria** (what must be TRUE):
+  1. CI pipeline completes green across all jobs: Python tests, Angular tests, E2E (amd64 + arm64), lint (ruff + eslint)
+  2. Python coverage percentage before and after the audit is documented in the milestone notes
+  3. Coverage does not drop below 84% (fail_under enforced in CI)
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -284,7 +337,11 @@ See `.planning/milestones/v1.1.1-ROADMAP.md` for full details.
 | 61. Branding Integration | v1.0.0 | 0/0 | Complete | 2026-04-13 |
 | 62-74. v1.1.0 UI Redesign — Triggarr Style | v1.1.0 | 30/30 | Complete | 2026-04-19 |
 | 75-82. Post-Redesign Cleanup | v1.1.1 | 22/22 | Complete | 2026-04-23 |
+| 83. Python Test Audit | v1.1.2 | 0/TBD | Not started | - |
+| 84. Angular Test Audit | v1.1.2 | 0/TBD | Not started | - |
+| 85. E2E Test Audit | v1.1.2 | 0/TBD | Not started | - |
+| 86. Final Validation | v1.1.2 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-04-23 — v1.1.1 milestone archived.*
+*Last updated: 2026-04-24 — v1.1.2 roadmap created.*
