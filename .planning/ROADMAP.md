@@ -301,9 +301,9 @@ Plans:
   1. Every removed spec either duplicates a remaining spec or targets a UI pattern that no longer exists
   2. All remaining specs pass in the CI E2E harness on both amd64 and arm64
   3. The CSP canary spec and all v1.1.1 selection/filter/URL-roundtrip specs remain in place
-**Plans:** 0/TBD
+**Plans:** 1 plan
 Plans:
-- [ ] 85-01-PLAN.md — TBD (run `/gsd-plan-phase 85`)
+- [ ] 85-01-PLAN.md — Verify zero staleness, document removal inventory and caveats
 
 ### Phase 86: Final Validation
 **Goal**: All three test layers are green end-to-end in CI and the post-audit coverage baseline is recorded
@@ -350,7 +350,7 @@ Plans:
 | 75-82. Post-Redesign Cleanup | v1.1.1 | 22/22 | Complete | 2026-04-23 |
 | 83. Python Test Audit | v1.1.2 | 1/1 | Complete    | 2026-04-24 |
 | 84. Angular Test Audit | v1.1.2 | 2/2 | Complete    | 2026-04-24 |
-| 85. E2E Test Audit | v1.1.2 | 0/TBD | Not started | - |
+| 85. E2E Test Audit | v1.1.2 | 0/1 | In progress | - |
 | 86. Final Validation | v1.1.2 | 0/TBD | Not started | - |
 
 ---
