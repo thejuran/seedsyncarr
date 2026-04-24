@@ -47,6 +47,10 @@ describe("Testing config service", () => {
         configService.onInit();
     });
 
+    afterEach(() => {
+        httpMock.verify();
+    });
+
     it("should create an instance", () => {
         expect(configService).toBeDefined();
     });
@@ -110,8 +114,6 @@ describe("Testing config service", () => {
                 expect(config!.autoqueue.patterns_only).toBe(false);
             }
         });
-
-        httpMock.verify();
     });
 
     it("should get null on get error 404", () => {
@@ -125,8 +127,6 @@ describe("Testing config service", () => {
                 expect(config).toBe(null);
             }
         });
-
-        httpMock.verify();
     });
 
     it("should get null on get network error", () => {
@@ -137,8 +137,6 @@ describe("Testing config service", () => {
                 expect(config).toBe(null);
             }
         });
-
-        httpMock.verify();
     });
 
     it("should get null on disconnect", fakeAsync(() => {
@@ -160,7 +158,6 @@ describe("Testing config service", () => {
         mockRegistry.disconnect();
         tick();
 
-        httpMock.verify();
         expect(configSubscriberIndex).toBe(2);
     }));
 
@@ -177,8 +174,6 @@ describe("Testing config service", () => {
         mockRegistry.connect();
         tick();
         httpMock.expectOne("/server/config/get").flush("{}");
-
-        httpMock.verify();
     }));
 
     it("should send a GET on a set config option", () => {
@@ -197,7 +192,6 @@ describe("Testing config service", () => {
         httpMock.expectOne("/server/config/set/general/debug/true").flush("{}");
 
         expect(configSubscriberIndex).toBe(1);
-        httpMock.verify();
     });
 
     it("should send correct GET requests on setting config options", () => {
@@ -231,8 +225,6 @@ describe("Testing config service", () => {
         httpMock.expectOne("/server/config/set/general/debug/test%2522doublequote").flush("{}");
         configService.set("general", "debug", "/test/leadingslash").subscribe(DoNothing);
         httpMock.expectOne("/server/config/set/general/debug/%252Ftest%252Fleadingslash").flush("{}");
-
-        httpMock.verify();
     });
 
     it("should return error on setting non-existing section", () => {
@@ -249,7 +241,6 @@ describe("Testing config service", () => {
         });
 
         expect(configSubscriberIndex).toBe(1);
-        httpMock.verify();
     });
 
     it("should return error on setting non-existing option", () => {
@@ -266,7 +257,6 @@ describe("Testing config service", () => {
         });
 
         expect(configSubscriberIndex).toBe(1);
-        httpMock.verify();
     });
 
     it("should return error on empty value", () => {
@@ -283,7 +273,6 @@ describe("Testing config service", () => {
         });
 
         expect(configSubscriberIndex).toBe(1);
-        httpMock.verify();
     });
 
     it("should send updated config on a successful set", () => {
@@ -309,7 +298,6 @@ describe("Testing config service", () => {
         httpMock.expectOne("/server/config/set/general/debug/true").flush("");
 
         expect(configSubscriberIndex).toBe(2);
-        httpMock.verify();
     });
 
     it("should NOT send updated config on a failed set", () => {
@@ -337,6 +325,5 @@ describe("Testing config service", () => {
         );
 
         expect(configSubscriberIndex).toBe(1);
-        httpMock.verify();
     });
 });
