@@ -39,6 +39,10 @@ describe("Testing server command service", () => {
         commandService.onInit();
     });
 
+    afterEach(() => {
+        httpMock.verify();
+    });
+
     it("should create an instance", () => {
         expect(commandService).toBeDefined();
     });
@@ -59,6 +63,5 @@ describe("Testing server command service", () => {
         req.flush("{}");
 
         expect(count).toBe(1);
-        httpMock.verify();
     });
 });
