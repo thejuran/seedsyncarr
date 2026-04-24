@@ -314,9 +314,9 @@ Plans:
   1. CI pipeline completes green across all jobs: Python tests, Angular tests, E2E (amd64 + arm64), lint (ruff + eslint)
   2. Python coverage percentage before and after the audit is documented in the milestone notes
   3. Coverage does not drop below 84% (fail_under enforced in CI)
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 86-01-PLAN.md — Fix autoqueue harness, create arm64 todo, push to trigger CI
+- [x] 86-01-PLAN.md — Fix autoqueue harness, create arm64 todo, push to trigger CI
 - [ ] 86-02-PLAN.md — Verify CI green, document coverage baselines, complete milestone
 
 ## Progress
@@ -352,7 +352,7 @@ Plans:
 | 83. Python Test Audit | v1.1.2 | 1/1 | Complete    | 2026-04-24 |
 | 84. Angular Test Audit | v1.1.2 | 2/2 | Complete    | 2026-04-24 |
 | 85. E2E Test Audit | v1.1.2 | 1/1 | Complete    | 2026-04-24 |
-| 86. Final Validation | v1.1.2 | 0/2 | Planned | - |
+| 86. Final Validation | v1.1.2 | 1/2 | In Progress|  |
 
 ---
 
