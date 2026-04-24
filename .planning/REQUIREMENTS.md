@@ -27,8 +27,8 @@ Requirements for v1.1.2 Test Suite Audit. Each maps to roadmap phases.
 
 ### Validation
 
-- [ ] **VAL-01**: Full CI green after all removals (Python + Angular + E2E + lint)
-- [ ] **VAL-02**: Python coverage % documented before and after (must not drop below 84%)
+- [x] **VAL-01**: Full CI green after all removals (Python + Angular + E2E + lint)
+- [x] **VAL-02**: Python coverage % documented before and after (must not drop below 84%)
 
 ## v2 Requirements
 
@@ -56,8 +56,8 @@ None — this is a one-shot cleanup milestone.
 | E2E-01 | Phase 85 | Pending |
 | E2E-02 | Phase 85 | Pending |
 | E2E-03 | Phase 85 | Pending |
-| VAL-01 | Phase 86 | Pending |
-| VAL-02 | Phase 86 | Pending |
+| VAL-01 | Phase 86 | Complete |
+| VAL-02 | Phase 86 | Complete |
 
 **Coverage:**
 - v1 requirements: 11 total
