@@ -47,6 +47,10 @@ describe("Testing autoqueue service", () => {
         aqService.onInit();
     }));
 
+    afterEach(() => {
+        httpMock.verify();
+    });
+
     it("should create an instance", () => {
         expect(aqService).toBeDefined();
     });
@@ -82,7 +86,6 @@ describe("Testing autoqueue service", () => {
 
         tick();
         expect(actualCount).toBe(1);
-        httpMock.verify();
     }));
 
     it("should get empty list on get error 404", fakeAsync(() => {
@@ -102,7 +105,6 @@ describe("Testing autoqueue service", () => {
 
         tick();
         expect(actualCount).toBe(1);
-        httpMock.verify();
     }));
 
     it("should get empty list on get network error", fakeAsync(() => {
@@ -119,7 +121,6 @@ describe("Testing autoqueue service", () => {
 
         tick();
         expect(actualCount).toBe(1);
-        httpMock.verify();
     }));
 
     it("should get empty list on disconnect", fakeAsync(() => {
@@ -147,7 +148,6 @@ describe("Testing autoqueue service", () => {
         tick();
 
         expect(actualCount).toBe(2);
-        httpMock.verify();
     }));
 
     it("should retry GET on disconnect", fakeAsync(() => {
@@ -166,7 +166,6 @@ describe("Testing autoqueue service", () => {
 
         httpMock.expectOne("/server/autoqueue/get").flush("[]");
         tick();
-        httpMock.verify();
     }));
 
     it("should send a GET on add pattern", fakeAsync(() => {
@@ -184,7 +183,6 @@ describe("Testing autoqueue service", () => {
         tick();
 
         expect(actualCount).toBe(1);
-        httpMock.verify();
     }));
 
     it("should send correct GET requests on add pattern", fakeAsync(() => {
@@ -200,8 +198,6 @@ describe("Testing autoqueue service", () => {
         httpMock.expectOne("/server/autoqueue/add/test%2522doublequote").flush("{}");
         aqService.add("/test/leadingslash").subscribe(DoNothing);
         httpMock.expectOne("/server/autoqueue/add/%252Ftest%252Fleadingslash").flush("{}");
-
-        httpMock.verify();
     }));
 
     it("should return error on adding existing pattern", fakeAsync(() => {
@@ -222,7 +218,6 @@ describe("Testing autoqueue service", () => {
         tick();
 
         expect(actualCount).toBe(1);
-        httpMock.verify();
     }));
 
     it("should return error on adding empty pattern", fakeAsync(() => {
@@ -255,7 +250,6 @@ describe("Testing autoqueue service", () => {
         tick();
 
         expect(actualCount).toBe(3);
-        httpMock.verify();
     }));
 
     it("should send updated patterns after an add pattern", fakeAsync(() => {
@@ -280,7 +274,6 @@ describe("Testing autoqueue service", () => {
         tick();
 
         expect(actualCount).toBe(2);
-        httpMock.verify();
     }));
 
     it("should NOT send updated patterns after a failed add", fakeAsync(() => {
@@ -305,7 +298,6 @@ describe("Testing autoqueue service", () => {
         tick();
 
         expect(actualCount).toBe(1);
-        httpMock.verify();
     }));
 
     it("should send a GET on remove pattern", fakeAsync(() => {
@@ -325,7 +317,6 @@ describe("Testing autoqueue service", () => {
         tick();
 
         expect(actualCount).toBe(1);
-        httpMock.verify();
     }));
 
     it("should send correct GET requests on remove pattern", fakeAsync(() => {
@@ -347,8 +338,6 @@ describe("Testing autoqueue service", () => {
         httpMock.expectOne("/server/autoqueue/remove/test%2522doublequote").flush("{}");
         aqService.remove("/test/leadingslash").subscribe(DoNothing);
         httpMock.expectOne("/server/autoqueue/remove/%252Ftest%252Fleadingslash").flush("{}");
-
-        httpMock.verify();
     }));
 
     it("should return error on removing non-existing pattern", fakeAsync(() => {
@@ -368,7 +357,6 @@ describe("Testing autoqueue service", () => {
         tick();
 
         expect(actualCount).toBe(1);
-        httpMock.verify();
     }));
 
     it("should return error on removing empty pattern", fakeAsync(() => {
@@ -402,7 +390,6 @@ describe("Testing autoqueue service", () => {
         tick();
 
         expect(actualCount).toBe(3);
-        httpMock.verify();
     }));
 
     it("should send updated patterns after a remove pattern", fakeAsync(() => {
@@ -435,7 +422,6 @@ describe("Testing autoqueue service", () => {
         tick();
 
         expect(actualCount).toBe(2);
-        httpMock.verify();
     }));
 
     it("should NOT send updated patterns after a failed remove", fakeAsync(() => {
@@ -460,6 +446,5 @@ describe("Testing autoqueue service", () => {
         tick();
 
         expect(actualCount).toBe(1);
-        httpMock.verify();
     }));
 });
