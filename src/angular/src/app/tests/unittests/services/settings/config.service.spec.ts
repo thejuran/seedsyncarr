@@ -53,6 +53,7 @@ describe("Testing config service", () => {
 
     it("should create an instance", () => {
         expect(configService).toBeDefined();
+        httpMock.expectOne("/server/config/get").flush({});
     });
 
     it("should parse config json correctly", () => {

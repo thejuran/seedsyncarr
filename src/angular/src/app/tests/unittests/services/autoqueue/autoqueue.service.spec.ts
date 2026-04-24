@@ -53,6 +53,7 @@ describe("Testing autoqueue service", () => {
 
     it("should create an instance", () => {
         expect(aqService).toBeDefined();
+        httpMock.expectOne("/server/autoqueue/get").flush([]);
     });
 
     it("should parse patterns json correctly", fakeAsync(() => {
