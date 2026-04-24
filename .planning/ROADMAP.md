@@ -261,7 +261,7 @@ See `.planning/milestones/v1.1.1-ROADMAP.md` for full details.
 
 - [x] **Phase 83: Python Test Audit** - Identify and remove stale Python backend tests (completed 2026-04-24)
 - [x] **Phase 84: Angular Test Audit** - Identify and remove stale Angular unit tests (completed 2026-04-24)
-- [ ] **Phase 85: E2E Test Audit** - Identify and remove redundant Playwright specs
+- [x] **Phase 85: E2E Test Audit** - Identify and remove redundant Playwright specs (completed 2026-04-24)
 - [ ] **Phase 86: Final Validation** - Full CI green and coverage baseline documented
 
 ## Phase Details
@@ -301,9 +301,9 @@ Plans:
   1. Every removed spec either duplicates a remaining spec or targets a UI pattern that no longer exists
   2. All remaining specs pass in the CI E2E harness on both amd64 and arm64
   3. The CSP canary spec and all v1.1.1 selection/filter/URL-roundtrip specs remain in place
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 85-01-PLAN.md — Verify zero staleness, document removal inventory and caveats
+- [x] 85-01-PLAN.md — Verify zero staleness, document removal inventory and caveats
 
 ### Phase 86: Final Validation
 **Goal**: All three test layers are green end-to-end in CI and the post-audit coverage baseline is recorded
@@ -350,7 +350,7 @@ Plans:
 | 75-82. Post-Redesign Cleanup | v1.1.1 | 22/22 | Complete | 2026-04-23 |
 | 83. Python Test Audit | v1.1.2 | 1/1 | Complete    | 2026-04-24 |
 | 84. Angular Test Audit | v1.1.2 | 2/2 | Complete    | 2026-04-24 |
-| 85. E2E Test Audit | v1.1.2 | 0/1 | In progress | - |
+| 85. E2E Test Audit | v1.1.2 | 1/1 | Complete   | 2026-04-24 |
 | 86. Final Validation | v1.1.2 | 0/TBD | Not started | - |
 
 ---
