@@ -10,6 +10,8 @@ Reliable file sync from seedbox to local with automated media library integratio
 
 ## Previous State
 
+**v1.1.2 in progress (2026-04-24)** — Test Suite Audit. Phase 84 (Angular Test Audit) complete: zero stale tests across 40 spec files, 6 spec files migrated from deprecated HttpClientTestingModule to provideHttpClient API, 599/599 tests green, coverage baseline 83.34%/69.01%/79.73%/84.21%.
+
 **v1.1.1 (2026-04-23)** — Post-Redesign Cleanup & Outstanding Work. Per-child import state tracking (GH #19 data-loss fix), multiselect bulk-bar union fix, 15 new Playwright E2E specs (37 total), live-seedbox UAT, CI noise elimination + CSP enforcement, Dependabot alert closed, arm64 Docker test support, WAITING_FOR_IMPORT dead enum removed, optional Fernet encryption at rest for 5 config secrets, retroactive v1.1.0 release notes + v1.1.1 release.
 
 <details>
