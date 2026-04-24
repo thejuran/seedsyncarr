@@ -1,9 +1,0 @@
-{
-  "/server": {
-    "target": "http://localhost:8800",
-    "secure": false,
-    "changeOrigin": false,
-    "ws": true,
-    "logLevel": "info"
-  }
-}

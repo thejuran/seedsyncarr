@@ -265,7 +265,16 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-(No active requirements — next milestone not yet planned.)
+**Current Milestone: v1.1.2 Test Suite Audit**
+
+**Goal:** Identify and remove stale, redundant, or dead-path tests inherited from the original SeedSync repo — lean the test suite to only test current behavior.
+
+**Target features:**
+- Audit Python backend tests for stale/dead-path coverage of removed or rewritten functionality
+- Audit Angular frontend tests for tests covering deleted components or superseded UI patterns
+- Audit Playwright E2E tests for redundancy or stale selectors
+- Remove or rewrite identified dead tests without regressing real coverage
+- Verify coverage % holds or improves after cleanup
 
 ### Out of Scope
 
