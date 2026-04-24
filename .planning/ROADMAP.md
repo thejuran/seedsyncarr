@@ -29,7 +29,7 @@
 - v1.0.0 SeedSyncarr Rebrand - Phases 53-61 (shipped 2026-04-13)
 - v1.1.0 UI Redesign — Triggarr Style - Phases 62-74 (shipped 2026-04-19; Phase 71 dropped)
 - v1.1.1 Post-Redesign Cleanup & Outstanding Work - Phases 75-82 (shipped 2026-04-23)
-- v1.1.2 Test Suite Audit - Phases 83-86 (in progress)
+- v1.1.2 Test Suite Audit - Phases 83-86 (shipped 2026-04-24)
 
 ## Phases
 
@@ -255,14 +255,35 @@ See `.planning/milestones/v1.1.1-ROADMAP.md` for full details.
 
 </details>
 
-### v1.1.2 Test Suite Audit (Phases 83-86) - IN PROGRESS
+<details>
+<summary>v1.1.2 Test Suite Audit (Phases 83-86) - SHIPPED 2026-04-24</summary>
 
 **Milestone Goal:** Identify and remove stale, redundant, or dead-path tests inherited from the original SeedSync repo — lean the test suite to only test current behavior.
 
 - [x] **Phase 83: Python Test Audit** - Identify and remove stale Python backend tests (completed 2026-04-24)
 - [x] **Phase 84: Angular Test Audit** - Identify and remove stale Angular unit tests (completed 2026-04-24)
 - [x] **Phase 85: E2E Test Audit** - Identify and remove redundant Playwright specs (completed 2026-04-24)
-- [ ] **Phase 86: Final Validation** - Full CI green and coverage baseline documented
+- [x] **Phase 86: Final Validation** - Full CI green and coverage baseline documented (completed 2026-04-24)
+
+**Coverage Baseline (Python):**
+| Metric | Before Audit (Phase 83) | After Audit (Phase 86) |
+|--------|------------------------|------------------------|
+| Total coverage | 85.05% | 85.05% |
+| fail_under threshold | 84% | 84% |
+| Safety margin | 1.05pp | 1.05pp |
+
+**Coverage Baseline (Angular) -- Phase 84:**
+| Metric | Value |
+|--------|-------|
+| Statements | 83.34% (1682/2018) |
+| Branches | 69.01% (461/668) |
+| Functions | 79.73% (421/528) |
+| Lines | 84.21% (1622/1926) |
+
+**Known Caveats:**
+- arm64 E2E: All 37 specs now pass on both amd64 and arm64. However, the locale-dependent Unicode sort order difference (glibc amd64 vs arm64) is a pre-existing platform variance that may resurface with different test data or glibc versions. Not introduced by the audit. Tracked for future monitoring.
+
+</details>
 
 ## Phase Details
 
@@ -314,10 +335,10 @@ Plans:
   1. CI pipeline completes green across all jobs: Python tests, Angular tests, E2E (amd64 + arm64), lint (ruff + eslint)
   2. Python coverage percentage before and after the audit is documented in the milestone notes
   3. Coverage does not drop below 84% (fail_under enforced in CI)
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
-- [x] 86-01-PLAN.md — Fix autoqueue harness, create arm64 todo, push to trigger CI
-- [ ] 86-02-PLAN.md — Verify CI green, document coverage baselines, complete milestone
+- [x] 86-01-PLAN.md -- Fix autoqueue harness, create arm64 todo, push to trigger CI
+- [x] 86-02-PLAN.md -- Verify CI green, document coverage baselines, complete milestone
 
 ## Progress
 
@@ -352,8 +373,8 @@ Plans:
 | 83. Python Test Audit | v1.1.2 | 1/1 | Complete    | 2026-04-24 |
 | 84. Angular Test Audit | v1.1.2 | 2/2 | Complete    | 2026-04-24 |
 | 85. E2E Test Audit | v1.1.2 | 1/1 | Complete    | 2026-04-24 |
-| 86. Final Validation | v1.1.2 | 1/2 | In Progress|  |
+| 86. Final Validation | v1.1.2 | 2/2 | Complete    | 2026-04-24 |
 
 ---
 
-*Last updated: 2026-04-24 — Phase 86 planned (2 plans).*
+*Last updated: 2026-04-24 — v1.1.2 Test Suite Audit shipped.*
