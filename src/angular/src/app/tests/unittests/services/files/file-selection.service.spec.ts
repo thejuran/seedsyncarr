@@ -264,7 +264,7 @@ describe("Testing file selection service", () => {
     it("should emit on selectedFiles$ when selection changes", () => {
         const emissions: Set<string>[] = [];
 
-        service.selectedFiles$.subscribe(files => {
+        const sub = service.selectedFiles$.subscribe(files => {
             emissions.push(files);
         });
 
@@ -283,12 +283,13 @@ describe("Testing file selection service", () => {
         TestBed.flushEffects();
         expect(emissions.length).toBe(3);
         expect(emissions[2].size).toBe(0);
+        sub.unsubscribe();
     });
 
     it("should emit on selectedCount$ when selection changes", () => {
         const emissions: number[] = [];
 
-        service.selectedCount$.subscribe(count => {
+        const sub = service.selectedCount$.subscribe(count => {
             emissions.push(count);
         });
 
@@ -306,12 +307,13 @@ describe("Testing file selection service", () => {
         TestBed.flushEffects();
         expect(emissions.length).toBe(3);
         expect(emissions[2]).toBe(0);
+        sub.unsubscribe();
     });
 
     it("should emit on hasSelection$ when selection changes", () => {
         const emissions: boolean[] = [];
 
-        service.hasSelection$.subscribe(has => {
+        const sub = service.hasSelection$.subscribe(has => {
             emissions.push(has);
         });
 
@@ -329,6 +331,7 @@ describe("Testing file selection service", () => {
         TestBed.flushEffects();
         expect(emissions.length).toBe(3);
         expect(emissions[2]).toBe(false);
+        sub.unsubscribe();
     });
 
     // =========================================================================
@@ -362,7 +365,7 @@ describe("Testing file selection service", () => {
     it("should not emit when no actual change occurs", () => {
         let emissionCount = 0;
 
-        service.selectedFiles$.subscribe(() => {
+        const sub = service.selectedFiles$.subscribe(() => {
             emissionCount++;
         });
 
@@ -375,6 +378,7 @@ describe("Testing file selection service", () => {
         TestBed.flushEffects();
 
         expect(emissionCount).toBe(1);  // Still 1
+        sub.unsubscribe();
     });
 
     // =========================================================================
