@@ -42,7 +42,7 @@ class TestMultiprocessingLogger(unittest.TestCase):
             p_1.start()
             mp_logger.start()
             p_1.join(timeout=2)
-            time.sleep(0.05)  # drain logger IPC queue
+            time.sleep(0.2)
             mp_logger.stop()
 
             log_capture.check(
@@ -68,7 +68,7 @@ class TestMultiprocessingLogger(unittest.TestCase):
             p_1.start()
             mp_logger.start()
             p_1.join(timeout=2)
-            time.sleep(0.05)  # drain logger IPC queue
+            time.sleep(0.2)
             mp_logger.stop()
 
             log_capture.check(
@@ -95,7 +95,7 @@ class TestMultiprocessingLogger(unittest.TestCase):
             p_1.start()
             mp_logger.start()
             p_1.join(timeout=2)
-            time.sleep(0.05)  # drain logger IPC queue
+            time.sleep(0.2)
             mp_logger.stop()
 
             log_capture.check(
@@ -114,7 +114,7 @@ class TestMultiprocessingLogger(unittest.TestCase):
             p_1.start()
             mp_logger.start()
             p_1.join(timeout=2)
-            time.sleep(0.05)  # drain logger IPC queue
+            time.sleep(0.2)
             mp_logger.stop()
 
             log_capture.check(
@@ -132,7 +132,7 @@ class TestMultiprocessingLogger(unittest.TestCase):
             p_1.start()
             mp_logger.start()
             p_1.join(timeout=2)
-            time.sleep(0.05)  # drain logger IPC queue
+            time.sleep(0.2)
             mp_logger.stop()
 
             log_capture.check(
@@ -149,7 +149,7 @@ class TestMultiprocessingLogger(unittest.TestCase):
             p_1.start()
             mp_logger.start()
             p_1.join(timeout=2)
-            time.sleep(0.05)  # drain logger IPC queue
+            time.sleep(0.2)
             mp_logger.stop()
 
             log_capture.check(
