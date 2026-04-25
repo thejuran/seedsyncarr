@@ -345,8 +345,8 @@ Plans:
   5. `ng test --watch=false` passes with zero subscription leak warnings
 **Plans**: 2 plans
 Plans:
-- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
-- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
+- [ ] 90-01-PLAN.md — fakeAsync zone cleanup, double-cast fix, toBeDefined guards (ANGFIX-01, ANGFIX-02, ANGFIX-07)
+- [ ] 90-02-PLAN.md — Subscription teardown in 4 spec files (ANGFIX-03, ANGFIX-04, ANGFIX-05, ANGFIX-06)
 
 ### Phase 91: E2E Test Fixes & Platform
 **Goal**: E2E test specs use correct Playwright APIs, enforce CSP, and pass on both amd64 and arm64
@@ -477,7 +477,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 87. Python Fixes -- Critical & Warning | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
 | 88. Python Fixes -- Medium & Cleanup | v1.2.0 | 3/3 | Complete    | 2026-04-25 |
 | 89. Python Test Architecture | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
-| 90. Angular Test Fixes | v1.2.0 | 0/TBD | Not started | - |
+| 90. Angular Test Fixes | v1.2.0 | 0/2 | Not started | - |
 | 91. E2E Test Fixes & Platform | v1.2.0 | 0/TBD | Not started | - |
 | 92. E2E Infrastructure | v1.2.0 | 0/TBD | Not started | - |
 | 93. CI & Docker Hardening | v1.2.0 | 0/TBD | Not started | - |
