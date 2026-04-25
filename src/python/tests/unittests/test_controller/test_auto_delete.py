@@ -1,63 +1,33 @@
-import unittest
-from unittest.mock import MagicMock, patch
 import threading
+from unittest.mock import MagicMock
 
 from controller import Controller
 from controller.controller_persist import ControllerPersist
 from model import ModelFile, ModelError
+from tests.unittests.test_controller.base import BaseControllerTestCase
 
 
-class BaseAutoDeleteTestCase(unittest.TestCase):
-    """Base class with patched Controller dependencies for auto-delete tests."""
+class BaseAutoDeleteTestCase(BaseControllerTestCase):
+    """Extends BaseControllerTestCase with auto-delete defaults and timer cleanup."""
 
     def setUp(self):
-        self.mock_context = MagicMock()
-        self.mock_context.logger = MagicMock()
+        super().setUp()
         self.mock_context.config.autodelete.enabled = True
         self.mock_context.config.autodelete.dry_run = False
         self.mock_context.config.autodelete.delay_seconds = 10
-        self.persist = ControllerPersist(max_tracked_files=100)
-
-        # Start patches for all 6 internal dependencies
-        self.patcher_mb = patch('controller.controller.ModelBuilder')
-        self.patcher_lftp = patch('controller.controller.LftpManager')
-        self.patcher_sm = patch('controller.controller.ScanManager')
-        self.patcher_fom = patch('controller.controller.FileOperationManager')
-        self.patcher_mpl = patch('controller.controller.MultiprocessingLogger')
-        self.patcher_mm = patch('controller.controller.MemoryMonitor')
-
-        self.mock_model_builder_cls = self.patcher_mb.start()
-        self.mock_lftp_manager_cls = self.patcher_lftp.start()
-        self.mock_scan_manager_cls = self.patcher_sm.start()
-        self.mock_file_op_manager_cls = self.patcher_fom.start()
-        self.mock_mp_logger_cls = self.patcher_mpl.start()
-        self.mock_memory_monitor_cls = self.patcher_mm.start()
-
-        # Get mock instances
-        self.mock_model_builder = self.mock_model_builder_cls.return_value
-        self.mock_lftp_manager = self.mock_lftp_manager_cls.return_value
-        self.mock_scan_manager = self.mock_scan_manager_cls.return_value
-        self.mock_file_op_manager = self.mock_file_op_manager_cls.return_value
-        self.mock_mp_logger = self.mock_mp_logger_cls.return_value
-        self.mock_memory_monitor = self.mock_memory_monitor_cls.return_value
-        # Create mock WebhookManager (not patched, passed as parameter)
-        self.mock_webhook_manager = MagicMock()
-        self.mock_webhook_manager.process.return_value = []
-
-        self.controller = Controller(context=self.mock_context, persist=self.persist, webhook_manager=self.mock_webhook_manager)
+        # Re-create controller with auto-delete enabled
+        self.controller = Controller(
+            context=self.mock_context,
+            persist=self.persist,
+            webhook_manager=self.mock_webhook_manager,
+        )
 
     def tearDown(self):
-        # Cancel any pending timers to prevent thread leaks
+        # Cancel pending timers before stopping patches
         for timer in list(self.controller._Controller__pending_auto_deletes.values()):
             timer.cancel()
         self.controller._Controller__pending_auto_deletes.clear()
-
-        self.patcher_mb.stop()
-        self.patcher_lftp.stop()
-        self.patcher_sm.stop()
-        self.patcher_fom.stop()
-        self.patcher_mpl.stop()
-        self.patcher_mm.stop()
+        super().tearDown()
 
 
 class TestAutoDeleteScheduling(BaseAutoDeleteTestCase):
