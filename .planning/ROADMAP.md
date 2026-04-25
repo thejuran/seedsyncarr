@@ -324,4 +324,71 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 
 ---
 
-*Last updated: 2026-04-24 — v1.1.2 Test Suite Audit archived.*
+## Backlog
+
+### Phase 999.1: CI Security Hardening (BACKLOG)
+
+**Goal:** Fix overly broad CI workflow permissions, pin GitHub Actions to commit SHAs, fix publish job ordering
+**Findings:** 2 critical, 1 warning, 2 informational — 5 items total
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.2: E2E Infrastructure Bugs (BACKLOG)
+
+**Goal:** Fix uninitialized variables in run_tests.sh, compose health conditions, bare except, restart race
+**Findings:** 4 warning, 5 informational — 9 items total
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.3: E2E Test Quality (BACKLOG)
+
+**Goal:** Fix innerHTML vs innerText, hard-coded waitForTimeout, deprecated selectors, page object patterns
+**Findings:** 2 warning, 1 medium, 9 filtered — 12 items total
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.4: Angular Test Quality (BACKLOG)
+
+**Goal:** Fix fakeAsync zone leaks, nullable type casts, subscription leaks, missing fixture cleanup
+**Findings:** 2 medium, 10 filtered — 12 items total
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.5: Python Test Quality (BACKLOG)
+
+**Goal:** Fix logger handler leaks, sleep-as-sync, busy-wait loops, fixture cleanup; extends TEST-HARDENING-REVIEW.md
+**Findings:** 2 warning, 11 filtered — 13 items total
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.6: Test Coverage Gaps (BACKLOG)
+
+**Goal:** Address SSE streaming, Logs page, Settings form, webhook E2E, DeleteRemoteProcess, ActiveScanner gaps
+**Findings:** 6 coverage gaps identified
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.7: Docker Test Container Security (BACKLOG)
+
+**Goal:** Remove hardcoded SSH passwords, root group membership, sshd-as-root; improve key rotation and host key checking
+**Findings:** 4 warning, 3 low — 7 items total
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+---
+
+*Last updated: 2026-04-24 — v1.1.2 Test Suite Audit archived. Backlog 999.1-999.7 added from full-suite deep review.*
