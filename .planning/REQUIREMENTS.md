@@ -141,13 +141,80 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | | |
+| PYFIX-01 | Phase 87 | Pending |
+| PYFIX-02 | Phase 87 | Pending |
+| PYFIX-03 | Phase 87 | Pending |
+| PYFIX-04 | Phase 87 | Pending |
+| PYFIX-05 | Phase 87 | Pending |
+| PYFIX-06 | Phase 87 | Pending |
+| PYFIX-07 | Phase 87 | Pending |
+| PYFIX-08 | Phase 87 | Pending |
+| PYFIX-09 | Phase 87 | Pending |
+| PYFIX-10 | Phase 87 | Pending |
+| PYFIX-11 | Phase 88 | Pending |
+| PYFIX-12 | Phase 88 | Pending |
+| PYFIX-13 | Phase 88 | Pending |
+| PYFIX-14 | Phase 88 | Pending |
+| PYFIX-15 | Phase 88 | Pending |
+| PYFIX-16 | Phase 88 | Pending |
+| PYFIX-17 | Phase 88 | Pending |
+| PYFIX-18 | Phase 88 | Pending |
+| PYFIX-19 | Phase 88 | Pending |
+| PYARCH-01 | Phase 89 | Pending |
+| PYARCH-02 | Phase 89 | Pending |
+| PYARCH-03 | Phase 89 | Pending |
+| PYARCH-04 | Phase 89 | Pending |
+| PYARCH-05 | Phase 89 | Pending |
+| PYARCH-06 | Phase 89 | Pending |
+| ANGFIX-01 | Phase 90 | Pending |
+| ANGFIX-02 | Phase 90 | Pending |
+| ANGFIX-03 | Phase 90 | Pending |
+| ANGFIX-04 | Phase 90 | Pending |
+| ANGFIX-05 | Phase 90 | Pending |
+| ANGFIX-06 | Phase 90 | Pending |
+| ANGFIX-07 | Phase 90 | Pending |
+| E2EFIX-01 | Phase 91 | Pending |
+| E2EFIX-02 | Phase 91 | Pending |
+| E2EFIX-03 | Phase 91 | Pending |
+| E2EFIX-04 | Phase 91 | Pending |
+| E2EFIX-05 | Phase 91 | Pending |
+| E2EFIX-06 | Phase 91 | Pending |
+| E2EFIX-07 | Phase 91 | Pending |
+| PLAT-01 | Phase 91 | Pending |
+| PLAT-02 | Phase 91 | Pending |
+| E2EINFRA-01 | Phase 92 | Pending |
+| E2EINFRA-02 | Phase 92 | Pending |
+| E2EINFRA-03 | Phase 92 | Pending |
+| E2EINFRA-04 | Phase 92 | Pending |
+| E2EINFRA-05 | Phase 92 | Pending |
+| CISEC-01 | Phase 93 | Pending |
+| CISEC-02 | Phase 93 | Pending |
+| CISEC-03 | Phase 93 | Pending |
+| CISEC-04 | Phase 93 | Pending |
+| DOCKSEC-01 | Phase 93 | Pending |
+| DOCKSEC-02 | Phase 93 | Pending |
+| DOCKSEC-03 | Phase 93 | Pending |
+| DOCKSEC-04 | Phase 93 | Pending |
+| DOCKSEC-05 | Phase 93 | Pending |
+| DOCKSEC-06 | Phase 93 | Pending |
+| COVER-01 | Phase 94 | Pending |
+| COVER-04 | Phase 94 | Pending |
+| COVER-05 | Phase 94 | Pending |
+| COVER-06 | Phase 94 | Pending |
+| COVER-02 | Phase 95 | Pending |
+| COVER-03 | Phase 95 | Pending |
+| RATE-01 | Phase 96 | Pending |
+| RATE-02 | Phase 96 | Pending |
+| RATE-03 | Phase 96 | Pending |
+| RATE-04 | Phase 96 | Pending |
+| TOOL-01 | Phase 96 | Pending |
+| TOOL-02 | Phase 96 | Pending |
 
 **Coverage:**
-- v1.2.0 requirements: 61 total
-- Mapped to phases: 0
-- Unmapped: 61
+- v1.2.0 requirements: 68 total
+- Mapped to phases: 68
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-24*
-*Last updated: 2026-04-24 after initial definition*
+*Last updated: 2026-04-24 after roadmap creation -- all 68 requirements mapped to phases 87-96*
