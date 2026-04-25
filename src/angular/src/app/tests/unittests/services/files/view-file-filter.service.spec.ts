@@ -15,7 +15,7 @@ describe("Testing view file filter service", () => {
 
     let viewFileService: MockViewFileService;
     let viewFileOptionsService: MockViewFileOptionsService;
-    let filterCriteria: ViewFileFilterCriteria;
+    let filterCriteria: ViewFileFilterCriteria | undefined;
 
     beforeEach(() => {
         TestBed.configureTestingModule({
@@ -27,7 +27,7 @@ describe("Testing view file filter service", () => {
             ]
         });
         viewFileService = TestBed.inject(ViewFileService) as unknown as MockViewFileService;
-        filterCriteria = undefined as unknown as ViewFileFilterCriteria;  // Reset before each test
+        filterCriteria = undefined;
         spyOn(viewFileService, "setFilterCriteria").and.callFake(
             value => filterCriteria = value
         );
@@ -93,13 +93,13 @@ describe("Testing view file filter service", () => {
         tick();
 
         // exact match
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "tofu"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "tofu"}))).toBe(true);
         // no match
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "flower"}))).toBe(false);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "flower"}))).toBe(false);
         // partial matches
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "tofuflower"}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "flowertofu"}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "aaatofubbb"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "tofuflower"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "flowertofu"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "aaatofubbb"}))).toBe(true);
 
         // Another filter
         viewFileOptionsService._options.next(new ViewFileOptions({
@@ -107,13 +107,13 @@ describe("Testing view file filter service", () => {
         }));
         tick();
         // exact match
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "flower"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "flower"}))).toBe(true);
         // no match
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "tofu"}))).toBe(false);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "tofu"}))).toBe(false);
         // partial matches
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "flowertofu"}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "tofuflower"}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "aaaflowerbbb"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "flowertofu"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "tofuflower"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "aaaflowerbbb"}))).toBe(true);
     }));
 
     it("ignores cases when filtering by name", fakeAsync(() => {
@@ -121,18 +121,18 @@ describe("Testing view file filter service", () => {
             nameFilter: "tofu",
         }));
         tick();
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "TOFU"}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "TofU"}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "aaaToFubbb"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "TOFU"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "TofU"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "aaaToFubbb"}))).toBe(true);
 
         // Another filter
         viewFileOptionsService._options.next(new ViewFileOptions({
             nameFilter: "flOweR",
         }));
         tick();
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "FLowEr"}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "tofuflowertofu"}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "floWer"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "FLowEr"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "tofuflowertofu"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "floWer"}))).toBe(true);
     }));
 
     it("treats dots as spaces when filtering by name", fakeAsync(() => {
@@ -140,16 +140,16 @@ describe("Testing view file filter service", () => {
             nameFilter: "to.fu",
         }));
         tick();
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "to.fu"}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "to fu"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "to.fu"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "to fu"}))).toBe(true);
 
         // Another filter
         viewFileOptionsService._options.next(new ViewFileOptions({
             nameFilter: "flo wer",
         }));
         tick();
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "flo wer"}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(new ViewFile({name: "flo.wer"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "flo wer"}))).toBe(true);
+        expect(filterCriteria!.meetsCriteria(new ViewFile({name: "flo.wer"}))).toBe(true);
     }));
 
     it("calls setFilterCriteria on filter status set", fakeAsync(() => {
@@ -199,14 +199,14 @@ describe("Testing view file filter service", () => {
         tick();
 
         // exact match
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.DEFAULT}))).toBe(true);
         // no match
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.QUEUED}))).toBe(false);
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.DOWNLOADING}))).toBe(false);
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.DELETED}))).toBe(false);
 
         // Another filter
@@ -215,14 +215,14 @@ describe("Testing view file filter service", () => {
         }));
         tick();
         // exact match
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.EXTRACTING}))).toBe(true);
         // no match
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.QUEUED}))).toBe(false);
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.DOWNLOADING}))).toBe(false);
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.DELETED}))).toBe(false);
 
         // Disable status filter
@@ -231,21 +231,21 @@ describe("Testing view file filter service", () => {
         }));
         tick();
         // all matches
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.DEFAULT}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.QUEUED}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.DOWNLOADING}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.DOWNLOADED}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.STOPPED}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.DELETED}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.EXTRACTING}))).toBe(true);
-        expect(filterCriteria.meetsCriteria(
+        expect(filterCriteria!.meetsCriteria(
             new ViewFile({status: ViewFile.Status.EXTRACTED}))).toBe(true);
     }));
 
@@ -257,23 +257,23 @@ describe("Testing view file filter service", () => {
         tick();
 
         // both match
-        expect(filterCriteria.meetsCriteria(new ViewFile({
+        expect(filterCriteria!.meetsCriteria(new ViewFile({
             name: "tofu",
             status: ViewFile.Status.DEFAULT
         }))).toBe(true);
 
         // only one matches
-        expect(filterCriteria.meetsCriteria(new ViewFile({
+        expect(filterCriteria!.meetsCriteria(new ViewFile({
             name: "flower",
             status: ViewFile.Status.DEFAULT
         }))).toBe(false);
-        expect(filterCriteria.meetsCriteria(new ViewFile({
+        expect(filterCriteria!.meetsCriteria(new ViewFile({
             name: "tofu",
             status: ViewFile.Status.QUEUED
         }))).toBe(false);
 
         // neither matches
-        expect(filterCriteria.meetsCriteria(new ViewFile({
+        expect(filterCriteria!.meetsCriteria(new ViewFile({
             name: "flower",
             status: ViewFile.Status.QUEUED
         }))).toBe(false);
