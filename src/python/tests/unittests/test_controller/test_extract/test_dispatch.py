@@ -724,7 +724,7 @@ class TestExtractDispatch(unittest.TestCase):
 
         time.sleep(0.01)
 
-        while self.mock_extract_archive.call_count < 1 and \
+        while self.mock_extract_archive.call_count < 1 or \
                 self.listener.extract_completed.call_count < 1:
             pass
         time.sleep(0.01)
