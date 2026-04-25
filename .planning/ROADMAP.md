@@ -297,7 +297,10 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
   3. All temporary files created during config tests are cleaned up (no leaked files in /tmp after test run)
   4. Logger fixture in conftest.py removes handlers after each test and does not leak propagation state
   5. `make run-tests-python` passes with zero warnings related to resource leaks or mock confusion
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ### Phase 88: Python Test Fixes -- Medium & Cleanup
 **Goal**: Python test suite runs faster and every test validates what it claims to validate
@@ -309,7 +312,10 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
   3. Python test suite runs at least 4 seconds faster than before PYFIX-13 (real sleep replaced with mock/event)
   4. Conditional assertion in `test_job_status_parser_components.py:199` always executes its assert (no silent skip path)
   5. Logger handlers are removed in tearDown across all 5 affected files -- no cross-test handler accumulation
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ### Phase 89: Python Test Architecture
 **Goal**: Python test infrastructure is consistent, well-organized, and documented
@@ -321,7 +327,10 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
   3. `test_lftp.py` integration test lives under the integration test directory (not misclassified as unit test)
   4. Coverage gap documentation exists listing modules without dedicated tests (ActiveScanner, WebAppJob, WebAppBuilder, scan_fs)
   5. `make run-tests-python` passes after all architectural changes
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ### Phase 90: Angular Test Fixes
 **Goal**: Angular test suite has no subscription leaks, no false passes from optional chaining, and clean zone state
@@ -333,7 +342,10 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
   3. All subscription-heavy spec files (view-file.service, notification.service, file-selection.service, transfer-row.component) explicitly unsubscribe or use teardown
   4. Tests guarded by optional chaining include `expect(result).toBeDefined()` before the chained assertion
   5. `ng test --watch=false` passes with zero subscription leak warnings
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ### Phase 91: E2E Test Fixes & Platform
 **Goal**: E2E test specs use correct Playwright APIs, enforce CSP, and pass on both amd64 and arm64
@@ -345,7 +357,10 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
   3. No `waitForTimeout()` calls remain in E2E specs (replaced with Playwright auto-waiting or explicit conditions)
   4. CSP violations during E2E runs fail the test via console listener or `securitypolicyviolation` event
   5. Dashboard E2E specs pass on arm64 with correct Unicode sort order handling
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ### Phase 92: E2E Infrastructure
 **Goal**: E2E Docker infrastructure starts reliably with proper health checks and no race conditions
@@ -357,7 +372,10 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
   3. Restart test uses wait-for-down-then-up pattern instead of `sleep 2` race
   4. `parse_status.py` catches specific exception types (no bare `except:`) and has a `__main__` guard
   5. `make run-tests-e2e` completes reliably on both amd64 and arm64 without timing-dependent failures
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ### Phase 93: CI & Docker Hardening
 **Goal**: CI workflow follows least-privilege security and Docker test containers have no hardcoded credentials
@@ -369,7 +387,10 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
   3. `publish-docker-image` job is in the `needs` chain of `publish-github-release`
   4. Test containers use SSH key-only auth (no hardcoded passwords, `PasswordAuthentication no`)
   5. Test containers generate ephemeral SSH key pairs at build time and run sshd as non-root
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ### Phase 94: Test Coverage -- Backend
 **Goal**: Previously untested backend paths have dedicated tests proving they work correctly
@@ -380,7 +401,10 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
   2. Webhook end-to-end test sends a Sonarr/Radarr POST through the web layer and verifies the controller processes it
   3. `DeleteRemoteProcess` has dedicated unit tests covering SSH command construction, error handling, and deletion paths
   4. `ActiveScanner` has a dedicated test file covering scan scheduling and result aggregation
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ### Phase 95: Test Coverage -- E2E
 **Goal**: Logs and Settings pages have Playwright E2E coverage proving they render and function correctly
@@ -389,7 +413,10 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 **Success Criteria** (what must be TRUE):
   1. Logs page E2E specs verify page load, log line rendering, and auto-scroll behavior
   2. Settings page E2E specs verify form field rendering, value editing, and save/persist round-trip
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 **UI hint**: yes
 
 ### Phase 96: Rate Limiting & Tooling
@@ -402,7 +429,10 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
   3. Normal usage patterns (single requests with reasonable intervals) are never rate-limited
   4. Semgrep `js-nosql-injection-where` rule requires MongoDB context (no false positives on generic `.where()`)
   5. Semgrep `js-xss-eval-user-input` rule excludes arrow/named function callbacks from eval detection
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ## Progress
 
