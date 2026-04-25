@@ -1,4 +1,4 @@
-import {fakeAsync, TestBed, tick} from "@angular/core/testing";
+import {discardPeriodicTasks, fakeAsync, TestBed, tick} from "@angular/core/testing";
 
 import {createMockEventSource, MockEventSource} from "../../../mocks/mock-event-source";
 import {LoggerService} from "../../../../services/utils/logger.service";
@@ -65,6 +65,7 @@ describe("Testing stream dispatch service", () => {
         dispatchService.registerService(mockService2);
         dispatchService.onInit();
         tick();
+        discardPeriodicTasks();
     }));
 
     it("should create an instance", () => {
@@ -73,6 +74,7 @@ describe("Testing stream dispatch service", () => {
 
     it("should construct an event source with correct url", fakeAsync(() => {
         expect(mockEventSource.url).toBe("/server/stream");
+        discardPeriodicTasks();
     }));
 
     it("should register all events with the event source", fakeAsync(() => {
@@ -84,10 +86,12 @@ describe("Testing stream dispatch service", () => {
         expect(mockEventSource.listeners.has("event2a")).toBe(true);
         expect(mockEventSource.listeners.has("event2b")).toBe(true);
         expect(mockEventSource.listeners.has("ping")).toBe(true);
+        discardPeriodicTasks();
     }));
 
     it("should set an error handler on the event source", fakeAsync(() => {
         expect(mockEventSource.onerror).toBeDefined();
+        discardPeriodicTasks();
     }));
 
     it("should forward name and data correctly", fakeAsync(() => {
@@ -131,6 +135,7 @@ describe("Testing stream dispatch service", () => {
         expect(mockService2.eventList).toEqual([
             ["event2a", "data2a"], ["event2b", "data2b"]
         ]);
+        discardPeriodicTasks();
     }));
 
     it("should log a warning when receiving an unregistered event name", fakeAsync(() => {
@@ -160,6 +165,7 @@ describe("Testing stream dispatch service", () => {
         mockEventSource.listeners.get("event2a")!(<MessageEvent>{data: "data2a"});
         tick();
         expect(mockService2.eventList).toEqual([["event2a", "data2a"]]);
+        discardPeriodicTasks();
     }));
 
     it("should call connect on open", fakeAsync(() => {
@@ -167,6 +173,7 @@ describe("Testing stream dispatch service", () => {
         tick();
         expect(mockService1.connectedSeq).toEqual([true]);
         expect(mockService2.connectedSeq).toEqual([true]);
+        discardPeriodicTasks();
     }));
 
     it("should call disconnect on error", fakeAsync(() => {
@@ -175,6 +182,7 @@ describe("Testing stream dispatch service", () => {
         expect(mockService1.connectedSeq).toEqual([false]);
         expect(mockService2.connectedSeq).toEqual([false]);
         tick(4000);
+        discardPeriodicTasks();
     }));
 
     it("should send events after reconnect", fakeAsync(() => {
@@ -194,6 +202,7 @@ describe("Testing stream dispatch service", () => {
         tick();
         expect(mockService1.eventList).toEqual([["event1a", "data1a"]]);
         expect(mockService2.eventList).toEqual([["event2b", "data2b"]]);
+        discardPeriodicTasks();
     }));
 });
 
