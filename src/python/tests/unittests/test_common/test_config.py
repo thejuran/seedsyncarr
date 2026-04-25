@@ -411,6 +411,8 @@ class TestConfig(unittest.TestCase):
     def test_from_file(self):
         # Create empty config file
         config_file = tempfile.NamedTemporaryFile(mode="w", suffix="test_config", delete=False)
+        self.addCleanup(os.remove, config_file.name)  # runs SECOND (registered first)
+        self.addCleanup(config_file.close)            # runs FIRST (registered last)
 
         config_file.write("""
         [General]
@@ -495,12 +497,9 @@ class TestConfig(unittest.TestCase):
             Config.from_file(config_file.name)
         self.assertTrue(str(error.exception).startswith("Unknown section"))
 
-        # Remove config file
-        config_file.close()
-        os.remove(config_file.name)
-
     def test_to_file(self):
         config_file_path = tempfile.NamedTemporaryFile(suffix="test_config", delete=False).name
+        self.addCleanup(os.remove, config_file_path)
 
         config = Config()
         config.general.debug = True

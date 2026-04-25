@@ -14,12 +14,14 @@ class TestStatusHandler(unittest.TestCase):
         mock_serialize_cls.status.return_value = '{"server":{"up":true}}'
         response = self.handler._StatusHandler__handle_get_status()
         self.assertEqual(200, response.status_code)
+        mock_serialize_cls.status.assert_called_once_with(self.mock_status)
 
     @patch('web.handler.status.SerializeStatusJson')
     def test_get_status_body_is_serialized(self, mock_serialize_cls):
         mock_serialize_cls.status.return_value = '{"server":{"up":true}}'
         response = self.handler._StatusHandler__handle_get_status()
         self.assertEqual('{"server":{"up":true}}', response.body)
+        mock_serialize_cls.status.assert_called_once_with(self.mock_status)
 
     @patch('web.handler.status.SerializeStatusJson')
     def test_get_status_calls_serializer_with_status(self, mock_serialize_cls):
