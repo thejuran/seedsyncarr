@@ -10,6 +10,8 @@ Reliable file sync from seedbox to local with automated media library integratio
 
 ## Previous State
 
+**v1.2.0 Phase 88 (2026-04-25)** — Python Test Fixes: Medium & Cleanup. Fixed 9 medium-priority Python test defects (PYFIX-11 through PYFIX-19): XSS prevention test, busy-wait race conditions (scanner 6 loops, lftp 41 loops), deterministic sync replacing ~5s of time.sleep, TemporaryDirectory cleanup, module-level imports, logger handler leak fixes (8 files), conditional assertion fix. 1068+ unit tests passing.
+
 **v1.1.2 (2026-04-24)** — Test Suite Audit. Audited all three test layers for stale/redundant tests inherited from original SeedSync. Zero stale tests found across all layers (72 Python files, 40 Angular specs, 7 E2E specs). HttpClientTestingModule migrated to provideHttpClient() in 6 spec files. Coverage baselines documented: Python 85.05%, Angular Statements 83.34%/Branches 69.01%/Functions 79.73%/Lines 84.21%. CI fully green (1262 Python, 599 Angular, 37 E2E on amd64+arm64).
 
 **v1.1.1 (2026-04-23)** — Post-Redesign Cleanup & Outstanding Work. Per-child import state tracking (GH #19 data-loss fix), multiselect bulk-bar union fix, 15 new Playwright E2E specs (37 total), live-seedbox UAT, CI noise elimination + CSP enforcement, Dependabot alert closed, arm64 Docker test support, WAITING_FOR_IMPORT dead enum removed, optional Fernet encryption at rest for 5 config secrets, retroactive v1.1.0 release notes + v1.1.1 release.
