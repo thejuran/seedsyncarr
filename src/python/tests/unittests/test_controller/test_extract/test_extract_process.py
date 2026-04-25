@@ -29,12 +29,14 @@ class TestExtractProcess(unittest.TestCase):
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
         handler.setFormatter(formatter)
+        self._test_handler = handler
 
         # Assign process to this variable so that it can be cleaned up
         # even after an error
         self.process = None
 
     def tearDown(self):
+        logging.getLogger().removeHandler(self._test_handler)
         if self.process:
             self.process.terminate()
 
