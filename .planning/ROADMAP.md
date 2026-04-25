@@ -330,8 +330,8 @@ Plans:
   5. `make run-tests-python` passes after all architectural changes
 **Plans**: 2 plans
 Plans:
-- [x] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
-- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
+- [ ] 89-01-PLAN.md — Refactor conftest to helpers, consolidate base classes, move test_lftp, extract INI template (PYARCH-01/02/03/06)
+- [ ] 89-02-PLAN.md — Document coverage gaps and name-mangling trade-off (PYARCH-04/05)
 
 ### Phase 90: Angular Test Fixes
 **Goal**: Angular test suite has no subscription leaks, no false passes from optional chaining, and clean zone state
