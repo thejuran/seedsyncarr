@@ -1,3 +1,4 @@
+import time
 import unittest
 import multiprocessing
 import logging
@@ -80,7 +81,7 @@ class TestScannerProcess(unittest.TestCase):
 
         # wait for first call to scan (actually second call to guarantee first scan is queued)
         while self.scan_counter.value < 2:
-            pass
+            time.sleep(0.01)
         result = self.process.pop_latest_result()
         self.assertEqual(1, len(result.files))
         self.assertEqual("a", result.files[0].name)
@@ -98,7 +99,7 @@ class TestScannerProcess(unittest.TestCase):
         self.scan_signal.value = 1
         orig_counter = self.scan_counter.value
         while self.scan_counter.value < orig_counter+2:
-            pass
+            time.sleep(0.01)
         result = self.process.pop_latest_result()
         self.assertEqual(2, len(result.files))
         self.assertEqual("a", result.files[0].name)
@@ -127,7 +128,7 @@ class TestScannerProcess(unittest.TestCase):
         self.scan_signal.value = 2
         orig_counter = self.scan_counter.value
         while self.scan_counter.value < orig_counter+2:
-            pass
+            time.sleep(0.01)
         result = self.process.pop_latest_result()
         self.assertEqual(1, len(result.files))
         self.assertEqual("c", result.files[0].name)
@@ -138,7 +139,7 @@ class TestScannerProcess(unittest.TestCase):
         self.scan_signal.value = 3
         orig_counter = self.scan_counter.value
         while self.scan_counter.value < orig_counter+2:
-            pass
+            time.sleep(0.01)
         result = self.process.pop_latest_result()
         self.assertEqual(0, len(result.files))
 
@@ -156,6 +157,7 @@ class TestScannerProcess(unittest.TestCase):
             result = self.process.pop_latest_result()
             if result:
                 break
+            time.sleep(0.01)
         self.assertEqual(0, len(result.files))
         self.assertTrue(result.failed)
         self.assertEqual("recoverable error", result.error_message)
@@ -172,6 +174,7 @@ class TestScannerProcess(unittest.TestCase):
         with self.assertRaises(ScannerError) as ctx:
             while True:
                 self.process.propagate_exception()
+                time.sleep(0.01)
         self.assertEqual("non-recoverable error", str(ctx.exception))
 
 

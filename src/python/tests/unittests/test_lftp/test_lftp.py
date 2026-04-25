@@ -112,12 +112,13 @@ class TestLftp(unittest.TestCase):
 
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
-        handler = logging.StreamHandler(sys.stdout)
+        self._test_handler = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        self._test_handler.setFormatter(formatter)
+        logger.addHandler(self._test_handler)
 
     def tearDown(self):
+        logging.getLogger().removeHandler(self._test_handler)
         self.lftp.raise_pending_error()
         self.lftp.exit()
 
