@@ -1,5 +1,26 @@
 # Project Milestones: SeedSync
 
+## v1.1.2 Test Suite Audit (Shipped: 2026-04-24)
+
+**Phases completed:** 4 phases, 6 plans, 10 tasks
+**Git range:** 65 commits, 177 files changed, +8,381/-27,052 lines
+**Timeline:** 2026-04-24
+
+**Delivered:** Audited all three test layers (Python, Angular, E2E) for stale/redundant tests inherited from the original SeedSync repo. Found zero stale tests across all layers — the prior rebrand and redesign milestones had already cleaned them. Migrated deprecated HttpClientTestingModule API, fixed E2E harness autoqueue config, and documented coverage baselines.
+
+**Key accomplishments:**
+
+- Independent staleness audit confirms zero stale Python tests across 72 test files; coverage at 85.05% above 84% fail_under threshold
+- Independent staleness audit of 40 Angular spec files confirms zero stale tests; ng test green 599/599; coverage baseline Statements 83.34% / Branches 69.01% / Functions 79.73% / Lines 84.21%
+- 6 Angular spec files migrated from deprecated HttpClientTestingModule to provideHttpClient()/provideHttpClientTesting(), eliminating all HttpClientTestingModule deprecation warnings; karma.conf.js angularCli key verified as silently ignored; ng test green 599/599 post-migration
+- Independent staleness audit of all 7 Playwright spec files (37 tests) confirms zero stale specs — every spec targets live Angular routes and live UI selectors; zero removals made; CSP canary and dashboard specs preserved per mandate
+- Enable autoqueue/enabled/true in E2E harness so autoqueue.page.spec.ts pattern section is visible, and track arm64 Unicode sort failures as pending todo per D-08
+- CI pipeline fully green (1262 Python tests, 599 Angular tests, 37 E2E specs on both architectures), coverage baselines documented in ROADMAP.md, v1.1.2 Test Suite Audit milestone shipped
+
+Known deferred items at close: 9 (see STATE.md Deferred Items)
+
+---
+
 ## v1.1.1 Post-Redesign Cleanup & Outstanding Work (Shipped: 2026-04-23)
 
 **Phases completed:** 8 phases, 26 plans

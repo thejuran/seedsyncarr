@@ -10,7 +10,7 @@ Reliable file sync from seedbox to local with automated media library integratio
 
 ## Previous State
 
-**v1.1.2 in progress (2026-04-24)** — Test Suite Audit. Phase 85 (E2E Test Audit) complete: zero stale Playwright specs across 7 files (37 tests), all selectors verified live against Angular templates, autoqueue harness pitfall documented, 33/37 E2E runs passed (2 pre-existing arm64 Unicode sort failures). Phase 84 (Angular Test Audit) complete: zero stale tests across 40 spec files, 6 spec files migrated from deprecated HttpClientTestingModule to provideHttpClient API, 599/599 tests green, coverage baseline 83.34%/69.01%/79.73%/84.21%.
+**v1.1.2 (2026-04-24)** — Test Suite Audit. Audited all three test layers for stale/redundant tests inherited from original SeedSync. Zero stale tests found across all layers (72 Python files, 40 Angular specs, 7 E2E specs). HttpClientTestingModule migrated to provideHttpClient() in 6 spec files. Coverage baselines documented: Python 85.05%, Angular Statements 83.34%/Branches 69.01%/Functions 79.73%/Lines 84.21%. CI fully green (1262 Python, 599 Angular, 37 E2E on amd64+arm64).
 
 **v1.1.1 (2026-04-23)** — Post-Redesign Cleanup & Outstanding Work. Per-child import state tracking (GH #19 data-loss fix), multiselect bulk-bar union fix, 15 new Playwright E2E specs (37 total), live-seedbox UAT, CI noise elimination + CSP enforcement, Dependabot alert closed, arm64 Docker test support, WAITING_FOR_IMPORT dead enum removed, optional Fernet encryption at rest for 5 config secrets, retroactive v1.1.0 release notes + v1.1.1 release.
 
@@ -252,6 +252,14 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Dashboard filter covers every `ViewFile.Status` (Done parent + Pending sub) with URL query-param persistence and silent fallback on invalid values — v1.1.0
 - ✓ Storage capacity tiles — `StorageStatus` on `Status` model, `shutil.disk_usage` local + `df -B1 <shlex.quote>` over SSH remote, `>1%` change gate, 80%/95% warning/danger thresholds — v1.1.0
 
+**v1.1.2 (Shipped 2026-04-24):**
+
+- ✓ Python test audit — zero stale tests across 72 files, coverage baseline 85.05% recorded — v1.1.2
+- ✓ Angular test audit — zero stale tests across 40 spec files, HttpClientTestingModule migrated in 6 files — v1.1.2
+- ✓ E2E test audit — zero stale specs across 7 Playwright files (37 tests), all selectors verified live — v1.1.2
+- ✓ Full CI green after audit — 1262 Python, 599 Angular, 37 E2E on amd64+arm64 — v1.1.2
+- ✓ Coverage baselines documented before and after (Python 85.05%, Angular 83.34%/69.01%/79.73%/84.21%) — v1.1.2
+
 **v1.1.1 (Shipped 2026-04-23):**
 
 - ✓ Multiselect bulk-bar union fix — DELETED rows surface Queue + Delete Remote in mixed selections — v1.1.1
@@ -267,19 +275,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-**Current Milestone: v1.1.2 Test Suite Audit**
-
-**Goal:** Identify and remove stale, redundant, or dead-path tests inherited from the original SeedSync repo — lean the test suite to only test current behavior.
-
-**Progress:**
-- Phase 83 complete — Python test audit: zero stale tests found, 85.05% coverage baseline recorded (2026-04-24)
-
-**Target features:**
-- Audit Python backend tests for stale/dead-path coverage of removed or rewritten functionality
-- Audit Angular frontend tests for tests covering deleted components or superseded UI patterns
-- Audit Playwright E2E tests for redundancy or stale selectors
-- Remove or rewrite identified dead tests without regressing real coverage
-- Verify coverage % holds or improves after cleanup
+No active milestone. Run `/gsd-new-milestone` to plan next work.
 
 ### Out of Scope
 
@@ -368,9 +364,9 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Project Status
 
-**Status:** v1.1.1 shipped (2026-04-23). All outstanding work from prior milestones closed.
+**Status:** v1.1.2 shipped (2026-04-24). Test suite audit complete — all three layers clean.
 
-29 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup as SeedSyncarr).
+30 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit as SeedSyncarr).
 
 ## Evolution
 
@@ -390,4 +386,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-23 after v1.1.1 milestone*
+*Last updated: 2026-04-24 after v1.1.2 milestone*

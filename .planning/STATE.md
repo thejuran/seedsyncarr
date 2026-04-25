@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 86 context gathered
-last_updated: "2026-04-24T23:28:31.066Z"
+last_updated: "2026-04-24T23:59:01.295Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 4
@@ -21,51 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-24)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 86 — final-validation
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 86 (final-validation) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
+Milestone v1.1.2 complete. No active phase.
 Last activity: 2026-04-24
-
-Progress: [░░░░░░░░░░] 0%
-
-## Performance Metrics
-
-**Velocity:**
-
-- Total plans completed this milestone: 0
-- Average duration: —
-- Total execution time: —
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 83 | 1 | - | - |
-| 84 | 2 | - | - |
-| 85 | 1 | - | - |
-
-*Updated after each plan completion*
-| Phase 86 P02 | 2min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- v1.1.2: Audit scope is removal only — no new tests written unless coverage drops below 84% fail_under
-- v1.1.2: Sequenced by layer (Python → Angular → E2E) so coverage impact is known before moving on
-- v1.1.2: Stale test inventory to be documented per phase for reviewability
-- [Phase ?]: v1.1.2 shipped: Python 85.05% unchanged, Angular baselines documented, arm64 all 37 pass
 
 ### Pending Todos
 
-None.
+7 pending todos carried forward (see Deferred Items below).
 
 ### Blockers/Concerns
 
@@ -73,12 +44,19 @@ None.
 
 ## Deferred Items (acknowledged at milestone close)
 
-Items acknowledged and deferred at v1.1.1 milestone close on 2026-04-23:
+Items acknowledged and deferred at v1.1.2 milestone close on 2026-04-24:
 
 | Category | Item | Status |
 |----------|------|--------|
-| debug | test_fix-resolved | unknown (stale) |
-| todo | 2026-04-21-webob-cgi-upstream-unblock.md | monitoring (upstream) |
+| debug | test_fix-resolved | unknown (stale, carried from v1.1.1) |
+| uat | 85-HUMAN-UAT.md | resolved (0 pending scenarios) |
+| todo | clean-up-test-warnings | testing |
+| todo | e2e-csp-violation-detection | testing |
+| todo | encrypt-credentials-at-rest | security |
+| todo | rate-limiting-all-endpoints | security |
+| todo | webob-cgi-upstream-unblock | testing (upstream) |
+| todo | tighten-shield-semgrep-rules | tooling |
+| todo | arm64-unicode-sort-e2e-failures | testing |
 
 ## Tech Debt
 
@@ -96,10 +74,11 @@ Items acknowledged and deferred at v1.1.1 milestone close on 2026-04-23:
 | v1.0.0 Rebrand | Phases 53-61 | 2026-04-08 to 2026-04-13 |
 | v1.1.0 UI Redesign — Triggarr Style | Phases 62-74 (71 dropped) | 2026-04-13 to 2026-04-19 |
 | v1.1.1 Post-Redesign Cleanup | Phases 75-82 | 2026-04-19 to 2026-04-23 |
+| v1.1.2 Test Suite Audit | Phases 83-86 | 2026-04-24 |
 
 ## Session Continuity
 
-Last session: 2026-04-24T23:27:58.744Z
-Stopped at: Phase 86 context gathered
+Last session: 2026-04-24
+Stopped at: Milestone v1.1.2 archived
 Resume file: None
-Next action: `/gsd-plan-phase 83`
+Next action: `/gsd-new-milestone`
