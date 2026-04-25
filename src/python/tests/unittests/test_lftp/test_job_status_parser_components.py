@@ -196,10 +196,10 @@ class TestTransferStateParser(unittest.TestCase):
         # Some chunk_at patterns don't have speed or eta
         line = "`file.txt' at 1024 (50%) [Receiving data]"
         match = RegexPatterns.CHUNK_AT.search(line)
-        if match:  # Pattern may not match without speed/eta
-            state = TransferStateParser.parse_chunk_at(match)
-            self.assertIsNone(state.speed)
-            self.assertIsNone(state.eta)
+        self.assertIsNotNone(match, "CHUNK_AT regex must match line without speed/eta")
+        state = TransferStateParser.parse_chunk_at(match)
+        self.assertIsNone(state.speed)
+        self.assertIsNone(state.eta)
 
     def test_parse_chunk_got(self):
         line = "`file.txt', got 1024 of 2048 (50%) 512K/s eta:30s"
