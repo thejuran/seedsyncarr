@@ -22,11 +22,11 @@ class BaseTestWebApp(unittest.TestCase):
 
         # Mock the base logger
         logger = logging.getLogger()
-        handler = logging.StreamHandler(sys.stdout)
-        logger.addHandler(handler)
+        self._test_handler = logging.StreamHandler(sys.stdout)
+        logger.addHandler(self._test_handler)
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-        handler.setFormatter(formatter)
+        self._test_handler.setFormatter(formatter)
         self.context.logger = logger
 
         # Model files
@@ -56,6 +56,10 @@ class BaseTestWebApp(unittest.TestCase):
                                              MagicMock())
         self.web_app = self.web_app_builder.build()
         self.test_app = TestApp(self.web_app)
+
+    @overrides(unittest.TestCase)
+    def tearDown(self):
+        logging.getLogger().removeHandler(self._test_handler)
 
 
 class TestWebApp(BaseTestWebApp):
