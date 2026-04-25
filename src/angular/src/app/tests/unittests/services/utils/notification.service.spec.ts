@@ -35,7 +35,7 @@ describe("Testing notification service", () => {
         notificationService.show(expectedNotification);
 
         let actualCount = 0;
-        notificationService.notifications.subscribe({
+        const sub = notificationService.notifications.subscribe({
             next: list => {
                 expect(list.size).toBe(1);
                 expect(Immutable.is(expectedNotification, list.get(0))).toBe(true);
@@ -45,6 +45,7 @@ describe("Testing notification service", () => {
 
         tick();
         expect(actualCount).toBe(1);
+        sub.unsubscribe();
     }));
 
     it("should hide notification", fakeAsync(() => {
@@ -55,7 +56,7 @@ describe("Testing notification service", () => {
         notificationService.hide(expectedNotification);
 
         let actualCount = 0;
-        notificationService.notifications.subscribe({
+        const sub = notificationService.notifications.subscribe({
             next: list => {
                 expect(list.size).toBe(0);
                 actualCount++;
@@ -64,6 +65,7 @@ describe("Testing notification service", () => {
 
         tick();
         expect(actualCount).toBe(1);
+        sub.unsubscribe();
     }));
 
 
@@ -73,7 +75,7 @@ describe("Testing notification service", () => {
         notificationService.show(expectedNotification);
 
         let actualCount = 0;
-        notificationService.notifications.subscribe({
+        const sub = notificationService.notifications.subscribe({
             next: _list => {
                 actualCount++;
             }
@@ -83,6 +85,7 @@ describe("Testing notification service", () => {
         tick();
 
         expect(actualCount).toBe(1);
+        sub.unsubscribe();
     }));
 
     it("should only send one update if hide is called twice", fakeAsync(() => {
@@ -93,7 +96,7 @@ describe("Testing notification service", () => {
         notificationService.hide(expectedNotification);
 
         let actualCount = 0;
-        notificationService.notifications.subscribe({
+        const sub = notificationService.notifications.subscribe({
             next: _list => {
                 actualCount++;
             }
@@ -104,6 +107,7 @@ describe("Testing notification service", () => {
         tick();
 
         expect(actualCount).toBe(1);
+        sub.unsubscribe();
     }));
 
     it("should sort notifications by level", fakeAsync(() => {
@@ -118,7 +122,7 @@ describe("Testing notification service", () => {
         notificationService.show(noteSuccess);
 
         let actualCount = 0;
-        notificationService.notifications.subscribe({
+        const sub = notificationService.notifications.subscribe({
             next: list => {
                 expect(list.size).toBe(4);
                 expect(Immutable.is(noteDanger, list.get(0))).toBe(true);
@@ -131,6 +135,7 @@ describe("Testing notification service", () => {
 
         tick();
         expect(actualCount).toBe(1);
+        sub.unsubscribe();
     }));
 
     it("should sort notifications by timestamp", fakeAsync(() => {
@@ -147,7 +152,7 @@ describe("Testing notification service", () => {
         notificationService.show(noteOlder);
 
         let actualCount = 0;
-        notificationService.notifications.subscribe({
+        const sub = notificationService.notifications.subscribe({
             next: list => {
                 expect(list.size).toBe(3);
                 expect(Immutable.is(noteNewest, list.get(0))).toBe(true);
@@ -159,6 +164,7 @@ describe("Testing notification service", () => {
 
         tick();
         expect(actualCount).toBe(1);
+        sub.unsubscribe();
     }));
 
     it("should sort notifications by level first, then timestamp", fakeAsync(() => {
@@ -175,7 +181,7 @@ describe("Testing notification service", () => {
         notificationService.show(noteOlder);
 
         let actualCount = 0;
-        notificationService.notifications.subscribe({
+        const sub = notificationService.notifications.subscribe({
             next: list => {
                 expect(list.size).toBe(3);
                 expect(Immutable.is(noteOlder, list.get(0))).toBe(true);
@@ -187,5 +193,6 @@ describe("Testing notification service", () => {
 
         tick();
         expect(actualCount).toBe(1);
+        sub.unsubscribe();
     }));
 });

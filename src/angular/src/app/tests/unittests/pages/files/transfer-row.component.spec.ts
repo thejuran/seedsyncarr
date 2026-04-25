@@ -195,24 +195,26 @@ describe("TransferRowComponent", () => {
         it("emits checkboxToggle with shiftKey=false on plain click", () => {
             setFile(ViewFile.Status.DEFAULT, {name: "gamma.mkv"});
             let emission: {file: ViewFile, shiftKey: boolean} | null = null;
-            component.checkboxToggle.subscribe(e => emission = e);
+            const sub = component.checkboxToggle.subscribe(e => emission = e);
 
             component.onCheckboxClick(new MouseEvent("click", {shiftKey: false}));
 
             expect(emission).not.toBeNull();
             expect(emission!.file).toBe(component.file);
             expect(emission!.shiftKey).toBe(false);
+            sub.unsubscribe();
         });
 
         it("emits checkboxToggle with shiftKey=true on shift+click", () => {
             setFile(ViewFile.Status.DEFAULT, {name: "delta.mkv"});
             let emission: {file: ViewFile, shiftKey: boolean} | null = null;
-            component.checkboxToggle.subscribe(e => emission = e);
+            const sub = component.checkboxToggle.subscribe(e => emission = e);
 
             component.onCheckboxClick(new MouseEvent("click", {shiftKey: true}));
 
             expect(emission).not.toBeNull();
             expect(emission!.shiftKey).toBe(true);
+            sub.unsubscribe();
         });
 
         it("host aria-label includes 'selected' suffix when selected", () => {
