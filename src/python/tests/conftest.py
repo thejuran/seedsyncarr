@@ -9,12 +9,9 @@ New pytest-style tests can request these fixtures by name as function arguments.
 """
 
 import logging
-import sys
 
 import pytest
-from unittest.mock import MagicMock
-
-from common import Config
+from tests.helpers import create_test_logger, create_mock_context, create_mock_context_with_real_config
 
 
 @pytest.fixture
@@ -32,14 +29,7 @@ def test_logger(request):
         def test_something(test_logger):
             my_object.set_base_logger(test_logger)
     """
-    logger = logging.getLogger(request.node.name)
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-    )
-    logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
-    logger.propagate = False
+    logger, handler = create_test_logger(request.node.name)
     yield logger
     logger.removeHandler(handler)
     logger.setLevel(logging.NOTSET)
@@ -57,39 +47,7 @@ def mock_context(test_logger):
             mock_context.config.lftp.use_ssh_key = True
             ...
     """
-    context = MagicMock()
-    context.logger = test_logger
-
-    # lftp config
-    context.config.lftp.local_path = "/local/path"
-    context.config.lftp.remote_address = "remote.server.com"
-    context.config.lftp.remote_username = "user"
-    context.config.lftp.remote_password = "password"  # Default test credential — not a real secret (test container only)
-    context.config.lftp.use_ssh_key = False
-    context.config.lftp.remote_port = 22
-    context.config.lftp.remote_path = "/remote/path"
-    context.config.lftp.remote_path_to_scan_script = "/usr/bin/scanfs"
-    context.config.lftp.use_temp_file = False
-    context.config.lftp.num_max_parallel_downloads = 2
-    context.config.lftp.num_max_parallel_files_per_download = 3
-    context.config.lftp.num_max_connections_per_root_file = 4
-    context.config.lftp.num_max_connections_per_dir_file = 2
-    context.config.lftp.num_max_total_connections = 8
-
-    # controller config
-    context.config.controller.interval_ms_downloading_scan = 500
-    context.config.controller.interval_ms_local_scan = 30000
-    context.config.controller.interval_ms_remote_scan = 30000
-    context.config.controller.use_local_path_as_extract_path = True
-    context.config.controller.extract_path = "/extract/path"
-
-    # general config
-    context.config.general.verbose = False
-
-    # args
-    context.args.local_path_to_scanfs = "/local/bin/scanfs"
-
-    return context
+    return create_mock_context(logger=test_logger)
 
 
 @pytest.fixture
@@ -103,7 +61,4 @@ def mock_context_with_real_config(test_logger):
             mock_context_with_real_config.config.autoqueue.enabled = True
             ...
     """
-    context = MagicMock()
-    context.config = Config()
-    context.logger = test_logger
-    return context
+    return create_mock_context_with_real_config(logger=test_logger)

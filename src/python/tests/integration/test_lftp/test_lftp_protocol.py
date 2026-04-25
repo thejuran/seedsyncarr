@@ -17,17 +17,17 @@ _TEST_USER = "seedsyncarrtest"
 _TEST_PASSWORD = "seedsyncarrpass"
 
 
-class TestLftp(unittest.TestCase):
+class TestLftpProtocol(unittest.TestCase):
     temp_dir = None
 
     @classmethod
     def setUpClass(cls):
         # Create a temp directory
-        TestLftp.temp_dir = tempfile.mkdtemp(prefix="test_lftp_")
-        print(f"Temp dir: {TestLftp.temp_dir}")
+        TestLftpProtocol.temp_dir = tempfile.mkdtemp(prefix="test_lftp_")
+        print(f"Temp dir: {TestLftpProtocol.temp_dir}")
 
         # Allow group access for the seedsyncarrtest account -- leaf dir only
-        os.chmod(TestLftp.temp_dir, 0o750)
+        os.chmod(TestLftpProtocol.temp_dir, 0o750)
 
         # Create some test directories
         # remote [dir] for remote path
@@ -49,18 +49,18 @@ class TestLftp(unittest.TestCase):
         # local [dir] for local path, cleared before every test
 
         def my_mkdir(*args):
-            os.mkdir(os.path.join(TestLftp.temp_dir, *args))
+            os.mkdir(os.path.join(TestLftpProtocol.temp_dir, *args))
 
         def my_touch(size, *args):
-            path = os.path.join(TestLftp.temp_dir, *args)
+            path = os.path.join(TestLftpProtocol.temp_dir, *args)
             with open(path, 'wb') as f:
                 f.write(bytearray([0xff]*size))
 
         def my_mkdir_latin(*args):
-            os.mkdir(os.path.join(TestLftp.temp_dir.encode('latin-1'), *args))
+            os.mkdir(os.path.join(TestLftpProtocol.temp_dir.encode('latin-1'), *args))
 
         def my_touch_latin(size, *args):
-            path = os.path.join(TestLftp.temp_dir.encode('latin-1'), *args)
+            path = os.path.join(TestLftpProtocol.temp_dir.encode('latin-1'), *args)
             with open(path, 'wb') as f:
                 f.write(bytearray([0xff]*size))
 
@@ -90,14 +90,14 @@ class TestLftp(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         # Cleanup
-        shutil.rmtree(TestLftp.temp_dir)
+        shutil.rmtree(TestLftpProtocol.temp_dir)
 
     def setUp(self):
         # Delete and recreate the local dir
-        shutil.rmtree(os.path.join(TestLftp.temp_dir, "local"))
-        os.mkdir(os.path.join(TestLftp.temp_dir, "local"))
-        self.local_dir = os.path.join(TestLftp.temp_dir, "local")
-        self.remote_dir = os.path.join(TestLftp.temp_dir, "remote")
+        shutil.rmtree(os.path.join(TestLftpProtocol.temp_dir, "local"))
+        os.mkdir(os.path.join(TestLftpProtocol.temp_dir, "local"))
+        self.local_dir = os.path.join(TestLftpProtocol.temp_dir, "local")
+        self.remote_dir = os.path.join(TestLftpProtocol.temp_dir, "remote")
 
         # Note: seedsyncarrtest account must be set up. See DeveloperReadme.md for details
         self.host = "localhost"

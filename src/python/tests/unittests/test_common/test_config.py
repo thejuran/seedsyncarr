@@ -9,6 +9,84 @@ from common.config import InnerConfig, Checkers, Converters
 from common.encryption import load_or_create_key, encrypt_field, is_ciphertext
 
 
+def _build_config_ini(
+    *,
+    webhook_secret="",
+    api_token="",
+    remote_password="pass",
+    sonarr_api_key="",
+    radarr_api_key="",
+    encryption_enabled=None,
+    debug="False",
+    verbose="False",
+) -> str:
+    """Build a full config INI string with parameterized secret fields.
+
+    Used by encryption tests that need the same INI skeleton with different
+    encrypted/plaintext values in the 5 secret fields.
+    """
+    sections = f"""[General]
+debug={debug}
+verbose={verbose}
+webhook_secret={webhook_secret}
+api_token={api_token}
+allowed_hostname=
+
+[Lftp]
+remote_address=host
+remote_username=user
+remote_password={remote_password}
+remote_port=22
+remote_path=/remote
+local_path=/local
+remote_path_to_scan_script=/scan.sh
+use_ssh_key=False
+num_max_parallel_downloads=2
+num_max_parallel_files_per_download=3
+num_max_connections_per_root_file=4
+num_max_connections_per_dir_file=5
+num_max_total_connections=6
+use_temp_file=False
+
+[Controller]
+interval_ms_remote_scan=30000
+interval_ms_local_scan=10000
+interval_ms_downloading_scan=2000
+extract_path=/extract
+use_local_path_as_extract_path=False
+max_tracked_files=5000
+
+[Web]
+port=8800
+
+[AutoQueue]
+enabled=False
+patterns_only=False
+auto_extract=False
+
+[Sonarr]
+enabled=False
+sonarr_url=
+sonarr_api_key={sonarr_api_key}
+
+[Radarr]
+enabled=False
+radarr_url=
+radarr_api_key={radarr_api_key}
+
+[AutoDelete]
+enabled=False
+dry_run=False
+delay_seconds=60
+"""
+    if encryption_enabled is not None:
+        sections += f"""
+[Encryption]
+enabled={encryption_enabled}
+"""
+    return sections
+
+
 class TestConverters(unittest.TestCase):
     def test_int(self):
         self.assertEqual(0, Converters.int(None, "", "0"))
@@ -777,69 +855,13 @@ auto_extract=False
         encrypted_sonarr = encrypt_field(key, "known_sonarr")
         encrypted_radarr = encrypt_field(key, "known_radarr")
 
-        content = """
-[General]
-debug=False
-verbose=False
-webhook_secret={webhook}
-api_token={token}
-allowed_hostname=
-
-[Lftp]
-remote_address=host
-remote_username=user
-remote_password={password}
-remote_port=22
-remote_path=/remote
-local_path=/local
-remote_path_to_scan_script=/scan.sh
-use_ssh_key=False
-num_max_parallel_downloads=2
-num_max_parallel_files_per_download=3
-num_max_connections_per_root_file=4
-num_max_connections_per_dir_file=5
-num_max_total_connections=6
-use_temp_file=False
-
-[Controller]
-interval_ms_remote_scan=30000
-interval_ms_local_scan=10000
-interval_ms_downloading_scan=2000
-extract_path=/extract
-use_local_path_as_extract_path=False
-max_tracked_files=5000
-
-[Web]
-port=8800
-
-[AutoQueue]
-enabled=False
-patterns_only=False
-auto_extract=False
-
-[Sonarr]
-enabled=False
-sonarr_url=
-sonarr_api_key={sonarr}
-
-[Radarr]
-enabled=False
-radarr_url=
-radarr_api_key={radarr}
-
-[AutoDelete]
-enabled=False
-dry_run=False
-delay_seconds=60
-
-[Encryption]
-enabled=True
-""".format(
-            webhook=encrypted_webhook,
-            token=encrypted_token,
-            password=encrypted_pass,
-            sonarr=encrypted_sonarr,
-            radarr=encrypted_radarr,
+        content = _build_config_ini(
+            webhook_secret=encrypted_webhook,
+            api_token=encrypted_token,
+            remote_password=encrypted_pass,
+            sonarr_api_key=encrypted_sonarr,
+            radarr_api_key=encrypted_radarr,
+            encryption_enabled="True",
         )
 
         # Write to a temp file and read back via from_file (exercises Persist.from_file)
@@ -903,64 +925,14 @@ enabled=True
         verifies the read path does NOT corrupt plaintext values and does NOT
         populate _decrypt_errors for them (plaintext is not a decrypt error).
         """
-        content = """
-[General]
-debug=False
-verbose=False
-webhook_secret=my_webhook
-api_token=my_token
-allowed_hostname=
-
-[Lftp]
-remote_address=host
-remote_username=user
-remote_password=my_pass
-remote_port=22
-remote_path=/remote
-local_path=/local
-remote_path_to_scan_script=/scan.sh
-use_ssh_key=False
-num_max_parallel_downloads=2
-num_max_parallel_files_per_download=3
-num_max_connections_per_root_file=4
-num_max_connections_per_dir_file=5
-num_max_total_connections=6
-use_temp_file=False
-
-[Controller]
-interval_ms_remote_scan=30000
-interval_ms_local_scan=10000
-interval_ms_downloading_scan=2000
-extract_path=/extract
-use_local_path_as_extract_path=False
-max_tracked_files=5000
-
-[Web]
-port=8800
-
-[AutoQueue]
-enabled=False
-patterns_only=False
-auto_extract=False
-
-[Sonarr]
-enabled=False
-sonarr_url=
-sonarr_api_key=my_sonarr_key
-
-[Radarr]
-enabled=False
-radarr_url=
-radarr_api_key=my_radarr_key
-
-[AutoDelete]
-enabled=False
-dry_run=False
-delay_seconds=60
-
-[Encryption]
-enabled=True
-"""
+        content = _build_config_ini(
+            webhook_secret="my_webhook",
+            api_token="my_token",
+            remote_password="my_pass",
+            sonarr_api_key="my_sonarr_key",
+            radarr_api_key="my_radarr_key",
+            encryption_enabled="True",
+        )
         config = Config.from_str(content)
         # Plaintext values must survive the read path untouched
         self.assertEqual("my_webhook", config.general.webhook_secret)
