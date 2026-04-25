@@ -49,11 +49,13 @@ class TestExtractDispatch(unittest.TestCase):
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
         handler.setFormatter(formatter)
+        self._test_handler = handler
 
         self.dispatch.start()
 
     @timeout_decorator.timeout(2)
     def tearDown(self):
+        logging.getLogger().removeHandler(self._test_handler)
         if self.dispatch:
             self.dispatch.stop()
 
@@ -756,11 +758,13 @@ class TestExtractDispatchThreadSafety(unittest.TestCase):
         handler = logging.StreamHandler(sys.stdout)
         logger.addHandler(handler)
         logger.setLevel(logging.DEBUG)
+        self._test_handler = handler
 
         self.dispatch.start()
 
     @timeout_decorator.timeout(2)
     def tearDown(self):
+        logging.getLogger().removeHandler(self._test_handler)
         if self.dispatch:
             self.dispatch.stop()
 
