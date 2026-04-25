@@ -48,24 +48,24 @@ class TestExtract(unittest.TestCase):
         zf.close()
 
         # rar - use subprocess.run to wait for completion
-        fnull = open(os.devnull, 'w')
         TestExtract.ar_rar = os.path.join(archive_dir, "file.rar")
-        subprocess.run(["rar",
-                        "a",
-                        "-ep",
-                        TestExtract.ar_rar,
-                        temp_file],
-                       stdout=fnull,
-                       check=True)
+        with open(os.devnull, 'w') as fnull:
+            subprocess.run(["rar",
+                            "a",
+                            "-ep",
+                            TestExtract.ar_rar,
+                            temp_file],
+                           stdout=fnull,
+                           check=True)
 
-        # rar split - use subprocess.run to wait for completion
-        subprocess.run(["rar",
-                        "a",
-                        "-ep", "-m0", "-v50k",
-                        os.path.join(archive_dir, "file.split.rar"),
-                        temp_file],
-                       stdout=fnull,
-                       check=True)
+            # rar split - use subprocess.run to wait for completion
+            subprocess.run(["rar",
+                            "a",
+                            "-ep", "-m0", "-v50k",
+                            os.path.join(archive_dir, "file.split.rar"),
+                            temp_file],
+                           stdout=fnull,
+                           check=True)
         TestExtract.ar_rar_split_p1 = os.path.join(archive_dir, "file.split.part1.rar")
         TestExtract.ar_rar_split_p2 = os.path.join(archive_dir, "file.split.part2.rar")
 

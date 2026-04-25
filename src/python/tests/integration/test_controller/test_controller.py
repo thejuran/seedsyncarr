@@ -85,17 +85,17 @@ class TestController(unittest.TestCase):
             zf.write(temp_file_path, os.path.basename(temp_file_path))
             zf.close()
         elif ext == "rar":
-            fnull = open(os.devnull, 'w')
-            subprocess.Popen(
-                [
-                    "rar",
-                    "a",
-                    "-ep",
-                    path,
-                    temp_file_path
-                ],
-                stdout=fnull
-            ).communicate()
+            with open(os.devnull, 'w') as fnull:
+                subprocess.Popen(
+                    [
+                        "rar",
+                        "a",
+                        "-ep",
+                        path,
+                        temp_file_path
+                    ],
+                    stdout=fnull
+                ).communicate()
         else:
             raise ValueError("Unsupported archive format: {}".format(os.path.basename(path)))
         return os.path.getsize(path)
@@ -2273,10 +2273,9 @@ class TestController(unittest.TestCase):
         #     - large max num connections, connections per file
         #     - download many files in parallel
         def create_large_file(_path, size):
-            f = open(_path, "wb")
-            f.seek(size - 1)
-            f.write(b"\0")
-            f.close()
+            with open(_path, "wb") as f:
+                f.seek(size - 1)
+                f.write(b"\0")
             print("File size: ", os.stat(_path).st_size)
 
         # Create a bunch of large files that can be downloaded in chunks
