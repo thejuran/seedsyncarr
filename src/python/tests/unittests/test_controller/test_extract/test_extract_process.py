@@ -165,18 +165,20 @@ class TestExtractProcess(unittest.TestCase):
         self.completed_signal = multiprocessing.Value('i', 0)
         self.completed_counter = multiprocessing.Value('i', 0)
 
+        self.continue_event = threading.Event()
+
         def _add_listener(listener: ExtractListener):
             print("Listener added")
 
             def _callback_sequence():
                 listener.extract_completed(name="a", is_dir=True)
-                time.sleep(0.1)
+                time.sleep(0.01)
                 self.completed_signal.value = 1
 
-                time.sleep(1.0)
+                self.continue_event.wait(timeout=5.0)
                 listener.extract_completed(name="b", is_dir=False)
                 listener.extract_completed(name="c", is_dir=True)
-                time.sleep(0.1)
+                time.sleep(0.01)
                 self.completed_signal.value = 2
 
             threading.Thread(target=_callback_sequence).start()
@@ -187,6 +189,8 @@ class TestExtractProcess(unittest.TestCase):
 
         while self.completed_signal.value < 1:
             pass
+        # Signal callback thread to proceed with second batch
+        self.continue_event.set()
         completed = self.process.pop_completed()
         self.assertEqual(1, len(completed))
         self.assertEqual("a", completed[0].name)
@@ -271,8 +275,9 @@ class TestExtractProcess(unittest.TestCase):
         self.process.start()
 
         self.process.extract(a)
-        time.sleep(1)
+        while self.extract_counter.value < 1:
+            time.sleep(0.01)
         self.process.extract(b)
         self.process.extract(c)
         while self.extract_counter.value < 3:
-            pass
+            time.sleep(0.01)

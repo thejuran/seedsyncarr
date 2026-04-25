@@ -13,11 +13,14 @@ from common import MultiprocessingLogger
 class TestMultiprocessingLogger(unittest.TestCase):
     def setUp(self):
         self.logger = logging.getLogger(TestMultiprocessingLogger.__name__)
-        handler = logging.StreamHandler(sys.stdout)
-        self.logger.addHandler(handler)
+        self._test_handler = logging.StreamHandler(sys.stdout)
+        self.logger.addHandler(self._test_handler)
         self.logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-        handler.setFormatter(formatter)
+        self._test_handler.setFormatter(formatter)
+
+    def tearDown(self):
+        self.logger.removeHandler(self._test_handler)
 
     @timeout_decorator.timeout(5)
     def test_main_logger_receives_records(self):
@@ -38,8 +41,8 @@ class TestMultiprocessingLogger(unittest.TestCase):
         with LogCapture("TestMultiprocessingLogger.MPLogger.process_1") as log_capture:
             p_1.start()
             mp_logger.start()
-            time.sleep(1)
-            p_1.join()
+            p_1.join(timeout=2)
+            time.sleep(0.05)  # drain logger IPC queue
             mp_logger.stop()
 
             log_capture.check(
@@ -64,8 +67,8 @@ class TestMultiprocessingLogger(unittest.TestCase):
         with LogCapture("TestMultiprocessingLogger.MPLogger.process_1") as log_capture:
             p_1.start()
             mp_logger.start()
-            time.sleep(1)
-            p_1.join()
+            p_1.join(timeout=2)
+            time.sleep(0.05)  # drain logger IPC queue
             mp_logger.stop()
 
             log_capture.check(
@@ -91,8 +94,8 @@ class TestMultiprocessingLogger(unittest.TestCase):
                                           args=(mp_logger,))
             p_1.start()
             mp_logger.start()
-            time.sleep(0.2)
-            p_1.join()
+            p_1.join(timeout=2)
+            time.sleep(0.05)  # drain logger IPC queue
             mp_logger.stop()
 
             log_capture.check(
@@ -110,8 +113,8 @@ class TestMultiprocessingLogger(unittest.TestCase):
                                           args=(mp_logger,))
             p_1.start()
             mp_logger.start()
-            time.sleep(0.2)
-            p_1.join()
+            p_1.join(timeout=2)
+            time.sleep(0.05)  # drain logger IPC queue
             mp_logger.stop()
 
             log_capture.check(
@@ -128,8 +131,8 @@ class TestMultiprocessingLogger(unittest.TestCase):
                                           args=(mp_logger,))
             p_1.start()
             mp_logger.start()
-            time.sleep(0.2)
-            p_1.join()
+            p_1.join(timeout=2)
+            time.sleep(0.05)  # drain logger IPC queue
             mp_logger.stop()
 
             log_capture.check(
@@ -145,8 +148,8 @@ class TestMultiprocessingLogger(unittest.TestCase):
                                           args=(mp_logger,))
             p_1.start()
             mp_logger.start()
-            time.sleep(0.2)
-            p_1.join()
+            p_1.join(timeout=2)
+            time.sleep(0.05)  # drain logger IPC queue
             mp_logger.stop()
 
             log_capture.check(

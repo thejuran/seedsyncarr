@@ -1,6 +1,5 @@
 import unittest
 from unittest.mock import MagicMock
-import time
 
 
 from common import Job
@@ -26,17 +25,13 @@ class TestJob(unittest.TestCase):
         context = MagicMock()
         job = DummyFailingJob("DummyFailingJob", context)
         job.start()
-        time.sleep(0.2)
+        job.join(timeout=5.0)
         with self.assertRaises(DummyError):
             job.propagate_exception()
-        job.terminate()
-        job.join()
 
     def test_cleanup_executes_on_execute_error(self):
         context = MagicMock()
         job = DummyFailingJob("DummyFailingJob", context)
         job.start()
-        time.sleep(0.2)
-        job.terminate()
-        job.join()
+        job.join(timeout=5.0)
         self.assertTrue(job.cleanup_run)
