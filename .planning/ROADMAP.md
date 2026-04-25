@@ -275,7 +275,7 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 **Milestone Goal:** Fix all known test suite defects, close outstanding quality/security todos, fill coverage gaps, and harden CI -- no new features.
 
 - [x] **Phase 87: Python Test Fixes -- Critical & Warning** - Fix 2 critical false-coverage tests and 8 warning-level resource/mock issues (completed 2026-04-25)
-- [ ] **Phase 88: Python Test Fixes -- Medium & Cleanup** - Fix medium-priority test quality issues and eliminate test slowness
+- [x] **Phase 88: Python Test Fixes -- Medium & Cleanup** - Fix medium-priority test quality issues and eliminate test slowness (completed 2026-04-25)
 - [ ] **Phase 89: Python Test Architecture** - Consolidate base classes, adopt conftest, reclassify tests, document gaps
 - [ ] **Phase 90: Angular Test Fixes** - Fix subscription leaks, fakeAsync cleanup, optional chaining false passes
 - [ ] **Phase 91: E2E Test Fixes & Platform** - Fix E2E test quality issues, CSP violation detection, arm64 Unicode sort
@@ -314,9 +314,9 @@ Plans:
   5. Logger handlers are removed in tearDown across all 5 affected files -- no cross-test handler accumulation
 **Plans**: 3 plans
 Plans:
-- [ ] 88-01-PLAN.md — XSS test, TemporaryDirectory cleanup, bottle import, conditional assertion, logger handler cleanup (PYFIX-11/14/15/16/19)
-- [ ] 88-02-PLAN.md — Scanner and lftp busy-wait fixes, lftp handler cleanup (PYFIX-12/16/18)
-- [ ] 88-03-PLAN.md — Sleep elimination, job.join sync, multiprocessing logger cleanup (PYFIX-13/16/17)
+- [x] 88-01-PLAN.md — XSS test, TemporaryDirectory cleanup, bottle import, conditional assertion, logger handler cleanup (PYFIX-11/14/15/16/19)
+- [x] 88-02-PLAN.md — Scanner and lftp busy-wait fixes, lftp handler cleanup (PYFIX-12/16/18)
+- [x] 88-03-PLAN.md — Sleep elimination, job.join sync, multiprocessing logger cleanup (PYFIX-13/16/17)
 
 ### Phase 89: Python Test Architecture
 **Goal**: Python test infrastructure is consistent, well-organized, and documented
@@ -475,7 +475,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 85. E2E Test Audit | v1.1.2 | 1/1 | Complete | 2026-04-24 |
 | 86. Final Validation | v1.1.2 | 2/2 | Complete | 2026-04-24 |
 | 87. Python Fixes -- Critical & Warning | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
-| 88. Python Fixes -- Medium & Cleanup | v1.2.0 | 0/3 | Not started | - |
+| 88. Python Fixes -- Medium & Cleanup | v1.2.0 | 3/3 | Complete   | 2026-04-25 |
 | 89. Python Test Architecture | v1.2.0 | 0/TBD | Not started | - |
 | 90. Angular Test Fixes | v1.2.0 | 0/TBD | Not started | - |
 | 91. E2E Test Fixes & Platform | v1.2.0 | 0/TBD | Not started | - |
