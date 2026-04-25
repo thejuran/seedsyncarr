@@ -299,7 +299,7 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
   5. `make run-tests-python` passes with zero warnings related to resource leaks or mock confusion
 **Plans**: 2 plans
 Plans:
-- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [x] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
 - [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ### Phase 88: Python Test Fixes -- Medium & Cleanup
@@ -473,7 +473,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 84. Angular Test Audit | v1.1.2 | 2/2 | Complete | 2026-04-24 |
 | 85. E2E Test Audit | v1.1.2 | 1/1 | Complete | 2026-04-24 |
 | 86. Final Validation | v1.1.2 | 2/2 | Complete | 2026-04-24 |
-| 87. Python Fixes -- Critical & Warning | v1.2.0 | 0/TBD | Not started | - |
+| 87. Python Fixes -- Critical & Warning | v1.2.0 | 1/2 | In Progress|  |
 | 88. Python Fixes -- Medium & Cleanup | v1.2.0 | 0/TBD | Not started | - |
 | 89. Python Test Architecture | v1.2.0 | 0/TBD | Not started | - |
 | 90. Angular Test Fixes | v1.2.0 | 0/TBD | Not started | - |

@@ -9,11 +9,11 @@ Requirements for Test & Quality Hardening milestone. Each maps to roadmap phases
 
 ### Python Test Fixes
 
-- [ ] **PYFIX-01**: Fix `threading.Thread(target=_callback_sequence())` — target called instead of passed, concurrency never tested (C-01)
-- [ ] **PYFIX-02**: Fix assertion-less `test_init_skips_rate_limit_when_zero` — always passes regardless of behavior (C-02)
-- [ ] **PYFIX-03**: Fix temp file with credentials never deleted in `test_config.py:503` (W-01)
-- [ ] **PYFIX-04**: Fix temp file leaked on test failure in `test_config.py:413` (W-02)
-- [ ] **PYFIX-05**: Fix mock class vs instance confusion in `test_status_handler.py` (W-03)
+- [x] **PYFIX-01**: Fix `threading.Thread(target=_callback_sequence())` — target called instead of passed, concurrency never tested (C-01)
+- [x] **PYFIX-02**: Fix assertion-less `test_init_skips_rate_limit_when_zero` — always passes regardless of behavior (C-02)
+- [x] **PYFIX-03**: Fix temp file with credentials never deleted in `test_config.py:503` (W-01)
+- [x] **PYFIX-04**: Fix temp file leaked on test failure in `test_config.py:413` (W-02)
+- [x] **PYFIX-05**: Fix mock class vs instance confusion in `test_status_handler.py` (W-03)
 - [ ] **PYFIX-06**: Fix group-writable permissions walked up to /tmp in `test_lftp.py:24` (W-04)
 - [ ] **PYFIX-07**: Fix logger fixture handler leak and propagation in `conftest.py` (W-05)
 - [ ] **PYFIX-08**: Fix implicit `unittest.mock.ANY` import via side effect across 3+ files (W-06)
@@ -141,11 +141,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PYFIX-01 | Phase 87 | Pending |
-| PYFIX-02 | Phase 87 | Pending |
-| PYFIX-03 | Phase 87 | Pending |
-| PYFIX-04 | Phase 87 | Pending |
-| PYFIX-05 | Phase 87 | Pending |
+| PYFIX-01 | Phase 87 | Complete |
+| PYFIX-02 | Phase 87 | Complete |
+| PYFIX-03 | Phase 87 | Complete |
+| PYFIX-04 | Phase 87 | Complete |
+| PYFIX-05 | Phase 87 | Complete |
 | PYFIX-06 | Phase 87 | Pending |
 | PYFIX-07 | Phase 87 | Pending |
 | PYFIX-08 | Phase 87 | Pending |
