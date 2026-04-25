@@ -222,11 +222,12 @@ class TestExtractDispatch(unittest.TestCase):
         self.mock_is_archive.return_value = True
 
         self.call_stop = False
+        shutdown_event = threading.Event()
 
         def _extract_archive(**kwargs):
             print(kwargs)
             self.call_stop = True
-            time.sleep(0.5)  # wait a bit so shutdown is called
+            shutdown_event.wait(0.5)  # wait a bit so shutdown is called
 
         self.mock_extract_archive.side_effect = _extract_archive
 
@@ -242,6 +243,7 @@ class TestExtractDispatch(unittest.TestCase):
         while not self.call_stop:
             pass
         self.dispatch.stop()
+        shutdown_event.set()
 
         while self.mock_extract_archive.call_count < 1 \
                 or self.listener.extract_completed.call_count < 1:
@@ -559,11 +561,12 @@ class TestExtractDispatch(unittest.TestCase):
         self.mock_is_archive.return_value = True
 
         self.call_stop = False
+        shutdown_event = threading.Event()
 
         def _extract_archive(**kwargs):
             print(kwargs)
             self.call_stop = True
-            time.sleep(0.5)  # wait a bit so shutdown is called
+            shutdown_event.wait(0.5)  # wait a bit so shutdown is called
 
         self.mock_extract_archive.side_effect = _extract_archive
 
@@ -582,6 +585,7 @@ class TestExtractDispatch(unittest.TestCase):
         while not self.call_stop:
             pass
         self.dispatch.stop()
+        shutdown_event.set()
 
         while self.mock_extract_archive.call_count < 1 \
                 or self.listener.extract_failed.call_count < 1:
@@ -715,15 +719,15 @@ class TestExtractDispatch(unittest.TestCase):
         self.dispatch.extract(a)
         self.dispatch.extract(a)
 
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.barrier = True
 
-        time.sleep(0.1)
+        time.sleep(0.01)
 
         while self.mock_extract_archive.call_count < 1 and \
                 self.listener.extract_completed.call_count < 1:
             pass
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.listener.extract_completed.assert_called_once_with("a", False)
         self.listener.extract_failed.assert_not_called()
         self.assertEqual(1, self.mock_extract_archive.call_count)
@@ -853,7 +857,7 @@ class TestExtractDispatchThreadSafety(unittest.TestCase):
         # Wait for completion
         while self.listener.extract_completed.call_count < 1:
             pass
-        time.sleep(0.1)
+        time.sleep(0.01)
 
         self.listener.extract_completed.assert_called_once_with("aaa", False)
         # Second listener was added during notification, should not have been called for this event
