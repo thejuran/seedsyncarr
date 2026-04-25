@@ -3,6 +3,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 import unittest
 
 import timeout_decorator
@@ -212,6 +213,7 @@ class TestLftp(unittest.TestCase):
             statuses = self.lftp.status()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("c", statuses[0].name)
         self.assertEqual(LftpJobStatus.Type.PGET, statuses[0].type)
@@ -225,6 +227,7 @@ class TestLftp(unittest.TestCase):
             statuses = self.lftp.status()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("a", statuses[0].name)
         self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
@@ -239,6 +242,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("d d", statuses[0].name)
         self.assertEqual(LftpJobStatus.Type.PGET, statuses[0].type)
@@ -252,6 +256,7 @@ class TestLftp(unittest.TestCase):
             statuses = self.lftp.status()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("e e", statuses[0].name)
         self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
@@ -265,6 +270,7 @@ class TestLftp(unittest.TestCase):
             statuses = self.lftp.status()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("üæÒ", statuses[0].name)
         self.assertEqual(LftpJobStatus.Type.PGET, statuses[0].type)
@@ -279,6 +285,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("latin", statuses[0].name)
         self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
@@ -290,6 +297,7 @@ class TestLftp(unittest.TestCase):
             size_local = statuses[0].total_transfer_state.size_local
             if size_local and size_local > 100:
                 break
+            time.sleep(0.01)
 
     @timeout_decorator.timeout(5)
     def test_queue_dir_with_unicode(self):
@@ -300,6 +308,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("áßç", statuses[0].name)
         self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
@@ -317,6 +326,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 2:
                 break
+            time.sleep(0.01)
         self.assertEqual(3, len(statuses))
         # queued jobs
         self.assertEqual("b", statuses[0].name)
@@ -342,6 +352,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 2:
                 break
+            time.sleep(0.01)
         self.assertEqual(3, len(statuses))
         self.lftp.kill_all()
         statuses = self.lftp.status()
@@ -350,6 +361,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 0:
                 break
+            time.sleep(0.01)
         statuses = self.lftp.status()
         self.assertEqual(0, len(statuses))
 
@@ -365,6 +377,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 2:
                 break
+            time.sleep(0.01)
         self.assertEqual(3, len(statuses))
         self.lftp.kill_all()
         while True:
@@ -372,6 +385,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(0, len(statuses))
         self.lftp.queue("b", True)
         while True:
@@ -379,6 +393,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("b", statuses[0].name)
         self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
@@ -395,6 +410,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 1:
                 break
+            time.sleep(0.01)
         self.assertEqual(2, len(statuses))
         self.assertEqual("b", statuses[0].name)
         self.assertEqual(LftpJobStatus.State.QUEUED, statuses[0].state)
@@ -406,6 +422,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("a", statuses[0].name)
         self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
@@ -419,6 +436,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("a", statuses[0].name)
         self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
@@ -428,6 +446,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(0, len(statuses))
 
     @timeout_decorator.timeout(5)
@@ -439,6 +458,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("a", statuses[0].name)
         self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
@@ -449,6 +469,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(0, len(statuses))
 
     @timeout_decorator.timeout(5)
@@ -471,6 +492,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 4:
                 break
+            time.sleep(0.01)
         self.assertEqual(5, len(statuses))
         self.assertEqual(["b", "c", "e e", "a", "d d"], [s.name for s in statuses])
         self.assertEqual([Q, Q, Q, R, R], [s.state for s in statuses])
@@ -482,6 +504,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 4:
                 break
+            time.sleep(0.01)
         self.assertEqual(4, len(statuses))
         self.assertEqual(["b", "e e", "a", "d d"], [s.name for s in statuses])
         self.assertEqual([Q, Q, R, R], [s.state for s in statuses])
@@ -491,6 +514,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 3:
                 break
+            time.sleep(0.01)
         self.assertEqual(3, len(statuses))
         self.assertEqual(["e e", "a", "d d"], [s.name for s in statuses])
         self.assertEqual([Q, R, R], [s.state for s in statuses])
@@ -500,6 +524,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 2:
                 break
+            time.sleep(0.01)
         self.assertEqual(2, len(statuses))
         self.assertEqual(["a", "d d"], [s.name for s in statuses])
         self.assertEqual([R, R], [s.state for s in statuses])
@@ -511,6 +536,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 1:
                 break
+            time.sleep(0.01)
         self.assertEqual("a", statuses[0].name)
         self.assertEqual(R, statuses[0].state)
         self.lftp.kill("a")
@@ -519,6 +545,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(0, len(statuses))
 
     @timeout_decorator.timeout(5)
@@ -539,6 +566,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 2:
                 break
+            time.sleep(0.01)
         self.assertEqual(3, len(statuses))
         self.assertEqual(["b", "a", "d d"], [s.name for s in statuses])
         self.assertEqual([Q, R, R], [s.state for s in statuses])
@@ -550,6 +578,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 2:
                 break
+            time.sleep(0.01)
         self.assertEqual(2, len(statuses))
         self.assertEqual(["a", "b"], [s.name for s in statuses])
         self.assertEqual([R, R], [s.state for s in statuses])
@@ -561,6 +590,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 1:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual(["b"], [s.name for s in statuses])
         self.assertEqual([R], [s.state for s in statuses])
@@ -574,6 +604,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 4:
                 break
+            time.sleep(0.01)
         self.assertEqual(4, len(statuses))
         self.assertEqual(["e e", "a", "b", "c"], [s.name for s in statuses])
         self.assertEqual([Q, Q, R, R], [s.state for s in statuses])
@@ -585,6 +616,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 3:
                 break
+            time.sleep(0.01)
         self.assertEqual(3, len(statuses))
         self.assertEqual(["a", "b", "c"], [s.name for s in statuses])
         self.assertEqual([Q, R, R], [s.state for s in statuses])
@@ -594,6 +626,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 2:
                 break
+            time.sleep(0.01)
         self.assertEqual(2, len(statuses))
         self.assertEqual(["c", "a"], [s.name for s in statuses])
         self.assertEqual([R, R], [s.state for s in statuses])
@@ -605,6 +638,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(0, len(statuses))
 
     @timeout_decorator.timeout(5)
@@ -618,6 +652,7 @@ class TestLftp(unittest.TestCase):
             statuses = self.lftp.status()
             if len(statuses) == 0:
                 break
+            time.sleep(0.01)
         with self.assertRaises(LftpError) as ctx:
             self.lftp.raise_pending_error()
         self.assertTrue("Access failed" in str(ctx.exception))
@@ -637,6 +672,7 @@ class TestLftp(unittest.TestCase):
             statuses = self.lftp.status()
             if len(statuses) == 0:
                 break
+            time.sleep(0.01)
         with self.assertRaises(LftpError) as ctx:
             self.lftp.raise_pending_error()
         self.assertTrue("Access failed" in str(ctx.exception))
@@ -654,6 +690,7 @@ class TestLftp(unittest.TestCase):
             statuses = self.lftp.status()
             if len(statuses) == 0:
                 break
+            time.sleep(0.01)
         with self.assertRaises(LftpError) as ctx:
             self.lftp.raise_pending_error()
         self.assertTrue("No such file" in str(ctx.exception))
@@ -672,6 +709,7 @@ class TestLftp(unittest.TestCase):
             statuses = self.lftp.status()
             if len(statuses) == 0:
                 break
+            time.sleep(0.01)
         with self.assertRaises(LftpError) as ctx:
             self.lftp.raise_pending_error()
         self.assertTrue("No such file" in str(ctx.exception))
@@ -702,6 +740,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("a", statuses[0].name)
         self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
@@ -713,6 +752,7 @@ class TestLftp(unittest.TestCase):
             self.lftp.raise_pending_error()
             if len(statuses) == 0:
                 break
+            time.sleep(0.01)
         self.lftp.raise_pending_error()
 
     @timeout_decorator.timeout(15)
@@ -737,6 +777,7 @@ class TestLftp(unittest.TestCase):
             statuses = self.lftp.status()
             if len(statuses) > 0:
                 break
+            time.sleep(0.01)
         self.assertEqual(1, len(statuses))
         self.assertEqual("a", statuses[0].name)
         self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
@@ -747,6 +788,7 @@ class TestLftp(unittest.TestCase):
             statuses = self.lftp.status()
             if len(statuses) == 0:
                 break
+            time.sleep(0.01)
         with self.assertRaises(LftpError) as ctx:
             self.lftp.raise_pending_error()
         self.assertTrue("Login failed: Login incorrect" in str(ctx.exception))
