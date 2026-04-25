@@ -39,8 +39,11 @@ def test_logger(request):
     )
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
+    logger.propagate = False
     yield logger
     logger.removeHandler(handler)
+    logger.setLevel(logging.NOTSET)
+    logger.propagate = True
 
 
 @pytest.fixture

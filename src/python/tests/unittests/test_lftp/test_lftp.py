@@ -26,8 +26,8 @@ class TestLftp(unittest.TestCase):
         TestLftp.temp_dir = tempfile.mkdtemp(prefix="test_lftp_")
         print(f"Temp dir: {TestLftp.temp_dir}")
 
-        # Allow group access for the seedsyncarrtest account
-        TestUtils.chmod_from_to(TestLftp.temp_dir, tempfile.gettempdir(), 0o775)
+        # Allow group access for the seedsyncarrtest account -- leaf dir only
+        os.chmod(TestLftp.temp_dir, 0o750)
 
         # Create some test directories
         # remote [dir] for remote path
