@@ -46,7 +46,7 @@ describe("Testing view file service", () => {
     it("should forward an empty model by default", fakeAsync(() => {
         let count = 0;
 
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 expect(list.size).toBe(0);
                 count++;
@@ -55,6 +55,7 @@ describe("Testing view file service", () => {
 
         tick();
         expect(count).toBe(1);
+        sub.unsubscribe();
     }));
 
     it("should forward an empty model", fakeAsync(() => {
@@ -63,7 +64,7 @@ describe("Testing view file service", () => {
         tick();
 
         let count = 0;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 expect(list.size).toBe(0);
                 count++;
@@ -71,6 +72,7 @@ describe("Testing view file service", () => {
         });
         tick();
         expect(count).toBe(1);
+        sub.unsubscribe();
     }));
 
     it("should correctly populate ViewFile props from a ModelFile", fakeAsync(() => {
@@ -94,7 +96,7 @@ describe("Testing view file service", () => {
         tick();
 
         let count = 0;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 expect(list.size).toBe(1);
                 const file = list.get(0)!;
@@ -116,6 +118,7 @@ describe("Testing view file service", () => {
         });
         tick();
         expect(count).toBe(1);
+        sub.unsubscribe();
     }));
 
     it("should correctly set the ViewFile status", fakeAsync(() => {
@@ -142,7 +145,7 @@ describe("Testing view file service", () => {
         tick();
 
         let count = 0;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 expect(list.size).toBe(1);
                 const file = list.get(0)!;
@@ -203,6 +206,7 @@ describe("Testing view file service", () => {
         mockModelService._files.next(model);
         tick();
         expect(count).toBe(8);
+        sub.unsubscribe();
     }));
 
     it("should always set a non-null file sizes in ViewFile", fakeAsync(() => {
@@ -216,7 +220,7 @@ describe("Testing view file service", () => {
         tick();
 
         let count = 0;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 expect(list.size).toBe(1);
                 const file = list.get(0)!;
@@ -227,6 +231,7 @@ describe("Testing view file service", () => {
         });
         tick();
         expect(count).toBe(1);
+        sub.unsubscribe();
     }));
 
     it("should correctly set ViewFile percent downloaded", fakeAsync(() => {
@@ -240,7 +245,7 @@ describe("Testing view file service", () => {
         ];
 
         let count = -1;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 // Ignore first
                 if(count >= 0) {
@@ -266,6 +271,7 @@ describe("Testing view file service", () => {
             tick();
         }
         expect(count).toBe(testVectors.length);
+        sub.unsubscribe();
     }));
 
     it("should should correctly set ViewFile isQueueable", fakeAsync(() => {
@@ -296,7 +302,7 @@ describe("Testing view file service", () => {
         ];
 
         let count = -1;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 // Ignore first
                 if(count >= 0) {
@@ -326,6 +332,7 @@ describe("Testing view file service", () => {
             tick();
         }
         expect(count).toBe(testVectors.length);
+        sub.unsubscribe();
     }));
 
     it("should should correctly set ViewFile isStoppable", fakeAsync(() => {
@@ -354,7 +361,7 @@ describe("Testing view file service", () => {
         ];
 
         let count = -1;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 // Ignore first
                 if(count >= 0) {
@@ -384,6 +391,7 @@ describe("Testing view file service", () => {
             tick();
         }
         expect(count).toBe(testVectors.length);
+        sub.unsubscribe();
     }));
 
     it("should should correctly set ViewFile isExtractable", fakeAsync(() => {
@@ -412,7 +420,7 @@ describe("Testing view file service", () => {
         ];
 
         let count = -1;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 // Ignore first
                 if(count >= 0) {
@@ -442,6 +450,7 @@ describe("Testing view file service", () => {
             tick();
         }
         expect(count).toBe(testVectors.length);
+        sub.unsubscribe();
     }));
 
     // it("should sort view files by status then name", fakeAsync(() => {
@@ -513,7 +522,7 @@ describe("Testing view file service", () => {
 
         let viewFileList;
         let count = 0;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 viewFileList = list;
                 expect(list.size).toBe(3);
@@ -570,6 +579,7 @@ describe("Testing view file service", () => {
         viewService.unsetSelected();
         tick();
         expect(count).toBe(7);
+        sub.unsubscribe();
     }));
 
     it("should should correctly set ViewFile isLocallyDeletable", fakeAsync(() => {
@@ -598,7 +608,7 @@ describe("Testing view file service", () => {
         ];
 
         let count = -1;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 // Ignore first
                 if(count >= 0) {
@@ -628,6 +638,7 @@ describe("Testing view file service", () => {
             tick();
         }
         expect(count).toBe(testVectors.length);
+        sub.unsubscribe();
     }));
 
     it("should should correctly set ViewFile isRemotelyDeletable", fakeAsync(() => {
@@ -656,7 +667,7 @@ describe("Testing view file service", () => {
         ];
 
         let count = -1;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 // Ignore first
                 if(count >= 0) {
@@ -686,6 +697,7 @@ describe("Testing view file service", () => {
             tick();
         }
         expect(count).toBe(testVectors.length);
+        sub.unsubscribe();
     }));
 
     it("should not filter any files by default", fakeAsync(() => {
@@ -703,7 +715,7 @@ describe("Testing view file service", () => {
 
         let count = 0;
         let viewFiles: Immutable.List<ViewFile> = null!;
-        viewService.filteredFiles.subscribe({
+        const sub = viewService.filteredFiles.subscribe({
             next: list => {
                 viewFiles = list;
                 count++;
@@ -712,6 +724,7 @@ describe("Testing view file service", () => {
         tick();
         expect(count).toBe(1);
         expect(viewFiles.size).toBe(8);
+        sub.unsubscribe();
     }));
 
     it("should apply filter criteria correctly", fakeAsync(() => {
@@ -740,7 +753,7 @@ describe("Testing view file service", () => {
         let count = 0;
         let viewFiles: Immutable.List<ViewFile> = null!;
         let viewFilesMap: Map<string, ViewFile> = null!;
-        viewService.filteredFiles.subscribe({
+        const sub = viewService.filteredFiles.subscribe({
             next: list => {
                 viewFiles = list;
                 viewFilesMap = new Map<string, ViewFile>();
@@ -754,6 +767,7 @@ describe("Testing view file service", () => {
         expect(viewFilesMap.has("tofu")).toBe(true);
         expect(viewFilesMap.has("flower")).toBe(true);
         expect(viewFilesMap.has("blueman")).toBe(true);
+        sub.unsubscribe();
     }));
 
     it("should resend filtered files on criteria change", fakeAsync(() => {
@@ -773,7 +787,7 @@ describe("Testing view file service", () => {
         let count = 0;
         let viewFiles: Immutable.List<ViewFile> = null!;
         let viewFilesMap: Map<string, ViewFile> = null!;
-        viewService.filteredFiles.subscribe({
+        const sub = viewService.filteredFiles.subscribe({
             next: list => {
                 viewFiles = list;
                 viewFilesMap = new Map<string, ViewFile>();
@@ -807,6 +821,7 @@ describe("Testing view file service", () => {
         expect(count).toBe(3);
         expect(viewFiles.size).toBe(1);
         expect(viewFilesMap.has("blueman")).toBe(true);
+        sub.unsubscribe();
     }));
 
     it("should not sort files by default", fakeAsync(() => {
@@ -824,7 +839,7 @@ describe("Testing view file service", () => {
 
         let count = 0;
         let viewFiles: Immutable.List<ViewFile> = null!;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 viewFiles = list;
                 count++;
@@ -841,6 +856,7 @@ describe("Testing view file service", () => {
         expect(viewFiles.get(5)!.name).toBe("mrx");
         expect(viewFiles.get(6)!.name).toBe("blueman");
         expect(viewFiles.get(7)!.name).toBe("spicy");
+        sub.unsubscribe();
     }));
 
     it("should sort new model correctly", fakeAsync(() => {
@@ -864,7 +880,7 @@ describe("Testing view file service", () => {
 
         let count = 0;
         let viewFiles: Immutable.List<ViewFile> = null!;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 viewFiles = list;
                 count++;
@@ -881,6 +897,7 @@ describe("Testing view file service", () => {
         expect(viewFiles.get(5)!.name).toBe("power");
         expect(viewFiles.get(6)!.name).toBe("spicy");
         expect(viewFiles.get(7)!.name).toBe("tofu");
+        sub.unsubscribe();
     }));
 
     it("should sort existing model on setComparator", fakeAsync(() => {
@@ -898,7 +915,7 @@ describe("Testing view file service", () => {
 
         let count = 0;
         let viewFiles: Immutable.List<ViewFile> = null!;
-        viewService.files.subscribe({
+        const sub = viewService.files.subscribe({
             next: list => {
                 viewFiles = list;
                 count++;
@@ -924,6 +941,7 @@ describe("Testing view file service", () => {
         expect(viewFiles.get(5)!.name).toBe("flower");
         expect(viewFiles.get(6)!.name).toBe("blueman");
         expect(viewFiles.get(7)!.name).toBe("aaaa");
+        sub.unsubscribe();
     }));
 
     // =========================================================================
@@ -1004,7 +1022,7 @@ describe("Testing view file service", () => {
     describe("FIX-01 DELETED isQueueable regression", () => {
         it("DELETED + remote_size=null must be queueable (RED target)", fakeAsync(() => {
             let count = -1;
-            viewService.files.subscribe({
+            const sub = viewService.files.subscribe({
                 next: list => {
                     // Ignore first empty emission
                     if (count >= 0) {
@@ -1035,11 +1053,12 @@ describe("Testing view file service", () => {
             tick();
 
             expect(count).toBe(1);
+            sub.unsubscribe();
         }));
 
         it("DELETED + remote_size>0 is queueable (GREEN control)", fakeAsync(() => {
             let count = -1;
-            viewService.files.subscribe({
+            const sub = viewService.files.subscribe({
                 next: list => {
                     // Ignore first empty emission
                     if (count >= 0) {
@@ -1070,6 +1089,7 @@ describe("Testing view file service", () => {
             tick();
 
             expect(count).toBe(1);
+            sub.unsubscribe();
         }));
     });
 });
