@@ -275,7 +275,24 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-No active milestone. Run `/gsd-new-milestone` to plan next work.
+## Current Milestone: v1.2.0 Test & Quality Hardening
+
+**Goal:** Fix all known test suite defects, close outstanding quality/security todos, fill coverage gaps, and harden CI — no new features.
+
+**Target features:**
+- Fix 2 critical false-coverage Python tests (thread target bug, assertion-less test)
+- Fix all warning/medium test quality issues across Python, Angular, and E2E layers
+- Address architectural findings (conftest adoption, base class consolidation, test reclassification, coverage gap documentation)
+- Fill 6 test coverage gaps (SSE integration, Logs E2E, Settings E2E, Webhook E2E, DeleteRemoteProcess, ActiveScanner)
+- Harden CI security (least-privilege permissions, pinned GH Actions, release dependency chain, Docker cache)
+- Harden Docker test containers (remove hardcoded passwords, lock SSH, drop root group, ephemeral keys)
+- Add rate limiting to all HTTP endpoints
+- Fix E2E infrastructure bugs (uninitialized vars, health conditions, bare except, restart race)
+- Fix E2E test quality (innerHTML, CSP fixture bypass, deprecated selectors, response checking)
+- Fix Angular test quality (subscription leaks, fakeAsync cleanup, optional chaining false passes)
+- Add E2E CSP violation detection
+- Fix arm64 Unicode sort E2E failures
+- Tighten Shield Semgrep rules
 
 ### Out of Scope
 
@@ -284,8 +301,9 @@ No active milestone. Run `/gsd-new-milestone` to plan next work.
 - Angular→htmx/Tailwind rewrite — visual kinship via design patterns, not framework
 - OAuth / multi-user auth — single-user self-hosted tool
 - HTTPS termination — handled by reverse proxy
-- Rate limiting — single-user tool, add at reverse proxy if needed
 - New favicon/logo design — keep existing favicon.png
+- webob/cgi upstream fix — blocked on upstream webob 2.0 release (PR #466 open)
+- Migrate `/server/config/set` from GET-path to POST-body — backend API change, separate milestone
 
 ## Context
 
@@ -364,7 +382,7 @@ No active milestone. Run `/gsd-new-milestone` to plan next work.
 
 ## Project Status
 
-**Status:** v1.1.2 shipped (2026-04-24). Test suite audit complete — all three layers clean.
+**Status:** v1.2.0 in progress (started 2026-04-24). Test & quality hardening — 61 items across test fixes, CI security, coverage gaps, Docker hardening, rate limiting, and tooling.
 
 30 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit as SeedSyncarr).
 
@@ -386,4 +404,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-24 after v1.1.2 milestone*
+*Last updated: 2026-04-24 after v1.2.0 milestone start*
