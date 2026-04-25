@@ -274,7 +274,7 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 
 **Milestone Goal:** Fix all known test suite defects, close outstanding quality/security todos, fill coverage gaps, and harden CI -- no new features.
 
-- [ ] **Phase 87: Python Test Fixes -- Critical & Warning** - Fix 2 critical false-coverage tests and 8 warning-level resource/mock issues
+- [x] **Phase 87: Python Test Fixes -- Critical & Warning** - Fix 2 critical false-coverage tests and 8 warning-level resource/mock issues (completed 2026-04-25)
 - [ ] **Phase 88: Python Test Fixes -- Medium & Cleanup** - Fix medium-priority test quality issues and eliminate test slowness
 - [ ] **Phase 89: Python Test Architecture** - Consolidate base classes, adopt conftest, reclassify tests, document gaps
 - [ ] **Phase 90: Angular Test Fixes** - Fix subscription leaks, fakeAsync cleanup, optional chaining false passes
@@ -300,7 +300,7 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 **Plans**: 2 plans
 Plans:
 - [x] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
-- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
+- [x] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ### Phase 88: Python Test Fixes -- Medium & Cleanup
 **Goal**: Python test suite runs faster and every test validates what it claims to validate
@@ -314,8 +314,8 @@ Plans:
   5. Logger handlers are removed in tearDown across all 5 affected files -- no cross-test handler accumulation
 **Plans**: 2 plans
 Plans:
-- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
-- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
+- [x] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [x] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ### Phase 89: Python Test Architecture
 **Goal**: Python test infrastructure is consistent, well-organized, and documented
@@ -329,7 +329,7 @@ Plans:
   5. `make run-tests-python` passes after all architectural changes
 **Plans**: 2 plans
 Plans:
-- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
+- [x] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
 - [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
 
 ### Phase 90: Angular Test Fixes
@@ -473,7 +473,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 84. Angular Test Audit | v1.1.2 | 2/2 | Complete | 2026-04-24 |
 | 85. E2E Test Audit | v1.1.2 | 1/1 | Complete | 2026-04-24 |
 | 86. Final Validation | v1.1.2 | 2/2 | Complete | 2026-04-24 |
-| 87. Python Fixes -- Critical & Warning | v1.2.0 | 1/2 | In Progress|  |
+| 87. Python Fixes -- Critical & Warning | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
 | 88. Python Fixes -- Medium & Cleanup | v1.2.0 | 0/TBD | Not started | - |
 | 89. Python Test Architecture | v1.2.0 | 0/TBD | Not started | - |
 | 90. Angular Test Fixes | v1.2.0 | 0/TBD | Not started | - |
