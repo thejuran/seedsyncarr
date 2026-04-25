@@ -276,7 +276,7 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 
 - [x] **Phase 87: Python Test Fixes -- Critical & Warning** - Fix 2 critical false-coverage tests and 8 warning-level resource/mock issues (completed 2026-04-25)
 - [x] **Phase 88: Python Test Fixes -- Medium & Cleanup** - Fix medium-priority test quality issues and eliminate test slowness (completed 2026-04-25)
-- [ ] **Phase 89: Python Test Architecture** - Consolidate base classes, adopt conftest, reclassify tests, document gaps
+- [x] **Phase 89: Python Test Architecture** - Consolidate base classes, adopt conftest, reclassify tests, document gaps (completed 2026-04-25)
 - [ ] **Phase 90: Angular Test Fixes** - Fix subscription leaks, fakeAsync cleanup, optional chaining false passes
 - [ ] **Phase 91: E2E Test Fixes & Platform** - Fix E2E test quality issues, CSP violation detection, arm64 Unicode sort
 - [ ] **Phase 92: E2E Infrastructure** - Fix Docker compose health, run_tests.sh bugs, restart race condition
@@ -330,8 +330,8 @@ Plans:
   5. `make run-tests-python` passes after all architectural changes
 **Plans**: 2 plans
 Plans:
-- [ ] 89-01-PLAN.md — Refactor conftest to helpers, consolidate base classes, move test_lftp, extract INI template (PYARCH-01/02/03/06)
-- [ ] 89-02-PLAN.md — Document coverage gaps and name-mangling trade-off (PYARCH-04/05)
+- [x] 89-01-PLAN.md — Refactor conftest to helpers, consolidate base classes, move test_lftp, extract INI template (PYARCH-01/02/03/06)
+- [x] 89-02-PLAN.md — Document coverage gaps and name-mangling trade-off (PYARCH-04/05)
 
 ### Phase 90: Angular Test Fixes
 **Goal**: Angular test suite has no subscription leaks, no false passes from optional chaining, and clean zone state
@@ -476,7 +476,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 86. Final Validation | v1.1.2 | 2/2 | Complete | 2026-04-24 |
 | 87. Python Fixes -- Critical & Warning | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
 | 88. Python Fixes -- Medium & Cleanup | v1.2.0 | 3/3 | Complete    | 2026-04-25 |
-| 89. Python Test Architecture | v1.2.0 | 0/TBD | Not started | - |
+| 89. Python Test Architecture | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
 | 90. Angular Test Fixes | v1.2.0 | 0/TBD | Not started | - |
 | 91. E2E Test Fixes & Platform | v1.2.0 | 0/TBD | Not started | - |
 | 92. E2E Infrastructure | v1.2.0 | 0/TBD | Not started | - |
