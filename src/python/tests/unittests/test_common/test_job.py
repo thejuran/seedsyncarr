@@ -26,6 +26,7 @@ class TestJob(unittest.TestCase):
         job = DummyFailingJob("DummyFailingJob", context)
         job.start()
         job.join(timeout=5.0)
+        self.assertFalse(job.is_alive(), "Job thread did not complete within timeout")
         with self.assertRaises(DummyError):
             job.propagate_exception()
 
@@ -34,4 +35,5 @@ class TestJob(unittest.TestCase):
         job = DummyFailingJob("DummyFailingJob", context)
         job.start()
         job.join(timeout=5.0)
+        self.assertFalse(job.is_alive(), "Job thread did not complete within timeout")
         self.assertTrue(job.cleanup_run)
