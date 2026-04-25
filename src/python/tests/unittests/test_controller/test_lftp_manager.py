@@ -88,14 +88,10 @@ class TestLftpManager(unittest.TestCase):
 
         manager = LftpManager(self.mock_context)  # noqa: F841
 
-        # rate_limit should NOT have been explicitly set (MagicMock default)
-        # We check that rate_limit was not assigned (it's still MagicMock's default)
-        # Since MagicMock tracks attribute assignments, we verify no call was made
-        # by checking the mock_lftp's attribute was not set to 0
-        # (MagicMock auto-creates attributes, so we check the call list)
-        # Actually, the simplest check: rate_limit should not appear in
-        # mock_lftp's _mock_children or explicit set calls
-        pass  # No assertion needed — test passes if __init__ doesn't crash
+        # MagicMock auto-creates attributes on access as MagicMock objects (not 0).
+        # Production code only assigns rate_limit when rate_limit > 0.
+        # If rate_limit were assigned 0, this assertion would catch it.
+        self.assertNotEqual(mock_lftp.rate_limit, 0)
 
     @patch('controller.lftp_manager.Lftp')
     def test_queue_delegates_to_lftp(self, mock_lftp_class):

@@ -179,7 +179,7 @@ class TestExtractProcess(unittest.TestCase):
                 time.sleep(0.1)
                 self.completed_signal.value = 2
 
-            threading.Thread(target=_callback_sequence()).start()
+            threading.Thread(target=_callback_sequence).start()
         self.mock_dispatch.add_listener.side_effect = _add_listener
 
         self.process = ExtractProcess(out_dir_path="", local_path="")
