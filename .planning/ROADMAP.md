@@ -312,10 +312,11 @@ Plans:
   3. Python test suite runs at least 4 seconds faster than before PYFIX-13 (real sleep replaced with mock/event)
   4. Conditional assertion in `test_job_status_parser_components.py:199` always executes its assert (no silent skip path)
   5. Logger handlers are removed in tearDown across all 5 affected files -- no cross-test handler accumulation
-**Plans**: 2 plans
+**Plans**: 3 plans
 Plans:
-- [x] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
-- [x] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
+- [ ] 88-01-PLAN.md — XSS test, TemporaryDirectory cleanup, bottle import, conditional assertion, logger handler cleanup (PYFIX-11/14/15/16/19)
+- [ ] 88-02-PLAN.md — Scanner and lftp busy-wait fixes, lftp handler cleanup (PYFIX-12/16/18)
+- [ ] 88-03-PLAN.md — Sleep elimination, job.join sync, multiprocessing logger cleanup (PYFIX-13/16/17)
 
 ### Phase 89: Python Test Architecture
 **Goal**: Python test infrastructure is consistent, well-organized, and documented
@@ -474,7 +475,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 85. E2E Test Audit | v1.1.2 | 1/1 | Complete | 2026-04-24 |
 | 86. Final Validation | v1.1.2 | 2/2 | Complete | 2026-04-24 |
 | 87. Python Fixes -- Critical & Warning | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
-| 88. Python Fixes -- Medium & Cleanup | v1.2.0 | 0/TBD | Not started | - |
+| 88. Python Fixes -- Medium & Cleanup | v1.2.0 | 0/3 | Not started | - |
 | 89. Python Test Architecture | v1.2.0 | 0/TBD | Not started | - |
 | 90. Angular Test Fixes | v1.2.0 | 0/TBD | Not started | - |
 | 91. E2E Test Fixes & Platform | v1.2.0 | 0/TBD | Not started | - |
