@@ -79,6 +79,7 @@ describe("BulkCommandService", () => {
 
             tick();
 
+            expect(result).toBeDefined();
             expect(result?.success).toBeTrue();
             expect(result?.allSucceeded).toBeTrue();
             expect(result?.hasPartialFailure).toBeFalse();
@@ -105,6 +106,7 @@ describe("BulkCommandService", () => {
 
             tick();
 
+            expect(result).toBeDefined();
             expect(result?.success).toBeTrue();
             expect(result?.allSucceeded).toBeFalse();
             expect(result?.hasPartialFailure).toBeTrue();
@@ -136,6 +138,7 @@ describe("BulkCommandService", () => {
 
             tick();
 
+            expect(result).toBeDefined();
             expect(result?.success).toBeTrue(); // Request succeeded, but operations failed
             expect(result?.allSucceeded).toBeFalse();
             expect(result?.hasPartialFailure).toBeTrue(); // failed > 0
@@ -157,6 +160,7 @@ describe("BulkCommandService", () => {
 
             tick();
 
+            expect(result).toBeDefined();
             expect(result?.success).toBeFalse();
             expect(result?.response).toBeNull();
             expect(result?.errorMessage).toContain("Invalid action");
@@ -176,6 +180,7 @@ describe("BulkCommandService", () => {
 
             tick();
 
+            expect(result).toBeDefined();
             expect(result?.success).toBeFalse();
             expect(result?.errorMessage).toContain("files array is required");
         }));
@@ -191,6 +196,7 @@ describe("BulkCommandService", () => {
 
             tick();
 
+            expect(result).toBeDefined();
             expect(result?.success).toBeFalse();
             expect(result?.response).toBeNull();
             expect(result?.errorMessage).toBeDefined();
@@ -210,6 +216,7 @@ describe("BulkCommandService", () => {
 
             tick();
 
+            expect(result).toBeDefined();
             expect(result?.success).toBeFalse();
             expect(result?.errorMessage).toBe("Internal server error");
         }));
