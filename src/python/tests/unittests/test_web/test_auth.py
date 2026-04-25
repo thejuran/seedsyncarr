@@ -4,6 +4,7 @@ import logging
 import unittest
 from unittest.mock import MagicMock
 
+import bottle
 from webtest import TestApp
 
 from web.web_app import WebApp
@@ -211,7 +212,6 @@ class TestAuthRequestFlag(unittest.TestCase):
 
         @app.route("/server/test/capture-auth")
         def _capture():
-            import bottle
             captured.append(getattr(bottle.request, 'auth_valid', None))
             return "ok"
 
@@ -233,7 +233,6 @@ class TestAuthRequestFlag(unittest.TestCase):
 
         @app.route("/server/test/capture-auth")
         def _capture():
-            import bottle
             captured.append(getattr(bottle.request, 'auth_valid', None))
             return "ok"
 

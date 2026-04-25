@@ -355,11 +355,11 @@ class TestController(unittest.TestCase):
         }
 
         logger = logging.getLogger(TestController.__name__)
-        handler = logging.StreamHandler(sys.stdout)
-        logger.addHandler(handler)
+        self._test_handler = logging.StreamHandler(sys.stdout)
+        logger.addHandler(self._test_handler)
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-        handler.setFormatter(formatter)
+        self._test_handler.setFormatter(formatter)
         self.context = Context(logger=logger,
                                web_access_logger=logger,
                                config=Config.from_dict(config_dict),
@@ -371,6 +371,7 @@ class TestController(unittest.TestCase):
 
     @overrides(unittest.TestCase)
     def tearDown(self):
+        logging.getLogger(TestController.__name__).removeHandler(self._test_handler)
         if self.controller:
             self.controller.exit()
 
