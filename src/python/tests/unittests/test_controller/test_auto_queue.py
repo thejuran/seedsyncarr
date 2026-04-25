@@ -649,7 +649,7 @@ class TestAutoQueue(unittest.TestCase):
         file_one.remote_size = 100
         self.model_listener.file_added(file_one)
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.One", command.filename)
@@ -659,7 +659,7 @@ class TestAutoQueue(unittest.TestCase):
         file_one_updated.local_size = 50
         self.model_listener.file_updated(file_one, file_one_updated)
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
 
     def test_stopped_files_are_not_queued_on_startup(self):
         """
@@ -827,7 +827,7 @@ class TestAutoQueue(unittest.TestCase):
 
         persist.add_pattern(AutoQueuePattern(pattern="File.One"))
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.One", command.filename)
@@ -835,7 +835,7 @@ class TestAutoQueue(unittest.TestCase):
 
         persist.add_pattern(AutoQueuePattern(pattern="File.Two"))
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.Two", command.filename)
@@ -843,7 +843,7 @@ class TestAutoQueue(unittest.TestCase):
 
         persist.add_pattern(AutoQueuePattern(pattern="File.Three"))
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.Three", command.filename)
@@ -939,7 +939,7 @@ class TestAutoQueue(unittest.TestCase):
         file_one_updated.state = ModelFile.State.DEFAULT
         self.model_listener.file_updated(file_one, file_one_updated)
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.One", command.filename)
@@ -1155,7 +1155,7 @@ class TestAutoQueue(unittest.TestCase):
 
         persist.add_pattern(AutoQueuePattern(pattern="File.One"))
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.EXTRACT, command.action)
         self.assertEqual("File.One", command.filename)
@@ -1163,7 +1163,7 @@ class TestAutoQueue(unittest.TestCase):
 
         persist.add_pattern(AutoQueuePattern(pattern="File.Two"))
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.EXTRACT, command.action)
         self.assertEqual("File.Two", command.filename)
@@ -1171,7 +1171,7 @@ class TestAutoQueue(unittest.TestCase):
 
         persist.add_pattern(AutoQueuePattern(pattern="File.Three"))
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.EXTRACT, command.action)
         self.assertEqual("File.Three", command.filename)
@@ -1201,7 +1201,7 @@ class TestAutoQueue(unittest.TestCase):
 
         persist.add_pattern(AutoQueuePattern(pattern="File.One"))
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.EXTRACT, command.action)
         self.assertEqual("File.One", command.filename)
@@ -1376,7 +1376,7 @@ class TestAutoQueue(unittest.TestCase):
         file_one.is_extractable = True
         self.model_listener.file_added(file_one)
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.One", command.filename)
@@ -1401,7 +1401,7 @@ class TestAutoQueue(unittest.TestCase):
         file_one_new.is_extractable = True
         self.model_listener.file_updated(file_one, file_one_new)
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.EXTRACT, command.action)
         self.assertEqual("File.One", command.filename)
@@ -1418,7 +1418,7 @@ class TestAutoQueue(unittest.TestCase):
         file_one.is_extractable = True
         self.model_listener.file_added(file_one)
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.EXTRACT, command.action)
         self.assertEqual("File.One", command.filename)
@@ -1445,7 +1445,7 @@ class TestAutoQueue(unittest.TestCase):
         file_one.is_extractable = True
         self.model_listener.file_added(file_one)
         auto_queue.process()
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.EXTRACT, command.action)
         self.assertEqual("File.One", command.filename)
@@ -1539,7 +1539,7 @@ class TestAutoQueue(unittest.TestCase):
         self.model_listener.file_updated(file_one, file_one_updated)
         auto_queue.process()
         # Should queue because local_size is None (new file, not STOPPED)
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.One", command.filename)
@@ -1577,7 +1577,7 @@ class TestAutoQueue(unittest.TestCase):
         self.model_listener.file_updated(file_one, file_one_updated)
         auto_queue.process()
         # Should queue because the remote file actually changed (100 -> 200)
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.One", command.filename)
@@ -1615,7 +1615,7 @@ class TestAutoQueue(unittest.TestCase):
         auto_queue.process()
 
         # Only File.Two should be queued (File.One is stopped)
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.Two", command.filename)
@@ -1659,7 +1659,7 @@ class TestAutoQueue(unittest.TestCase):
         auto_queue.process()
 
         # Now should queue because file is no longer stopped
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.One", command.filename)
@@ -1700,7 +1700,7 @@ class TestAutoQueue(unittest.TestCase):
         auto_queue.process()
 
         # Only File.Two should be queued (File.One is in downloaded_files)
-        self.controller.queue_command.assert_called_once_with(unittest.mock.ANY)
+        self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.Two", command.filename)

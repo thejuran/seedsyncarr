@@ -7,7 +7,6 @@ import unittest
 
 import timeout_decorator
 
-from tests.utils import TestUtils
 from lftp import Lftp, LftpJobStatus, LftpError
 
 

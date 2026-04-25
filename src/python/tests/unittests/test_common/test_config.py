@@ -498,7 +498,9 @@ class TestConfig(unittest.TestCase):
         self.assertTrue(str(error.exception).startswith("Unknown section"))
 
     def test_to_file(self):
-        config_file_path = tempfile.NamedTemporaryFile(suffix="test_config", delete=False).name
+        _tmp = tempfile.NamedTemporaryFile(suffix="test_config", delete=False)
+        _tmp.close()
+        config_file_path = _tmp.name
         self.addCleanup(os.remove, config_file_path)
 
         config = Config()

@@ -14,7 +14,7 @@ class TestModelStreamHandler(BaseTestWebApp):
         Timer(0.5, self.web_app.stop).start()
 
         self.test_app.get("/server/stream")
-        self.controller.get_model_files_and_add_listener.assert_called_once_with(unittest.mock.ANY)
+        self.controller.get_model_files_and_add_listener.assert_called_once_with(ANY)
 
     def test_stream_model_removes_listener(self):
         # Schedule server stop
