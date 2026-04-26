@@ -193,14 +193,14 @@ describe("Testing view file service", () => {
         tick();
         expect(count).toBe(6);
 
-        // Next state - DELETED
+        // Next state - EXTRACTING
         modelFile = new ModelFile(modelFile.set("state", ModelFile.State.EXTRACTING));
         model = model.set(modelFile.name, modelFile);
         mockModelService._files.next(model);
         tick();
         expect(count).toBe(7);
 
-        // Next state - DELETED
+        // Next state - EXTRACTED
         modelFile = new ModelFile(modelFile.set("state", ModelFile.State.EXTRACTED));
         model = model.set(modelFile.name, modelFile);
         mockModelService._files.next(model);
