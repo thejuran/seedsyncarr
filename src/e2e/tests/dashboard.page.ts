@@ -1,6 +1,7 @@
 import { Page, Locator } from '@playwright/test';
 import { Paths } from '../urls';
 import { App } from './app';
+import { escapeRegex } from './helpers';
 
 export interface FileInfo {
     name: string;
@@ -52,7 +53,7 @@ export class DashboardPage extends App {
 
     getRowCheckbox(fileName: string): Locator {
         const row = this.page.locator('.transfer-table tbody app-transfer-row', {
-            has: this.page.locator('td.cell-name .file-name', { hasText: new RegExp(`^${this._escapeRegex(fileName)}$`) })
+            has: this.page.locator('td.cell-name .file-name', { hasText: new RegExp(`^${escapeRegex(fileName)}$`) })
         });
         return row.locator('td.cell-checkbox input.ss-checkbox');
     }
@@ -79,7 +80,7 @@ export class DashboardPage extends App {
 
     getStatusBadge(fileName: string): Locator {
         const row = this.page.locator('.transfer-table tbody app-transfer-row', {
-            has: this.page.locator('td.cell-name .file-name', { hasText: new RegExp(`^${this._escapeRegex(fileName)}$`) })
+            has: this.page.locator('td.cell-name .file-name', { hasText: new RegExp(`^${escapeRegex(fileName)}$`) })
         });
         return row.locator('td.cell-status .status-badge');
     }
@@ -165,7 +166,4 @@ export class DashboardPage extends App {
         await this.page.locator('.modal button[data-action="ok"]').click();
     }
 
-    private _escapeRegex(s: string): string {
-        return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
 }

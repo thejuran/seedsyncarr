@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { escapeRegex } from '../helpers';
 
 // Typed seed API — see .planning/phases/77-deferred-playwright-e2e-phases-72-73
 // UAT-01 and UAT-02 describe blocks consume these helpers from test.beforeAll.
@@ -40,10 +41,6 @@ const LABEL = {
 // 100 bytes/sec is aggressive but reliable on fast Docker networks where
 // even 10MB files finish in <100ms at full speed.
 const STOPPED_SEED_RATE_LIMIT = '100';
-
-function escapeRegex(s: string): string {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 async function expectOk(page: Page, url: string, method: 'POST' | 'DELETE' | 'GET'): Promise<void> {
     let res;
