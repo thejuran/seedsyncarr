@@ -5,6 +5,7 @@ green=`tput setaf 2`
 reset=`tput sgr0`
 
 # Wait for server to be up
+SERVER_UP=""
 END=$((SECONDS+30))
 while [ ${SECONDS} -lt ${END} ];
 do
@@ -27,6 +28,7 @@ fi
 echo "${green}E2E Test detected that SeedSyncarr server is UP${reset}"
 
 # Wait for remote scan to complete (files need to be scanned before dashboard tests can run)
+SCAN_DONE=""
 END=$((SECONDS+60))
 while [ ${SECONDS} -lt ${END} ];
 do
