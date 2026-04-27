@@ -1,6 +1,7 @@
 import { Page } from '@playwright/test';
 import { Paths } from '../urls';
 import { App } from './app';
+import { escapeRegex } from './helpers';
 
 export class AutoQueuePage extends App {
     constructor(page: Page) {
@@ -33,7 +34,7 @@ export class AutoQueuePage extends App {
         await this.page.locator('.pattern-add .btn-pattern-add').click();
         // Wait for the pattern to appear in the list
         await this.page.locator('.pattern-section .pattern-chip-text')
-            .filter({ hasText: pattern })
+            .filter({ hasText: new RegExp(`^${escapeRegex(pattern)}$`) })
             .waitFor({ state: 'visible' });
     }
 
