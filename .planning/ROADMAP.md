@@ -375,8 +375,8 @@ Plans:
   5. `make run-tests-e2e` completes reliably on both amd64 and arm64 without timing-dependent failures
 **Plans**: 2 plans
 Plans:
-- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
-- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
+- [ ] 92-01-PLAN.md — Fix run_tests.sh variable init, compose healthcheck, and verify restart pattern (E2EINFRA-01, E2EINFRA-02, E2EINFRA-03)
+- [ ] 92-02-PLAN.md — Fix parse_status.py exceptions and add __main__ guard (E2EINFRA-04, E2EINFRA-05)
 
 ### Phase 93: CI & Docker Hardening
 **Goal**: CI workflow follows least-privilege security and Docker test containers have no hardcoded credentials
