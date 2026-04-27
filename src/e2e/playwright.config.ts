@@ -17,6 +17,7 @@ export default defineConfig({
   ],
   use: {
     baseURL: process.env.APP_BASE_URL || 'http://myapp:8800',
+    locale: 'en-US',  // Force deterministic ICU locale; prevents arm64/amd64 sort divergence
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
