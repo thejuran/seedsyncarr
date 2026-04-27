@@ -360,8 +360,8 @@ Plans:
   5. Dashboard E2E specs pass on arm64 with correct Unicode sort order handling
 **Plans**: 2 plans
 Plans:
-- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
-- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
+- [ ] 91-01-PLAN.md — Fix page object APIs and extract shared escapeRegex utility (E2EFIX-01, E2EFIX-05, E2EFIX-07)
+- [ ] 91-02-PLAN.md — Fix spec quality issues, CSP documentation, and arm64 locale (E2EFIX-02, E2EFIX-03, E2EFIX-04, E2EFIX-06, PLAT-01, PLAT-02)
 
 ### Phase 92: E2E Infrastructure
 **Goal**: E2E Docker infrastructure starts reliably with proper health checks and no race conditions
