@@ -279,7 +279,7 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 - [x] **Phase 89: Python Test Architecture** - Consolidate base classes, adopt conftest, reclassify tests, document gaps (completed 2026-04-25)
 - [x] **Phase 90: Angular Test Fixes** - Fix subscription leaks, fakeAsync cleanup, optional chaining false passes (completed 2026-04-27)
 - [x] **Phase 91: E2E Test Fixes & Platform** - Fix E2E test quality issues, CSP violation detection, arm64 Unicode sort (completed 2026-04-27)
-- [ ] **Phase 92: E2E Infrastructure** - Fix Docker compose health, run_tests.sh bugs, restart race condition
+- [x] **Phase 92: E2E Infrastructure** - Fix Docker compose health, run_tests.sh bugs, restart race condition (completed 2026-04-27)
 - [ ] **Phase 93: CI & Docker Hardening** - Least-privilege CI permissions, pinned actions, Docker test container security
 - [ ] **Phase 94: Test Coverage -- Backend** - SSE integration tests, webhook E2E, DeleteRemoteProcess, ActiveScanner
 - [ ] **Phase 95: Test Coverage -- E2E** - Logs page and Settings form Playwright specs
@@ -376,7 +376,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 92-01-PLAN.md — Fix run_tests.sh variable init, compose healthcheck, and verify restart pattern (E2EINFRA-01, E2EINFRA-02, E2EINFRA-03)
-- [ ] 92-02-PLAN.md — Fix parse_status.py exceptions and add __main__ guard (E2EINFRA-04, E2EINFRA-05)
+- [x] 92-02-PLAN.md — Fix parse_status.py exceptions and add __main__ guard (E2EINFRA-04, E2EINFRA-05)
 
 ### Phase 93: CI & Docker Hardening
 **Goal**: CI workflow follows least-privilege security and Docker test containers have no hardcoded credentials
@@ -479,7 +479,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 89. Python Test Architecture | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
 | 90. Angular Test Fixes | v1.2.0 | 2/2 | Complete    | 2026-04-27 |
 | 91. E2E Test Fixes & Platform | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
-| 92. E2E Infrastructure | v1.2.0 | 1/2 | In Progress|  |
+| 92. E2E Infrastructure | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
 | 93. CI & Docker Hardening | v1.2.0 | 0/TBD | Not started | - |
 | 94. Test Coverage -- Backend | v1.2.0 | 0/TBD | Not started | - |
 | 95. Test Coverage -- E2E | v1.2.0 | 0/TBD | Not started | - |
