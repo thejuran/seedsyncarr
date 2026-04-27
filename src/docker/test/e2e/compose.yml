@@ -7,7 +7,8 @@ services:
       dockerfile: src/docker/test/e2e/Dockerfile
       target: seedsyncarr_test_e2e
     depends_on:
-      - remote
+      configure:
+        condition: service_completed_successfully
     # Playwright needs more shared memory for browser
     shm_size: 1024M
     environment:
@@ -21,6 +22,20 @@ services:
     build:
       context: ../../../../
       dockerfile: src/docker/test/e2e/remote/Dockerfile
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/1234'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  myapp:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8800/server/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   configure:
     image: seedsyncarr/test/e2e/configure
@@ -29,4 +44,11 @@ services:
       context: ../../../../
       dockerfile: src/docker/test/e2e/configure/Dockerfile
     depends_on:
-      - myapp
+      myapp:
+        condition: service_healthy
+      remote:
+        condition: service_healthy
+    # REMOTE_USERNAME/REMOTE_PASSWORD must match values baked into remote/Dockerfile
+    environment:
+      - REMOTE_USERNAME=${REMOTE_USERNAME:-remoteuser}
+      - REMOTE_PASSWORD=${REMOTE_PASSWORD:-remotepass}
