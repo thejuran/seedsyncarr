@@ -68,9 +68,10 @@ describe("Testing stream dispatch service", () => {
         discardPeriodicTasks();
     }));
 
-    it("should create an instance", () => {
+    it("should create an instance", fakeAsync(() => {
         expect(dispatchService).toBeDefined();
-    });
+        discardPeriodicTasks();
+    }));
 
     it("should construct an event source with correct url", fakeAsync(() => {
         expect(mockEventSource.url).toBe("/server/stream");

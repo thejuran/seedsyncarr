@@ -15,7 +15,7 @@ describe("Testing view file filter service", () => {
 
     let viewFileService: MockViewFileService;
     let viewFileOptionsService: MockViewFileOptionsService;
-    let filterCriteria: ViewFileFilterCriteria | undefined;
+    let filterCriteria: ViewFileFilterCriteria | null | undefined;
 
     beforeEach(() => {
         TestBed.configureTestingModule({
@@ -91,6 +91,7 @@ describe("Testing view file filter service", () => {
             nameFilter: "tofu",
         }));
         tick();
+        expect(filterCriteria).toBeDefined();
 
         // exact match
         expect(filterCriteria!.meetsCriteria(new ViewFile({name: "tofu"}))).toBe(true);
@@ -121,6 +122,7 @@ describe("Testing view file filter service", () => {
             nameFilter: "tofu",
         }));
         tick();
+        expect(filterCriteria).toBeDefined();
         expect(filterCriteria!.meetsCriteria(new ViewFile({name: "TOFU"}))).toBe(true);
         expect(filterCriteria!.meetsCriteria(new ViewFile({name: "TofU"}))).toBe(true);
         expect(filterCriteria!.meetsCriteria(new ViewFile({name: "aaaToFubbb"}))).toBe(true);
@@ -140,6 +142,7 @@ describe("Testing view file filter service", () => {
             nameFilter: "to.fu",
         }));
         tick();
+        expect(filterCriteria).toBeDefined();
         expect(filterCriteria!.meetsCriteria(new ViewFile({name: "to.fu"}))).toBe(true);
         expect(filterCriteria!.meetsCriteria(new ViewFile({name: "to fu"}))).toBe(true);
 
@@ -197,6 +200,7 @@ describe("Testing view file filter service", () => {
             selectedStatusFilter: ViewFile.Status.DEFAULT,
         }));
         tick();
+        expect(filterCriteria).toBeDefined();
 
         // exact match
         expect(filterCriteria!.meetsCriteria(
@@ -255,6 +259,7 @@ describe("Testing view file filter service", () => {
             nameFilter: "tofu",
         }));
         tick();
+        expect(filterCriteria).toBeDefined();
 
         // both match
         expect(filterCriteria!.meetsCriteria(new ViewFile({
