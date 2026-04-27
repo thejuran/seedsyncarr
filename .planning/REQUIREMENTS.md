@@ -60,9 +60,9 @@ Requirements for Test & Quality Hardening milestone. Each maps to roadmap phases
 
 ### E2E Infrastructure
 
-- [ ] **E2EINFRA-01**: Initialize `SERVER_UP`/`SCAN_DONE` variables before polling loops in `run_tests.sh` (BUG-05)
-- [ ] **E2EINFRA-02**: Add `condition: service_healthy` to configure→myapp dependency in compose (BUG-06)
-- [ ] **E2EINFRA-03**: Replace `sleep 2` race after restart with wait-for-down-then-up pattern (BUG-07)
+- [x] **E2EINFRA-01**: Initialize `SERVER_UP`/`SCAN_DONE` variables before polling loops in `run_tests.sh` (BUG-05)
+- [x] **E2EINFRA-02**: Add `condition: service_healthy` to configure→myapp dependency in compose (BUG-06)
+- [x] **E2EINFRA-03**: Replace `sleep 2` race after restart with wait-for-down-then-up pattern (BUG-07)
 - [ ] **E2EINFRA-04**: Replace bare `except:` with specific exception types in `parse_status.py` (BUG-08)
 - [ ] **E2EINFRA-05**: Add `__main__` guard to `parse_status.py` (PY-10)
 
@@ -182,9 +182,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | E2EFIX-07 | Phase 91 | Pending |
 | PLAT-01 | Phase 91 | Pending |
 | PLAT-02 | Phase 91 | Pending |
-| E2EINFRA-01 | Phase 92 | Pending |
-| E2EINFRA-02 | Phase 92 | Pending |
-| E2EINFRA-03 | Phase 92 | Pending |
+| E2EINFRA-01 | Phase 92 | Complete |
+| E2EINFRA-02 | Phase 92 | Complete |
+| E2EINFRA-03 | Phase 92 | Complete |
 | E2EINFRA-04 | Phase 92 | Pending |
 | E2EINFRA-05 | Phase 92 | Pending |
 | CISEC-01 | Phase 93 | Pending |

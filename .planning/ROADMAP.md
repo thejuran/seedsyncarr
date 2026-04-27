@@ -375,7 +375,7 @@ Plans:
   5. `make run-tests-e2e` completes reliably on both amd64 and arm64 without timing-dependent failures
 **Plans**: 2 plans
 Plans:
-- [ ] 92-01-PLAN.md — Fix run_tests.sh variable init, compose healthcheck, and verify restart pattern (E2EINFRA-01, E2EINFRA-02, E2EINFRA-03)
+- [x] 92-01-PLAN.md — Fix run_tests.sh variable init, compose healthcheck, and verify restart pattern (E2EINFRA-01, E2EINFRA-02, E2EINFRA-03)
 - [ ] 92-02-PLAN.md — Fix parse_status.py exceptions and add __main__ guard (E2EINFRA-04, E2EINFRA-05)
 
 ### Phase 93: CI & Docker Hardening
@@ -479,7 +479,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 89. Python Test Architecture | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
 | 90. Angular Test Fixes | v1.2.0 | 2/2 | Complete    | 2026-04-27 |
 | 91. E2E Test Fixes & Platform | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
-| 92. E2E Infrastructure | v1.2.0 | 0/TBD | Not started | - |
+| 92. E2E Infrastructure | v1.2.0 | 1/2 | In Progress|  |
 | 93. CI & Docker Hardening | v1.2.0 | 0/TBD | Not started | - |
 | 94. Test Coverage -- Backend | v1.2.0 | 0/TBD | Not started | - |
 | 95. Test Coverage -- E2E | v1.2.0 | 0/TBD | Not started | - |
