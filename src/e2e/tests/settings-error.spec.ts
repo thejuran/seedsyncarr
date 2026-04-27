@@ -6,6 +6,7 @@ test.describe('Settings page error states', () => {
 
     test.beforeEach(async ({ page }) => {
         settingsPage = new SettingsPage(page);
+        await settingsPage.navigateTo();
         await settingsPage.disableSonarr();
     });
 
