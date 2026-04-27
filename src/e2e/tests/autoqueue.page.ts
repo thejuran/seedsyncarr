@@ -25,14 +25,16 @@ export class AutoQueuePage extends App {
 
     async getPatterns(): Promise<string[]> {
         const elements = await this.page.locator('.pattern-section .pattern-chip .pattern-chip-text').all();
-        return Promise.all(elements.map(elm => elm.innerHTML()));
+        return Promise.all(elements.map(elm => elm.innerText()));
     }
 
     async addPattern(pattern: string) {
         await this.page.locator('.pattern-add input').fill(pattern);
         await this.page.locator('.pattern-add .btn-pattern-add').click();
         // Wait for the pattern to appear in the list
-        await this.page.locator(`.pattern-section .pattern-chip-text:has-text("${pattern}")`).waitFor({ state: 'visible' });
+        await this.page.locator('.pattern-section .pattern-chip-text')
+            .filter({ hasText: pattern })
+            .waitFor({ state: 'visible' });
     }
 
     async removePattern(index: number) {
