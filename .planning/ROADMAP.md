@@ -277,7 +277,7 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 - [x] **Phase 87: Python Test Fixes -- Critical & Warning** - Fix 2 critical false-coverage tests and 8 warning-level resource/mock issues (completed 2026-04-25)
 - [x] **Phase 88: Python Test Fixes -- Medium & Cleanup** - Fix medium-priority test quality issues and eliminate test slowness (completed 2026-04-25)
 - [x] **Phase 89: Python Test Architecture** - Consolidate base classes, adopt conftest, reclassify tests, document gaps (completed 2026-04-25)
-- [ ] **Phase 90: Angular Test Fixes** - Fix subscription leaks, fakeAsync cleanup, optional chaining false passes
+- [x] **Phase 90: Angular Test Fixes** - Fix subscription leaks, fakeAsync cleanup, optional chaining false passes (completed 2026-04-27)
 - [ ] **Phase 91: E2E Test Fixes & Platform** - Fix E2E test quality issues, CSP violation detection, arm64 Unicode sort
 - [ ] **Phase 92: E2E Infrastructure** - Fix Docker compose health, run_tests.sh bugs, restart race condition
 - [ ] **Phase 93: CI & Docker Hardening** - Least-privilege CI permissions, pinned actions, Docker test container security
@@ -477,7 +477,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 87. Python Fixes -- Critical & Warning | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
 | 88. Python Fixes -- Medium & Cleanup | v1.2.0 | 3/3 | Complete    | 2026-04-25 |
 | 89. Python Test Architecture | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
-| 90. Angular Test Fixes | v1.2.0 | 2/2 | Complete | 2026-04-25 |
+| 90. Angular Test Fixes | v1.2.0 | 2/2 | Complete    | 2026-04-27 |
 | 91. E2E Test Fixes & Platform | v1.2.0 | 0/TBD | Not started | - |
 | 92. E2E Infrastructure | v1.2.0 | 0/TBD | Not started | - |
 | 93. CI & Docker Hardening | v1.2.0 | 0/TBD | Not started | - |
