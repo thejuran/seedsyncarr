@@ -120,6 +120,12 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
 
     test.beforeAll(async ({ browser }) => {
         test.setTimeout(120_000);
+        // CSP monitoring intentionally absent: this raw context is used for seed-state
+        // API calls only. The csp-listener fixture's page override (exposeFunction +
+        // addInitScript) applies only to per-test pages, not browser.newContext() pages.
+        // Seed operations make HTTP requests and poll badge DOM — they do not introduce
+        // new script sources; CSP violations here would indicate infrastructure issues,
+        // not app regressions.
         const ctx = await browser.newContext();
         const page = await ctx.newPage();
         const dash = new DashboardPage(page);
@@ -249,10 +255,9 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
         // Force-stop any active download so testing.gif returns to a queueable state.
         // Ignore non-OK responses (stop is a no-op if the file is not QUEUED/DOWNLOADING).
         await page.request.post(`/server/command/stop/${encodeURIComponent('testing.gif')}`);
-        // Wait briefly for any stop to propagate before proceeding. The file might already be
-        // DEFAULT (never queued), STOPPED (just stopped), or DOWNLOADED (finished earlier).
-        // We proceed regardless — Queue is enabled for DEFAULT and STOPPED states.
-        await page.waitForTimeout(500);
+        // No explicit wait needed: the Queue button enabled assertion at line ~277 uses
+        // Playwright auto-wait (polls until actionable or expect timeout). This provides
+        // equivalent synchronization without a fixed sleep.
 
         // Action 1 + 2 share a throttled lftp window.
         //
@@ -269,7 +274,8 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
         //
         // The throttle is always restored in the finally block so Actions 3-5 and
         // subsequent tests run at full speed.
-        await page.request.get('/server/config/set/lftp/rate_limit/100');
+        const throttleResp = await page.request.get('/server/config/set/lftp/rate_limit/100');
+        if (!throttleResp.ok()) throw new Error(`rate_limit set failed: ${throttleResp.status()}`);
         try {
             // Action 1: Queue testing.gif (now throttled — stays Syncing indefinitely).
             await dashboardPage.selectFileByName('testing.gif');
@@ -299,7 +305,8 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
         } finally {
             // Always restore unlimited speed so Actions 3-5 and subsequent tests are not
             // affected by the throttle even if the try block throws.
-            await page.request.get('/server/config/set/lftp/rate_limit/0');
+            const restoreResp = await page.request.get('/server/config/set/lftp/rate_limit/0');
+            if (!restoreResp.ok()) throw new Error(`rate_limit restore failed: ${restoreResp.status()}`);
         }
 
         // Action 3: Extract — no harness fixtures are archives (RESEARCH Pitfall 3).
@@ -374,6 +381,12 @@ test.describe.serial('UAT-02: status filter and URL', () => {
 
     test.beforeAll(async ({ browser }) => {
         test.setTimeout(120_000);
+        // CSP monitoring intentionally absent: this raw context is used for seed-state
+        // API calls only. The csp-listener fixture's page override (exposeFunction +
+        // addInitScript) applies only to per-test pages, not browser.newContext() pages.
+        // Seed operations make HTTP requests and poll badge DOM — they do not introduce
+        // new script sources; CSP violations here would indicate infrastructure issues,
+        // not app regressions.
         const ctx = await browser.newContext();
         const page = await ctx.newPage();
         const dash = new DashboardPage(page);
