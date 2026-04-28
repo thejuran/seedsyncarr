@@ -17,6 +17,8 @@ services:
   remote:
     image: seedsyncarr/test/e2e/remote
     container_name: seedsyncarr_test_e2e_remote
+    # NOTE: This service is pre-built by the Makefile (run-tests-e2e) which
+    # passes --build-arg SSH_PUBKEY. Do not build via docker compose directly.
     # Platform must match myapp so scanfs binary can execute
     platform: ${SEEDSYNCARR_PLATFORM:-linux/amd64}
     build:
