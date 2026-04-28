@@ -49,14 +49,17 @@ test.describe('Testing logs page', () => {
         // for the page-load smoke assertion. The Docker compose stack
         // produces INFO-level log entries during scan cycles.
         // Wait with generous timeout for SSE delivery.
+        // NOTE: this test does not run in stub/offline mode — the Docker compose
+        // stack must be running with active scan cycles for logs to appear.
         await expect(logsPage.getLogRows().first()).toBeVisible({ timeout: 15000 });
     });
 
     test('should display status bar with log count', async () => {
         // D-01: status bar text visible
         await expect(logsPage.getStatusBar()).toBeVisible();
-        // Wait for at least one log to arrive so count is > 0
-        await expect(logsPage.getLogRows().first()).toBeVisible({ timeout: 15000 });
-        await expect(logsPage.getStatusBarRight()).toContainText('logs indexed');
+        // Wait for the status bar right section to show a log count.
+        // In sequential execution the prior test already waited for the first log row,
+        // so we wait on the status text directly rather than duplicating the row wait.
+        await expect(logsPage.getStatusBarRight()).toContainText('logs indexed', { timeout: 15000 });
     });
 });
