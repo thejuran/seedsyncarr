@@ -133,10 +133,14 @@ run-tests-e2e:
 	$(DOCKER) rmi -f $${STAGING_REGISTRY}:$${STAGING_VERSION}
 	$(DOCKER) pull $${STAGING_REGISTRY}:$${STAGING_VERSION} --platform linux/$${SEEDSYNCARR_ARCH}
 	echo "${green}Building remote container for platform $${SEEDSYNCARR_PLATFORM}${reset}";
+	# DOCKSEC-05: Generate ephemeral SSH key pair for E2E test
+	ssh-keygen -t ed25519 -N "" -f /tmp/e2e_test_key -q 2>/dev/null || true
+	E2E_SSH_PUBKEY=$$(cat /tmp/e2e_test_key.pub)
 	$(DOCKER) buildx build \
 		--platform $${SEEDSYNCARR_PLATFORM} \
 		--load \
 		-t seedsyncarr/test/e2e/remote \
+		--build-arg SSH_PUBKEY="$${E2E_SSH_PUBKEY}" \
 		-f ${SOURCEDIR}/docker/test/e2e/remote/Dockerfile \
 		.
 
