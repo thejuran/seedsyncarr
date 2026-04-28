@@ -388,7 +388,11 @@ Plans:
   3. `publish-docker-image` job is in the `needs` chain of `publish-github-release`
   4. Test containers use SSH key-only auth (no hardcoded passwords, `PasswordAuthentication no`)
   5. Test containers generate ephemeral SSH key pairs at build time and run sshd as non-root
-**Plans**: TBD (run `/gsd-plan-phase 93`)
+**Plans**: 3 plans
+Plans:
+- [ ] 93-01-PLAN.md — Harden CI workflow: least-privilege permissions, SHA-pinned actions, job ordering, build cache
+- [ ] 93-02-PLAN.md — Harden Python test container: non-root sshd, no password auth, dedicated group
+- [ ] 93-03-PLAN.md — Harden E2E remote container: ephemeral SSH key, no password auth, non-root sshd
 
 ### Phase 94: Test Coverage -- Backend
 **Goal**: Previously untested backend paths have dedicated tests proving they work correctly
@@ -468,7 +472,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 90. Angular Test Fixes | v1.2.0 | 2/2 | Complete    | 2026-04-27 |
 | 91. E2E Test Fixes & Platform | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
 | 92. E2E Infrastructure | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
-| 93. CI & Docker Hardening | v1.2.0 | 0/TBD | Not started | - |
+| 93. CI & Docker Hardening | v1.2.0 | 0/3 | Not started | - |
 | 94. Test Coverage -- Backend | v1.2.0 | 0/TBD | Not started | - |
 | 95. Test Coverage -- E2E | v1.2.0 | 0/TBD | Not started | - |
 | 96. Rate Limiting & Tooling | v1.2.0 | 0/TBD | Not started | - |
