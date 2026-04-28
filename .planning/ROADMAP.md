@@ -388,10 +388,7 @@ Plans:
   3. `publish-docker-image` job is in the `needs` chain of `publish-github-release`
   4. Test containers use SSH key-only auth (no hardcoded passwords, `PasswordAuthentication no`)
   5. Test containers generate ephemeral SSH key pairs at build time and run sshd as non-root
-**Plans**: 2 plans
-Plans:
-- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
-- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
+**Plans**: TBD (run `/gsd-plan-phase 93`)
 
 ### Phase 94: Test Coverage -- Backend
 **Goal**: Previously untested backend paths have dedicated tests proving they work correctly
@@ -402,10 +399,7 @@ Plans:
   2. Webhook end-to-end test sends a Sonarr/Radarr POST through the web layer and verifies the controller processes it
   3. `DeleteRemoteProcess` has dedicated unit tests covering SSH command construction, error handling, and deletion paths
   4. `ActiveScanner` has a dedicated test file covering scan scheduling and result aggregation
-**Plans**: 2 plans
-Plans:
-- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
-- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
+**Plans**: TBD (run `/gsd-plan-phase 94`)
 
 ### Phase 95: Test Coverage -- E2E
 **Goal**: Logs and Settings pages have Playwright E2E coverage proving they render and function correctly
@@ -414,10 +408,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Logs page E2E specs verify page load, log line rendering, and auto-scroll behavior
   2. Settings page E2E specs verify form field rendering, value editing, and save/persist round-trip
-**Plans**: 2 plans
-Plans:
-- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
-- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
+**Plans**: TBD (run `/gsd-plan-phase 95`)
 **UI hint**: yes
 
 ### Phase 96: Rate Limiting & Tooling
@@ -430,10 +421,7 @@ Plans:
   3. Normal usage patterns (single requests with reasonable intervals) are never rate-limited
   4. Semgrep `js-nosql-injection-where` rule requires MongoDB context (no false positives on generic `.where()`)
   5. Semgrep `js-xss-eval-user-input` rule excludes arrow/named function callbacks from eval detection
-**Plans**: 2 plans
-Plans:
-- [ ] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
-- [ ] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
+**Plans**: TBD (run `/gsd-plan-phase 96`)
 
 ## Progress
 
@@ -487,4 +475,4 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 
 ---
 
-*Last updated: 2026-04-24 -- v1.2.0 Test & Quality Hardening roadmap created. 10 phases (87-96), 68 requirements mapped.*
+*Last updated: 2026-04-27 -- milestone audit fixes: committed E2EINFRA-03, updated 27 stale requirement statuses, fixed plan references for phases 93-96*

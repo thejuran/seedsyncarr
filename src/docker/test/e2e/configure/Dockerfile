@@ -1,6 +1,6 @@
 FROM alpine:3.19
 
-RUN apk add --no-cache curl bash
+RUN apk add --no-cache curl bash jq
 
 WORKDIR /
 ADD src/docker/wait-for-it.sh /

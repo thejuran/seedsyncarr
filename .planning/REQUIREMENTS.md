@@ -14,11 +14,11 @@ Requirements for Test & Quality Hardening milestone. Each maps to roadmap phases
 - [x] **PYFIX-03**: Fix temp file with credentials never deleted in `test_config.py:503` (W-01)
 - [x] **PYFIX-04**: Fix temp file leaked on test failure in `test_config.py:413` (W-02)
 - [x] **PYFIX-05**: Fix mock class vs instance confusion in `test_status_handler.py` (W-03)
-- [ ] **PYFIX-06**: Fix group-writable permissions walked up to /tmp in `test_lftp.py:24` (W-04)
-- [ ] **PYFIX-07**: Fix logger fixture handler leak and propagation in `conftest.py` (W-05)
-- [ ] **PYFIX-08**: Fix implicit `unittest.mock.ANY` import via side effect across 3+ files (W-06)
-- [ ] **PYFIX-09**: Fix resource leak — bare `open(os.devnull)` without context manager in 2 integration tests (W-07)
-- [ ] **PYFIX-10**: Fix resource leak — bare `open()` in `create_large_file` helper (W-08)
+- [x] **PYFIX-06**: Fix group-writable permissions walked up to /tmp in `test_lftp.py:24` (W-04)
+- [x] **PYFIX-07**: Fix logger fixture handler leak and propagation in `conftest.py` (W-05)
+- [x] **PYFIX-08**: Fix implicit `unittest.mock.ANY` import via side effect across 3+ files (W-06)
+- [x] **PYFIX-09**: Fix resource leak — bare `open(os.devnull)` without context manager in 2 integration tests (W-07)
+- [x] **PYFIX-10**: Fix resource leak — bare `open()` in `create_large_file` helper (W-08)
 - [x] **PYFIX-11**: Add test for HTML-escaping token in meta tag — XSS prevention (M-01)
 - [x] **PYFIX-12**: Fix busy-wait race condition in scanner tests — add sleep + fix TOCTOU (M-02)
 - [x] **PYFIX-13**: Replace real `time.sleep` in unit tests with mock time or threading.Event (~4.5s saved per run) (M-03)
@@ -31,32 +31,32 @@ Requirements for Test & Quality Hardening milestone. Each maps to roadmap phases
 
 ### Python Test Architecture
 
-- [ ] **PYARCH-01**: Convert conftest fixtures to importable helpers or adopt pytest-style tests (A-01)
-- [ ] **PYARCH-02**: Consolidate duplicated `BaseControllerTestCase` and `BaseAutoDeleteTestCase` base classes (A-02)
-- [ ] **PYARCH-03**: Move misclassified integration test `tests/unittests/test_lftp/test_lftp.py` to integration directory (A-03)
-- [ ] **PYARCH-04**: Document coverage gaps — modules without dedicated tests (ActiveScanner, WebAppJob, WebAppBuilder, scan_fs) (A-04)
-- [ ] **PYARCH-05**: Document private-API coupling via name-mangling as accepted trade-off (A-05)
-- [ ] **PYARCH-06**: Extract duplicated INI strings in config encryption tests to shared constant (A-06)
+- [x] **PYARCH-01**: Convert conftest fixtures to importable helpers or adopt pytest-style tests (A-01)
+- [x] **PYARCH-02**: Consolidate duplicated `BaseControllerTestCase` and `BaseAutoDeleteTestCase` base classes (A-02)
+- [x] **PYARCH-03**: Move misclassified integration test `tests/unittests/test_lftp/test_lftp.py` to integration directory (A-03)
+- [x] **PYARCH-04**: Document coverage gaps — modules without dedicated tests (ActiveScanner, WebAppJob, WebAppBuilder, scan_fs) (A-04)
+- [x] **PYARCH-05**: Document private-API coupling via name-mangling as accepted trade-off (A-05)
+- [x] **PYARCH-06**: Extract duplicated INI strings in config encryption tests to shared constant (A-06)
 
 ### Angular Test Fixes
 
-- [ ] **ANGFIX-01**: Add `discardPeriodicTasks()` for never-completing observable in fakeAsync zone (ANG-10)
-- [ ] **ANGFIX-02**: Fix double-cast hiding nullable type — use `ViewFileFilterCriteria | undefined` (ANG-04)
-- [ ] **ANGFIX-03**: Fix `view-file.service.spec.ts` missing subscription teardown (BUG-09)
-- [ ] **ANGFIX-04**: Fix subscription leaks in `notification.service.spec.ts` — 7 occurrences (ANG-01)
-- [ ] **ANGFIX-05**: Fix signal-derived observable subscription leaks in `file-selection.service.spec.ts` (ANG-02)
-- [ ] **ANGFIX-06**: Fix EventEmitter leak + non-null assertion in `transfer-row.component.spec.ts` (ANG-03)
-- [ ] **ANGFIX-07**: Add `expect(result).toBeDefined()` guards where optional chaining masks test gaps (ANG-05)
+- [x] **ANGFIX-01**: Add `discardPeriodicTasks()` for never-completing observable in fakeAsync zone (ANG-10)
+- [x] **ANGFIX-02**: Fix double-cast hiding nullable type — use `ViewFileFilterCriteria | undefined` (ANG-04)
+- [x] **ANGFIX-03**: Fix `view-file.service.spec.ts` missing subscription teardown (BUG-09)
+- [x] **ANGFIX-04**: Fix subscription leaks in `notification.service.spec.ts` — 7 occurrences (ANG-01)
+- [x] **ANGFIX-05**: Fix signal-derived observable subscription leaks in `file-selection.service.spec.ts` (ANG-02)
+- [x] **ANGFIX-06**: Fix EventEmitter leak + non-null assertion in `transfer-row.component.spec.ts` (ANG-03)
+- [x] **ANGFIX-07**: Add `expect(result).toBeDefined()` guards where optional chaining masks test gaps (ANG-05)
 
 ### E2E Test Fixes
 
-- [ ] **E2EFIX-01**: Fix `innerHTML()` vs `innerText()` in autoqueue page object (BUG-01)
-- [ ] **E2EFIX-02**: Fix `beforeEach` calling API before `navigateTo()` in `settings-error.spec.ts` (BUG-02)
-- [ ] **E2EFIX-03**: Replace `waitForTimeout(500)` hard-coded delay with proper Playwright wait (BUG-04)
-- [ ] **E2EFIX-04**: Fix `beforeAll` seed context bypassing CSP fixture (BUG-03)
-- [ ] **E2EFIX-05**: Replace deprecated `:has-text()` pseudo-class with `locator.filter({ hasText })` (E2E-02)
-- [ ] **E2EFIX-06**: Add HTTP response checking for rate-limit config calls in dashboard spec (E2E-04)
-- [ ] **E2EFIX-07**: Deduplicate `_escapeRegex` helper — extract to shared utility (ARCH)
+- [x] **E2EFIX-01**: Fix `innerHTML()` vs `innerText()` in autoqueue page object (BUG-01)
+- [x] **E2EFIX-02**: Fix `beforeEach` calling API before `navigateTo()` in `settings-error.spec.ts` (BUG-02)
+- [x] **E2EFIX-03**: Replace `waitForTimeout(500)` hard-coded delay with proper Playwright wait (BUG-04)
+- [x] **E2EFIX-04**: Fix `beforeAll` seed context bypassing CSP fixture (BUG-03)
+- [x] **E2EFIX-05**: Replace deprecated `:has-text()` pseudo-class with `locator.filter({ hasText })` (E2E-02)
+- [x] **E2EFIX-06**: Add HTTP response checking for rate-limit config calls in dashboard spec (E2E-04)
+- [x] **E2EFIX-07**: Deduplicate `_escapeRegex` helper — extract to shared utility (ARCH)
 
 ### E2E Infrastructure
 
@@ -93,8 +93,8 @@ Requirements for Test & Quality Hardening milestone. Each maps to roadmap phases
 
 ### E2E CSP & Platform
 
-- [ ] **PLAT-01**: Add Playwright console listener / `securitypolicyviolation` event that fails on CSP violations (CSP todo)
-- [ ] **PLAT-02**: Fix arm64 Unicode sort order failures in dashboard E2E specs (arm64 todo)
+- [x] **PLAT-01**: Add Playwright console listener / `securitypolicyviolation` event that fails on CSP violations (CSP todo)
+- [x] **PLAT-02**: Fix arm64 Unicode sort order failures in dashboard E2E specs (arm64 todo)
 
 ### Rate Limiting
 
@@ -146,42 +146,42 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PYFIX-03 | Phase 87 | Complete |
 | PYFIX-04 | Phase 87 | Complete |
 | PYFIX-05 | Phase 87 | Complete |
-| PYFIX-06 | Phase 87 | Pending |
-| PYFIX-07 | Phase 87 | Pending |
-| PYFIX-08 | Phase 87 | Pending |
-| PYFIX-09 | Phase 87 | Pending |
-| PYFIX-10 | Phase 87 | Pending |
-| PYFIX-11 | Phase 88 | Pending |
-| PYFIX-12 | Phase 88 | Pending |
-| PYFIX-13 | Phase 88 | Pending |
-| PYFIX-14 | Phase 88 | Pending |
-| PYFIX-15 | Phase 88 | Pending |
-| PYFIX-16 | Phase 88 | Pending |
-| PYFIX-17 | Phase 88 | Pending |
-| PYFIX-18 | Phase 88 | Pending |
-| PYFIX-19 | Phase 88 | Pending |
-| PYARCH-01 | Phase 89 | Pending |
-| PYARCH-02 | Phase 89 | Pending |
-| PYARCH-03 | Phase 89 | Pending |
-| PYARCH-04 | Phase 89 | Pending |
-| PYARCH-05 | Phase 89 | Pending |
-| PYARCH-06 | Phase 89 | Pending |
-| ANGFIX-01 | Phase 90 | Pending |
-| ANGFIX-02 | Phase 90 | Pending |
-| ANGFIX-03 | Phase 90 | Pending |
-| ANGFIX-04 | Phase 90 | Pending |
-| ANGFIX-05 | Phase 90 | Pending |
-| ANGFIX-06 | Phase 90 | Pending |
-| ANGFIX-07 | Phase 90 | Pending |
-| E2EFIX-01 | Phase 91 | Pending |
-| E2EFIX-02 | Phase 91 | Pending |
-| E2EFIX-03 | Phase 91 | Pending |
-| E2EFIX-04 | Phase 91 | Pending |
-| E2EFIX-05 | Phase 91 | Pending |
-| E2EFIX-06 | Phase 91 | Pending |
-| E2EFIX-07 | Phase 91 | Pending |
-| PLAT-01 | Phase 91 | Pending |
-| PLAT-02 | Phase 91 | Pending |
+| PYFIX-06 | Phase 87 | Complete |
+| PYFIX-07 | Phase 87 | Complete |
+| PYFIX-08 | Phase 87 | Complete |
+| PYFIX-09 | Phase 87 | Complete |
+| PYFIX-10 | Phase 87 | Complete |
+| PYFIX-11 | Phase 88 | Complete |
+| PYFIX-12 | Phase 88 | Complete |
+| PYFIX-13 | Phase 88 | Complete |
+| PYFIX-14 | Phase 88 | Complete |
+| PYFIX-15 | Phase 88 | Complete |
+| PYFIX-16 | Phase 88 | Complete |
+| PYFIX-17 | Phase 88 | Complete |
+| PYFIX-18 | Phase 88 | Complete |
+| PYFIX-19 | Phase 88 | Complete |
+| PYARCH-01 | Phase 89 | Complete |
+| PYARCH-02 | Phase 89 | Complete |
+| PYARCH-03 | Phase 89 | Complete |
+| PYARCH-04 | Phase 89 | Complete |
+| PYARCH-05 | Phase 89 | Complete |
+| PYARCH-06 | Phase 89 | Complete |
+| ANGFIX-01 | Phase 90 | Complete |
+| ANGFIX-02 | Phase 90 | Complete |
+| ANGFIX-03 | Phase 90 | Complete |
+| ANGFIX-04 | Phase 90 | Complete |
+| ANGFIX-05 | Phase 90 | Complete |
+| ANGFIX-06 | Phase 90 | Complete |
+| ANGFIX-07 | Phase 90 | Complete |
+| E2EFIX-01 | Phase 91 | Complete |
+| E2EFIX-02 | Phase 91 | Complete |
+| E2EFIX-03 | Phase 91 | Complete |
+| E2EFIX-04 | Phase 91 | Complete |
+| E2EFIX-05 | Phase 91 | Complete |
+| E2EFIX-06 | Phase 91 | Complete |
+| E2EFIX-07 | Phase 91 | Complete |
+| PLAT-01 | Phase 91 | Complete |
+| PLAT-02 | Phase 91 | Complete |
 | E2EINFRA-01 | Phase 92 | Complete |
 | E2EINFRA-02 | Phase 92 | Complete |
 | E2EINFRA-03 | Phase 92 | Complete |
@@ -214,7 +214,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 - v1.2.0 requirements: 68 total
 - Mapped to phases: 68
 - Unmapped: 0
+- Complete: 41 (phases 87-92)
+- Pending: 27 (phases 93-96)
 
 ---
 *Requirements defined: 2026-04-24*
-*Last updated: 2026-04-24 after roadmap creation -- all 68 requirements mapped to phases 87-96*
+*Last updated: 2026-04-27 after milestone audit -- 27 stale checkboxes updated, traceability table corrected*
