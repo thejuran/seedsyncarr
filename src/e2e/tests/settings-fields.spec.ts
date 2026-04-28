@@ -19,10 +19,20 @@ test.describe('Settings page form fields', () => {
 
     test.afterEach(async () => {
         // D-12: restore original config values to prevent cross-test pollution
-        // Use .catch(() => {}) per settings-error.spec.ts pattern
-        await settingsPage.setRemoteAddress(originalAddress).catch(() => {});
-        await settingsPage.setUseSshKey(originalSshKey).catch(() => {});
-        await settingsPage.setRemoteScanInterval(originalScanInterval).catch(() => {});
+        // Each restoration is wrapped individually so a failure is logged with context
+        // and re-thrown so Playwright marks the hook as failed rather than the next test.
+        const restore = async (label: string, fn: () => Promise<void>) => {
+            try {
+                await fn();
+            } catch (e) {
+                console.error(`[afterEach] Failed to restore ${label}:`, e);
+                // Re-throw so Playwright marks the hook as failed rather than the next test
+                throw e;
+            }
+        };
+        await restore('remoteAddress',      () => settingsPage.setRemoteAddress(originalAddress));
+        await restore('sshKey',             () => settingsPage.setUseSshKey(originalSshKey));
+        await restore('remoteScanInterval', () => settingsPage.setRemoteScanInterval(originalScanInterval));
     });
 
     // --- Text field: Server Address (D-07, D-11) ---
