@@ -35,7 +35,10 @@ EXPOSE 1234
 RUN sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
     sed -i 's/^#\?KbdInteractiveAuthentication.*/KbdInteractiveAuthentication no/' /etc/ssh/sshd_config && \
     (grep -qE '^#?UsePAM' /etc/ssh/sshd_config && sed -i 's/^#\?UsePAM.*/UsePAM no/' /etc/ssh/sshd_config || echo "UsePAM no" >> /etc/ssh/sshd_config)
-RUN passwd -l remoteuser
+# DOCKSEC-02: Disable password login without locking the account.
+# '*' is an invalid hash (no password matches) but unlike '!' it does not
+# trigger OpenSSH 10's "account is locked" check that blocks key auth.
+RUN usermod -p '*' remoteuser
 
 # DOCKSEC-04: Generate host keys and transfer ownership for non-root sshd
 RUN mkdir -p /var/run/sshd && \

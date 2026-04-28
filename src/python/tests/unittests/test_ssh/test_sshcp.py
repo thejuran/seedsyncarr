@@ -1,5 +1,6 @@
 import unittest
 import os
+import grp
 import tempfile
 import shutil
 import filecmp
@@ -16,6 +17,7 @@ from ssh import Sshcp, SshcpError
 # Test credentials for Docker-based test container (see test/python/Dockerfile).
 # These are NOT production secrets — they exist only in the ephemeral test environment.
 _TEST_USER = "seedsyncarrtest"
+_TEST_GROUP = "testgroup"
 
 # NOTE: password-auth path (Sshcp(password="...")) is not tested here because
 # the test container uses key-only auth. See src/docker/test/python/Dockerfile.
@@ -32,7 +34,10 @@ class TestSshcp(unittest.TestCase):
         self.remote_dir = os.path.join(self.temp_dir, "remote")
         os.mkdir(self.remote_dir)
 
-        # Allow group access for the seedsyncarrtest account
+        # Allow group access for the seedsyncarrtest account via testgroup
+        gid = grp.getgrnam(_TEST_GROUP).gr_gid
+        os.chown(self.temp_dir, -1, gid)
+        os.chown(self.remote_dir, -1, gid)
         TestUtils.chmod_from_to(self.remote_dir, tempfile.gettempdir(), 0o775)
 
         # Note: seedsyncarrtest account must be set up. See DeveloperReadme.md for details

@@ -1,3 +1,4 @@
+import grp
 import logging
 import os
 import shutil
@@ -14,6 +15,7 @@ from lftp import Lftp, LftpJobStatus, LftpError
 # Test credentials for Docker-based test container (see test/python/Dockerfile).
 # These are NOT production secrets — they exist only in the ephemeral test environment.
 _TEST_USER = "seedsyncarrtest"
+_TEST_GROUP = "testgroup"
 
 
 class TestLftpProtocol(unittest.TestCase):
@@ -25,7 +27,9 @@ class TestLftpProtocol(unittest.TestCase):
         TestLftpProtocol.temp_dir = tempfile.mkdtemp(prefix="test_lftp_")
         print(f"Temp dir: {TestLftpProtocol.temp_dir}")
 
-        # Allow group access for the seedsyncarrtest account -- leaf dir only
+        # Allow group access for the seedsyncarrtest account via testgroup
+        gid = grp.getgrnam(_TEST_GROUP).gr_gid
+        os.chown(TestLftpProtocol.temp_dir, -1, gid)
         os.chmod(TestLftpProtocol.temp_dir, 0o750)
 
         # Create some test directories

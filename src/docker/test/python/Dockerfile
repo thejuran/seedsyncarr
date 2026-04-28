@@ -7,16 +7,13 @@ RUN ls -l /app/python
 # ARM64: skip `rar` (Debian ships rar for amd64/i386 only; RARLAB has no aarch64 Linux build)
 # AMD64: install `rar` normally for test-fixture archive creation
 RUN apt-get update && \
-    apt-get install -y openssh-server unrar libcap2-bin gosu && \
+    apt-get install -y openssh-server unrar && \
     ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "i386" ]; then \
         apt-get install -y rar; \
     else \
         echo "Skipping rar install on $ARCH (Debian rar is amd64/i386 only)"; \
     fi
-
-# DOCKSEC-04: Create dedicated non-root sshd runner
-RUN useradd -r -s /usr/sbin/nologin -d /nonexistent sshdaemon
 
 ADD src/docker/test/python/entrypoint.sh /app/
 
@@ -38,8 +35,10 @@ RUN useradd --create-home -s /bin/bash seedsyncarrtest
 RUN groupadd testgroup && \
     usermod -a -G testgroup seedsyncarrtest && \
     usermod -a -G testgroup root
-# DOCKSEC-03: Lock the user password to prevent any password-based login
-RUN passwd -l seedsyncarrtest
+# DOCKSEC-03: Disable password login without locking the account.
+# '*' is an invalid hash (no password matches) but unlike '!' it does not
+# trigger OpenSSH 10's "account is locked" check that blocks key auth.
+RUN usermod -p '*' seedsyncarrtest
 RUN cp /root/.ssh/id_rsa.pub /home/seedsyncarrtest/ && \
     chown seedsyncarrtest:seedsyncarrtest /home/seedsyncarrtest/id_rsa.pub
 USER seedsyncarrtest
@@ -49,14 +48,6 @@ RUN  mkdir -p /home/seedsyncarrtest/.ssh && \
     chmod 600 /home/seedsyncarrtest/.ssh/authorized_keys
 USER root
 
-# DOCKSEC-04: Allow non-root sshd to bind port 22
-RUN setcap cap_net_bind_service=+ep /usr/sbin/sshd
-
-# DOCKSEC-04: Transfer sshd runtime ownership to sshdaemon
-RUN chown sshdaemon /var/run/sshd && \
-    chown sshdaemon:sshdaemon /etc/ssh/ssh_host_* && \
-    chmod 600 /etc/ssh/ssh_host_*_key && \
-    chmod 644 /etc/ssh/ssh_host_*_key.pub
 
 EXPOSE 22
 

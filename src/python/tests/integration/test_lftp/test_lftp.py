@@ -1,3 +1,4 @@
+import grp
 import logging
 import os
 import shutil
@@ -12,6 +13,9 @@ from tests.utils import TestUtils
 from lftp import Lftp
 
 
+_TEST_GROUP = "testgroup"
+
+
 class TestLftp(unittest.TestCase):
     temp_dir = None
 
@@ -20,7 +24,9 @@ class TestLftp(unittest.TestCase):
         # Create a temp directory
         TestLftp.temp_dir = tempfile.mkdtemp(prefix="test_lftp_")
 
-        # Allow group access for the seedsyncarrtest account
+        # Allow group access for the seedsyncarrtest account via testgroup
+        gid = grp.getgrnam(_TEST_GROUP).gr_gid
+        os.chown(TestLftp.temp_dir, -1, gid)
         TestUtils.chmod_from_to(TestLftp.temp_dir, tempfile.gettempdir(), 0o775)
 
     @classmethod

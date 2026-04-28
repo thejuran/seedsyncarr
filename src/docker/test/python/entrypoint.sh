@@ -4,7 +4,7 @@
 set -e
 
 echo "Running sshd"
-gosu sshdaemon /usr/sbin/sshd -D &
+/usr/sbin/sshd -D &
 
 echo "Continuing entrypoint"
 echo "$@"

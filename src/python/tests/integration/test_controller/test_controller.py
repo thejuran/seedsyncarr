@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch, PropertyMock
+import grp
 import os
 import tempfile
 import shutil
@@ -105,7 +106,9 @@ class TestController(unittest.TestCase):
         # Create a temp directory
         TestController.temp_dir = tempfile.mkdtemp(prefix="test_controller")
 
-        # Allow group access for the seedsyncarrtest account
+        # Allow group access for the seedsyncarrtest account via testgroup
+        gid = grp.getgrnam("testgroup").gr_gid
+        os.chown(self.temp_dir, -1, gid)
         TestUtils.chmod_from_to(self.temp_dir, tempfile.gettempdir(), 0o775)
 
         # Create a work directory for temp files
