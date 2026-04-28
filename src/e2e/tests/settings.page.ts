@@ -114,10 +114,6 @@ export class SettingsPage extends App {
         return this.page.locator('.floating-save-bar');
     }
 
-    getSaveSettingsButton(): Locator {
-        return this.page.locator('.btn-save-settings');
-    }
-
     // --- UI interaction methods ---
 
     async fillServerAddress(address: string): Promise<void> {
