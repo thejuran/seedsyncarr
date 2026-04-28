@@ -43,7 +43,4 @@ export class LogsPage extends App {
         return this.page.locator('.status-bar__right');
     }
 
-    getConnectionDot(): Locator {
-        return this.page.locator('.status-dot');
-    }
 }
