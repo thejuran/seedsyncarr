@@ -507,17 +507,19 @@ class StatusHandler(IHandler):
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does Semgrep `$WHERE` capture `where` (the identifier) or `$where` (the string with dollar)?**
    - What we know: In MongoDB `db.collection.$where(fn)`, the method name as written in source is `$where`.
    - What's unclear: Whether Semgrep captures the dollar sign as part of the metavariable value or strips it.
    - Recommendation: The implementer should validate by running `semgrep scan --config javascript.yaml` against a one-line test file containing `db.users.$where(userInput)` and confirming it fires, then against `db.users.where(userInput)` and confirming it does not.
+   - **RESOLVED:** Plan 02 includes inline TP/FP scan validation against temp test files during implementation. The regex `^\$where$` is the standard documented approach for metavariable filtering. Empirical validation during execution will confirm capture behavior.
 
 2. **Bottle path variable injection with wrapped handlers**
    - What we know: `web_app.add_handler(path, handler)` calls `self.get(path)(handler)` which is Bottle's standard route decorator.
    - What's unclear: Whether Bottle's routing uses `inspect.signature` (which `functools.wraps` populates) or `inspect.getfullargspec` (which also works with `wraps`).
    - Recommendation: Include a quick smoke test in the plan that calls `__handle_set_config` via the wrapped interface with path variable kwargs to confirm they pass through.
+   - **RESOLVED:** `functools.wraps` is the universal standard fix for preserving function metadata across decorators. Plan 01 includes `functools.wraps` in the implementation and Plan 03 test suite verifies path-variable passthrough for config/set routes with section/key/value kwargs.
 
 ---
 
