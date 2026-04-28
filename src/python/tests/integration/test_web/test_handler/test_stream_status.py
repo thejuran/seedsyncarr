@@ -3,20 +3,17 @@ from unittest.mock import patch
 from threading import Timer
 
 from tests.integration.test_web.test_web_app import BaseTestWebApp
+from tests.helpers.wsgi_stream import collect_sse_chunks
 
 
-@unittest.skip("webtest doesn't support SSE streaming - tests timeout waiting for response")
 class TestStatusStreamHandler(BaseTestWebApp):
     @patch("web.handler.stream_status.SerializeStatus")
     def test_stream_status_serializes_initial_status(self, mock_serialize_status_cls):
-        # Schedule server stop
-        Timer(0.5, self.web_app.stop).start()
-
         # Setup mock serialize instance
         mock_serialize = mock_serialize_status_cls.return_value
         mock_serialize.status.return_value = "\n"
 
-        self.test_app.get("/server/stream")
+        collect_sse_chunks(self.web_app)
         self.assertEqual(1, len(mock_serialize.status.call_args_list))
         call1 = mock_serialize.status.call_args_list[0]
         status = call1[0][0]
@@ -25,10 +22,7 @@ class TestStatusStreamHandler(BaseTestWebApp):
 
     @patch("web.handler.stream_status.SerializeStatus")
     def test_stream_status_serializes_new_status(self, mock_serialize_status_cls):
-        # Schedule server stop
-        Timer(0.5, self.web_app.stop).start()
-
-        # Schedule status update
+        # Schedule status update at 0.3s; collect_sse_chunks stops at 0.5s
         def update_status():
             self.context.status.server.up = False
             self.context.status.server.error_msg = "Something bad happened"
@@ -38,7 +32,7 @@ class TestStatusStreamHandler(BaseTestWebApp):
         mock_serialize = mock_serialize_status_cls.return_value
         mock_serialize.status.return_value = "\n"
 
-        self.test_app.get("/server/stream")
+        collect_sse_chunks(self.web_app, stop_after_s=0.5)
         self.assertEqual(3, len(mock_serialize.status.call_args_list))
         call1, call2, call3 = mock_serialize.status.call_args_list
         status1 = call1[0][0]

@@ -4,16 +4,13 @@ from unittest.mock import patch
 from threading import Timer
 
 from tests.integration.test_web.test_web_app import BaseTestWebApp
+from tests.helpers.wsgi_stream import collect_sse_chunks
 
 
-@unittest.skip("webtest doesn't support SSE streaming - tests timeout waiting for response")
 class TestLogStreamHandler(BaseTestWebApp):
     @patch("web.handler.stream_log.SerializeLogRecord")
     def test_stream_log_serializes_record(self, mock_serialize_log_record_cls):
-        # Schedule server stop
-        Timer(0.5, self.web_app.stop).start()
-
-        # Schedule status update
+        # Schedule log events at 0.3s; collect_sse_chunks stops at 0.5s
         def issue_logs():
             self.context.logger.debug("Debug msg")
             self.context.logger.info("Info msg")
@@ -25,7 +22,7 @@ class TestLogStreamHandler(BaseTestWebApp):
         mock_serialize = mock_serialize_log_record_cls.return_value
         mock_serialize.record.return_value = "\n"
 
-        self.test_app.get("/server/stream")
+        collect_sse_chunks(self.web_app, stop_after_s=0.5)
         self.assertEqual(4, len(mock_serialize.record.call_args_list))
         call1, call2, call3, call4 = mock_serialize.record.call_args_list
         record1 = call1[0][0]
