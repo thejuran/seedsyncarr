@@ -10,7 +10,7 @@ END=$((SECONDS+30))
 while [ ${SECONDS} -lt ${END} ];
 do
   SERVER_UP=$(
-      curl -s myapp:8800/server/status | \
+      curl -sf myapp:8800/server/status 2>/dev/null | \
         python3 ./parse_status.py server_up
   )
   if [[ "${SERVER_UP}" == 'True' ]]; then
@@ -33,7 +33,7 @@ END=$((SECONDS+60))
 while [ ${SECONDS} -lt ${END} ];
 do
   SCAN_DONE=$(
-      curl -s myapp:8800/server/status | \
+      curl -sf myapp:8800/server/status 2>/dev/null | \
         python3 ./parse_status.py remote_scan_done
   )
   if [[ "${SCAN_DONE}" == 'True' ]]; then
