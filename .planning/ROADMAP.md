@@ -280,7 +280,7 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 - [x] **Phase 90: Angular Test Fixes** - Fix subscription leaks, fakeAsync cleanup, optional chaining false passes (completed 2026-04-27)
 - [x] **Phase 91: E2E Test Fixes & Platform** - Fix E2E test quality issues, CSP violation detection, arm64 Unicode sort (completed 2026-04-27)
 - [x] **Phase 92: E2E Infrastructure** - Fix Docker compose health, run_tests.sh bugs, restart race condition (completed 2026-04-27)
-- [ ] **Phase 93: CI & Docker Hardening** - Least-privilege CI permissions, pinned actions, Docker test container security
+- [x] **Phase 93: CI & Docker Hardening** - Least-privilege CI permissions, pinned actions, Docker test container security (completed 2026-04-28)
 - [ ] **Phase 94: Test Coverage -- Backend** - SSE integration tests, webhook E2E, DeleteRemoteProcess, ActiveScanner
 - [ ] **Phase 95: Test Coverage -- E2E** - Logs page and Settings form Playwright specs
 - [ ] **Phase 96: Rate Limiting & Tooling** - Rate-limiting decorator for HTTP endpoints, tighten Semgrep rules
@@ -392,7 +392,7 @@ Plans:
 Plans:
 - [x] 93-01-PLAN.md — Harden CI workflow: least-privilege permissions, SHA-pinned actions, job ordering, build cache
 - [x] 93-02-PLAN.md — Harden Python test container: non-root sshd, no password auth, dedicated group
-- [ ] 93-03-PLAN.md — Harden E2E remote container: ephemeral SSH key, no password auth, non-root sshd
+- [x] 93-03-PLAN.md — Harden E2E remote container: ephemeral SSH key, no password auth, non-root sshd
 
 ### Phase 94: Test Coverage -- Backend
 **Goal**: Previously untested backend paths have dedicated tests proving they work correctly
@@ -472,7 +472,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 90. Angular Test Fixes | v1.2.0 | 2/2 | Complete    | 2026-04-27 |
 | 91. E2E Test Fixes & Platform | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
 | 92. E2E Infrastructure | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
-| 93. CI & Docker Hardening | v1.2.0 | 2/3 | In Progress|  |
+| 93. CI & Docker Hardening | v1.2.0 | 3/3 | Complete   | 2026-04-28 |
 | 94. Test Coverage -- Backend | v1.2.0 | 0/TBD | Not started | - |
 | 95. Test Coverage -- E2E | v1.2.0 | 0/TBD | Not started | - |
 | 96. Rate Limiting & Tooling | v1.2.0 | 0/TBD | Not started | - |
