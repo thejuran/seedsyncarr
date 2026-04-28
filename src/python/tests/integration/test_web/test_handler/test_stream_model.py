@@ -42,7 +42,6 @@ class TestModelStreamHandler(BaseTestWebApp):
     def test_stream_model_serializes_updates(self, mock_serialize_model_cls):
         # Setup mock serialize instance
         mock_serialize = mock_serialize_model_cls.return_value
-        mock_serialize.model.return_value = "\n"
         mock_serialize.update_event.return_value = "\n"
         # Use the real UpdateEvent class
         mock_serialize_model_cls.UpdateEvent = SerializeModel.UpdateEvent
