@@ -415,7 +415,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Logs page E2E specs verify page load, log line rendering, and auto-scroll behavior
   2. Settings page E2E specs verify form field rendering, value editing, and save/persist round-trip
-**Plans**: TBD (run `/gsd-plan-phase 95`)
+**Plans**: 2 plans
+Plans:
+- [ ] 95-01-PLAN.md — Logs page object and E2E structural smoke specs (COVER-02)
+- [ ] 95-02-PLAN.md — Settings page object extension and form field E2E specs (COVER-03)
 **UI hint**: yes
 
 ### Phase 96: Rate Limiting & Tooling
@@ -477,9 +480,9 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 92. E2E Infrastructure | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
 | 93. CI & Docker Hardening | v1.2.0 | 3/3 | Complete    | 2026-04-28 |
 | 94. Test Coverage -- Backend | v1.2.0 | 2/2 | Complete   | 2026-04-28 |
-| 95. Test Coverage -- E2E | v1.2.0 | 0/TBD | Not started | - |
+| 95. Test Coverage -- E2E | v1.2.0 | 0/2 | Not started | - |
 | 96. Rate Limiting & Tooling | v1.2.0 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-04-28 -- Phase 94 planned: 2 plans in 1 wave*
+*Last updated: 2026-04-28 -- Phase 95 planned: 2 plans in 1 wave*
