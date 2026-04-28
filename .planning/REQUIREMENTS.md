@@ -77,19 +77,19 @@ Requirements for Test & Quality Hardening milestone. Each maps to roadmap phases
 
 ### CI Security
 
-- [ ] **CISEC-01**: Restrict workflow-level permissions to `contents: read`, add per-job write permissions only where needed (SEC-06)
-- [ ] **CISEC-02**: Pin GitHub Actions to SHA hashes with version comments (SEC-07)
-- [ ] **CISEC-03**: Add `publish-docker-image` to `publish-github-release` needs chain (BUG-13)
-- [ ] **CISEC-04**: Add registry-based Docker build cache for Python test images in CI
+- [x] **CISEC-01**: Restrict workflow-level permissions to `contents: read`, add per-job write permissions only where needed (SEC-06)
+- [x] **CISEC-02**: Pin GitHub Actions to SHA hashes with version comments (SEC-07)
+- [x] **CISEC-03**: Add `publish-docker-image` to `publish-github-release` needs chain (BUG-13)
+- [x] **CISEC-04**: Add registry-based Docker build cache for Python test images in CI
 
 ### Docker Test Security
 
-- [ ] **DOCKSEC-01**: Remove test user from root group — create dedicated group if needed (SEC-03)
-- [ ] **DOCKSEC-02**: Lock SSH password and disable `PasswordAuthentication` in remote test container (SEC-01)
-- [ ] **DOCKSEC-03**: Lock SSH password and disable `PasswordAuthentication` in Python test container (SEC-02)
-- [ ] **DOCKSEC-04**: Run sshd as non-root in test containers (SEC-04)
-- [ ] **DOCKSEC-05**: Generate ephemeral SSH key pair at Docker build time (SEC-05)
-- [ ] **DOCKSEC-06**: Change `StrictHostKeyChecking no` to `accept-new` in Python test container (SEC-08)
+- [x] **DOCKSEC-01**: Remove test user from root group — create dedicated group if needed (SEC-03)
+- [x] **DOCKSEC-02**: Lock SSH password and disable `PasswordAuthentication` in remote test container (SEC-01)
+- [x] **DOCKSEC-03**: Lock SSH password and disable `PasswordAuthentication` in Python test container (SEC-02)
+- [x] **DOCKSEC-04**: Run sshd as non-root in test containers (SEC-04)
+- [x] **DOCKSEC-05**: Generate ephemeral SSH key pair at Docker build time (SEC-05)
+- [x] **DOCKSEC-06**: Change `StrictHostKeyChecking no` to `accept-new` in Python test container (SEC-08)
 
 ### E2E CSP & Platform
 
@@ -187,16 +187,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | E2EINFRA-03 | Phase 92 | Complete |
 | E2EINFRA-04 | Phase 92 | Complete |
 | E2EINFRA-05 | Phase 92 | Complete |
-| CISEC-01 | Phase 93 | Pending |
-| CISEC-02 | Phase 93 | Pending |
-| CISEC-03 | Phase 93 | Pending |
-| CISEC-04 | Phase 93 | Pending |
-| DOCKSEC-01 | Phase 93 | Pending |
-| DOCKSEC-02 | Phase 93 | Pending |
-| DOCKSEC-03 | Phase 93 | Pending |
-| DOCKSEC-04 | Phase 93 | Pending |
-| DOCKSEC-05 | Phase 93 | Pending |
-| DOCKSEC-06 | Phase 93 | Pending |
+| CISEC-01 | Phase 93 | Complete |
+| CISEC-02 | Phase 93 | Complete |
+| CISEC-03 | Phase 93 | Complete |
+| CISEC-04 | Phase 93 | Complete |
+| DOCKSEC-01 | Phase 93 | Complete |
+| DOCKSEC-02 | Phase 93 | Complete |
+| DOCKSEC-03 | Phase 93 | Complete |
+| DOCKSEC-04 | Phase 93 | Complete |
+| DOCKSEC-05 | Phase 93 | Complete |
+| DOCKSEC-06 | Phase 93 | Complete |
 | COVER-01 | Phase 94 | Pending |
 | COVER-04 | Phase 94 | Pending |
 | COVER-05 | Phase 94 | Pending |
