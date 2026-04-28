@@ -281,7 +281,7 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 - [x] **Phase 91: E2E Test Fixes & Platform** - Fix E2E test quality issues, CSP violation detection, arm64 Unicode sort (completed 2026-04-27)
 - [x] **Phase 92: E2E Infrastructure** - Fix Docker compose health, run_tests.sh bugs, restart race condition (completed 2026-04-27)
 - [x] **Phase 93: CI & Docker Hardening** - Least-privilege CI permissions, pinned actions, Docker test container security (completed 2026-04-28)
-- [ ] **Phase 94: Test Coverage -- Backend** - SSE integration tests, webhook E2E, DeleteRemoteProcess, ActiveScanner
+- [x] **Phase 94: Test Coverage -- Backend** - SSE integration tests, webhook E2E, DeleteRemoteProcess, ActiveScanner (completed 2026-04-28)
 - [ ] **Phase 95: Test Coverage -- E2E** - Logs page and Settings form Playwright specs
 - [ ] **Phase 96: Rate Limiting & Tooling** - Rate-limiting decorator for HTTP endpoints, tighten Semgrep rules
 
@@ -405,8 +405,8 @@ Plans:
   4. `ActiveScanner` has a dedicated test file covering scan scheduling and result aggregation
 **Plans**: 2 plans
 Plans:
-- [ ] 94-01-PLAN.md — SSE streaming WSGI harness and unskip 3 stream test files (COVER-01)
-- [ ] 94-02-PLAN.md — Webhook integration, DeleteRemoteProcess, and ActiveScanner tests (COVER-04, COVER-05, COVER-06)
+- [x] 94-01-PLAN.md — SSE streaming WSGI harness and unskip 3 stream test files (COVER-01)
+- [x] 94-02-PLAN.md — Webhook integration, DeleteRemoteProcess, and ActiveScanner tests (COVER-04, COVER-05, COVER-06)
 
 ### Phase 95: Test Coverage -- E2E
 **Goal**: Logs and Settings pages have Playwright E2E coverage proving they render and function correctly
@@ -476,7 +476,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 91. E2E Test Fixes & Platform | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
 | 92. E2E Infrastructure | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
 | 93. CI & Docker Hardening | v1.2.0 | 3/3 | Complete    | 2026-04-28 |
-| 94. Test Coverage -- Backend | v1.2.0 | 0/2 | Not started | - |
+| 94. Test Coverage -- Backend | v1.2.0 | 2/2 | Complete   | 2026-04-28 |
 | 95. Test Coverage -- E2E | v1.2.0 | 0/TBD | Not started | - |
 | 96. Rate Limiting & Tooling | v1.2.0 | 0/TBD | Not started | - |
 
