@@ -4,6 +4,7 @@ import json
 
 from controller import Controller
 from web.handler.controller import ControllerHandler, WebResponseActionCallback
+from web.rate_limit import rate_limit
 
 
 class TestWebResponseActionCallback(unittest.TestCase):
@@ -83,8 +84,6 @@ class TestControllerHandlerBulkCommand(unittest.TestCase):
     def setUp(self):
         self.mock_controller = MagicMock(spec=Controller)
         self.handler = ControllerHandler(self.mock_controller)
-        # Reset rate limit state between tests
-        ControllerHandler._bulk_request_times = []
 
     def _mock_request(self, json_body):
         """Helper to mock the request object with a JSON body."""
@@ -603,16 +602,39 @@ class TestControllerHandlerBulkCommand(unittest.TestCase):
         # should still show all commands were processed.
         self.assertEqual(3, self.mock_controller.queue_command.call_count)
 
-    # =========================================================================
-    # Rate Limiting Tests
-    # =========================================================================
+
+
+class TestControllerHandlerRateLimit(unittest.TestCase):
+    """Rate limit integration tests for bulk endpoint using the decorator pattern."""
+
+    def setUp(self):
+        self.mock_controller = MagicMock(spec=Controller)
+        self.handler = ControllerHandler(self.mock_controller)
+        self._setup_command_callback(success=True)
+        # Create a rate-limited wrapper matching add_routes() config
+        self._rate_limited_bulk = rate_limit(
+            max_requests=10, window_seconds=60.0
+        )(self.handler._ControllerHandler__handle_bulk_command)
+
+    def _setup_command_callback(self, success=True, error=None, error_code=400):
+        """Setup mock controller to capture and respond to commands."""
+        def side_effect(command):
+            for callback in command.callbacks:
+                if success:
+                    callback.on_success()
+                else:
+                    callback.on_failure(error, error_code)
+        self.mock_controller.queue_command.side_effect = side_effect
+
+    def _call_bulk_handler(self, body):
+        with patch('web.handler.controller.request') as mock_req:
+            mock_req.json = body
+            return self._rate_limited_bulk()
 
     def test_rate_limit_allows_requests_under_limit(self):
         """Requests under the rate limit should succeed."""
-        self._setup_command_callback(success=True)
-
-        # Make requests up to the limit
-        for i in range(ControllerHandler._BULK_RATE_LIMIT):
+        # Make requests up to the limit (10)
+        for i in range(10):
             response = self._call_bulk_handler({
                 "action": "queue",
                 "files": ["file{}".format(i)]
@@ -621,10 +643,8 @@ class TestControllerHandlerBulkCommand(unittest.TestCase):
 
     def test_rate_limit_blocks_requests_over_limit(self):
         """Requests exceeding the rate limit should return 429."""
-        self._setup_command_callback(success=True)
-
         # Make requests up to the limit
-        for i in range(ControllerHandler._BULK_RATE_LIMIT):
+        for i in range(10):
             response = self._call_bulk_handler({
                 "action": "queue",
                 "files": ["file{}".format(i)]
@@ -647,45 +667,37 @@ class TestControllerHandlerBulkCommand(unittest.TestCase):
         import time
 
         self._setup_command_callback(success=True)
+        # Use a short window for testing
+        short_window_handler = rate_limit(
+            max_requests=10, window_seconds=0.1
+        )(self.handler._ControllerHandler__handle_bulk_command)
 
-        # Save original window and set a very short one for testing
-        original_window = ControllerHandler._BULK_RATE_WINDOW
-        ControllerHandler._BULK_RATE_WINDOW = 0.1  # 100ms
-
-        try:
-            # Exhaust the rate limit
-            for i in range(ControllerHandler._BULK_RATE_LIMIT):
-                response = self._call_bulk_handler({
-                    "action": "queue",
-                    "files": ["file{}".format(i)]
-                })
-                self.assertEqual(200, response.status_code)
-
-            # Verify we're rate limited
-            response = self._call_bulk_handler({
-                "action": "queue",
-                "files": ["blocked_file"]
-            })
-            self.assertEqual(429, response.status_code)
-
-            # Wait for the window to expire
-            time.sleep(0.15)
-
-            # Should be able to make requests again
-            response = self._call_bulk_handler({
-                "action": "queue",
-                "files": ["allowed_after_reset"]
-            })
+        # Exhaust the rate limit
+        for i in range(10):
+            with patch('web.handler.controller.request') as mock_req:
+                mock_req.json = {"action": "queue", "files": ["file{}".format(i)]}
+                response = short_window_handler()
             self.assertEqual(200, response.status_code)
-        finally:
-            ControllerHandler._BULK_RATE_WINDOW = original_window
+
+        # Verify rate limited
+        with patch('web.handler.controller.request') as mock_req:
+            mock_req.json = {"action": "queue", "files": ["blocked"]}
+            response = short_window_handler()
+        self.assertEqual(429, response.status_code)
+
+        # Wait for window to expire
+        time.sleep(0.15)
+
+        # Should work again
+        with patch('web.handler.controller.request') as mock_req:
+            mock_req.json = {"action": "queue", "files": ["allowed"]}
+            response = short_window_handler()
+        self.assertEqual(200, response.status_code)
 
     def test_rate_limit_response_content_type_is_json(self):
         """Rate limit error response should have JSON content type."""
-        self._setup_command_callback(success=True)
-
         # Exhaust the rate limit
-        for i in range(ControllerHandler._BULK_RATE_LIMIT):
+        for i in range(10):
             self._call_bulk_handler({
                 "action": "queue",
                 "files": ["file{}".format(i)]
@@ -707,8 +719,6 @@ class TestControllerHandlerPathTraversal(unittest.TestCase):
     def setUp(self):
         self.mock_controller = MagicMock(spec=Controller)
         self.handler = ControllerHandler(self.mock_controller, local_path="/tmp/test_downloads")
-        # Reset rate limit state between tests
-        ControllerHandler._bulk_request_times = []
 
     def _setup_success_callback(self):
         """Setup mock controller to call on_success synchronously."""

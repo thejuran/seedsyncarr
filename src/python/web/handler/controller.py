@@ -3,7 +3,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from threading import Event, Lock
+from threading import Event
 from typing import List, Optional, Tuple
 from urllib.parse import unquote
 
@@ -12,6 +12,7 @@ from bottle import HTTPResponse, request
 from common import overrides
 from controller import Controller
 from ..web_app import IHandler, WebApp
+from web.rate_limit import rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +60,6 @@ class ControllerHandler(IHandler):
         self.__local_path_real: Optional[Path] = (
             Path(os.path.realpath(local_path)) if local_path else None
         )
-        self._bulk_request_times: List[float] = []
-        self._bulk_rate_lock = Lock()
 
     @overrides(IHandler)
     def add_routes(self, web_app: WebApp):
@@ -69,7 +68,10 @@ class ControllerHandler(IHandler):
         web_app.add_post_handler("/server/command/extract/<file_name>", self.__handle_action_extract)
         web_app.add_delete_handler("/server/command/delete_local/<file_name>", self.__handle_action_delete_local)
         web_app.add_delete_handler("/server/command/delete_remote/<file_name>", self.__handle_action_delete_remote)
-        web_app.add_post_handler("/server/command/bulk", self.__handle_bulk_command)
+        web_app.add_post_handler(
+            "/server/command/bulk",
+            rate_limit(max_requests=10, window_seconds=60.0)(self.__handle_bulk_command)
+        )
 
     def __handle_action_queue(self, file_name: str) -> HTTPResponse:
         """
@@ -204,10 +206,6 @@ class ControllerHandler(IHandler):
     # Maximum number of files allowed in a single bulk request
     _MAX_BULK_FILES = 1000
 
-    # Rate limiting for bulk endpoint (DoS prevention)
-    _BULK_RATE_LIMIT = 10  # Max requests per window
-    _BULK_RATE_WINDOW = 60.0  # Window size in seconds
-
     def _check_path_safe(self, file_name: str) -> Optional[HTTPResponse]:
         """
         Returns HTTPResponse(status=400) if file_name resolves outside local_path, else None.
@@ -225,30 +223,6 @@ class ControllerHandler(IHandler):
             logger.warning("Rejected path traversal attempt for: %s", repr(file_name))
             return HTTPResponse(body="Invalid file path", status=400)
         return None
-
-    def _check_bulk_rate_limit(self) -> bool:
-        """
-        Check if the bulk request rate limit has been exceeded.
-
-        Uses a sliding window algorithm to track recent requests.
-        Thread-safe via instance-level lock.
-
-        Returns:
-            True if request is allowed, False if rate limited.
-        """
-        now = time.time()
-        with self._bulk_rate_lock:
-            # Remove timestamps outside the window
-            self._bulk_request_times = [
-                t for t in self._bulk_request_times
-                if now - t < self._BULK_RATE_WINDOW
-            ]
-            # Check if limit exceeded
-            if len(self._bulk_request_times) >= self._BULK_RATE_LIMIT:
-                return False
-            # Record this request
-            self._bulk_request_times.append(now)
-            return True
 
     def __handle_bulk_command(self) -> HTTPResponse:
         """
@@ -273,15 +247,6 @@ class ControllerHandler(IHandler):
             }
         }
         """
-        # Rate limiting check
-        if not self._check_bulk_rate_limit():
-            logger.warning("Bulk endpoint rate limit exceeded")
-            return HTTPResponse(
-                body=json.dumps({"error": "Rate limit exceeded. Please try again later."}),
-                status=429,
-                content_type="application/json"
-            )
-
         # Parse JSON body
         try:
             body = request.json
