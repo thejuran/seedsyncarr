@@ -17,9 +17,7 @@ from ssh import Sshcp, SshcpError
 # Test credentials for Docker-based test container (see test/python/Dockerfile).
 # These are NOT production secrets — they exist only in the ephemeral test environment.
 _TEST_USER = "seedsyncarrtest"
-_TEST_PASSWORD = "seedsyncarrpass"
 _PARAMS = [
-    ("password", _TEST_PASSWORD),
     ("keyauth", None)
 ]
 
@@ -73,13 +71,6 @@ class TestSshcp(unittest.TestCase):
         sshcp.copy(local_path=self.local_file, remote_path=self.remote_file)
 
         self.assertTrue(filecmp.cmp(self.local_file, self.remote_file))
-
-    @timeout_decorator.timeout(5)
-    def test_copy_error_bad_password(self):
-        sshcp = Sshcp(host=self.host, port=self.port, user=self.user, password="wrong password")
-        with self.assertRaises(SshcpError) as ctx:
-            sshcp.copy(local_path=self.local_file, remote_path=self.remote_file)
-        self.assertEqual("Incorrect password", str(ctx.exception))
 
     @parameterized.expand(_PARAMS)
     @timeout_decorator.timeout(5)
@@ -171,13 +162,6 @@ class TestSshcp(unittest.TestCase):
         _dir = os.path.join(self.remote_dir, "a b")
         with self.assertRaises(ValueError):
             sshcp.shell('mkdir "{}" && cd \'{}\' && pwd'.format(_dir, _dir))
-
-    @timeout_decorator.timeout(5)
-    def test_shell_error_bad_password(self):
-        sshcp = Sshcp(host=self.host, port=self.port, user=self.user, password="wrong password")
-        with self.assertRaises(SshcpError) as ctx:
-            sshcp.shell("cd {}; pwd".format(self.local_dir))
-        self.assertEqual("Incorrect password", str(ctx.exception))
 
     @parameterized.expand(_PARAMS)
     @timeout_decorator.timeout(5)

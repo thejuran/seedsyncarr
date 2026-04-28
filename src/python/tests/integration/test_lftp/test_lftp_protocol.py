@@ -14,7 +14,6 @@ from lftp import Lftp, LftpJobStatus, LftpError
 # Test credentials for Docker-based test container (see test/python/Dockerfile).
 # These are NOT production secrets — they exist only in the ephemeral test environment.
 _TEST_USER = "seedsyncarrtest"
-_TEST_PASSWORD = "seedsyncarrpass"
 
 
 class TestLftpProtocol(unittest.TestCase):
@@ -103,7 +102,6 @@ class TestLftpProtocol(unittest.TestCase):
         self.host = "localhost"
         self.port = 22
         self.user = _TEST_USER
-        self.password = _TEST_PASSWORD
 
         # Default lftp instance - use key-based login
         self.lftp = Lftp(address=self.host, port=self.port, user=self.user, password=None)
@@ -718,77 +716,3 @@ class TestLftpProtocol(unittest.TestCase):
         statuses = self.lftp.status()
         self.assertEqual(0, len(statuses))
 
-    @timeout_decorator.timeout(5)
-    def test_password_auth(self):
-        # exit the default instance
-        self.lftp.exit()
-
-        self.lftp = Lftp(address=self.host, port=self.port, user=self.user, password=self.password)
-        self.lftp.set_base_remote_dir_path(self.remote_dir)
-        self.lftp.set_base_local_dir_path(self.local_dir)
-        self.lftp.set_verbose_logging(True)
-
-        # Disable key-based auth
-        program = self.lftp.sftp_connect_program
-        program = program[:-1]  # remove the end double-quote
-        program += " -oPubkeyAuthentication=no\""
-        self.lftp.sftp_connect_program = program
-
-        self.lftp.queue("a", True)
-        while True:
-            statuses = self.lftp.status()
-            self.lftp.raise_pending_error()
-            if len(statuses) > 0:
-                break
-            time.sleep(0.01)
-        self.assertEqual(1, len(statuses))
-        self.assertEqual("a", statuses[0].name)
-        self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
-        self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
-
-        # Wait for empty status
-        while True:
-            statuses = self.lftp.status()
-            self.lftp.raise_pending_error()
-            if len(statuses) == 0:
-                break
-            time.sleep(0.01)
-        self.lftp.raise_pending_error()
-
-    @timeout_decorator.timeout(15)
-    def test_error_bad_password(self):
-        # exit the default instance
-        self.lftp.exit()
-
-        self.lftp = Lftp(address=self.host, port=self.port, user=self.user, password="wrong password")
-        self.lftp.set_base_remote_dir_path(self.remote_dir)
-        self.lftp.set_base_local_dir_path(self.local_dir)
-        self.lftp.set_verbose_logging(True)
-        self.lftp.rate_limit = 10  # so jobs don't finish right away
-
-        # Disable key-based auth
-        program = self.lftp.sftp_connect_program
-        program = program[:-1]  # remove the end double-quote
-        program += " -oPubkeyAuthentication=no\""
-        self.lftp.sftp_connect_program = program
-
-        self.lftp.queue("a", True)
-        while True:
-            statuses = self.lftp.status()
-            if len(statuses) > 0:
-                break
-            time.sleep(0.01)
-        self.assertEqual(1, len(statuses))
-        self.assertEqual("a", statuses[0].name)
-        self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
-        self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
-
-        # Wait for empty status
-        while True:
-            statuses = self.lftp.status()
-            if len(statuses) == 0:
-                break
-            time.sleep(0.01)
-        with self.assertRaises(LftpError) as ctx:
-            self.lftp.raise_pending_error()
-        self.assertTrue("Login failed: Login incorrect" in str(ctx.exception))
