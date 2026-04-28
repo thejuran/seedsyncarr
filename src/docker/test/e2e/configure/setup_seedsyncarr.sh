@@ -15,9 +15,9 @@ curl -sSf "http://myapp:8800/server/config/set/lftp/remote_address/remote" \
   || { echo "ERROR: failed to set lftp/remote_address" >&2; exit 1; }
 curl -sSf "http://myapp:8800/server/config/set/lftp/remote_username/${REMOTE_USERNAME:?REMOTE_USERNAME must be set}" \
   || { echo "ERROR: failed to set lftp/remote_username" >&2; exit 1; }
-# Password in URL path: API limitation — test-only credentials visible in container/server logs
-curl -sSf "http://myapp:8800/server/config/set/lftp/remote_password/${REMOTE_PASSWORD:?REMOTE_PASSWORD must be set}" \
-  || { echo "ERROR: failed to set lftp/remote_password" >&2; exit 1; }
+# DOCKSEC-02/05: Use SSH key auth instead of password
+curl -sSf "http://myapp:8800/server/config/set/lftp/use_ssh_key/true" \
+  || { echo "ERROR: failed to set lftp/use_ssh_key" >&2; exit 1; }
 curl -sSf "http://myapp:8800/server/config/set/lftp/remote_port/1234" \
   || { echo "ERROR: failed to set lftp/remote_port" >&2; exit 1; }
 curl -sSf "http://myapp:8800/server/config/set/lftp/remote_path/%252Fhome%252Fremoteuser%252Ffiles" \

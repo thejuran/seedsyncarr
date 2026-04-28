@@ -3,34 +3,48 @@ FROM ubuntu:22.04
 # Install dependencies
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
-    python3
+    python3 \
+    openssh-server
 
 # Switch to Python 3 (3.10 is default in Ubuntu 22.04)
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 RUN update-alternatives --set python /usr/bin/python3
 
-# Create non-root user
-RUN useradd --create-home -s /bin/bash remoteuser && \
-    echo "remoteuser:remotepass" | chpasswd
+# Create non-root user (no password set -- DOCKSEC-02)
+RUN useradd --create-home -s /bin/bash remoteuser
 
-
-# Add install image's user's key to authorized
-USER remoteuser
-ADD --chown=remoteuser:remoteuser src/docker/test/e2e/remote/id_rsa.pub /home/remoteuser/user_id_rsa.pub
-RUN  mkdir -p /home/remoteuser/.ssh && \
-    cat /home/remoteuser/user_id_rsa.pub >> /home/remoteuser/.ssh/authorized_keys
-USER root
+# DOCKSEC-05: Accept ephemeral SSH public key via build argument
+ARG SSH_PUBKEY
+RUN mkdir -p /home/remoteuser/.ssh && \
+    echo "${SSH_PUBKEY}" >> /home/remoteuser/.ssh/authorized_keys && \
+    chown -R remoteuser:remoteuser /home/remoteuser/.ssh && \
+    chmod 700 /home/remoteuser/.ssh && \
+    chmod 600 /home/remoteuser/.ssh/authorized_keys
 
 # Copy over data
 ADD --chown=remoteuser:remoteuser src/docker/test/e2e/remote/files /home/remoteuser/files
 
-# Install and run ssh server
-RUN apt-get update && apt-get install -y openssh-server
-
-# Change port
+# Change sshd port to 1234
 RUN sed -i '/Port 22/c\Port 1234' /etc/ssh/sshd_config
 EXPOSE 1234
 
-RUN mkdir /var/run/sshd
+# DOCKSEC-02: Disable password authentication
+RUN sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
+    sed -i 's/^#\?KbdInteractiveAuthentication.*/KbdInteractiveAuthentication no/' /etc/ssh/sshd_config && \
+    echo "UsePAM no" >> /etc/ssh/sshd_config
+RUN passwd -l remoteuser
 
-CMD ["/usr/sbin/sshd", "-D"]
+# DOCKSEC-04: Generate host keys and transfer ownership for non-root sshd
+RUN mkdir -p /var/run/sshd && \
+    ssh-keygen -A && \
+    chown remoteuser:remoteuser /etc/ssh/ssh_host_* && \
+    chmod 700 /etc/ssh/ssh_host_* && \
+    chown remoteuser:remoteuser /var/run/sshd
+
+# Non-root sshd needs writable PidFile location
+RUN echo "PidFile /tmp/sshd.pid" >> /etc/ssh/sshd_config
+
+# DOCKSEC-04: Switch to non-root user (port 1234 is non-privileged -- no setcap needed)
+USER remoteuser
+
+CMD ["/usr/sbin/sshd", "-D", "-e"]

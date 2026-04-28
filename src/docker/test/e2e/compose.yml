@@ -36,6 +36,11 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+    volumes:
+      - type: bind
+        source: /tmp/e2e_test_key
+        target: /home/seedsync/.ssh/id_ed25519
+        read_only: true
 
   configure:
     image: seedsyncarr/test/e2e/configure
@@ -48,7 +53,6 @@ services:
         condition: service_healthy
       remote:
         condition: service_healthy
-    # REMOTE_USERNAME/REMOTE_PASSWORD must match values baked into remote/Dockerfile
+    # REMOTE_USERNAME must match user created in remote/Dockerfile
     environment:
       - REMOTE_USERNAME=${REMOTE_USERNAME:-remoteuser}
-      - REMOTE_PASSWORD=${REMOTE_PASSWORD:-remotepass}
