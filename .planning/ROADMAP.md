@@ -403,7 +403,10 @@ Plans:
   2. Webhook end-to-end test sends a Sonarr/Radarr POST through the web layer and verifies the controller processes it
   3. `DeleteRemoteProcess` has dedicated unit tests covering SSH command construction, error handling, and deletion paths
   4. `ActiveScanner` has a dedicated test file covering scan scheduling and result aggregation
-**Plans**: TBD (run `/gsd-plan-phase 94`)
+**Plans**: 2 plans
+Plans:
+- [ ] 94-01-PLAN.md — SSE streaming WSGI harness and unskip 3 stream test files (COVER-01)
+- [ ] 94-02-PLAN.md — Webhook integration, DeleteRemoteProcess, and ActiveScanner tests (COVER-04, COVER-05, COVER-06)
 
 ### Phase 95: Test Coverage -- E2E
 **Goal**: Logs and Settings pages have Playwright E2E coverage proving they render and function correctly
@@ -473,10 +476,10 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 91. E2E Test Fixes & Platform | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
 | 92. E2E Infrastructure | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
 | 93. CI & Docker Hardening | v1.2.0 | 3/3 | Complete    | 2026-04-28 |
-| 94. Test Coverage -- Backend | v1.2.0 | 0/TBD | Not started | - |
+| 94. Test Coverage -- Backend | v1.2.0 | 0/2 | Not started | - |
 | 95. Test Coverage -- E2E | v1.2.0 | 0/TBD | Not started | - |
 | 96. Rate Limiting & Tooling | v1.2.0 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-04-27 -- milestone audit fixes: committed E2EINFRA-03, updated 27 stale requirement statuses, fixed plan references for phases 93-96*
+*Last updated: 2026-04-28 -- Phase 94 planned: 2 plans in 1 wave*
