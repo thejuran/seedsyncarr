@@ -38,8 +38,8 @@ created: 2026-04-28
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 95-01-01 | 01 | 1 | COVER-02 | — | N/A | e2e | `cd src/e2e && npx playwright test logs.spec.ts` | ❌ W0 | ⬜ pending |
-| 95-02-01 | 02 | 1 | COVER-03 | — | N/A | e2e | `cd src/e2e && npx playwright test settings.spec.ts` | ❌ W0 | ⬜ pending |
+| 95-01-01 | 01 | 1 | COVER-02 | — | N/A | e2e | `cd src/e2e && npx playwright test tests/logs.page.spec.ts` | ❌ W0 | ⬜ pending |
+| 95-02-01 | 02 | 1 | COVER-03 | — | N/A | e2e | `cd src/e2e && npx playwright test tests/settings-fields.spec.ts` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -47,8 +47,8 @@ created: 2026-04-28
 
 ## Wave 0 Requirements
 
-- [ ] `src/e2e/tests/logs.spec.ts` — stubs for COVER-02
-- [ ] `src/e2e/tests/settings.spec.ts` — stubs for COVER-03
+- [ ] `src/e2e/tests/logs.page.spec.ts` — E2E specs for COVER-02
+- [ ] `src/e2e/tests/settings-fields.spec.ts` — E2E specs for COVER-03
 
 *Existing infrastructure covers Playwright setup (Phase 92).*
 
