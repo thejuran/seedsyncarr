@@ -15,9 +15,9 @@ if __name__ == '__main__':
             print(status['server']['up'])
         elif check_type == 'remote_scan_done':
             # Check if remote scan has completed at least once
-            scan_time = status.get('controller', {}).get('latest_remote_scan_time')
+            scan_time = (status.get('controller') or {}).get('latest_remote_scan_time')
             print(scan_time is not None)
         else:
             print('False')
-    except (json.JSONDecodeError, KeyError, TypeError):
+    except (json.JSONDecodeError, KeyError, TypeError, OSError):
         print('False')

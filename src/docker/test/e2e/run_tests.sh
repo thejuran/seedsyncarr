@@ -47,7 +47,7 @@ done
 if [[ "${SCAN_DONE}" != 'True' ]]; then
   echo "${red}E2E Test failed: remote scan did not complete${reset}"
   # Show status for debugging
-  curl -s myapp:8800/server/status | python3 -m json.tool
+  curl -s myapp:8800/server/status 2>/dev/null | python3 -m json.tool || true
   exit 1
 fi
 
