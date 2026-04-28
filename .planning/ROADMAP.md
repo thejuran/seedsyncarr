@@ -431,7 +431,11 @@ Plans:
   3. Normal usage patterns (single requests with reasonable intervals) are never rate-limited
   4. Semgrep `js-nosql-injection-where` rule requires MongoDB context (no false positives on generic `.where()`)
   5. Semgrep `js-xss-eval-user-input` rule excludes arrow/named function callbacks from eval detection
-**Plans**: TBD (run `/gsd-plan-phase 96`)
+**Plans**: 3 plans
+Plans:
+- [ ] 96-01-PLAN.md — Rate-limit decorator module with TDD tests (RATE-01)
+- [ ] 96-02-PLAN.md — Tighten Semgrep rules for false positives (TOOL-01, TOOL-02)
+- [ ] 96-03-PLAN.md — Apply decorator to handlers and refactor controller (RATE-02, RATE-03, RATE-04)
 
 ## Progress
 
@@ -481,8 +485,8 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 93. CI & Docker Hardening | v1.2.0 | 3/3 | Complete    | 2026-04-28 |
 | 94. Test Coverage -- Backend | v1.2.0 | 2/2 | Complete   | 2026-04-28 |
 | 95. Test Coverage -- E2E | v1.2.0 | 2/2 | Complete   | 2026-04-28 |
-| 96. Rate Limiting & Tooling | v1.2.0 | 0/TBD | Not started | - |
+| 96. Rate Limiting & Tooling | v1.2.0 | 0/3 | Not started | - |
 
 ---
 
-*Last updated: 2026-04-28 -- Phase 95 planned: 2 plans in 1 wave*
+*Last updated: 2026-04-28 -- Phase 96 planned: 3 plans in 2 waves*
