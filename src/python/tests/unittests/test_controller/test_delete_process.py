@@ -77,5 +77,5 @@ class TestDeleteRemoteProcess(unittest.TestCase):
             remote_path="/remote", file_name="file.mkv"
         )
         self.mock_sshcp.shell.side_effect = SshcpError("connection refused")
-        # Must not raise -- SshcpError is caught and logged
-        proc.run_once()
+        with self.assertLogs("DeleteRemoteProcess", level="ERROR"):
+            proc.run_once()

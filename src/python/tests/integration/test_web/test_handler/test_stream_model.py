@@ -55,8 +55,9 @@ class TestModelStreamHandler(BaseTestWebApp):
         new_file.local_size = 200
 
         def send_updates():
-            # model_listener is guaranteed set by setup() which runs
-            # before the Timer fires at 0.5s
+            # model_listener is set during WSGI dispatch in collect_sse_chunks,
+            # which completes before the Timer fires at 0.5s
+            assert self.model_listener is not None, "listener not set before Timer fired"
             self.model_listener.file_added(added_file)
             self.model_listener.file_removed(removed_file)
             self.model_listener.file_updated(old_file, new_file)
