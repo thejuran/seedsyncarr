@@ -26,7 +26,7 @@ class TestDeleteRemoteProcess(unittest.TestCase):
         self.mock_sshcp_cls = sshcp_patcher.start()
         self.mock_sshcp = self.mock_sshcp_cls.return_value
 
-        logger = logging.getLogger("test_delete_process")
+        logger = logging.getLogger("DeleteRemoteProcess")
         self._test_handler = logging.StreamHandler(sys.stdout)
         self._test_handler.setFormatter(
             logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
@@ -35,7 +35,7 @@ class TestDeleteRemoteProcess(unittest.TestCase):
         logger.setLevel(logging.DEBUG)
 
     def tearDown(self):
-        logging.getLogger("test_delete_process").removeHandler(self._test_handler)
+        logging.getLogger("DeleteRemoteProcess").removeHandler(self._test_handler)
 
     def test_constructs_sshcp_with_correct_args(self):
         DeleteRemoteProcess(
