@@ -6,8 +6,7 @@ import filecmp
 import logging
 import sys
 
-import timeout_decorator
-from parameterized import parameterized
+import pytest
 
 from tests.utils import TestUtils
 from common import overrides
@@ -17,9 +16,9 @@ from ssh import Sshcp, SshcpError
 # Test credentials for Docker-based test container (see test/python/Dockerfile).
 # These are NOT production secrets — they exist only in the ephemeral test environment.
 _TEST_USER = "seedsyncarrtest"
-_PARAMS = [
-    ("keyauth", None)
-]
+
+# NOTE: password-auth path (Sshcp(password="...")) is not tested here because
+# the test container uses key-only auth. See src/docker/test/python/Dockerfile.
 
 
 class TestSshcp(unittest.TestCase):
@@ -41,12 +40,12 @@ class TestSshcp(unittest.TestCase):
         self.port = 22
         self.user = _TEST_USER
 
-        logger = logging.getLogger()
-        handler = logging.StreamHandler(sys.stdout)
-        logger.addHandler(handler)
-        logger.setLevel(logging.DEBUG)
+        self.logger = logging.getLogger()
+        self._log_handler = logging.StreamHandler(sys.stdout)
+        self.logger.addHandler(self._log_handler)
+        self.logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-        handler.setFormatter(formatter)
+        self._log_handler.setFormatter(formatter)
 
         # Create local file
         self.local_file = os.path.join(self.local_dir, "file.txt")
@@ -56,6 +55,7 @@ class TestSshcp(unittest.TestCase):
 
     @overrides(unittest.TestCase)
     def tearDown(self):
+        self.logger.removeHandler(self._log_handler)
         if not self.__KEEP_FILES:
             shutil.rmtree(self.temp_dir)
 
@@ -63,42 +63,38 @@ class TestSshcp(unittest.TestCase):
         sshcp = Sshcp(host=self.host, port=self.port)
         self.assertIsNotNone(sshcp)
 
-    @parameterized.expand(_PARAMS)
-    @timeout_decorator.timeout(5)
-    def test_copy(self, _, password):
+    @pytest.mark.timeout(5)
+    def test_copy(self):
         self.assertFalse(os.path.exists(self.remote_file))
-        sshcp = Sshcp(host=self.host, port=self.port, user=self.user, password=password)
+        sshcp = Sshcp(host=self.host, port=self.port, user=self.user)
         sshcp.copy(local_path=self.local_file, remote_path=self.remote_file)
 
         self.assertTrue(filecmp.cmp(self.local_file, self.remote_file))
 
-    @parameterized.expand(_PARAMS)
-    @timeout_decorator.timeout(5)
-    def test_copy_error_missing_local_file(self, _, password):
+    @pytest.mark.timeout(5)
+    def test_copy_error_missing_local_file(self):
         local_file = os.path.join(self.local_dir, "nofile.txt")
         self.assertFalse(os.path.exists(self.remote_file))
         self.assertFalse(os.path.exists(local_file))
 
-        sshcp = Sshcp(host=self.host, port=self.port, user=self.user, password=password)
+        sshcp = Sshcp(host=self.host, port=self.port, user=self.user)
         with self.assertRaises(SshcpError) as ctx:
             sshcp.copy(local_path=local_file, remote_path=self.remote_file)
-        self.assertTrue("No such file or directory" in str(ctx.exception))
+        self.assertIn("No such file or directory", str(ctx.exception))
 
-    @parameterized.expand(_PARAMS)
-    @timeout_decorator.timeout(5)
-    def test_copy_error_missing_remote_dir(self, _, password):
+    @pytest.mark.timeout(5)
+    def test_copy_error_missing_remote_dir(self):
         remote_file = os.path.join(self.remote_dir, "nodir", "file2.txt")
         self.assertFalse(os.path.exists(remote_file))
 
-        sshcp = Sshcp(host=self.host, port=self.port, user=self.user, password=password)
+        sshcp = Sshcp(host=self.host, port=self.port, user=self.user)
         with self.assertRaises(SshcpError) as ctx:
             sshcp.copy(local_path=self.local_file, remote_path=remote_file)
-        self.assertTrue("No such file or directory" in str(ctx.exception))
+        self.assertIn("No such file or directory", str(ctx.exception))
 
-    @parameterized.expand(_PARAMS)
-    @timeout_decorator.timeout(5)
-    def test_copy_error_bad_host(self, _, password):
-        sshcp = Sshcp(host="badhost", port=self.port, user=self.user, password=password)
+    @pytest.mark.timeout(5)
+    def test_copy_error_bad_host(self):
+        sshcp = Sshcp(host="badhost", port=self.port, user=self.user)
         with self.assertRaises(SshcpError) as ctx:
             sshcp.copy(local_path=self.local_file, remote_path=self.remote_file)
         # Accept various error formats from different SSH versions
@@ -115,10 +111,9 @@ class TestSshcp(unittest.TestCase):
             f"Unexpected error: {ctx.exception}"
         )
 
-    @parameterized.expand(_PARAMS)
-    @timeout_decorator.timeout(5)
-    def test_copy_error_bad_port(self, _, password):
-        sshcp = Sshcp(host=self.host, port=666, user=self.user, password=password)
+    @pytest.mark.timeout(5)
+    def test_copy_error_bad_port(self):
+        sshcp = Sshcp(host=self.host, port=666, user=self.user)
         with self.assertRaises(SshcpError) as ctx:
             sshcp.copy(local_path=self.local_file, remote_path=self.remote_file)
         # Accept various error formats from different SSH versions
@@ -133,42 +128,39 @@ class TestSshcp(unittest.TestCase):
             f"Unexpected error: {ctx.exception}"
         )
 
-    @parameterized.expand(_PARAMS)
-    @timeout_decorator.timeout(5)
-    def test_shell(self, _, password):
-        sshcp = Sshcp(host=self.host, port=self.port, user=self.user, password=password)
-        out = sshcp.shell("cd {}; pwd".format(self.local_dir))
+    @pytest.mark.timeout(5)
+    def test_shell(self):
+        sshcp = Sshcp(host=self.host, port=self.port, user=self.user)
+        out = sshcp.shell(f"cd {self.local_dir}; pwd")
         out_str = out.decode().strip()
         self.assertEqual(self.local_dir, out_str)
 
-    @parameterized.expand(_PARAMS)
-    @timeout_decorator.timeout(5)
-    def test_shell_with_escape_characters(self, _, password):
-        sshcp = Sshcp(host=self.host, port=self.port, user=self.user, password=password)
+    @pytest.mark.timeout(5)
+    def test_shell_with_escape_characters(self):
+        sshcp = Sshcp(host=self.host, port=self.port, user=self.user)
 
         # single quotes
         _dir = os.path.join(self.remote_dir, "a a")
-        out = sshcp.shell("mkdir '{}' && cd '{}' && pwd".format(_dir, _dir))
+        out = sshcp.shell(f"mkdir '{_dir}' && cd '{_dir}' && pwd")
         out_str = out.decode().strip()
         self.assertEqual(_dir, out_str)
 
         # double quotes
         _dir = os.path.join(self.remote_dir, "a b")
-        out = sshcp.shell('mkdir "{}" && cd "{}" && pwd'.format(_dir, _dir))
+        out = sshcp.shell(f'mkdir "{_dir}" && cd "{_dir}" && pwd')
         out_str = out.decode().strip()
         self.assertEqual(_dir, out_str)
 
         # single and double quotes - error out
         _dir = os.path.join(self.remote_dir, "a b")
         with self.assertRaises(ValueError):
-            sshcp.shell('mkdir "{}" && cd \'{}\' && pwd'.format(_dir, _dir))
+            sshcp.shell(f'mkdir "{_dir}" && cd \'{_dir}\' && pwd')
 
-    @parameterized.expand(_PARAMS)
-    @timeout_decorator.timeout(5)
-    def test_shell_error_bad_host(self, _, password):
-        sshcp = Sshcp(host="badhost", port=self.port, user=self.user, password=password)
+    @pytest.mark.timeout(5)
+    def test_shell_error_bad_host(self):
+        sshcp = Sshcp(host="badhost", port=self.port, user=self.user)
         with self.assertRaises(SshcpError) as ctx:
-            sshcp.shell("cd {}; pwd".format(self.local_dir))
+            sshcp.shell(f"cd {self.local_dir}; pwd")
         # Accept various error formats from different SSH versions
         error_str = str(ctx.exception).lower()
         self.assertTrue(
@@ -182,12 +174,11 @@ class TestSshcp(unittest.TestCase):
             f"Unexpected error: {ctx.exception}"
         )
 
-    @parameterized.expand(_PARAMS)
-    @timeout_decorator.timeout(5)
-    def test_shell_error_bad_port(self, _, password):
-        sshcp = Sshcp(host=self.host, port=6666, user=self.user, password=password)
+    @pytest.mark.timeout(5)
+    def test_shell_error_bad_port(self):
+        sshcp = Sshcp(host=self.host, port=6666, user=self.user)
         with self.assertRaises(SshcpError) as ctx:
-            sshcp.shell("cd {}; pwd".format(self.local_dir))
+            sshcp.shell(f"cd {self.local_dir}; pwd")
         # Accept various error formats from different SSH versions
         error_str = str(ctx.exception).lower()
         self.assertTrue(
@@ -200,10 +191,9 @@ class TestSshcp(unittest.TestCase):
             f"Unexpected error: {ctx.exception}"
         )
 
-    @parameterized.expand(_PARAMS)
-    @timeout_decorator.timeout(5)
-    def test_shell_error_bad_command(self, _, password):
-        sshcp = Sshcp(host=self.host, port=self.port, user=self.user, password=password)
+    @pytest.mark.timeout(5)
+    def test_shell_error_bad_command(self):
+        sshcp = Sshcp(host=self.host, port=self.port, user=self.user)
         with self.assertRaises(SshcpError) as ctx:
             sshcp.shell("./some_bad_command.sh")
-        self.assertTrue("./some_bad_command.sh" in str(ctx.exception))
+        self.assertIn("./some_bad_command.sh", str(ctx.exception))

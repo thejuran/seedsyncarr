@@ -19,6 +19,7 @@ DEFAULT_STAGING_REGISTRY:=localhost:5000
 #DOCKER_BUILDKIT_FLAGS=BUILDKIT_PROGRESS=plain
 DOCKER=${DOCKER_BUILDKIT_FLAGS} DOCKER_BUILDKIT=1 docker
 DOCKER_COMPOSE=${DOCKER_BUILDKIT_FLAGS} COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker compose
+E2E_SSH_KEY=/tmp/e2e_test_key
 
 .PHONY: docker-image clean coverage-python
 
@@ -133,11 +134,10 @@ run-tests-e2e:
 	$(DOCKER) rmi -f $${STAGING_REGISTRY}:$${STAGING_VERSION}
 	$(DOCKER) pull $${STAGING_REGISTRY}:$${STAGING_VERSION} --platform linux/$${SEEDSYNCARR_ARCH}
 	echo "${green}Building remote container for platform $${SEEDSYNCARR_PLATFORM}${reset}";
-	# DOCKSEC-05: Generate ephemeral SSH key pair for E2E test
-	if [ ! -f /tmp/e2e_test_key ]; then \
-		ssh-keygen -t ed25519 -N "" -f /tmp/e2e_test_key -q; \
-	fi
-	E2E_SSH_PUBKEY=$$(cat /tmp/e2e_test_key.pub)
+	# DOCKSEC-05: Generate ephemeral SSH key pair for E2E test (always fresh)
+	rm -f $(E2E_SSH_KEY) $(E2E_SSH_KEY).pub
+	ssh-keygen -t ed25519 -N "" -f $(E2E_SSH_KEY) -q || { echo "${red}ERROR: ssh-keygen failed${reset}" >&2; exit 1; }
+	E2E_SSH_PUBKEY=$$(cat $(E2E_SSH_KEY).pub)
 	$(DOCKER) buildx build \
 		--platform $${SEEDSYNCARR_PLATFORM} \
 		--load \
@@ -146,6 +146,7 @@ run-tests-e2e:
 		-f ${SOURCEDIR}/docker/test/e2e/remote/Dockerfile \
 		.
 
+	export E2E_SSH_KEY=$(E2E_SSH_KEY)
 	# Set the flags
 	COMPOSE_FLAGS="-f ${SOURCEDIR}/docker/test/e2e/compose.yml "
 	COMPOSE_FLAGS+="-f ${SOURCEDIR}/docker/stage/docker-image/compose.yml "

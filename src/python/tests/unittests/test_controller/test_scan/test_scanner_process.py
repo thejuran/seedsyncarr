@@ -6,7 +6,7 @@ import sys
 import tempfile
 from unittest.mock import MagicMock
 
-import timeout_decorator
+import pytest
 
 from controller import IScanner, ScannerProcess, ScannerError
 from controller.scan import ActiveScanner
@@ -24,12 +24,11 @@ class DummyScanner(IScanner):
 class TestScannerProcess(unittest.TestCase):
     def setUp(self):
         logger = logging.getLogger()
-        handler = logging.StreamHandler(sys.stdout)
-        logger.addHandler(handler)
+        self._test_handler = logging.StreamHandler(sys.stdout)
+        logger.addHandler(self._test_handler)
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-        handler.setFormatter(formatter)
-        self._test_handler = handler
+        self._test_handler.setFormatter(formatter)
 
         # Assign process to this variable so that it can be cleaned up
         # even after an error
@@ -40,7 +39,7 @@ class TestScannerProcess(unittest.TestCase):
         if self.process:
             self.process.terminate()
 
-    @timeout_decorator.timeout(10)
+    @pytest.mark.timeout(10)
     def test_retrieves_scan_results(self):
         # Use this as a signal to mock to control which result to send
         self.scan_signal = multiprocessing.Value('i', 0)
@@ -145,7 +144,7 @@ class TestScannerProcess(unittest.TestCase):
         result = self.process.pop_latest_result()
         self.assertEqual(0, len(result.files))
 
-    @timeout_decorator.timeout(10)
+    @pytest.mark.timeout(10)
     def test_sends_error_result_on_recoverable_error(self):
         mock_scanner = DummyScanner()
         mock_scanner.scan = MagicMock()
@@ -164,7 +163,7 @@ class TestScannerProcess(unittest.TestCase):
         self.assertTrue(result.failed)
         self.assertEqual("recoverable error", result.error_message)
 
-    @timeout_decorator.timeout(10)
+    @pytest.mark.timeout(10)
     def test_sends_fatal_exception_on_nonrecoverable_error(self):
         mock_scanner = DummyScanner()
         mock_scanner.scan = MagicMock()

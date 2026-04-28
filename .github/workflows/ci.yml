@@ -20,6 +20,7 @@ jobs:
   unittests-python:
     name: Python unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       packages: write
     steps:
@@ -27,12 +28,17 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Log into GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+        run: echo "$DOCKER_TOKEN" | docker login https://ghcr.io -u "$DOCKER_USER" --password-stdin
+        env:
+          DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_USER: ${{ github.actor }}
       - name: Set staging registry env variable
         run: echo "staging_registry=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
       - name: Run Python unit tests
-        run: make run-tests-python PYTHON_TEST_CACHE_REGISTRY=${{ env.staging_registry }}
+        run: make run-tests-python PYTHON_TEST_CACHE_REGISTRY="$STAGING_REGISTRY"
+        env:
+          STAGING_REGISTRY: ${{ env.staging_registry }}
 
   unittests-angular:
     name: Angular unit tests
@@ -48,6 +54,7 @@ jobs:
   lint-python:
     name: Lint (Python)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -66,6 +73,7 @@ jobs:
   lint-angular:
     name: Lint (Angular)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -86,6 +94,7 @@ jobs:
   build-docker-image:
     name: Build Docker Image
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [ unittests-python, unittests-angular, lint-python, lint-angular ]
     permissions:
       packages: write
@@ -106,14 +115,20 @@ jobs:
 
       # Login to GHCR
       - name: Log into GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+        run: echo "$DOCKER_TOKEN" | docker login https://ghcr.io -u "$DOCKER_USER" --password-stdin
+        env:
+          DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_USER: ${{ github.actor }}
       # Set staging registry
       - name: Set staging registry env variable
         run: echo "staging_registry=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
       # Build docker image
       - name: Build docker image
-        run: make docker-image STAGING_REGISTRY=${{ env.staging_registry }} STAGING_VERSION=${{ github.run_number }}
+        run: make docker-image STAGING_REGISTRY="$STAGING_REGISTRY" STAGING_VERSION="$STAGING_VERSION"
+        env:
+          STAGING_REGISTRY: ${{ env.staging_registry }}
+          STAGING_VERSION: ${{ github.run_number }}
 
   e2etests-docker-image:
     name: End-to-end tests on Docker Image (${{ matrix.arch }})
@@ -127,6 +142,9 @@ jobs:
       matrix:
         include: ${{ fromJSON((github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) && '[{"arch":"amd64","runner":"ubuntu-latest"},{"arch":"arm64","runner":"ubuntu-24.04-arm"}]' || '[{"arch":"amd64","runner":"ubuntu-latest"}]') }}
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      packages: read
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -142,7 +160,10 @@ jobs:
 
       # Login to GHCR
       - name: Log into GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+        run: echo "$DOCKER_TOKEN" | docker login https://ghcr.io -u "$DOCKER_USER" --password-stdin
+        env:
+          DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_USER: ${{ github.actor }}
       # Set staging registry
       - name: Set staging registry env variable
         run: echo "staging_registry=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
@@ -150,14 +171,19 @@ jobs:
       # Run e2e test
       - name: Run e2e test
         run: make run-tests-e2e \
-          STAGING_REGISTRY=${{ env.staging_registry }} \
-          STAGING_VERSION=${{ github.run_number }} \
-          SEEDSYNCARR_ARCH=${{ matrix.arch }}
+          STAGING_REGISTRY="$STAGING_REGISTRY" \
+          STAGING_VERSION="$STAGING_VERSION" \
+          SEEDSYNCARR_ARCH="$SEEDSYNCARR_ARCH"
+        env:
+          STAGING_REGISTRY: ${{ env.staging_registry }}
+          STAGING_VERSION: ${{ github.run_number }}
+          SEEDSYNCARR_ARCH: ${{ matrix.arch }}
 
   publish-docker-image:
     name: Publish Docker Image
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [ e2etests-docker-image ]
     permissions:
       packages: write
@@ -180,7 +206,10 @@ jobs:
 
       # Login to GHCR
       - name: Log into GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+        run: echo "$DOCKER_TOKEN" | docker login https://ghcr.io -u "$DOCKER_USER" --password-stdin
+        env:
+          DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_USER: ${{ github.actor }}
       # Set staging registry
       - name: Set staging registry env variable
         run: echo "staging_registry=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
@@ -188,21 +217,29 @@ jobs:
       # Push image to GHCR
       - name: Push to GHCR (tag vX.X.X)
         run: make docker-image-release \
-          STAGING_REGISTRY=${{ env.staging_registry }} \
-          STAGING_VERSION=${{ github.run_number }} \
+          STAGING_REGISTRY="$STAGING_REGISTRY" \
+          STAGING_VERSION="$STAGING_VERSION" \
           RELEASE_REGISTRY=ghcr.io/thejuran \
-          RELEASE_VERSION=${{ env.RELEASE_VERSION }}
+          RELEASE_VERSION="$RELEASE_VERSION"
+        env:
+          STAGING_REGISTRY: ${{ env.staging_registry }}
+          STAGING_VERSION: ${{ github.run_number }}
+          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
       - name: Push to GHCR (tag latest)
         run: make docker-image-release \
-          STAGING_REGISTRY=${{ env.staging_registry }} \
-          STAGING_VERSION=${{ github.run_number }} \
+          STAGING_REGISTRY="$STAGING_REGISTRY" \
+          STAGING_VERSION="$STAGING_VERSION" \
           RELEASE_REGISTRY=ghcr.io/thejuran \
           RELEASE_VERSION=latest
+        env:
+          STAGING_REGISTRY: ${{ env.staging_registry }}
+          STAGING_VERSION: ${{ github.run_number }}
 
   publish-github-release:
     name: Publish GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [ e2etests-docker-image, publish-docker-image ]
     permissions:
       contents: write
@@ -213,17 +250,19 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Create GitHub Release
         run: |
-          sed "s|{{VERSION}}|${{ env.RELEASE_VERSION }}|g" release-notes.md > release-body.md
-          gh release create v${{ env.RELEASE_VERSION }} \
-            --title "v${{ env.RELEASE_VERSION }} — SeedSyncarr" \
+          sed "s|{{VERSION}}|${RELEASE_VERSION}|g" release-notes.md > release-body.md
+          gh release create "v${RELEASE_VERSION}" \
+            --title "v${RELEASE_VERSION} — SeedSyncarr" \
             --notes-file release-body.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
 
   publish-pypi:
     name: Publish to PyPI
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [ e2etests-docker-image ]
     permissions:
       id-token: write
@@ -237,8 +276,10 @@ jobs:
         with:
           python-version: '3.12'
       - name: Stamp version from git tag
-        run: sed -i "s|^version = \".*\"|version = \"${{ env.RELEASE_VERSION }}\"|" pyproject.toml
+        run: sed -i "s|^version = \".*\"|version = \"${RELEASE_VERSION}\"|" pyproject.toml
         working-directory: src/python
+        env:
+          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
       - name: Build package
         run: pip install build && python -m build
         working-directory: src/python
@@ -251,6 +292,7 @@ jobs:
     name: Publish Docker Image (:dev)
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [ e2etests-docker-image ]
     permissions:
       packages: write
@@ -271,7 +313,10 @@ jobs:
 
       # Login to GHCR
       - name: Log into GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+        run: echo "$DOCKER_TOKEN" | docker login https://ghcr.io -u "$DOCKER_USER" --password-stdin
+        env:
+          DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_USER: ${{ github.actor }}
       # Set staging registry
       - name: Set staging registry env variable
         run: echo "staging_registry=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
@@ -279,15 +324,19 @@ jobs:
       # Push image to GHCR
       - name: Push to GHCR (tag dev)
         run: make docker-image-release \
-          STAGING_REGISTRY=${{ env.staging_registry }} \
-          STAGING_VERSION=${{ github.run_number }} \
+          STAGING_REGISTRY="$STAGING_REGISTRY" \
+          STAGING_VERSION="$STAGING_VERSION" \
           RELEASE_REGISTRY=ghcr.io/thejuran \
           RELEASE_VERSION=dev
+        env:
+          STAGING_REGISTRY: ${{ env.staging_registry }}
+          STAGING_VERSION: ${{ github.run_number }}
 
   publish-docs:
     name: Publish Documentation
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [ e2etests-docker-image ]
     permissions:
       contents: write

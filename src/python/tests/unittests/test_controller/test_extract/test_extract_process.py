@@ -7,7 +7,7 @@ import ctypes
 import threading
 import time
 
-import timeout_decorator
+import pytest
 
 from model import ModelFile
 from controller.extract import ExtractProcess, ExtractListener, ExtractStatus
@@ -24,12 +24,11 @@ class TestExtractProcess(unittest.TestCase):
         self.mock_dispatch.status.return_value = []
 
         logger = logging.getLogger()
-        handler = logging.StreamHandler(sys.stdout)
-        logger.addHandler(handler)
+        self._test_handler = logging.StreamHandler(sys.stdout)
+        logger.addHandler(self._test_handler)
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-        handler.setFormatter(formatter)
-        self._test_handler = handler
+        self._test_handler.setFormatter(formatter)
 
         # Assign process to this variable so that it can be cleaned up
         # even after an error
@@ -40,7 +39,7 @@ class TestExtractProcess(unittest.TestCase):
         if self.process:
             self.process.terminate()
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_param_out_dir_path(self):
         self.out_dir_path = multiprocessing.Array(ctypes.c_char, 100)
         self.ctor_called = multiprocessing.Value('i', 0)
@@ -59,7 +58,7 @@ class TestExtractProcess(unittest.TestCase):
             pass
         self.assertEqual("/test/out/path", self.out_dir_path.value.decode())
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_param_out_local_path(self):
         self.local_path = multiprocessing.Array(ctypes.c_char, 100)
         self.ctor_called = multiprocessing.Value('i', 0)
@@ -78,7 +77,7 @@ class TestExtractProcess(unittest.TestCase):
             pass
         self.assertEqual("/test/local/path", self.local_path.value.decode())
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_calls_start_dispatch(self):
         self.start_called = multiprocessing.Value('i', 0)
 
@@ -92,7 +91,7 @@ class TestExtractProcess(unittest.TestCase):
         while self.start_called.value == 0:
             pass
 
-    @timeout_decorator.timeout(10)
+    @pytest.mark.timeout(10)
     def test_retrieves_status(self):
         # Use this as a signal to mock to control which status to send
         self.status_signal = multiprocessing.Value('i', 0)
@@ -161,7 +160,7 @@ class TestExtractProcess(unittest.TestCase):
         status_result = self.process.pop_latest_statuses()
         self.assertEqual(0, len(status_result.statuses))
 
-    @timeout_decorator.timeout(10)
+    @pytest.mark.timeout(10)
     def test_retrieves_completed(self):
         # Use this as a signal to mock to control which completed list to send
         self.completed_signal = multiprocessing.Value('i', 0)
@@ -213,7 +212,7 @@ class TestExtractProcess(unittest.TestCase):
         completed = self.process.pop_completed()
         self.assertEqual(0, len(completed))
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_forwards_extract_commands(self):
         a = ModelFile("a", True)
         a.local_size = 100

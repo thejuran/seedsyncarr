@@ -6,7 +6,7 @@ import threading
 import logging
 import sys
 
-import timeout_decorator
+import pytest
 
 from common import overrides
 from model import ModelFile
@@ -44,16 +44,14 @@ class TestExtractDispatch(unittest.TestCase):
         self.listener.extract_failed = MagicMock()
 
         logger = logging.getLogger()
-        handler = logging.StreamHandler(sys.stdout)
-        logger.addHandler(handler)
+        self._test_handler = logging.StreamHandler(sys.stdout)
+        logger.addHandler(self._test_handler)
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-        handler.setFormatter(formatter)
-        self._test_handler = handler
+        self._test_handler.setFormatter(formatter)
 
         self.dispatch.start()
 
-    @timeout_decorator.timeout(2)
     def tearDown(self):
         logging.getLogger().removeHandler(self._test_handler)
         if self.dispatch:
@@ -83,7 +81,7 @@ class TestExtractDispatch(unittest.TestCase):
         self.assertTrue(str(ctx.exception).startswith("File is not an archive"))
         self.mock_is_archive.assert_called_once_with(os.path.join(self.local_path, mf.name))
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_extract_single(self):
         self.mock_is_archive.return_value = True
 
@@ -99,7 +97,7 @@ class TestExtractDispatch(unittest.TestCase):
             out_dir_path=self.out_dir_path
         )
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_extract_maintains_order(self):
         self.mock_is_archive.return_value = True
 
@@ -133,7 +131,7 @@ class TestExtractDispatch(unittest.TestCase):
             )
         ])
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_extract_calls_listener_on_completed(self):
         self.mock_is_archive.return_value = True
 
@@ -150,7 +148,7 @@ class TestExtractDispatch(unittest.TestCase):
         self.listener.extract_completed.assert_called_once_with("aaa", False)
         self.listener.extract_failed.assert_not_called()
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_extract_calls_listener_on_failed(self):
         self.mock_is_archive.return_value = True
 
@@ -171,7 +169,7 @@ class TestExtractDispatch(unittest.TestCase):
         self.listener.extract_completed.assert_not_called()
         self.listener.extract_failed.assert_called_once_with("aaa", False)
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_extract_calls_listeners_in_correct_sequence(self):
         self.mock_is_archive.return_value = True
         self.count = 0
@@ -216,7 +214,7 @@ class TestExtractDispatch(unittest.TestCase):
             listener_calls
         )
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_extract_skips_remaining_on_shutdown(self):
         # Send two extract commands
         # Call shutdown after first one runs
@@ -293,7 +291,7 @@ class TestExtractDispatch(unittest.TestCase):
             self.dispatch.extract(a)
         self.assertTrue(str(ctx.exception).startswith("Directory does not contain any archives"))
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_extract_dir(self):
         self.mock_is_archive.return_value = True
         self.actual_calls = set()
@@ -360,7 +358,7 @@ class TestExtractDispatch(unittest.TestCase):
         self.assertEqual(5, self.mock_extract_archive.call_count)
         self.assertEqual(golden_calls, self.actual_calls)
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_extract_dir_skips_remote_files(self):
         self.mock_is_archive.return_value = True
         self.actual_calls = set()
@@ -419,7 +417,7 @@ class TestExtractDispatch(unittest.TestCase):
         self.assertEqual(3, self.mock_extract_archive.call_count)
         self.assertEqual(golden_calls, self.actual_calls)
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_extract_dir_skips_non_archive_files(self):
         def _is_archive(archive_path: str):
             return archive_path in (
@@ -484,7 +482,7 @@ class TestExtractDispatch(unittest.TestCase):
         self.assertEqual(3, self.mock_extract_archive.call_count)
         self.assertEqual(golden_calls, self.actual_calls)
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_extract_dir_does_not_extract_split_rar_files(self):
         self.mock_is_archive.return_value = True
         self.actual_calls = set()
@@ -555,7 +553,7 @@ class TestExtractDispatch(unittest.TestCase):
         self.assertEqual(3, self.mock_extract_archive.call_count)
         self.assertEqual(golden_calls, self.actual_calls)
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_extract_dir_exits_command_early_on_shutdown(self):
         # Send extract dir command with two archives
         # Call shutdown after first extract but before second
@@ -596,7 +594,7 @@ class TestExtractDispatch(unittest.TestCase):
         self.listener.extract_failed.assert_called_once_with("a", True)
         self.assertEqual(1, self.mock_extract_archive.call_count)
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_status(self):
         self.mock_is_archive.return_value = True
         self.send_count = 0
@@ -699,7 +697,7 @@ class TestExtractDispatch(unittest.TestCase):
         status = self.dispatch.status()
         self.assertEqual(0, len(status))
 
-    @timeout_decorator.timeout(2)
+    @pytest.mark.timeout(2)
     def test_extract_ignores_duplicate_calls(self):
         # Send two extract commands to same file
         # Expect that only one extract operation is performed
@@ -755,20 +753,20 @@ class TestExtractDispatchThreadSafety(unittest.TestCase):
         self.listener.extract_failed = MagicMock()
 
         logger = logging.getLogger()
-        handler = logging.StreamHandler(sys.stdout)
-        logger.addHandler(handler)
+        self._test_handler = logging.StreamHandler(sys.stdout)
+        logger.addHandler(self._test_handler)
         logger.setLevel(logging.DEBUG)
-        self._test_handler = handler
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+        self._test_handler.setFormatter(formatter)
 
         self.dispatch.start()
 
-    @timeout_decorator.timeout(2)
     def tearDown(self):
         logging.getLogger().removeHandler(self._test_handler)
         if self.dispatch:
             self.dispatch.stop()
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_status_returns_consistent_snapshot(self):
         """Verify status() returns a consistent snapshot even with concurrent modifications."""
         self.mock_is_archive.return_value = True
@@ -800,7 +798,7 @@ class TestExtractDispatchThreadSafety(unittest.TestCase):
 
         barrier.set()
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_extract_duplicate_check_is_safe(self):
         """Verify duplicate check in extract() does not raise under concurrent access."""
         self.mock_is_archive.return_value = True
@@ -838,7 +836,7 @@ class TestExtractDispatchThreadSafety(unittest.TestCase):
 
         barrier.set()
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_listener_notification_allows_concurrent_add(self):
         """Verify listener notification uses copy-under-lock so adding during notify is safe."""
         self.mock_is_archive.return_value = True

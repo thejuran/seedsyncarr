@@ -24,12 +24,12 @@ ADD src/docker/test/python/entrypoint.sh /app/
 RUN mkdir -p /var/run/sshd
 RUN ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa && \
     cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
-# DOCKSEC-06: accept-new rejects changed keys (MITM protection) while accepting new ones
+# DOCKSEC-06: accept-new + /dev/null = no host-key verification (keys never persist). Test-only.
 RUN printf "StrictHostKeyChecking accept-new\nUserKnownHostsFile /dev/null\nLogLevel=quiet\n" > /root/.ssh/config
 # DOCKSEC-03: Disable password authentication — key-only auth
 RUN sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
     sed -i 's/^#\?KbdInteractiveAuthentication.*/KbdInteractiveAuthentication no/' /etc/ssh/sshd_config && \
-    sed -i 's/^#\?UsePAM.*/UsePAM no/' /etc/ssh/sshd_config
+    (grep -qE '^#?UsePAM' /etc/ssh/sshd_config && sed -i 's/^#\?UsePAM.*/UsePAM no/' /etc/ssh/sshd_config || echo "UsePAM no" >> /etc/ssh/sshd_config)
 
 # create the seedsyncarrtest user, add root's public key to seedsyncarrtest
 # DOCKSEC-03: no chpasswd — password auth is disabled and account is locked below
@@ -44,7 +44,9 @@ RUN cp /root/.ssh/id_rsa.pub /home/seedsyncarrtest/ && \
     chown seedsyncarrtest:seedsyncarrtest /home/seedsyncarrtest/id_rsa.pub
 USER seedsyncarrtest
 RUN  mkdir -p /home/seedsyncarrtest/.ssh && \
-    cat /home/seedsyncarrtest/id_rsa.pub >> /home/seedsyncarrtest/.ssh/authorized_keys
+    cat /home/seedsyncarrtest/id_rsa.pub >> /home/seedsyncarrtest/.ssh/authorized_keys && \
+    chmod 700 /home/seedsyncarrtest/.ssh && \
+    chmod 600 /home/seedsyncarrtest/.ssh/authorized_keys
 USER root
 
 # DOCKSEC-04: Allow non-root sshd to bind port 22
@@ -53,7 +55,8 @@ RUN setcap cap_net_bind_service=+ep /usr/sbin/sshd
 # DOCKSEC-04: Transfer sshd runtime ownership to sshdaemon
 RUN chown sshdaemon /var/run/sshd && \
     chown sshdaemon:sshdaemon /etc/ssh/ssh_host_* && \
-    chmod 700 /etc/ssh/ssh_host_*
+    chmod 600 /etc/ssh/ssh_host_*_key && \
+    chmod 644 /etc/ssh/ssh_host_*_key.pub
 
 EXPOSE 22
 

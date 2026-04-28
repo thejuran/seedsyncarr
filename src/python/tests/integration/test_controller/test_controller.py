@@ -11,7 +11,7 @@ import subprocess
 from datetime import datetime
 import stat
 
-import timeout_decorator
+import pytest
 
 from tests.utils import TestUtils
 from common import overrides, Context, Config, Args, AppError, Localization, Status
@@ -382,7 +382,7 @@ class TestController(unittest.TestCase):
         while len(self.controller.get_model_files()) < 5:
             self.controller.process()
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_bad_config_doesnot_raise_ctor_exception(self):
         self.context.config.lftp.remote_address = "<bad>"
         self.context.config.lftp.remote_username = "<bad>"
@@ -394,7 +394,7 @@ class TestController(unittest.TestCase):
         except Exception:
             self.fail("Controller ctor raised exception unexpectedly")
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_bad_config_remote_address_raises_exception(self):
         self.context.config.lftp.remote_address = "<bad>"
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
@@ -411,7 +411,7 @@ class TestController(unittest.TestCase):
             f"Unexpected error message: {error_str}"
         )
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_bad_config_remote_username_raises_exception(self):
         self.context.config.lftp.remote_username = "<bad>"
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
@@ -428,7 +428,7 @@ class TestController(unittest.TestCase):
             f"Unexpected error message: {error_str}"
         )
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_bad_config_remote_path_raises_exception(self):
         self.context.config.lftp.remote_path = "<bad>"
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
@@ -441,7 +441,7 @@ class TestController(unittest.TestCase):
             str(error.exception)
         )
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_bad_config_local_path_raises_exception(self):
         self.context.config.lftp.local_path = "<bad>"
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
@@ -451,7 +451,7 @@ class TestController(unittest.TestCase):
                 self.controller.process()
         self.assertEqual(Localization.Error.LOCAL_SERVER_SCAN, str(error.exception))
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_bad_config_remote_path_to_scan_script_raises_exception(self):
         self.context.config.lftp.remote_path_to_scan_script = "<bad>"
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
@@ -468,7 +468,7 @@ class TestController(unittest.TestCase):
             f"Unexpected error message: {error_str}"
         )
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_initial_model(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -484,7 +484,7 @@ class TestController(unittest.TestCase):
             self.assertEqual([self.initial_state[filename]], [files_dict[filename]],
                              "Mismatch in file: {}".format(filename))
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_local_file_added(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -521,7 +521,7 @@ class TestController(unittest.TestCase):
         listener.file_updated.assert_not_called()
         listener.file_removed.assert_not_called()
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_local_file_updated(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -560,7 +560,7 @@ class TestController(unittest.TestCase):
         listener.file_added.assert_not_called()
         listener.file_removed.assert_not_called()
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_local_file_removed(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -597,7 +597,7 @@ class TestController(unittest.TestCase):
         listener.file_added.assert_not_called()
         listener.file_updated.assert_not_called()
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_remote_file_added(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -627,7 +627,7 @@ class TestController(unittest.TestCase):
         listener.file_updated.assert_not_called()
         listener.file_removed.assert_not_called()
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_remote_file_updated(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -659,7 +659,7 @@ class TestController(unittest.TestCase):
         listener.file_added.assert_not_called()
         listener.file_removed.assert_not_called()
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_remote_file_removed(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -689,7 +689,7 @@ class TestController(unittest.TestCase):
         listener.file_added.assert_not_called()
         listener.file_updated.assert_not_called()
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_queue_directory(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -734,7 +734,7 @@ class TestController(unittest.TestCase):
         self.assertFalse(dcmp.right_only)
         self.assertFalse(dcmp.diff_files)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_queue_file(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -777,7 +777,7 @@ class TestController(unittest.TestCase):
                    os.path.join(TestController.temp_dir, "local", "rc"))
         self.assertTrue(fcmp)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_queue_invalid(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -815,7 +815,7 @@ class TestController(unittest.TestCase):
         error = callback.on_failure.call_args[0][0]
         self.assertEqual("File 'invaliddir' not found", error)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_queue_local_directory(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -852,7 +852,7 @@ class TestController(unittest.TestCase):
         error = callback.on_failure.call_args[0][0]
         self.assertEqual("File 'la' does not exist remotely", error)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_queue_local_file(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -889,7 +889,7 @@ class TestController(unittest.TestCase):
         error = callback.on_failure.call_args[0][0]
         self.assertEqual("File 'lb' does not exist remotely", error)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_stop_directory(self):
         # White box hack: limit the rate of lftp so download doesn't finish
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
@@ -951,7 +951,7 @@ class TestController(unittest.TestCase):
         callback.on_success.assert_called_once_with()
         callback.on_failure.assert_not_called()
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_stop_file(self):
         # White box hack: limit the rate of lftp so download doesn't finish
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
@@ -1013,7 +1013,7 @@ class TestController(unittest.TestCase):
         callback.on_success.assert_called_once_with()
         callback.on_failure.assert_not_called()
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_stop_default(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -1053,7 +1053,7 @@ class TestController(unittest.TestCase):
         error = callback.on_failure.call_args[0][0]
         self.assertEqual("File 'rc' is not Queued or Downloading", error)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_stop_queued(self):
         # White box hack: limit the rate of lftp so download doesn't finish
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
@@ -1123,7 +1123,7 @@ class TestController(unittest.TestCase):
         callback.on_success.assert_called_once_with()
         callback.on_failure.assert_not_called()
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_stop_wrong(self):
         # White box hack: limit the rate of lftp so download doesn't finish
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
@@ -1181,7 +1181,7 @@ class TestController(unittest.TestCase):
         error = callback.on_failure.call_args[0][0]
         self.assertEqual("File 'rb' is not Queued or Downloading", error)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_stop_invalid(self):
         # White box hack: limit the rate of lftp so download doesn't finish
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
@@ -1238,7 +1238,7 @@ class TestController(unittest.TestCase):
         error = callback.on_failure.call_args[0][0]
         self.assertEqual("File 'invalidfile' not found", error)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_extract_after_downloading_remote_file(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -1300,7 +1300,7 @@ class TestController(unittest.TestCase):
         with open(re_txt_path, "r") as f:
             self.assertEqual("re.rar", f.read())
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_extract_after_downloading_remote_directory(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -1359,7 +1359,7 @@ class TestController(unittest.TestCase):
         with open(rd_txt_path, "r") as f:
             self.assertEqual("rd.zip", f.read())
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_extract_after_downloading_remote_directory_multilevel(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -1422,7 +1422,7 @@ class TestController(unittest.TestCase):
         with open(rfb_txt_path, "r") as f:
             self.assertEqual("rfb.zip", f.read())
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_extract_local_directory(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -1466,7 +1466,7 @@ class TestController(unittest.TestCase):
         with open(lcb_txt_path, "r") as f:
             self.assertEqual("lcb.zip", f.read())
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_reextract_after_extracting_remote_file(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -1550,7 +1550,7 @@ class TestController(unittest.TestCase):
         with open(re_txt_path, "r") as f:
             self.assertEqual("re.rar", f.read())
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_extract_remote_only_fails(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -1594,7 +1594,7 @@ class TestController(unittest.TestCase):
         error = callback.on_failure.call_args[0][0]
         self.assertEqual("File 're.rar' does not exist locally", error)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_extract_after_downloading_remote_directory_to_separate_path(self):
         # Change the extract path
         extract_path = os.path.join(TestController.temp_dir, "extract")
@@ -1658,7 +1658,7 @@ class TestController(unittest.TestCase):
         with open(rd_txt_path, "r") as f:
             self.assertEqual("rd.zip", f.read())
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_redownload_after_deleting_extracted_file(self):
         """
         File is downloaded, then extracted, then deleted, then redownloaded
@@ -1759,7 +1759,7 @@ class TestController(unittest.TestCase):
         files_dict = {f.name: f for f in files}
         self.assertEqual(ModelFile.State.DOWNLOADED, files_dict["rd"].state)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_config_num_max_parallel_downloads(self):
         self.context.config.lftp.num_max_parallel_downloads = 2
         self.controller = Controller(self.context, ControllerPersist(), self.webhook_manager)
@@ -1811,7 +1811,7 @@ class TestController(unittest.TestCase):
         self.assertEqual(ModelFile.State.DOWNLOADING, files_dict["rb"].state)
         self.assertEqual(ModelFile.State.QUEUED, files_dict["rc"].state)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_downloading_scan(self):
         # Test that downloading scan is independent of local scan
         # Set a very large local scan interval and verify that downloading
@@ -1860,7 +1860,7 @@ class TestController(unittest.TestCase):
         files_dict = {f.name: f for f in files}
         self.assertEqual(ModelFile.State.DOWNLOADING, files_dict["ra"].state)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_persist_downloaded(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -1901,7 +1901,7 @@ class TestController(unittest.TestCase):
         # Verify downloaded state was persisted
         self.assertTrue("rc" in self.controller_persist.downloaded_file_names)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_redownload_deleted_file(self):
         # Test that a previously downloaded then deleted file can be redownloaded
         # We set the downloaded state in controller persist
@@ -1954,7 +1954,7 @@ class TestController(unittest.TestCase):
         files_dict = {f.name: f for f in files}
         self.assertEqual(ModelFile.State.DOWNLOADING, files_dict["ra"].state)
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_delete_local_file(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -1994,7 +1994,7 @@ class TestController(unittest.TestCase):
 
         self.assertFalse(os.path.exists(file_path))
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_delete_local_dir(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -2034,7 +2034,7 @@ class TestController(unittest.TestCase):
 
         self.assertFalse(os.path.exists(file_path))
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_delete_remote_dir(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -2074,7 +2074,7 @@ class TestController(unittest.TestCase):
 
         self.assertFalse(os.path.exists(file_path))
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_delete_local_fails_on_remote_file(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -2116,7 +2116,7 @@ class TestController(unittest.TestCase):
 
         self.assertTrue(os.path.isdir(file_path))
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_delete_remote_fails_on_local_file(self):
         self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
         self.controller.start()
@@ -2158,7 +2158,7 @@ class TestController(unittest.TestCase):
 
         self.assertTrue(os.path.isdir(file_path))
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_delete_remote_forces_immediate_rescan(self):
         # Test that after a remote delete a remote scan is immediately done
         # Test this by simply setting the remote scan interval to a really large value
@@ -2203,7 +2203,7 @@ class TestController(unittest.TestCase):
 
         self.assertFalse(os.path.exists(file_path))
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     def test_command_delete_local_forces_immediate_rescan(self):
         # Test that after a local delete a local scan is immediately done
         # Test this by simply setting the local scan interval to a really large value
@@ -2248,7 +2248,7 @@ class TestController(unittest.TestCase):
 
         self.assertFalse(os.path.exists(file_path))
 
-    @timeout_decorator.timeout(20)
+    @pytest.mark.timeout(20)
     @unittest.skip
     def test_download_with_excessive_connections(self):
         # Note: this test sometimes crashes the dbus

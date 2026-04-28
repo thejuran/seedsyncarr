@@ -25,15 +25,18 @@ class TestRemoteScanner(unittest.TestCase):
         self.mock_ssh_cls = ssh_patcher.start()
         self.mock_ssh = self.mock_ssh_cls.return_value
 
-        logger = logging.getLogger()
-        handler = logging.StreamHandler(sys.stdout)
-        logger.addHandler(handler)
-        logger.setLevel(logging.DEBUG)
+        self._logger = logging.getLogger()
+        self._log_handler = logging.StreamHandler(sys.stdout)
+        self._logger.addHandler(self._log_handler)
+        self._logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-        handler.setFormatter(formatter)
+        self._log_handler.setFormatter(formatter)
 
         # Ssh to return mangled binary by default
         self.mock_ssh.shell.return_value = b'error'
+
+    def tearDown(self):
+        self._logger.removeHandler(self._log_handler)
 
     @classmethod
     def setUpClass(cls):

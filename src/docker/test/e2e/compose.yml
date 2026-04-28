@@ -40,7 +40,7 @@ services:
       start_period: 10s
     volumes:
       - type: bind
-        source: /tmp/e2e_test_key
+        source: ${E2E_SSH_KEY:?E2E_SSH_KEY must be set — run via 'make run-tests-e2e'}
         target: /home/seedsync/.ssh/id_ed25519
         read_only: true
 

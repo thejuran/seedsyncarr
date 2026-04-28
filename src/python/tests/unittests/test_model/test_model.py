@@ -24,13 +24,17 @@ class DummyModelListener(IModelListener):
 class TestLftpModel(unittest.TestCase):
     def setUp(self):
         logger = logging.getLogger(TestLftpModel.__name__)
-        handler = logging.StreamHandler(sys.stdout)
-        logger.addHandler(handler)
+        self._log_handler = logging.StreamHandler(sys.stdout)
+        logger.addHandler(self._log_handler)
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-        handler.setFormatter(formatter)
+        self._log_handler.setFormatter(formatter)
+        self._logger = logger
         self.model = Model()
         self.model.set_base_logger(logger)
+
+    def tearDown(self):
+        self._logger.removeHandler(self._log_handler)
 
     def test_add_file(self):
         file = ModelFile("test", False)

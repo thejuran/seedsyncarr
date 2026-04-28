@@ -15,13 +15,17 @@ from common.bounded_ordered_set import BoundedOrderedSet
 class TestModelBuilder(unittest.TestCase):
     def setUp(self):
         logger = logging.getLogger(TestModelBuilder.__name__)
-        handler = logging.StreamHandler(sys.stdout)
-        logger.addHandler(handler)
+        self._log_handler = logging.StreamHandler(sys.stdout)
+        logger.addHandler(self._log_handler)
         logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-        handler.setFormatter(formatter)
+        self._log_handler.setFormatter(formatter)
+        self._logger = logger
         self.model_builder = ModelBuilder()
         self.model_builder.set_base_logger(logger)
+
+    def tearDown(self):
+        self._logger.removeHandler(self._log_handler)
 
     def __build_test_model_children_tree_1(self) -> Model:
         """Build a test model for children testing"""

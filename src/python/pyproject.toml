@@ -16,7 +16,6 @@ dependencies = [
     "pytz>=2025.2",
     "requests>=2.33.0",
     "tblib>=3.2.2",
-    "timeout-decorator>=0.5.0",
     "cryptography>=44.0.0,<47",
 ]
 
@@ -31,7 +30,6 @@ dev = [
     "ruff>=0.4.0",
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.7.1",
-    "parameterized>=0.9.0",
 ]
 
 [project.scripts]
@@ -56,13 +54,11 @@ pexpect = "^4.9.0"
 pytz = ">=2025.2,<2027.0"
 requests = "^2.33.0"
 tblib = "^3.2.2"
-timeout-decorator = "^0.5.0"
 cryptography = ">=44.0.0,<47"
 
 [tool.poetry.group.dev.dependencies]
 mkdocs = "^1.6.1"
 mkdocs-material = "^9.7.6"
-parameterized = "^0.9.0"
 pyinstaller = "^6.19.0"
 testfixtures = "^11.0.0"
 webtest = "^3.0.7"
@@ -73,6 +69,7 @@ pytest-cov = "^7.1.0"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 timeout = 60
+timeout_func_only = false
 # Redirect cache to /tmp so ad-hoc pytest invocations that omit the CMD's
 # `-p no:cacheprovider` flag don't write .pytest_cache into the host-mounted
 # /src/ volume. Reviewer feedback reversed Phase 79 D-02 which had removed

@@ -280,11 +280,11 @@ class TestAutoQueuePersist(unittest.TestCase):
 class TestAutoQueue(unittest.TestCase):
     def setUp(self):
         self.logger = logging.getLogger(TestAutoQueue.__name__)
-        handler = logging.StreamHandler(sys.stdout)
-        self.logger.addHandler(handler)
+        self._log_handler = logging.StreamHandler(sys.stdout)
+        self.logger.addHandler(self._log_handler)
         self.logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-        handler.setFormatter(formatter)
+        self._log_handler.setFormatter(formatter)
 
         self.context = MagicMock()
 
@@ -320,6 +320,9 @@ class TestAutoQueue(unittest.TestCase):
         self.controller.get_model_files_and_add_listener.side_effect = get_model_and_capture_listener
         self.controller.is_file_stopped.side_effect = is_file_stopped
         self.controller.is_file_downloaded.side_effect = is_file_downloaded
+
+    def tearDown(self):
+        self.logger.removeHandler(self._log_handler)
 
     def test_matching_new_files_are_queued(self):
         persist = AutoQueuePersist()

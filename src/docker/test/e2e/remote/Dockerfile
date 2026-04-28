@@ -13,8 +13,11 @@ RUN update-alternatives --set python /usr/bin/python3
 # Create non-root user (no password set -- DOCKSEC-02)
 RUN useradd --create-home -s /bin/bash remoteuser
 
-# DOCKSEC-05: Accept ephemeral SSH public key via build argument
+# DOCKSEC-05: Accept ephemeral SSH public key via build argument.
+# This is a test-only public key for an ephemeral container — visible in
+# docker history is acceptable (no secret material).
 ARG SSH_PUBKEY
+RUN test -n "${SSH_PUBKEY}" || { echo "ERROR: SSH_PUBKEY build-arg is required. Build via 'make run-tests-e2e', not 'docker compose build'." >&2; exit 1; }
 RUN mkdir -p /home/remoteuser/.ssh && \
     echo "${SSH_PUBKEY}" >> /home/remoteuser/.ssh/authorized_keys && \
     chown -R remoteuser:remoteuser /home/remoteuser/.ssh && \
@@ -31,14 +34,15 @@ EXPOSE 1234
 # DOCKSEC-02: Disable password authentication
 RUN sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
     sed -i 's/^#\?KbdInteractiveAuthentication.*/KbdInteractiveAuthentication no/' /etc/ssh/sshd_config && \
-    echo "UsePAM no" >> /etc/ssh/sshd_config
+    (grep -qE '^#?UsePAM' /etc/ssh/sshd_config && sed -i 's/^#\?UsePAM.*/UsePAM no/' /etc/ssh/sshd_config || echo "UsePAM no" >> /etc/ssh/sshd_config)
 RUN passwd -l remoteuser
 
 # DOCKSEC-04: Generate host keys and transfer ownership for non-root sshd
 RUN mkdir -p /var/run/sshd && \
     ssh-keygen -A && \
     chown remoteuser:remoteuser /etc/ssh/ssh_host_* && \
-    chmod 700 /etc/ssh/ssh_host_* && \
+    chmod 600 /etc/ssh/ssh_host_*_key && \
+    chmod 644 /etc/ssh/ssh_host_*_key.pub && \
     chown remoteuser:remoteuser /var/run/sshd
 
 # Non-root sshd needs writable PidFile location

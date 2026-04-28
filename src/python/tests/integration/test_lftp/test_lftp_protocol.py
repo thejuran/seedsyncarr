@@ -6,7 +6,7 @@ import tempfile
 import time
 import unittest
 
-import timeout_decorator
+import pytest
 
 from lftp import Lftp, LftpJobStatus, LftpError
 
@@ -203,7 +203,7 @@ class TestLftpProtocol(unittest.TestCase):
         statuses = self.lftp.status()
         self.assertEqual(0, len(statuses))
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queue_file(self):
         self.lftp.rate_limit = 10  # so jobs don't finish right away
         self.lftp.queue("c", False)
@@ -217,7 +217,7 @@ class TestLftpProtocol(unittest.TestCase):
         self.assertEqual(LftpJobStatus.Type.PGET, statuses[0].type)
         self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queue_dir(self):
         self.lftp.rate_limit = 10  # so jobs don't finish right away
         self.lftp.queue("a", True)
@@ -231,7 +231,7 @@ class TestLftpProtocol(unittest.TestCase):
         self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
         self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queue_file_with_spaces(self):
         self.lftp.rate_limit = 10  # so jobs don't finish right away
         self.lftp.queue("d d", False)
@@ -246,7 +246,7 @@ class TestLftpProtocol(unittest.TestCase):
         self.assertEqual(LftpJobStatus.Type.PGET, statuses[0].type)
         self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queue_dir_with_spaces(self):
         self.lftp.rate_limit = 10  # so jobs don't finish right away
         self.lftp.queue("e e", True)
@@ -260,7 +260,7 @@ class TestLftpProtocol(unittest.TestCase):
         self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
         self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queue_file_with_unicode(self):
         self.lftp.rate_limit = 10  # so jobs don't finish right away
         self.lftp.queue("üæÒ", False)
@@ -274,7 +274,7 @@ class TestLftpProtocol(unittest.TestCase):
         self.assertEqual(LftpJobStatus.Type.PGET, statuses[0].type)
         self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queue_dir_with_latin(self):
         self.lftp.rate_limit = 100  # so jobs don't finish right away
         self.lftp.queue("latin", True)
@@ -297,7 +297,7 @@ class TestLftpProtocol(unittest.TestCase):
                 break
             time.sleep(0.01)
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queue_dir_with_unicode(self):
         self.lftp.rate_limit = 10  # so jobs don't finish right away
         self.lftp.queue("áßç", True)
@@ -312,7 +312,7 @@ class TestLftpProtocol(unittest.TestCase):
         self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
         self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queue_num_parallel_jobs(self):
         self.lftp.num_parallel_jobs = 2
         self.lftp.rate_limit = 10  # so jobs don't finish right away
@@ -338,7 +338,7 @@ class TestLftpProtocol(unittest.TestCase):
         self.assertEqual(LftpJobStatus.Type.PGET, statuses[2].type)
         self.assertEqual(LftpJobStatus.State.RUNNING, statuses[2].state)
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_kill_all(self):
         self.lftp.num_parallel_jobs = 2
         self.lftp.rate_limit = 10  # so jobs don't finish right away
@@ -363,7 +363,7 @@ class TestLftpProtocol(unittest.TestCase):
         statuses = self.lftp.status()
         self.assertEqual(0, len(statuses))
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_kill_all_and_queue_again(self):
         self.lftp.num_parallel_jobs = 2
         self.lftp.rate_limit = 10  # so jobs don't finish right away
@@ -397,7 +397,7 @@ class TestLftpProtocol(unittest.TestCase):
         self.assertEqual(LftpJobStatus.Type.MIRROR, statuses[0].type)
         self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_kill_queued_job(self):
         self.lftp.rate_limit = 10  # so jobs don't finish right away
         self.lftp.num_parallel_jobs = 1
@@ -425,7 +425,7 @@ class TestLftpProtocol(unittest.TestCase):
         self.assertEqual("a", statuses[0].name)
         self.assertEqual(LftpJobStatus.State.RUNNING, statuses[0].state)
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_kill_running_job(self):
         self.lftp.rate_limit = 10  # so jobs don't finish right away
         self.lftp.queue("a", True)
@@ -447,7 +447,7 @@ class TestLftpProtocol(unittest.TestCase):
             time.sleep(0.01)
         self.assertEqual(0, len(statuses))
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_kill_missing_job(self):
         self.lftp.rate_limit = 10  # so jobs don't finish right away
         self.lftp.queue("a", True)
@@ -470,7 +470,7 @@ class TestLftpProtocol(unittest.TestCase):
             time.sleep(0.01)
         self.assertEqual(0, len(statuses))
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_kill_job_1(self):
         """Queued and running jobs killed one at a time"""
         self.lftp.rate_limit = 10  # so jobs don't finish right away
@@ -546,7 +546,7 @@ class TestLftpProtocol(unittest.TestCase):
             time.sleep(0.01)
         self.assertEqual(0, len(statuses))
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queued_and_kill_jobs_1(self):
         """Queued and running jobs killed one at a time"""
         self.lftp.rate_limit = 10  # so jobs don't finish right away
@@ -639,7 +639,7 @@ class TestLftpProtocol(unittest.TestCase):
             time.sleep(0.01)
         self.assertEqual(0, len(statuses))
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queue_dir_wrong_file_type(self):
         """check that queueing a dir with PGET fails gracefully"""
         # passing dir as a file
@@ -659,7 +659,7 @@ class TestLftpProtocol(unittest.TestCase):
         statuses = self.lftp.status()
         self.assertEqual(0, len(statuses))
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queue_file_wrong_file_type(self):
         """check that queueing a file with MIRROR fails gracefully"""
         # passing file as a dir
@@ -679,7 +679,7 @@ class TestLftpProtocol(unittest.TestCase):
         statuses = self.lftp.status()
         self.assertEqual(0, len(statuses))
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queue_missing_file(self):
         """check that queueing non-existing file fails gracefully"""
         self.lftp.queue("non-existing-file", False)
@@ -697,7 +697,7 @@ class TestLftpProtocol(unittest.TestCase):
         statuses = self.lftp.status()
         self.assertEqual(0, len(statuses))
 
-    @timeout_decorator.timeout(5)
+    @pytest.mark.timeout(5)
     def test_queue_missing_dir(self):
         """check that queueing non-existing directory fails gracefully"""
 
