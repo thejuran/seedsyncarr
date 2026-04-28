@@ -32,8 +32,8 @@ RUN sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/
     sed -i 's/^#\?UsePAM.*/UsePAM no/' /etc/ssh/sshd_config
 
 # create the seedsyncarrtest user, add root's public key to seedsyncarrtest
-RUN useradd --create-home -s /bin/bash seedsyncarrtest && \
-    echo "seedsyncarrtest:seedsyncarrpass" | chpasswd
+# DOCKSEC-03: no chpasswd — password auth is disabled and account is locked below
+RUN useradd --create-home -s /bin/bash seedsyncarrtest
 # DOCKSEC-01: Dedicated group instead of root group
 RUN groupadd testgroup && \
     usermod -a -G testgroup seedsyncarrtest && \
