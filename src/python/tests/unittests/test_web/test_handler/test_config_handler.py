@@ -367,3 +367,62 @@ class TestConfigHandlerTestRadarrConnection(unittest.TestCase):
         self.assertFalse(body["success"])
         self.assertEqual("An unexpected error occurred", body["error"])
         self.assertNotIn("internal details", body["error"])
+
+
+class TestConfigHandlerRateLimit(unittest.TestCase):
+    """Rate limit integration tests for config endpoints."""
+
+    def test_set_config_rate_limited_at_60_per_60s(self):
+        """config/set should reject requests after 60 within 60s."""
+        from web.rate_limit import rate_limit
+
+        mock_config = MagicMock()
+        handler = ConfigHandler(mock_config)
+        # Mock config to accept any set operation
+        mock_config.has_section.return_value = True
+        mock_inner = MagicMock()
+        mock_inner.has_property.return_value = True
+        mock_config.lftp = mock_inner
+
+        rate_limited = rate_limit(max_requests=60, window_seconds=60.0)(
+            handler._ConfigHandler__handle_set_config
+        )
+
+        # First 60 should succeed
+        for i in range(60):
+            response = rate_limited(section="lftp", key="key{}".format(i), value="val")
+            self.assertNotEqual(429, response.status_code)
+
+        # 61st should be rate limited
+        response = rate_limited(section="lftp", key="extra", value="val")
+        self.assertEqual(429, response.status_code)
+        body = json.loads(response.body)
+        self.assertIn("Rate limit", body["error"])
+
+    def test_test_connection_rate_limited_at_5_per_60s(self):
+        """test-connection endpoints should reject after 5 within 60s."""
+        from web.rate_limit import rate_limit
+        from common import Config
+
+        config = Config()
+        config.sonarr.enabled = False
+        config.sonarr.sonarr_url = "http://sonarr.example.com:8989"
+        config.sonarr.sonarr_api_key = "testapikey123"
+        handler = ConfigHandler(config)
+
+        rate_limited = rate_limit(max_requests=5, window_seconds=60.0)(
+            handler._ConfigHandler__handle_test_sonarr_connection
+        )
+
+        # First 5 should proceed (may fail due to connection, but not 429)
+        for i in range(5):
+            with patch('web.handler.config.requests.get', side_effect=requests.ConnectionError("test")):
+                with patch('web.handler.config.socket') as mock_socket:
+                    mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("8.8.8.8", 0))]
+                    mock_socket.gaierror = __import__('socket').gaierror
+                    response = rate_limited()
+            self.assertNotEqual(429, response.status_code)
+
+        # 6th should be rate limited regardless of connection
+        response = rate_limited()
+        self.assertEqual(429, response.status_code)

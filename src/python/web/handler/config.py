@@ -11,6 +11,7 @@ from bottle import HTTPResponse
 from common import overrides, Config, ConfigError
 from ..web_app import IHandler, WebApp
 from ..serialize import SerializeConfig
+from web.rate_limit import rate_limit
 
 class ConfigHandler(IHandler):
     def __init__(self, config: Config):
@@ -20,9 +21,18 @@ class ConfigHandler(IHandler):
     def add_routes(self, web_app: WebApp):
         web_app.add_handler("/server/config/get", self.__handle_get_config)
         # The regex allows slashes in values
-        web_app.add_handler("/server/config/set/<section>/<key>/<value:re:.+>", self.__handle_set_config)
-        web_app.add_handler("/server/config/sonarr/test-connection", self.__handle_test_sonarr_connection)
-        web_app.add_handler("/server/config/radarr/test-connection", self.__handle_test_radarr_connection)
+        web_app.add_handler(
+            "/server/config/set/<section>/<key>/<value:re:.+>",
+            rate_limit(max_requests=60, window_seconds=60.0)(self.__handle_set_config)
+        )
+        web_app.add_handler(
+            "/server/config/sonarr/test-connection",
+            rate_limit(max_requests=5, window_seconds=60.0)(self.__handle_test_sonarr_connection)
+        )
+        web_app.add_handler(
+            "/server/config/radarr/test-connection",
+            rate_limit(max_requests=5, window_seconds=60.0)(self.__handle_test_radarr_connection)
+        )
 
     @staticmethod
     def _sanitize_redirect_location(raw_location: str, base_url: str) -> str:

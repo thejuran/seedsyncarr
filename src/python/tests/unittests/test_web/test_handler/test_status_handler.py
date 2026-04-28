@@ -1,3 +1,4 @@
+import json
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -28,3 +29,31 @@ class TestStatusHandler(unittest.TestCase):
         mock_serialize_cls.status.return_value = '{"server":{"up":true}}'
         self.handler._StatusHandler__handle_get_status()
         mock_serialize_cls.status.assert_called_once_with(self.mock_status)
+
+
+class TestStatusHandlerRateLimit(unittest.TestCase):
+    """Rate limit integration tests for status endpoint."""
+
+    def test_status_rate_limited_at_60_per_60s(self):
+        """status should reject requests after 60 within 60s."""
+        from web.rate_limit import rate_limit
+
+        mock_status = MagicMock()
+        handler = StatusHandler(mock_status)
+
+        with patch('web.handler.status.SerializeStatusJson') as mock_serialize:
+            mock_serialize.status.return_value = '{"server":{"up":true}}'
+            rate_limited = rate_limit(max_requests=60, window_seconds=60.0)(
+                handler._StatusHandler__handle_get_status
+            )
+
+            # First 60 should succeed
+            for i in range(60):
+                response = rate_limited()
+                self.assertEqual(200, response.status_code)
+
+            # 61st should be rate limited
+            response = rate_limited()
+            self.assertEqual(429, response.status_code)
+            body = json.loads(response.body)
+            self.assertIn("Rate limit", body["error"])
