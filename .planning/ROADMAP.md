@@ -282,7 +282,7 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 - [x] **Phase 92: E2E Infrastructure** - Fix Docker compose health, run_tests.sh bugs, restart race condition (completed 2026-04-27)
 - [x] **Phase 93: CI & Docker Hardening** - Least-privilege CI permissions, pinned actions, Docker test container security (completed 2026-04-28)
 - [x] **Phase 94: Test Coverage -- Backend** - SSE integration tests, webhook E2E, DeleteRemoteProcess, ActiveScanner (completed 2026-04-28)
-- [ ] **Phase 95: Test Coverage -- E2E** - Logs page and Settings form Playwright specs
+- [x] **Phase 95: Test Coverage -- E2E** - Logs page and Settings form Playwright specs (completed 2026-04-28)
 - [ ] **Phase 96: Rate Limiting & Tooling** - Rate-limiting decorator for HTTP endpoints, tighten Semgrep rules
 
 ## Phase Details
@@ -417,8 +417,8 @@ Plans:
   2. Settings page E2E specs verify form field rendering, value editing, and save/persist round-trip
 **Plans**: 2 plans
 Plans:
-- [ ] 95-01-PLAN.md — Logs page object and E2E structural smoke specs (COVER-02)
-- [ ] 95-02-PLAN.md — Settings page object extension and form field E2E specs (COVER-03)
+- [x] 95-01-PLAN.md — Logs page object and E2E structural smoke specs (COVER-02)
+- [x] 95-02-PLAN.md — Settings page object extension and form field E2E specs (COVER-03)
 **UI hint**: yes
 
 ### Phase 96: Rate Limiting & Tooling
@@ -480,7 +480,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 92. E2E Infrastructure | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
 | 93. CI & Docker Hardening | v1.2.0 | 3/3 | Complete    | 2026-04-28 |
 | 94. Test Coverage -- Backend | v1.2.0 | 2/2 | Complete   | 2026-04-28 |
-| 95. Test Coverage -- E2E | v1.2.0 | 0/2 | Not started | - |
+| 95. Test Coverage -- E2E | v1.2.0 | 2/2 | Complete   | 2026-04-28 |
 | 96. Rate Limiting & Tooling | v1.2.0 | 0/TBD | Not started | - |
 
 ---
