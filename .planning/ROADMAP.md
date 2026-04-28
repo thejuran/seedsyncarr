@@ -283,7 +283,7 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 - [x] **Phase 93: CI & Docker Hardening** - Least-privilege CI permissions, pinned actions, Docker test container security (completed 2026-04-28)
 - [x] **Phase 94: Test Coverage -- Backend** - SSE integration tests, webhook E2E, DeleteRemoteProcess, ActiveScanner (completed 2026-04-28)
 - [x] **Phase 95: Test Coverage -- E2E** - Logs page and Settings form Playwright specs (completed 2026-04-28)
-- [ ] **Phase 96: Rate Limiting & Tooling** - Rate-limiting decorator for HTTP endpoints, tighten Semgrep rules
+- [x] **Phase 96: Rate Limiting & Tooling** - Rate-limiting decorator for HTTP endpoints, tighten Semgrep rules (completed 2026-04-28)
 
 ## Phase Details
 
@@ -435,7 +435,7 @@ Plans:
 Plans:
 - [x] 96-01-PLAN.md — Rate-limit decorator module with TDD tests (RATE-01)
 - [x] 96-02-PLAN.md — Tighten Semgrep rules for false positives (TOOL-01, TOOL-02)
-- [ ] 96-03-PLAN.md — Apply decorator to handlers and refactor controller (RATE-02, RATE-03, RATE-04)
+- [x] 96-03-PLAN.md — Apply decorator to handlers and refactor controller (RATE-02, RATE-03, RATE-04)
 
 ## Progress
 
@@ -485,7 +485,7 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 93. CI & Docker Hardening | v1.2.0 | 3/3 | Complete    | 2026-04-28 |
 | 94. Test Coverage -- Backend | v1.2.0 | 2/2 | Complete   | 2026-04-28 |
 | 95. Test Coverage -- E2E | v1.2.0 | 2/2 | Complete   | 2026-04-28 |
-| 96. Rate Limiting & Tooling | v1.2.0 | 2/3 | In Progress|  |
+| 96. Rate Limiting & Tooling | v1.2.0 | 3/3 | Complete   | 2026-04-28 |
 
 ---
 
