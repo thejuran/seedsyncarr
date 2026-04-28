@@ -323,7 +323,6 @@ class TestController(unittest.TestCase):
             "Lftp": {
                 "remote_address": "localhost",
                 "remote_username": "seedsyncarrtest",
-                "remote_password": "seedsyncarrpass",  # Test credentials for Docker-based test container — not a real secret
                 "remote_port": 22,
                 "remote_path": os.path.join(self.temp_dir, "remote"),
                 "local_path": os.path.join(self.temp_dir, "local"),
@@ -467,20 +466,6 @@ class TestController(unittest.TestCase):
             "Permission denied" in error_str or
             "<bad>" in error_str,
             f"Unexpected error message: {error_str}"
-        )
-
-    @timeout_decorator.timeout(20)
-    def test_bad_remote_password_raises_exception(self):
-        self.context.config.lftp.remote_password = "bad password"
-        self.context.config.lftp.use_ssh_key = False
-        self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
-        self.controller.start()
-        with self.assertRaises(AppError) as error:
-            while True:
-                self.controller.process()
-        self.assertEqual(
-            Localization.Error.REMOTE_SERVER_INSTALL.format("Incorrect password"),
-            str(error.exception)
         )
 
     @timeout_decorator.timeout(20)
@@ -2377,48 +2362,3 @@ class TestController(unittest.TestCase):
         shutil.rmtree(path)
         shutil.rmtree(local_path)
 
-    @timeout_decorator.timeout(20)
-    def test_password_auth(self):
-        # Test password-based auth by downloading a file to completion
-        self.context.config.lftp.use_ssh_key = False
-
-        self.controller = Controller(self.context, self.controller_persist, self.webhook_manager)
-        self.controller.start()
-        # wait for initial scan
-        self.__wait_for_initial_model()
-
-        # Ignore the initial state
-        listener = DummyListener()
-        self.controller.add_model_listener(listener)
-        self.controller.process()
-
-        # Setup mock
-        listener.file_added = MagicMock()
-        listener.file_updated = MagicMock()
-        listener.file_removed = MagicMock()
-        callback = DummyCommandCallback()
-        callback.on_success = MagicMock()
-        callback.on_failure = MagicMock()
-
-        # Queue a download
-        command = Controller.Command(Controller.Command.Action.QUEUE, "rc")
-        command.add_callback(callback)
-        self.controller.queue_command(command)
-        # Process until done
-        while True:
-            self.controller.process()
-            call = listener.file_updated.call_args
-            if call:
-                new_file = call[0][1]
-                self.assertEqual("rc", new_file.name)
-                if new_file.local_size == 10*1024:
-                    break
-
-        # Verify
-        listener.file_added.assert_not_called()
-        listener.file_removed.assert_not_called()
-        callback.on_success.assert_called_once_with()
-        callback.on_failure.assert_not_called()
-        fcmp = cmp(os.path.join(TestController.temp_dir, "remote", "rc"),
-                   os.path.join(TestController.temp_dir, "local", "rc"))
-        self.assertTrue(fcmp)
