@@ -7,7 +7,7 @@ export class LogsPage extends App {
         super(page);
     }
 
-    async navigateTo() {
+    async navigateTo(): Promise<void> {
         await this.page.goto(Paths.LOGS);
     }
 

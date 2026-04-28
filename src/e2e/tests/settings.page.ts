@@ -7,7 +7,7 @@ export class SettingsPage extends App {
         super(page);
     }
 
-    async navigateTo() {
+    async navigateTo(): Promise<void> {
         await this.page.goto(Paths.SETTINGS);
     }
 
@@ -77,7 +77,7 @@ export class SettingsPage extends App {
 
     async setUseSshKey(enabled: boolean): Promise<void> {
         const response = await this.page.request.get(
-            `/server/config/set/lftp/use_ssh_key/${enabled}`
+            `/server/config/set/lftp/use_ssh_key/${encodeURIComponent(String(enabled))}`
         );
         if (!response.ok()) {
             throw new Error(`setUseSshKey failed: ${response.status()} ${response.statusText()}`);

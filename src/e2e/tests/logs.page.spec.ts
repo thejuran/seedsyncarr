@@ -9,7 +9,7 @@ test.describe('Testing logs page', () => {
         await logsPage.navigateTo();
     });
 
-    test('should have Logs nav link active', async ({ page }) => {
+    test('should have Logs nav link active', async () => {
         const activeLink = await logsPage.getActiveNavLink();
         expect(activeLink).toBe('Logs');
     });
@@ -56,10 +56,8 @@ test.describe('Testing logs page', () => {
 
     test('should display status bar with log count', async () => {
         // D-01: status bar text visible
+        await expect(logsPage.getLogRows().first()).toBeVisible({ timeout: 15000 });
         await expect(logsPage.getStatusBar()).toBeVisible();
-        // Wait for the status bar right section to show a log count.
-        // In sequential execution the prior test already waited for the first log row,
-        // so we wait on the status text directly rather than duplicating the row wait.
         await expect(logsPage.getStatusBarRight()).toContainText('logs indexed', { timeout: 15000 });
     });
 });

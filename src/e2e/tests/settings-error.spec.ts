@@ -11,10 +11,12 @@ test.describe('Settings page error states', () => {
     });
 
     test.afterEach(async () => {
-        await settingsPage.disableSonarr().catch(() => {});
+        await settingsPage.disableSonarr().catch((e) => {
+            console.warn('[afterEach] disableSonarr cleanup failed (non-fatal):', e);
+        });
     });
 
-    test('should show error when Sonarr connection fails', async ({ page }) => {
+    test('should show error when Sonarr connection fails', async () => {
         await settingsPage.enableSonarr();
         await settingsPage.setSonarrUrl('http://nonexistent.invalid:8989');
         // NOTE: value appears in access logs — use synthetic strings only

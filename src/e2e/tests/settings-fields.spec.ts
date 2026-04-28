@@ -4,9 +4,9 @@ import { SettingsPage } from './settings.page';
 test.describe('Settings page form fields', () => {
     let settingsPage: SettingsPage;
     // Store original values for afterEach restoration
-    let originalAddress: string;
-    let originalSshKey: boolean;
-    let originalScanInterval: string;
+    let originalAddress: string | undefined;
+    let originalSshKey: boolean | undefined;
+    let originalScanInterval: string | undefined;
 
     test.beforeEach(async ({ page }) => {
         settingsPage = new SettingsPage(page);
@@ -18,21 +18,20 @@ test.describe('Settings page form fields', () => {
     });
 
     test.afterEach(async () => {
-        // D-12: restore original config values to prevent cross-test pollution
-        // Each restoration is wrapped individually so a failure is logged with context
-        // and re-thrown so Playwright marks the hook as failed rather than the next test.
+        if (originalAddress === undefined || originalSshKey === undefined || originalScanInterval === undefined) return;
+        const errors: unknown[] = [];
         const restore = async (label: string, fn: () => Promise<void>) => {
             try {
                 await fn();
             } catch (e) {
                 console.error(`[afterEach] Failed to restore ${label}:`, e);
-                // Re-throw so Playwright marks the hook as failed rather than the next test
-                throw e;
+                errors.push(e);
             }
         };
-        await restore('remoteAddress',      () => settingsPage.setRemoteAddress(originalAddress));
-        await restore('sshKey',             () => settingsPage.setUseSshKey(originalSshKey));
-        await restore('remoteScanInterval', () => settingsPage.setRemoteScanInterval(originalScanInterval));
+        await restore('remoteAddress',      () => settingsPage.setRemoteAddress(originalAddress!));
+        await restore('sshKey',             () => settingsPage.setUseSshKey(originalSshKey!));
+        await restore('remoteScanInterval', () => settingsPage.setRemoteScanInterval(originalScanInterval!));
+        if (errors.length > 0) throw errors[0];
     });
 
     // --- Text field: Server Address (D-07, D-11) ---
