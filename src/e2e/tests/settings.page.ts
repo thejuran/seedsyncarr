@@ -29,6 +29,9 @@ export class SettingsPage extends App {
         }
     }
 
+    // NOTE: the key value appears as a plain path segment in server access logs
+    // because the backend config/set endpoint is GET-only. Always pass obviously-synthetic
+    // strings (e.g. 'test-FAKE-not-real-0000') — never realistic-looking credentials.
     async setSonarrApiKey(key: string): Promise<void> {
         const response = await this.page.request.get(
             `/server/config/set/sonarr/sonarr_api_key/${encodeURIComponent(key)}`

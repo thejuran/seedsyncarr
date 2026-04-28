@@ -17,7 +17,8 @@ test.describe('Settings page error states', () => {
     test('should show error when Sonarr connection fails', async ({ page }) => {
         await settingsPage.enableSonarr();
         await settingsPage.setSonarrUrl('http://nonexistent.invalid:8989');
-        await settingsPage.setSonarrApiKey('fake-api-key-for-testing');
+        // NOTE: value appears in access logs — use synthetic strings only
+        await settingsPage.setSonarrApiKey('test-FAKE-not-real-0000');
 
         await settingsPage.navigateTo();
 
