@@ -8,4 +8,4 @@ gosu sshdaemon /usr/sbin/sshd -D &
 
 echo "Continuing entrypoint"
 echo "$@"
-exec $@
+exec "$@"
