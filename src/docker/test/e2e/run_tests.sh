@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-red=$(tput setaf 1)
-green=$(tput setaf 2)
-reset=$(tput sgr0)
+red=$(tput setaf 1 2>/dev/null || true)
+green=$(tput setaf 2 2>/dev/null || true)
+reset=$(tput sgr0 2>/dev/null || true)
 
 # Wait for server to be up
 SERVER_UP=""
