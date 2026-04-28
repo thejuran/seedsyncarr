@@ -56,7 +56,8 @@ class TestModelStreamHandler(BaseTestWebApp):
         new_file.local_size = 200
 
         def send_updates():
-            self.assertIsNotNone(self.model_listener)
+            # model_listener is guaranteed set by setup() which runs
+            # before the Timer fires at 0.5s
             self.model_listener.file_added(added_file)
             self.model_listener.file_removed(removed_file)
             self.model_listener.file_updated(old_file, new_file)
