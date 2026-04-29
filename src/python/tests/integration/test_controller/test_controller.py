@@ -326,6 +326,7 @@ class TestController(unittest.TestCase):
             "Lftp": {
                 "remote_address": "localhost",
                 "remote_username": "seedsyncarrtest",
+                "remote_password": "dummy",
                 "remote_port": 22,
                 "remote_path": os.path.join(self.temp_dir, "remote"),
                 "local_path": os.path.join(self.temp_dir, "local"),
@@ -336,7 +337,8 @@ class TestController(unittest.TestCase):
                 "num_max_connections_per_root_file": "4",
                 "num_max_connections_per_dir_file": "4",
                 "num_max_total_connections": "12",
-                "use_temp_file": "False"
+                "use_temp_file": "False",
+                "rate_limit": "0"
             },
             "Controller": {
                 "interval_ms_remote_scan": "100",
