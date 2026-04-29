@@ -30,7 +30,7 @@
 - v1.1.0 UI Redesign — Triggarr Style - Phases 62-74 (shipped 2026-04-19; Phase 71 dropped)
 - v1.1.1 Post-Redesign Cleanup & Outstanding Work - Phases 75-82 (shipped 2026-04-23)
 - v1.1.2 Test Suite Audit - Phases 83-86 (shipped 2026-04-24)
-- v1.2.0 Test & Quality Hardening - Phases 87-96 (in progress)
+- ✅ v1.2.0 Test & Quality Hardening - Phases 87-96 (shipped 2026-04-28)
 
 ## Phases
 
@@ -270,179 +270,25 @@ See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
 
 </details>
 
-### v1.2.0 Test & Quality Hardening (In Progress)
+<details>
+<summary>✅ v1.2.0 Test & Quality Hardening (Phases 87-96) — SHIPPED 2026-04-28</summary>
 
-**Milestone Goal:** Fix all known test suite defects, close outstanding quality/security todos, fill coverage gaps, and harden CI -- no new features.
+- [x] Phase 87: Python Test Fixes -- Critical & Warning (2/2 plans) — completed 2026-04-25
+- [x] Phase 88: Python Test Fixes -- Medium & Cleanup (3/3 plans) — completed 2026-04-25
+- [x] Phase 89: Python Test Architecture (2/2 plans) — completed 2026-04-25
+- [x] Phase 90: Angular Test Fixes (2/2 plans) — completed 2026-04-27
+- [x] Phase 91: E2E Test Fixes & Platform (2/2 plans) — completed 2026-04-27
+- [x] Phase 92: E2E Infrastructure (2/2 plans) — completed 2026-04-27
+- [x] Phase 93: CI & Docker Hardening (3/3 plans) — completed 2026-04-28
+- [x] Phase 94: Test Coverage -- Backend (2/2 plans) — completed 2026-04-28
+- [x] Phase 95: Test Coverage -- E2E (2/2 plans) — completed 2026-04-28
+- [x] Phase 96: Rate Limiting & Tooling (3/3 plans) — completed 2026-04-28
 
-- [x] **Phase 87: Python Test Fixes -- Critical & Warning** - Fix 2 critical false-coverage tests and 8 warning-level resource/mock issues (completed 2026-04-25)
-- [x] **Phase 88: Python Test Fixes -- Medium & Cleanup** - Fix medium-priority test quality issues and eliminate test slowness (completed 2026-04-25)
-- [x] **Phase 89: Python Test Architecture** - Consolidate base classes, adopt conftest, reclassify tests, document gaps (completed 2026-04-25)
-- [x] **Phase 90: Angular Test Fixes** - Fix subscription leaks, fakeAsync cleanup, optional chaining false passes (completed 2026-04-27)
-- [x] **Phase 91: E2E Test Fixes & Platform** - Fix E2E test quality issues, CSP violation detection, arm64 Unicode sort (completed 2026-04-27)
-- [x] **Phase 92: E2E Infrastructure** - Fix Docker compose health, run_tests.sh bugs, restart race condition (completed 2026-04-27)
-- [x] **Phase 93: CI & Docker Hardening** - Least-privilege CI permissions, pinned actions, Docker test container security (completed 2026-04-28)
-- [x] **Phase 94: Test Coverage -- Backend** - SSE integration tests, webhook E2E, DeleteRemoteProcess, ActiveScanner (completed 2026-04-28)
-- [x] **Phase 95: Test Coverage -- E2E** - Logs page and Settings form Playwright specs (completed 2026-04-28)
-- [x] **Phase 96: Rate Limiting & Tooling** - Rate-limiting decorator for HTTP endpoints, tighten Semgrep rules (completed 2026-04-28)
+See `.planning/milestones/v1.2.0-ROADMAP.md` for full details.
 
-## Phase Details
-
-### Phase 87: Python Test Fixes -- Critical & Warning
-**Goal**: Python test suite produces accurate results with no false coverage and no resource leaks
-**Depends on**: Nothing (first phase of v1.2.0)
-**Requirements**: PYFIX-01, PYFIX-02, PYFIX-03, PYFIX-04, PYFIX-05, PYFIX-06, PYFIX-07, PYFIX-08, PYFIX-09, PYFIX-10
-**Success Criteria** (what must be TRUE):
-  1. Thread concurrency test in `_callback_sequence` actually exercises concurrent execution (target passed as callable, not called)
-  2. `test_init_skips_rate_limit_when_zero` contains an explicit assertion that verifies rate-limit-skip behavior
-  3. All temporary files created during config tests are cleaned up (no leaked files in /tmp after test run)
-  4. Logger fixture in conftest.py removes handlers after each test and does not leak propagation state
-  5. `make run-tests-python` passes with zero warnings related to resource leaks or mock confusion
-**Plans**: 2 plans
-Plans:
-- [x] 87-01-PLAN.md — Fix critical false-coverage bugs and temp file leaks (PYFIX-01 through PYFIX-05)
-- [x] 87-02-PLAN.md — Fix chmod scope, logger fixture, imports, and resource leaks (PYFIX-06 through PYFIX-10)
-
-### Phase 88: Python Test Fixes -- Medium & Cleanup
-**Goal**: Python test suite runs faster and every test validates what it claims to validate
-**Depends on**: Phase 87
-**Requirements**: PYFIX-11, PYFIX-12, PYFIX-13, PYFIX-14, PYFIX-15, PYFIX-16, PYFIX-17, PYFIX-18, PYFIX-19
-**Success Criteria** (what must be TRUE):
-  1. XSS prevention test verifies that HTML special characters in API tokens are escaped in the meta tag output
-  2. Scanner tests use deterministic synchronization (no race-prone busy-waits without sleep)
-  3. Python test suite runs at least 4 seconds faster than before PYFIX-13 (real sleep replaced with mock/event)
-  4. Conditional assertion in `test_job_status_parser_components.py:199` always executes its assert (no silent skip path)
-  5. Logger handlers are removed in tearDown across all 5 affected files -- no cross-test handler accumulation
-**Plans**: 3 plans
-Plans:
-- [x] 88-01-PLAN.md — XSS test, TemporaryDirectory cleanup, bottle import, conditional assertion, logger handler cleanup (PYFIX-11/14/15/16/19)
-- [x] 88-02-PLAN.md — Scanner and lftp busy-wait fixes, lftp handler cleanup (PYFIX-12/16/18)
-- [x] 88-03-PLAN.md — Sleep elimination, job.join sync, multiprocessing logger cleanup (PYFIX-13/16/17)
-
-### Phase 89: Python Test Architecture
-**Goal**: Python test infrastructure is consistent, well-organized, and documented
-**Depends on**: Phase 88
-**Requirements**: PYARCH-01, PYARCH-02, PYARCH-03, PYARCH-04, PYARCH-05, PYARCH-06
-**Success Criteria** (what must be TRUE):
-  1. Conftest fixtures are either importable helpers or tests use pytest-style discovery (no unreachable fixtures)
-  2. A single `BaseControllerTestCase` class exists (duplicates consolidated) and all controller tests inherit from it
-  3. `test_lftp.py` integration test lives under the integration test directory (not misclassified as unit test)
-  4. Coverage gap documentation exists listing modules without dedicated tests (ActiveScanner, WebAppJob, WebAppBuilder, scan_fs)
-  5. `make run-tests-python` passes after all architectural changes
-**Plans**: 2 plans
-Plans:
-- [x] 89-01-PLAN.md — Refactor conftest to helpers, consolidate base classes, move test_lftp, extract INI template (PYARCH-01/02/03/06)
-- [x] 89-02-PLAN.md — Document coverage gaps and name-mangling trade-off (PYARCH-04/05)
-
-### Phase 90: Angular Test Fixes
-**Goal**: Angular test suite has no subscription leaks, no false passes from optional chaining, and clean zone state
-**Depends on**: Nothing (independent of Python phases)
-**Requirements**: ANGFIX-01, ANGFIX-02, ANGFIX-03, ANGFIX-04, ANGFIX-05, ANGFIX-06, ANGFIX-07
-**Success Criteria** (what must be TRUE):
-  1. fakeAsync zones discard periodic tasks before completing (no pending timer warnings)
-  2. `ViewFileFilterCriteria | undefined` type is used instead of double-cast hiding nullability
-  3. All subscription-heavy spec files (view-file.service, notification.service, file-selection.service, transfer-row.component) explicitly unsubscribe or use teardown
-  4. Tests guarded by optional chaining include `expect(result).toBeDefined()` before the chained assertion
-  5. `ng test --watch=false` passes with zero subscription leak warnings
-**Plans**: 2 plans
-Plans:
-- [x] 90-01-PLAN.md — fakeAsync zone cleanup, double-cast fix, toBeDefined guards (ANGFIX-01, ANGFIX-02, ANGFIX-07)
-- [x] 90-02-PLAN.md — Subscription teardown in 4 spec files (ANGFIX-03, ANGFIX-04, ANGFIX-05, ANGFIX-06)
-
-### Phase 91: E2E Test Fixes & Platform
-**Goal**: E2E test specs use correct Playwright APIs, enforce CSP, and pass on both amd64 and arm64
-**Depends on**: Nothing (independent of unit test phases)
-**Requirements**: E2EFIX-01, E2EFIX-02, E2EFIX-03, E2EFIX-04, E2EFIX-05, E2EFIX-06, E2EFIX-07, PLAT-01, PLAT-02
-**Success Criteria** (what must be TRUE):
-  1. AutoQueue page object uses `innerText()` (not `innerHTML()`) for text content assertions
-  2. `settings-error.spec.ts` navigates to the page before making API calls in `beforeEach`
-  3. No `waitForTimeout()` calls remain in E2E specs (replaced with Playwright auto-waiting or explicit conditions)
-  4. CSP violations during E2E runs fail the test via console listener or `securitypolicyviolation` event
-  5. Dashboard E2E specs pass on arm64 with correct Unicode sort order handling
-**Plans**: 2 plans
-Plans:
-- [x] 91-01-PLAN.md — Fix page object APIs and extract shared escapeRegex utility (E2EFIX-01, E2EFIX-05, E2EFIX-07)
-- [x] 91-02-PLAN.md — Fix spec quality issues, CSP documentation, and arm64 locale (E2EFIX-02, E2EFIX-03, E2EFIX-04, E2EFIX-06, PLAT-01, PLAT-02)
-
-### Phase 92: E2E Infrastructure
-**Goal**: E2E Docker infrastructure starts reliably with proper health checks and no race conditions
-**Depends on**: Nothing (independent infrastructure fixes)
-**Requirements**: E2EINFRA-01, E2EINFRA-02, E2EINFRA-03, E2EINFRA-04, E2EINFRA-05
-**Success Criteria** (what must be TRUE):
-  1. `SERVER_UP` and `SCAN_DONE` variables are initialized before their polling loops in `run_tests.sh`
-  2. Docker compose configure service waits for myapp health check before running setup scripts
-  3. Restart test uses wait-for-down-then-up pattern instead of `sleep 2` race
-  4. `parse_status.py` catches specific exception types (no bare `except:`) and has a `__main__` guard
-  5. `make run-tests-e2e` completes reliably on both amd64 and arm64 without timing-dependent failures
-**Plans**: 2 plans
-Plans:
-- [x] 92-01-PLAN.md — Fix run_tests.sh variable init, compose healthcheck, and verify restart pattern (E2EINFRA-01, E2EINFRA-02, E2EINFRA-03)
-- [x] 92-02-PLAN.md — Fix parse_status.py exceptions and add __main__ guard (E2EINFRA-04, E2EINFRA-05)
-
-### Phase 93: CI & Docker Hardening
-**Goal**: CI workflow follows least-privilege security and Docker test containers have no hardcoded credentials
-**Depends on**: Nothing (independent infrastructure hardening)
-**Requirements**: CISEC-01, CISEC-02, CISEC-03, CISEC-04, DOCKSEC-01, DOCKSEC-02, DOCKSEC-03, DOCKSEC-04, DOCKSEC-05, DOCKSEC-06
-**Success Criteria** (what must be TRUE):
-  1. Workflow-level permissions are `contents: read` with per-job write permissions added only where needed
-  2. All GitHub Actions are pinned to SHA hashes with version comments (e.g., `actions/checkout@<sha> # v4.1.0`)
-  3. `publish-docker-image` job is in the `needs` chain of `publish-github-release`
-  4. Test containers use SSH key-only auth (no hardcoded passwords, `PasswordAuthentication no`)
-  5. Test containers generate ephemeral SSH key pairs at build time and run sshd as non-root
-**Plans**: 3 plans
-Plans:
-- [x] 93-01-PLAN.md — Harden CI workflow: least-privilege permissions, SHA-pinned actions, job ordering, build cache
-- [x] 93-02-PLAN.md — Harden Python test container: non-root sshd, no password auth, dedicated group
-- [x] 93-03-PLAN.md — Harden E2E remote container: ephemeral SSH key, no password auth, non-root sshd
-
-### Phase 94: Test Coverage -- Backend
-**Goal**: Previously untested backend paths have dedicated tests proving they work correctly
-**Depends on**: Phase 89 (Python architecture settled before writing new tests)
-**Requirements**: COVER-01, COVER-04, COVER-05, COVER-06
-**Success Criteria** (what must be TRUE):
-  1. SSE streaming integration tests exist that verify event delivery through the web layer (not just unit-mocked)
-  2. Webhook end-to-end test sends a Sonarr/Radarr POST through the web layer and verifies the controller processes it
-  3. `DeleteRemoteProcess` has dedicated unit tests covering SSH command construction, error handling, and deletion paths
-  4. `ActiveScanner` has a dedicated test file covering scan scheduling and result aggregation
-**Plans**: 2 plans
-Plans:
-- [x] 94-01-PLAN.md — SSE streaming WSGI harness and unskip 3 stream test files (COVER-01)
-- [x] 94-02-PLAN.md — Webhook integration, DeleteRemoteProcess, and ActiveScanner tests (COVER-04, COVER-05, COVER-06)
-
-### Phase 95: Test Coverage -- E2E
-**Goal**: Logs and Settings pages have Playwright E2E coverage proving they render and function correctly
-**Depends on**: Phase 92 (E2E infrastructure reliable before writing new specs)
-**Requirements**: COVER-02, COVER-03
-**Success Criteria** (what must be TRUE):
-  1. Logs page E2E specs verify page load, log line rendering, and auto-scroll behavior
-  2. Settings page E2E specs verify form field rendering, value editing, and save/persist round-trip
-**Plans**: 2 plans
-Plans:
-- [x] 95-01-PLAN.md — Logs page object and E2E structural smoke specs (COVER-02)
-- [x] 95-02-PLAN.md — Settings page object extension and form field E2E specs (COVER-03)
-**UI hint**: yes
-
-### Phase 96: Rate Limiting & Tooling
-**Goal**: All mutable HTTP endpoints enforce rate limits, and Semgrep rules produce fewer false positives
-**Depends on**: Phase 94 (backend tests exist to verify rate limiting doesn't break functionality)
-**Requirements**: RATE-01, RATE-02, RATE-03, RATE-04, TOOL-01, TOOL-02
-**Success Criteria** (what must be TRUE):
-  1. A reusable rate-limiting decorator exists and is applied to `/server/config/set`, `/server/config/test/*`, and `/server/status`
-  2. Rapid repeated requests to rate-limited endpoints return HTTP 429 after exceeding the threshold
-  3. Normal usage patterns (single requests with reasonable intervals) are never rate-limited
-  4. Semgrep `js-nosql-injection-where` rule requires MongoDB context (no false positives on generic `.where()`)
-  5. Semgrep `js-xss-eval-user-input` rule excludes arrow/named function callbacks from eval detection
-**Plans**: 3 plans
-Plans:
-- [x] 96-01-PLAN.md — Rate-limit decorator module with TDD tests (RATE-01)
-- [x] 96-02-PLAN.md — Tighten Semgrep rules for false positives (TOOL-01, TOOL-02)
-- [x] 96-03-PLAN.md — Apply decorator to handlers and refactor controller (RATE-02, RATE-03, RATE-04)
+</details>
 
 ## Progress
-
-**Execution Order:**
-Phases execute in numeric order: 87 -> 88 -> 89 -> 90 -> 91 -> 92 -> 93 -> 94 -> 95 -> 96
-
-Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can run in parallel since they touch independent subsystems. Dependencies shown above are soft ordering preferences; hard dependencies are noted in Phase Details.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -461,32 +307,12 @@ Note: Phases 87-89 (Python), 90 (Angular), 91-92 (E2E), and 93 (CI/Docker) can r
 | 47-51. Security Hardening II | v3.2/M002 | 10/10 | Complete | 2026-03-22 |
 | M001-M010 Slices | M001-M010 | 29 slices | Complete | 2026-03-28 |
 | 52. Dependency Fixes & CI | v4.0.3 | 1/1 | Complete | 2026-04-08 |
-| 53. New Repo & Atomic Rename | v1.0.0 | 2/2 | Complete | 2026-04-08 |
-| 54. Archive Old Repo | v1.0.0 | 1/1 | Complete | 2026-04-08 |
-| 55. Code Hardening | v1.0.0 | 2/2 | Complete | 2026-04-08 |
-| 56. Test Quality | v1.0.0 | 1/1 | Complete | 2026-04-08 |
-| 57. README & Community Health | v1.0.0 | 2/2 | Complete | 2026-04-09 |
-| 58. Docs Site | v1.0.0 | 2/2 | Complete | 2026-04-09 |
-| 59. Community Launch | v1.0.0 | 2/2 | Complete | 2026-04-09 |
-| 60. Dependency Updates | v1.0.0 | 2/2 | Complete | 2026-04-09 |
-| 61. Branding Integration | v1.0.0 | 0/0 | Complete | 2026-04-13 |
-| 62-74. v1.1.0 UI Redesign | v1.1.0 | 30/30 | Complete | 2026-04-19 |
+| 53-61. SeedSyncarr Rebrand | v1.0.0 | 14/14 | Complete | 2026-04-13 |
+| 62-74. UI Redesign | v1.1.0 | 30/30 | Complete | 2026-04-19 |
 | 75-82. Post-Redesign Cleanup | v1.1.1 | 22/22 | Complete | 2026-04-23 |
-| 83. Python Test Audit | v1.1.2 | 1/1 | Complete | 2026-04-24 |
-| 84. Angular Test Audit | v1.1.2 | 2/2 | Complete | 2026-04-24 |
-| 85. E2E Test Audit | v1.1.2 | 1/1 | Complete | 2026-04-24 |
-| 86. Final Validation | v1.1.2 | 2/2 | Complete | 2026-04-24 |
-| 87. Python Fixes -- Critical & Warning | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
-| 88. Python Fixes -- Medium & Cleanup | v1.2.0 | 3/3 | Complete    | 2026-04-25 |
-| 89. Python Test Architecture | v1.2.0 | 2/2 | Complete   | 2026-04-25 |
-| 90. Angular Test Fixes | v1.2.0 | 2/2 | Complete    | 2026-04-27 |
-| 91. E2E Test Fixes & Platform | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
-| 92. E2E Infrastructure | v1.2.0 | 2/2 | Complete   | 2026-04-27 |
-| 93. CI & Docker Hardening | v1.2.0 | 3/3 | Complete    | 2026-04-28 |
-| 94. Test Coverage -- Backend | v1.2.0 | 2/2 | Complete   | 2026-04-28 |
-| 95. Test Coverage -- E2E | v1.2.0 | 2/2 | Complete   | 2026-04-28 |
-| 96. Rate Limiting & Tooling | v1.2.0 | 3/3 | Complete   | 2026-04-28 |
+| 83-86. Test Suite Audit | v1.1.2 | 6/6 | Complete | 2026-04-24 |
+| 87-96. Test & Quality Hardening | v1.2.0 | 23/23 | Complete | 2026-04-28 |
 
 ---
 
-*Last updated: 2026-04-28 -- Phase 96 planned: 3 plans in 2 waves*
+*Last updated: 2026-04-28 after v1.2.0 milestone complete*

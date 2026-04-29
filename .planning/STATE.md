@@ -2,51 +2,34 @@
 gsd_state_version: 1.0
 milestone: v1.2.0
 milestone_name: Test & Quality Hardening
-status: executing
-stopped_at: Phase 96 context gathered
-last_updated: "2026-04-28T22:07:46.081Z"
-last_activity: 2026-04-28 -- Phase 96 execution started
+status: completed
+stopped_at: Milestone complete
+last_updated: "2026-04-29T02:50:00.000Z"
+last_activity: 2026-04-28
 progress:
   total_phases: 10
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 23
-  completed_plans: 20
-  percent: 87
+  completed_plans: 23
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-24)
+See: .planning/PROJECT.md (updated 2026-04-28)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 96 — rate-limiting-tooling
+**Current focus:** Milestone v1.2.0 shipped — ready for `/gsd-new-milestone`
 
 ## Current Position
 
-Phase: 96 (rate-limiting-tooling) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 96
-Last activity: 2026-04-28 -- Phase 96 execution started
+Phase: All complete
+Status: v1.2.0 shipped
+Last activity: 2026-04-28
 
-Progress: [░░░░░░░░░░] 0%
-
-## Performance Metrics
-
-**Velocity:**
-
-- Total plans completed: 8
-- Average duration: --
-- Total execution time: 0 hours
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 88 | 3 | - | - |
-| 90 | 2 | - | - |
-| 93 | 3 | - | - |
+Progress: [██████████] 100%
 
 ## Accumulated Context
 
@@ -56,28 +39,29 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-7 deferred items carried forward from v1.1.2 (see Deferred Items below).
+2 deferred items (see below).
 
 ### Blockers/Concerns
 
 None.
 
-## Deferred Items (acknowledged at milestone close)
+## Deferred Items
 
-Items acknowledged and deferred at v1.1.2 milestone close on 2026-04-24:
+Items carried forward after v1.2.0 milestone close on 2026-04-28:
 
 | Category | Item | Status |
 |----------|------|--------|
-| debug | test_fix-resolved | unknown (stale, carried from v1.1.1) |
-| todo | webob-cgi-upstream-unblock | testing (upstream -- blocked on webob 2.0) |
+| todo | webob-cgi-upstream-unblock | testing (upstream — blocked on webob 2.0) |
+| todo | migrate-config-set-to-post-body | security (API contract change — separate milestone) |
 
-Note: 5 former deferred items are now addressed by v1.2.0 requirements:
+Note: 7 former deferred items were resolved by v1.2.0:
 
-- e2e-csp-violation-detection -> PLAT-01
-- rate-limiting-all-endpoints -> RATE-01 through RATE-04
-- tighten-shield-semgrep-rules -> TOOL-01, TOOL-02
-- arm64-unicode-sort-e2e-failures -> PLAT-02
-- clean-up-test-warnings -> PYFIX-07, PYFIX-16
+- e2e-csp-violation-detection → PLAT-01 (Phase 91)
+- rate-limiting-all-endpoints → RATE-01 through RATE-04 (Phase 96)
+- tighten-shield-semgrep-rules → TOOL-01, TOOL-02 (Phase 96)
+- arm64-unicode-sort-e2e-failures → PLAT-02 (Phase 91)
+- clean-up-test-warnings → PYFIX-07, PYFIX-16 (Phases 87-88)
+- test_fix-resolved debug session → resolved (stale, closed at milestone close)
 
 ## Tech Debt
 
@@ -96,10 +80,10 @@ Note: 5 former deferred items are now addressed by v1.2.0 requirements:
 | v1.1.0 UI Redesign | Phases 62-74 (71 dropped) | 2026-04-13 to 2026-04-19 |
 | v1.1.1 Post-Redesign Cleanup | Phases 75-82 | 2026-04-19 to 2026-04-23 |
 | v1.1.2 Test Suite Audit | Phases 83-86 | 2026-04-24 |
+| v1.2.0 Test & Quality Hardening | Phases 87-96 | 2026-04-24 to 2026-04-28 |
 
 ## Session Continuity
 
-Last session: 2026-04-28T21:35:47.666Z
-Stopped at: Phase 96 context gathered
-Resume file: .planning/phases/96-rate-limiting-tooling/96-CONTEXT.md
-Next action: `/gsd-plan-phase 87`
+Last session: 2026-04-29
+Stopped at: Milestone complete
+Next action: `/gsd-new-milestone`

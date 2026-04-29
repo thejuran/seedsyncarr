@@ -2,7 +2,7 @@
 
 ## What This Is
 
-SeedSync is a file syncing tool that syncs files from a remote Linux server (like a seedbox) to a local machine using LFTP. Features a clean modern dark web UI (Deep Moss + Amber palette, system fonts, top nav bar, flat file rows), Sonarr/Radarr integration for automated post-download workflows, and real-time transfer status via SSE. Security-hardened with Bearer token API auth, HMAC webhook auth, CSP (hash-based via autoCsp), DNS rebinding prevention, credential redaction, SSRF protection, path traversal guards, and thread-safe concurrent operations.
+SeedSyncarr is a file syncing tool that syncs files from a remote Linux server (like a seedbox) to a local machine using LFTP. Features a clean modern dark web UI (Deep Moss + Amber palette, system fonts, top nav bar, flat file rows), Sonarr/Radarr integration for automated post-download workflows, and real-time transfer status via SSE. Security-hardened with Bearer token API auth, HMAC webhook auth, CSP (hash-based via autoCsp), DNS rebinding prevention, credential redaction, SSRF protection, path traversal guards, rate-limited HTTP endpoints, and thread-safe concurrent operations.
 
 ## Core Value
 
@@ -10,7 +10,7 @@ Reliable file sync from seedbox to local with automated media library integratio
 
 ## Previous State
 
-**v1.2.0 Phase 88 (2026-04-25)** — Python Test Fixes: Medium & Cleanup. Fixed 9 medium-priority Python test defects (PYFIX-11 through PYFIX-19): XSS prevention test, busy-wait race conditions (scanner 6 loops, lftp 41 loops), deterministic sync replacing ~5s of time.sleep, TemporaryDirectory cleanup, module-level imports, logger handler leak fixes (8 files), conditional assertion fix. 1068+ unit tests passing.
+**v1.2.0 (2026-04-28)** — Test & Quality Hardening. Fixed 68 test/quality/security items across 10 phases: 19 Python test defects (false coverage, resource leaks, race conditions), 7 Angular test issues (subscription leaks, fakeAsync, optional chaining), 9 E2E test + 5 infrastructure fixes, CI & Docker security hardening (least-privilege, SHA-pinned actions, SSH key-only auth, non-root sshd), 6 test coverage gaps filled (SSE, Logs/Settings E2E, webhook, DeleteRemoteProcess, ActiveScanner), rate limiting on all mutable endpoints, 628 Semgrep false positives eliminated.
 
 **v1.1.2 (2026-04-24)** — Test Suite Audit. Audited all three test layers for stale/redundant tests inherited from original SeedSync. Zero stale tests found across all layers (72 Python files, 40 Angular specs, 7 E2E specs). HttpClientTestingModule migrated to provideHttpClient() in 6 spec files. Coverage baselines documented: Python 85.05%, Angular Statements 83.34%/Branches 69.01%/Functions 79.73%/Lines 84.21%. CI fully green (1262 Python, 599 Angular, 37 E2E on amd64+arm64).
 
@@ -275,26 +275,20 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Optional Fernet encryption at rest for 5 config secrets — v1.1.1
 - ✓ Retroactive v1.1.0 release notes + v1.1.1 CHANGELOG + GitHub Releases — v1.1.1
 
+**v1.2.0 (Shipped 2026-04-28):**
+
+- ✓ Fixed 19 Python test defects (false coverage, resource leaks, race conditions, mock confusion) — v1.2.0
+- ✓ Consolidated Python test architecture (conftest→helpers, deduplicated base classes, integration test reclassification) — v1.2.0
+- ✓ Fixed 7 Angular test issues (subscription leaks, fakeAsync cleanup, double-cast, optional chaining guards) — v1.2.0
+- ✓ Fixed 9 E2E test + 5 infrastructure issues (Playwright APIs, CSP enforcement, arm64 Unicode, Docker health, restart race) — v1.2.0
+- ✓ Hardened CI & Docker security (least-privilege permissions, SHA-pinned actions, SSH key-only auth, non-root sshd, ephemeral keys) — v1.2.0
+- ✓ Filled 6 test coverage gaps (SSE streaming, Logs + Settings E2E, webhook integration, DeleteRemoteProcess, ActiveScanner) — v1.2.0
+- ✓ Rate limiting on all mutable HTTP endpoints via reusable decorator — v1.2.0
+- ✓ Tightened Semgrep rules, eliminated 628 false positives — v1.2.0
+
 ### Active
 
-## Current Milestone: v1.2.0 Test & Quality Hardening
-
-**Goal:** Fix all known test suite defects, close outstanding quality/security todos, fill coverage gaps, and harden CI — no new features.
-
-**Target features:**
-- Fix 2 critical false-coverage Python tests (thread target bug, assertion-less test)
-- Fix all warning/medium test quality issues across Python, Angular, and E2E layers
-- Address architectural findings (conftest adoption, base class consolidation, test reclassification, coverage gap documentation)
-- Fill 6 test coverage gaps (SSE integration, Logs E2E, Settings E2E, Webhook E2E, DeleteRemoteProcess, ActiveScanner)
-- Harden CI security (least-privilege permissions, pinned GH Actions, release dependency chain, Docker cache)
-- Harden Docker test containers (remove hardcoded passwords, lock SSH, drop root group, ephemeral keys)
-- Add rate limiting to all HTTP endpoints
-- Fix E2E infrastructure bugs (uninitialized vars, health conditions, bare except, restart race)
-- Fix E2E test quality (innerHTML, CSP fixture bypass, deprecated selectors, response checking)
-- Fix Angular test quality (subscription leaks, fakeAsync cleanup, optional chaining false passes)
-- Add E2E CSP violation detection
-- Fix arm64 Unicode sort E2E failures
-- Tighten Shield Semgrep rules
+(No active milestone — ready for `/gsd-new-milestone`)
 
 ### Out of Scope
 
@@ -310,10 +304,10 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 ## Context
 
 **Codebase state:**
-- ~33k Python LOC, ~15.5k TypeScript LOC
-- 1,262 Python tests, 84% coverage (fail_under enforced)
+- ~35.5k Python LOC, ~20k TypeScript LOC
+- 1,200+ Python tests, 84% coverage (fail_under enforced)
 - 599 Angular unit tests passing
-- 37 Playwright E2E specs (amd64+arm64), CI-gated
+- 45+ Playwright E2E specs (amd64+arm64), CI-gated
 - Zero TypeScript lint errors
 - Angular 21.x, TypeScript 6, Python 3.12+ compatible
 
@@ -332,6 +326,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - Hash-based CSP via Angular autoCsp (no unsafe-inline); Playwright CSP violation listener fails E2E on breaches
 - DNS rebinding prevention via Host header allowlist
 - Path traversal guards (realpath-based) on delete/extract endpoints
+- Rate limiting on all mutable HTTP endpoints via sliding-window decorator (config/set 60/60s, test-connection 5/60s, status 60/60s)
 - Security headers (CSP, X-Frame-Options, X-Content-Type-Options) on all API responses
 - HMAC-SHA256 webhook authentication (empty secret = skip verification for backward compat)
 - Config API redacts sensitive fields; SSE log stream scrubs passwords
@@ -381,12 +376,18 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 | Keep bare except in config.py test handlers | CI mock prevents RequestException class resolution | ✓ Good |
 | pexpect close uses explicit except, not finally | Preserves post-close attribute access for error reporting | ✓ Good |
 | Remove WAITING_FOR_IMPORT enum value (TECH-02) | Placeholder since v2.0 (2026-02-12); never set by business logic; Phase 73 explicitly deferred wiring; re-add alongside future Sonarr Grab-event ingestion if prioritized | ✓ Good |
+| Closure-based sliding-window rate limiter | Per-decorator Lock + timestamp list; no global state; thread-safe without shared data structures | ✓ Good |
+| Conftest fixtures → importable helpers module | pytest conftest discovery scope didn't reach all test directories; explicit imports are reliable | ✓ Good |
+| SHA-pinned GitHub Actions with version comments | Prevents supply chain attacks via tag mutation; comment preserves human readability | ✓ Good |
+| SSH key-only auth in test containers | Eliminates hardcoded passwords from Dockerfiles; ephemeral ED25519 keys generated at build time | ✓ Good |
+| Non-root sshd via gosu + setcap | Reduces container attack surface; sshd binds port 22 via CAP_NET_BIND_SERVICE | ✓ Good |
+| WSGI iterator harness for SSE tests | Direct web_app() invocation avoids HTTP stack; enables streaming assertions without real server | ✓ Good |
 
 ## Project Status
 
-**Status:** v1.2.0 in progress (started 2026-04-24). Test & quality hardening — 61 items across test fixes, CI security, coverage gaps, Docker hardening, rate limiting, and tooling.
+**Status:** v1.2.0 shipped (2026-04-28). Test & quality hardening — 68 items across 10 phases.
 
-30 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit as SeedSyncarr).
+31 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit + v1.2.0 test hardening as SeedSyncarr).
 
 ## Evolution
 
@@ -406,4 +407,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-28 after Phase 93 (ci-docker-hardening) complete*
+*Last updated: 2026-04-28 after v1.2.0 milestone*

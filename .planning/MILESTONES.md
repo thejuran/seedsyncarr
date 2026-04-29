@@ -1,5 +1,26 @@
 # Project Milestones: SeedSync
 
+## v1.2.0 Test & Quality Hardening (Shipped: 2026-04-29)
+
+**Phases completed:** 10 phases, 23 plans
+**Git range:** 178 commits, 184 files changed, +25,801/-1,246 lines
+**Timeline:** 5 days (2026-04-24 → 2026-04-28)
+
+**Delivered:** Fixed all known test suite defects across Python, Angular, and E2E layers; hardened CI security and Docker test containers; filled 6 test coverage gaps; added rate limiting to all mutable HTTP endpoints; tightened Semgrep rules. Quality-only milestone — no new features.
+
+**Key accomplishments:**
+
+- Fixed 19 Python test defects (2 critical false-coverage, 8 warning, 9 medium) — every test now validates what it claims; consolidated test architecture (conftest→helpers, deduplicated base classes, reclassified integration tests)
+- Fixed 7 Angular test issues — subscription leaks in 4 spec files, fakeAsync zone cleanup, double-cast elimination, optional chaining false-pass guards
+- Fixed 9 E2E test + 5 infrastructure issues — correct Playwright APIs, CSP violation enforcement, arm64 Unicode sort, Docker healthcheck gating, restart race elimination
+- Hardened CI & Docker security — least-privilege workflow permissions, SHA-pinned GitHub Actions, SSH key-only auth (no hardcoded passwords), non-root sshd, ephemeral SSH key pairs
+- Filled 6 test coverage gaps — SSE streaming integration harness, Logs + Settings page E2E specs, webhook integration test, DeleteRemoteProcess + ActiveScanner unit tests
+- Added reusable rate-limiting decorator to all mutable HTTP endpoints; eliminated 628 Semgrep false positives via tightened rules
+
+**Known deferred items at close:** 2 (webob upstream block, config POST migration — both out of scope)
+
+---
+
 ## v1.1.2 Test Suite Audit (Shipped: 2026-04-24)
 
 **Phases completed:** 4 phases, 6 plans, 10 tasks
