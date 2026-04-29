@@ -1,4 +1,3 @@
-import unittest
 from unittest.mock import patch, ANY
 from threading import Timer
 

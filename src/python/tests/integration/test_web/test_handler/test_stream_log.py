@@ -1,5 +1,4 @@
 import logging
-import unittest
 from unittest.mock import patch
 from threading import Timer
 

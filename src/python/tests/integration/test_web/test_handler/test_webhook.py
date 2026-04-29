@@ -1,5 +1,3 @@
-import unittest
-
 from tests.integration.test_web.test_web_app import BaseTestWebApp
 
 

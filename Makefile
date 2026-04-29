@@ -83,10 +83,11 @@ tests-python:
 	if [ -n "$(PYTHON_TEST_CACHE_REGISTRY)" ]; then \
 		CACHE_FLAGS="--cache-from type=registry,ref=$(PYTHON_TEST_CACHE_REGISTRY):cache-python-test --cache-to type=registry,ref=$(PYTHON_TEST_CACHE_REGISTRY):cache-python-test,mode=max"; \
 	fi; \
-	$(DOCKER) build \
+	$(DOCKER) buildx build \
 		-f ${SOURCEDIR}/docker/build/docker-image/Dockerfile \
 		--target seedsyncarr_run_python_devenv \
 		--tag seedsyncarr/run/python/devenv \
+		--load \
 		$$CACHE_FLAGS \
 		${ROOTDIR}
 	# python tests
