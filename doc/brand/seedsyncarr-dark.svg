@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Dark variant: for light backgrounds — dark arrows, no background -->
+  <g fill="#1c2420">
+    <polygon points="104,96 180,96 276,192 200,192"/>
+    <polygon points="104,216 180,216 276,312 200,312"/>
+    <polygon points="408,200 332,200 236,296 312,296"/>
+    <polygon points="408,318 332,318 236,414 312,414"/>
+  </g>
+</svg>
