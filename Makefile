@@ -167,11 +167,11 @@ run-tests-e2e:
 	}
 	trap tearDown EXIT
 
-	# Build the test
+	# Build the test (exclude remote — already built above with SSH_PUBKEY)
 	echo "${green}Building the tests${reset}"
 	$(DOCKER_COMPOSE) \
 		$${COMPOSE_FLAGS} \
-		build
+		build tests configure
 
 	# This suppresses the docker-compose error that image has changed
 	$(DOCKER_COMPOSE) \
