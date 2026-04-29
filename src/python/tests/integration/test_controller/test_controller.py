@@ -177,19 +177,22 @@ class TestController(unittest.TestCase):
 
         # Allow group access to remote files for seedsyncarrtest account
         # This is necessary for seedsyncarrtest can do remote-delete commands
-        # We are basically doing a chmod g+w on all of remote/ directory
+        # chown to testgroup and chmod g+w on all of remote/ directory
         remote_dir = os.path.join(self.temp_dir, "remote")
         st = os.stat(remote_dir)
         os.chmod(remote_dir, st.st_mode | stat.S_IWGRP)
+        os.chown(remote_dir, -1, gid)
         for root, dirs, files in os.walk(remote_dir):
             for momo in dirs:
                 path = os.path.join(root, momo)
                 st = os.stat(path)
                 os.chmod(path, st.st_mode | stat.S_IWGRP)
+                os.chown(path, -1, gid)
             for momo in files:
                 path = os.path.join(root, momo)
                 st = os.stat(path)
                 os.chmod(path, st.st_mode | stat.S_IWGRP)
+                os.chown(path, -1, gid)
 
         # Helper object to store the intial state
         f_ra = ModelFile("ra", True)
