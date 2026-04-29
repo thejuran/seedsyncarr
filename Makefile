@@ -90,13 +90,13 @@ tests-python:
 		--load \
 		$$CACHE_FLAGS \
 		${ROOTDIR}
-	# python tests
-	$(DOCKER_COMPOSE) \
+	# python tests — force default builder so compose can see the locally-loaded base image
+	BUILDX_BUILDER=default $(DOCKER_COMPOSE) \
 		-f ${SOURCEDIR}/docker/test/python/compose.yml \
 		build
 
 run-tests-python: tests-python
-	$(DOCKER_COMPOSE) \
+	BUILDX_BUILDER=default $(DOCKER_COMPOSE) \
 		-f ${SOURCEDIR}/docker/test/python/compose.yml \
 		up --force-recreate --exit-code-from tests
 
