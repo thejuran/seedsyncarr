@@ -372,9 +372,12 @@ class TestConfigHandlerTestRadarrConnection(unittest.TestCase):
 class TestConfigHandlerRateLimit(unittest.TestCase):
     """Rate limit integration tests for config endpoints."""
 
-    def test_set_config_rate_limited_at_60_per_60s(self):
+    @patch('web.rate_limit.time')
+    def test_set_config_rate_limited_at_60_per_60s(self, mock_time):
         """config/set should reject requests after 60 within 60s."""
         from web.rate_limit import rate_limit
+
+        mock_time.time.return_value = 1000.0
 
         mock_config = MagicMock()
         handler = ConfigHandler(mock_config)
@@ -399,8 +402,10 @@ class TestConfigHandlerRateLimit(unittest.TestCase):
         body = json.loads(response.body)
         self.assertIn("Rate limit", body["error"])
 
-    def test_test_connection_rate_limited_at_5_per_60s(self):
+    @patch('web.rate_limit.time')
+    def test_test_connection_rate_limited_at_5_per_60s(self, mock_time):
         """test-connection endpoints should reject after 5 within 60s."""
+        mock_time.time.return_value = 1000.0
         from web.rate_limit import rate_limit
         from common import Config
 

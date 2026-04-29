@@ -4,7 +4,7 @@ import os
 import time
 from pathlib import Path
 from threading import Event
-from typing import List, Optional, Tuple
+
 from urllib.parse import unquote
 
 from bottle import HTTPResponse, request
@@ -12,7 +12,7 @@ from bottle import HTTPResponse, request
 from common import overrides
 from controller import Controller
 from ..web_app import IHandler, WebApp
-from web.rate_limit import rate_limit
+from ..rate_limit import rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class WebResponseActionCallback(Controller.Command.ICallback):
         self.success = True
         self.__event.set()
 
-    def wait(self, timeout: float = None) -> bool:
+    def wait(self, timeout: float | None = None) -> bool:
         """
         Wait for the command to complete.
 
@@ -57,7 +57,7 @@ class WebResponseActionCallback(Controller.Command.ICallback):
 class ControllerHandler(IHandler):
     def __init__(self, controller: Controller, local_path: str = ""):
         self.__controller = controller
-        self.__local_path_real: Optional[Path] = (
+        self.__local_path_real: Path | None = (
             Path(os.path.realpath(local_path)) if local_path else None
         )
 
@@ -206,7 +206,7 @@ class ControllerHandler(IHandler):
     # Maximum number of files allowed in a single bulk request
     _MAX_BULK_FILES = 1000
 
-    def _check_path_safe(self, file_name: str) -> Optional[HTTPResponse]:
+    def _check_path_safe(self, file_name: str) -> HTTPResponse | None:
         """
         Returns HTTPResponse(status=400) if file_name resolves outside local_path, else None.
 
@@ -334,9 +334,9 @@ class ControllerHandler(IHandler):
     def _process_bulk_commands(
         self,
         action: Controller.Command.Action,
-        files: List[str],
+        files: list[str],
         action_name: str
-    ) -> Tuple[List[dict], int, int]:
+    ) -> tuple[list[dict], int, int]:
         """
         Process bulk commands with parallel queuing for improved performance.
 
@@ -351,7 +351,7 @@ class ControllerHandler(IHandler):
             action_name: Human-readable action name for logging.
 
         Returns:
-            Tuple of (results list, succeeded count, failed count).
+            tuple of (results list, succeeded count, failed count).
         """
         start_time = time.time()
         file_count = len(files)
@@ -365,7 +365,7 @@ class ControllerHandler(IHandler):
         )
 
         # Queue all commands (parallel queuing)
-        commands_with_callbacks: List[Tuple[str, WebResponseActionCallback]] = []
+        commands_with_callbacks: list[tuple[str, WebResponseActionCallback]] = []
         results = []
         succeeded = 0
         failed = 0

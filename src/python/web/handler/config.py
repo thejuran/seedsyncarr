@@ -1,7 +1,7 @@
 import json
 import ipaddress
+import logging
 import socket
-from typing import Optional
 from urllib.parse import urlparse, urljoin, unquote
 
 import requests
@@ -11,7 +11,9 @@ from bottle import HTTPResponse
 from common import overrides, Config, ConfigError
 from ..web_app import IHandler, WebApp
 from ..serialize import SerializeConfig
-from web.rate_limit import rate_limit
+from ..rate_limit import rate_limit
+
+logger = logging.getLogger(__name__)
 
 class ConfigHandler(IHandler):
     def __init__(self, config: Config):
@@ -51,7 +53,7 @@ class ConfigHandler(IHandler):
         return location
 
     @staticmethod
-    def _validate_url(url: str) -> Optional[str]:
+    def _validate_url(url: str) -> str | None:
         """Validate URL for SSRF protection. Returns error string or None if valid.
 
         Known limitation: DNS rebinding (TOCTOU) — getaddrinfo resolves at validation
@@ -102,7 +104,7 @@ class ConfigHandler(IHandler):
         except ConfigError as e:
             return HTTPResponse(body=str(e), status=400)
 
-    def _test_arr_connection(self, service_name: str, raw_url: Optional[str], api_key: Optional[str]) -> HTTPResponse:
+    def _test_arr_connection(self, service_name: str, raw_url: str | None, api_key: str | None) -> HTTPResponse:
         """Shared logic for testing Sonarr/Radarr API connections."""
         if not raw_url or not raw_url.strip():
             return HTTPResponse(
@@ -167,6 +169,7 @@ class ConfigHandler(IHandler):
                 content_type="application/json"
             )
         except Exception:
+            logger.exception("Unexpected error testing %s connection", service_name)
             return HTTPResponse(
                 body=json.dumps({"success": False, "error": "An unexpected error occurred"}),
                 content_type="application/json"

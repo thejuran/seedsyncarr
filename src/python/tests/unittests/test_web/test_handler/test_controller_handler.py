@@ -611,10 +611,16 @@ class TestControllerHandlerRateLimit(unittest.TestCase):
         self.mock_controller = MagicMock(spec=Controller)
         self.handler = ControllerHandler(self.mock_controller)
         self._setup_command_callback(success=True)
+        self._time_patcher = patch('web.rate_limit.time')
+        self._mock_time = self._time_patcher.start()
+        self._mock_time.time.return_value = 1000.0
         # Create a rate-limited wrapper matching add_routes() config
         self._rate_limited_bulk = rate_limit(
             max_requests=10, window_seconds=60.0
         )(self.handler._ControllerHandler__handle_bulk_command)
+
+    def tearDown(self):
+        self._time_patcher.stop()
 
     def _setup_command_callback(self, success=True, error=None, error_code=400):
         """Setup mock controller to capture and respond to commands."""
@@ -664,34 +670,28 @@ class TestControllerHandlerRateLimit(unittest.TestCase):
 
     def test_rate_limit_resets_after_window(self):
         """Rate limit should reset after the time window expires."""
-        import time
-
         self._setup_command_callback(success=True)
-        # Use a short window for testing
-        short_window_handler = rate_limit(
-            max_requests=10, window_seconds=0.1
-        )(self.handler._ControllerHandler__handle_bulk_command)
 
-        # Exhaust the rate limit
+        # Exhaust the rate limit (setUp already freezes time at 1000.0)
         for i in range(10):
-            with patch('web.handler.controller.request') as mock_req:
-                mock_req.json = {"action": "queue", "files": ["file{}".format(i)]}
-                response = short_window_handler()
+            response = self._call_bulk_handler({
+                "action": "queue", "files": ["file{}".format(i)]
+            })
             self.assertEqual(200, response.status_code)
 
         # Verify rate limited
-        with patch('web.handler.controller.request') as mock_req:
-            mock_req.json = {"action": "queue", "files": ["blocked"]}
-            response = short_window_handler()
+        response = self._call_bulk_handler({
+            "action": "queue", "files": ["blocked"]
+        })
         self.assertEqual(429, response.status_code)
 
-        # Wait for window to expire
-        time.sleep(0.15)
+        # Advance past the window
+        self._mock_time.time.return_value = 1061.0
 
         # Should work again
-        with patch('web.handler.controller.request') as mock_req:
-            mock_req.json = {"action": "queue", "files": ["allowed"]}
-            response = short_window_handler()
+        response = self._call_bulk_handler({
+            "action": "queue", "files": ["allowed"]
+        })
         self.assertEqual(200, response.status_code)
 
     def test_rate_limit_response_content_type_is_json(self):

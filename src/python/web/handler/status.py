@@ -3,7 +3,7 @@ from bottle import HTTPResponse
 from common import Status, overrides
 from ..web_app import IHandler, WebApp
 from ..serialize import SerializeStatusJson
-from web.rate_limit import rate_limit
+from ..rate_limit import rate_limit
 
 class StatusHandler(IHandler):
     def __init__(self, status: Status):

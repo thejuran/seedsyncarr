@@ -34,8 +34,10 @@ class TestStatusHandler(unittest.TestCase):
 class TestStatusHandlerRateLimit(unittest.TestCase):
     """Rate limit integration tests for status endpoint."""
 
-    def test_status_rate_limited_at_60_per_60s(self):
+    @patch('web.rate_limit.time')
+    def test_status_rate_limited_at_60_per_60s(self, mock_time):
         """status should reject requests after 60 within 60s."""
+        mock_time.time.return_value = 1000.0
         from web.rate_limit import rate_limit
 
         mock_status = MagicMock()

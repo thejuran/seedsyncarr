@@ -69,6 +69,15 @@ class TestRateLimitOverLimit(unittest.TestCase):
         self.assertEqual("application/json", response.content_type)
 
     @patch("web.rate_limit.time")
+    def test_429_response_includes_retry_after_header(self, mock_time):
+        mock_time.time.return_value = 1000.0
+        for _ in range(3):
+            self.handler()
+        response = self.handler()
+        self.assertIn("Retry-After", response.headers)
+        self.assertGreaterEqual(int(response.headers["Retry-After"]), 1)
+
+    @patch("web.rate_limit.time")
     def test_subsequent_calls_over_limit_also_return_429(self, mock_time):
         mock_time.time.return_value = 1000.0
         for _ in range(3):

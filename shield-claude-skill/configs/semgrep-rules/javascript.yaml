@@ -69,6 +69,47 @@ rules:
       impact: HIGH
       category: security
 
+  - id: js-xss-insert-adjacent-html
+    patterns:
+      - pattern: |
+          $EL.insertAdjacentHTML($POS, $INPUT)
+      - pattern-not: |
+          $EL.insertAdjacentHTML($POS, "...")
+    message: >
+      insertAdjacentHTML with dynamic content is an XSS sink equivalent
+      to innerHTML. Use textContent or a sanitization library such as DOMPurify.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: MEDIUM
+      impact: HIGH
+      category: security
+
+  - id: js-xss-dangerously-set-innerhtml
+    patterns:
+      - pattern-either:
+          - pattern: |
+              <$EL dangerouslySetInnerHTML={{__html: $INPUT}} />
+          - pattern: |
+              <$EL dangerouslySetInnerHTML={{__html: $INPUT}}></$EL>
+      - pattern-not: |
+          <$EL dangerouslySetInnerHTML={{__html: "..."}} />
+      - pattern-not: |
+          <$EL dangerouslySetInnerHTML={{__html: "..."}}></$EL>
+    message: >
+      dangerouslySetInnerHTML bypasses React's XSS protection. Sanitize
+      the HTML with DOMPurify or a similar library before rendering.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      cwe: "CWE-79"
+      owasp: "A03:2021 Injection"
+      confidence: HIGH
+      impact: HIGH
+      category: security
+
   - id: js-xss-document-write
     pattern: |
       document.write($INPUT)
@@ -109,6 +150,14 @@ rules:
           setInterval(() => $BODY, ...)
       - pattern-not: |
           setInterval(function $NAME($PARAMS) { $BODY }, ...)
+      - pattern-not: |
+          setTimeout(function($PARAMS) { $BODY }, ...)
+      - pattern-not: |
+          setTimeout(function() { $BODY }, ...)
+      - pattern-not: |
+          setInterval(function($PARAMS) { $BODY }, ...)
+      - pattern-not: |
+          setInterval(function() { $BODY }, ...)
     message: >
       eval() or Function constructor with dynamic input enables code injection.
       Refactor to avoid dynamic code evaluation entirely.
