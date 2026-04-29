@@ -307,8 +307,9 @@ class TestController(unittest.TestCase):
         remote_exe_dir = os.path.join(TestController.temp_dir, "scanfs_remote")
         os.makedirs(local_exe_dir, exist_ok=True)
         os.makedirs(remote_exe_dir, exist_ok=True)
-        # Allow group access for the seedsyncarrtest account
+        # Allow group access for the seedsyncarrtest account (testgroup)
         os.chmod(remote_exe_dir, 0o775)
+        os.chown(remote_exe_dir, -1, grp.getgrnam('testgroup').gr_gid)
         local_exe_path = os.path.join(local_exe_dir, "scanfs")
         remote_exe_path = remote_exe_dir
         with open(local_exe_path, "w") as f:
