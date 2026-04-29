@@ -18,6 +18,10 @@ curl -sSf "http://myapp:8800/server/config/set/lftp/remote_username/${REMOTE_USE
 # DOCKSEC-02/05: Use SSH key auth instead of password
 curl -sSf "http://myapp:8800/server/config/set/lftp/use_ssh_key/true" \
   || { echo "ERROR: failed to set lftp/use_ssh_key" >&2; exit 1; }
+# Set remote_password to a non-dummy value so _detect_incomplete_config passes.
+# The actual value is unused when use_ssh_key is true.
+curl -sSf "http://myapp:8800/server/config/set/lftp/remote_password/unused-ssh-key-auth" \
+  || { echo "ERROR: failed to set lftp/remote_password" >&2; exit 1; }
 curl -sSf "http://myapp:8800/server/config/set/lftp/remote_port/1234" \
   || { echo "ERROR: failed to set lftp/remote_port" >&2; exit 1; }
 curl -sSf "http://myapp:8800/server/config/set/lftp/remote_path/%252Fhome%252Fremoteuser%252Ffiles" \
