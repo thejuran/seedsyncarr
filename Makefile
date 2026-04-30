@@ -118,86 +118,14 @@ run-tests-angular: tests-angular
 		up --force-recreate --exit-code-from tests
 
 run-tests-e2e:
-	# Check our settings
-	@if [[ -z "${STAGING_VERSION}" ]] ; then \
-		echo "${red}ERROR: STAGING_VERSION must be set${reset}"; exit 1; \
-	fi
-	@if [[ -z "${SEEDSYNCARR_ARCH}" ]] ; then \
-		echo "${red}ERROR: SEEDSYNCARR_ARCH is required (amd64 or arm64)${reset}"; exit 1; \
-	fi
-	@if [[ -z "${STAGING_REGISTRY}" ]] ; then \
-		export STAGING_REGISTRY="${DEFAULT_STAGING_REGISTRY}"; \
-	fi;
-	echo "${green}STAGING_REGISTRY=$${STAGING_REGISTRY}${reset}";
-	export SEEDSYNCARR_PLATFORM="linux/$${SEEDSYNCARR_ARCH}";
-	echo "${green}SEEDSYNCARR_PLATFORM=$${SEEDSYNCARR_PLATFORM}${reset}";
-	# Removing and pulling is the only way to select the arch from a multi-arch image
-	$(DOCKER) rmi -f $${STAGING_REGISTRY}:$${STAGING_VERSION}
-	$(DOCKER) pull $${STAGING_REGISTRY}:$${STAGING_VERSION} --platform linux/$${SEEDSYNCARR_ARCH}
-	echo "${green}Building remote container for platform $${SEEDSYNCARR_PLATFORM}${reset}";
-	# DOCKSEC-05: Generate ephemeral SSH key pair for E2E test (always fresh)
-	rm -f $(E2E_SSH_KEY) $(E2E_SSH_KEY).pub
-	ssh-keygen -t ed25519 -N "" -f $(E2E_SSH_KEY) -q || { echo "${red}ERROR: ssh-keygen failed${reset}" >&2; exit 1; }
-	E2E_SSH_PUBKEY=$$(cat $(E2E_SSH_KEY).pub)
-	$(DOCKER) buildx build \
-		--platform $${SEEDSYNCARR_PLATFORM} \
-		--load \
-		-t seedsyncarr/test/e2e/remote \
-		--build-arg SSH_PUBKEY="$${E2E_SSH_PUBKEY}" \
-		-f ${SOURCEDIR}/docker/test/e2e/remote/Dockerfile \
-		.
-
-	export E2E_SSH_KEY=$(E2E_SSH_KEY)
-	# Set the flags
-	COMPOSE_FLAGS="-f ${SOURCEDIR}/docker/test/e2e/compose.yml "
-	COMPOSE_FLAGS+="-f ${SOURCEDIR}/docker/stage/docker-image/compose.yml "
-	COMPOSE_RUN_FLAGS=""
-	if [[ "${DEV}" = "1" ]] ; then
-		COMPOSE_FLAGS+="-f ${SOURCEDIR}/docker/test/e2e/compose-dev.yml "
-	else \
-  		COMPOSE_RUN_FLAGS+="-d"
-	fi
-	echo "${green}COMPOSE_FLAGS=$${COMPOSE_FLAGS}${reset}"
-
-	# Set up Ctrl-C handler
-	function tearDown {
-		$(DOCKER_COMPOSE) \
-			$${COMPOSE_FLAGS} \
-			stop
-	}
-	trap tearDown EXIT
-
-	# Build the test (exclude remote — already built above with SSH_PUBKEY)
-	echo "${green}Building the tests${reset}"
-	$(DOCKER_COMPOSE) \
-		$${COMPOSE_FLAGS} \
-		build tests configure
-
-	# This suppresses the docker-compose error that image has changed
-	$(DOCKER_COMPOSE) \
-		$${COMPOSE_FLAGS} \
-		rm -f myapp
-
-	# Run the test
-	echo "${green}Running the tests${reset}"
-	$(DOCKER_COMPOSE) \
-		$${COMPOSE_FLAGS} \
-		up --force-recreate \
-		$${COMPOSE_RUN_FLAGS}
-
-	if [[ "${DEV}" != "1" ]] ; then
-		$(DOCKER) logs -f seedsyncarr_test_e2e
-	fi
-
-	# Show logs from myapp container for debugging
-	echo "${green}=== Logs from myapp container ===${reset}"
-	$(DOCKER) logs seedsyncarr_test_e2e_myapp 2>&1 || \
-		echo "No myapp logs found"
-
-	EXITCODE=`$(DOCKER) inspect seedsyncarr_test_e2e | jq '.[].State.ExitCode'`
-	if [[ "$${EXITCODE}" != "0" ]] ; then
-		false
-	fi
+	STAGING_VERSION="$(STAGING_VERSION)" \
+	SEEDSYNCARR_ARCH="$(SEEDSYNCARR_ARCH)" \
+	STAGING_REGISTRY="$(STAGING_REGISTRY)" \
+	DEV="$(DEV)" \
+	SOURCEDIR="${SOURCEDIR}" \
+	DEFAULT_STAGING_REGISTRY="${DEFAULT_STAGING_REGISTRY}" \
+	E2E_SSH_KEY="$(E2E_SSH_KEY)" \
+		bash ${SOURCEDIR}/docker/test/e2e/run_make_target.sh
 
 run-remote-server:
 	$(DOCKER) container rm -f seedsyncarr_test_e2e_remote-dev

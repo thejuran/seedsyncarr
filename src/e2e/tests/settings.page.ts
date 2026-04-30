@@ -100,9 +100,19 @@ export class SettingsPage extends App {
         return this.page.locator('app-option').filter({ hasText: 'Server Address' }).locator('input[type="text"]');
     }
 
+    getSshKeyOption(): Locator {
+        // SSH key auth option in the Remote Server card
+        return this.page.locator('app-option').filter({ hasText: 'password-less key-based' });
+    }
+
     getSshKeyCheckbox(): Locator {
-        // SSH key auth checkbox in the Remote Server card
-        return this.page.locator('app-option').filter({ hasText: 'password-less key-based' }).locator('input[type="checkbox"]');
+        // SSH key auth checkbox in the Remote Server card. The native input is visually hidden;
+        // use getSshKeyToggleTrack() for visibility assertions.
+        return this.getSshKeyOption().locator('input[type="checkbox"]');
+    }
+
+    getSshKeyToggleTrack(): Locator {
+        return this.getSshKeyOption().locator('.toggle-track');
     }
 
     getRemoteScanIntervalInput(): Locator {

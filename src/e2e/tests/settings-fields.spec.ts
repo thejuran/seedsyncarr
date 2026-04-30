@@ -58,8 +58,12 @@ test.describe('Settings page form fields', () => {
 
     test('should display SSH key auth checkbox', async () => {
         // D-07: representative sample -- checkbox toggle
+        const option = settingsPage.getSshKeyOption();
+        const toggleTrack = settingsPage.getSshKeyToggleTrack();
         const checkbox = settingsPage.getSshKeyCheckbox();
-        await expect(checkbox).toBeVisible();
+        await expect(option).toBeVisible();
+        await expect(toggleTrack).toBeVisible();
+        await expect(checkbox).toBeAttached();
     });
 
     test('should persist SSH key auth toggle via API-set and reload', async () => {
