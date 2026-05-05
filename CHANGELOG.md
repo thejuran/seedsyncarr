@@ -4,6 +4,53 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.2] - 2026-05-05
+
+### Fixed
+
+- Failed remote, local, or active scans are ignored when feeding the model builder, preventing transient scan failures from clearing visible transfer state.
+- Scanner dead-process detection now avoids false error reports during shutdown, terminates scanner subprocesses after unexpected failures, and surfaces a clear controller error without internal diagnostic details.
+
+## [1.2.1] - 2026-04-29
+
+### Changed
+
+- Updated development dependencies including Angular npm packages, PostCSS, Ruff, and PyInstaller.
+
+### Fixed
+
+- Repaired E2E CI SSH-key mounting for current GitHub Actions/Node runner behavior.
+- Restored E2E setup completeness by supplying required remote password and rate-limit fixture values.
+- Fixed E2E remote filesystem permissions for the SSH user and remote scan directory.
+- Scoped compose builds to test services, forced the default buildx builder for compose steps, and resolved Python test build/lint failures.
+
+## [1.2.0] - 2026-04-28
+
+### Added
+
+- Sliding-window rate limiting for mutable HTTP endpoints, with unit coverage for controller, config, and status handlers.
+- Additional backend coverage for SSE streaming, webhooks, `DeleteRemoteProcess`, `ActiveScanner`, and scanner/process edge cases.
+- Logs and Settings E2E specs plus page-object helpers for the web UI.
+- Docker E2E validation scripts for compose schema, status parsing, setup patterns, and run-time environment checks.
+
+### Changed
+
+- Migrated Angular HTTP tests to the modern `provideHttpClient` / `provideHttpClientTesting` APIs.
+- Refactored Python test helpers and controller fixtures to reduce duplication and make integration tests clearer.
+- Documented Python test architecture tradeoffs and known coverage gaps.
+
+### Fixed
+
+- Fixed Python test defects around false coverage, temporary-file leaks, bare file handles, logger handler leaks, swallowed thread assertions, and busy-wait CPU spin.
+- Fixed Angular test issues around fakeAsync cleanup, subscription teardown, optional assertion guards, and stale comments.
+- Fixed E2E flakiness around Playwright selectors, API response waiting, arm64 sort determinism, Docker health checks, and shell-script failure handling.
+
+### Security
+
+- Hardened GitHub Actions CI with least-privilege permissions, SHA-pinned actions, safer expression quoting, and stricter shell behavior.
+- Hardened E2E Docker SSH flows with ephemeral keys, non-root `sshd`, password-auth removal, and clearer key-generation failure handling.
+- Tightened Semgrep rules for JavaScript NoSQL-injection and XSS eval patterns, reducing false positives while preserving signal.
+
 ## [1.1.2] - 2026-04-23
 
 ### Fixed
@@ -64,6 +111,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - API token authentication (Bearer tokens)
 - Security hardening: HMAC webhooks, CSP, DNS rebinding prevention, credential redaction
 
+[1.2.2]: https://github.com/thejuran/seedsyncarr/compare/v1.2.1...v1.2.2
+[1.2.1]: https://github.com/thejuran/seedsyncarr/compare/v1.2.0...v1.2.1
+[1.2.0]: https://github.com/thejuran/seedsyncarr/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/thejuran/seedsyncarr/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/thejuran/seedsyncarr/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/thejuran/seedsyncarr/compare/v1.0.0...v1.1.0
