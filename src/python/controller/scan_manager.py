@@ -6,7 +6,6 @@ from .scan import ScannerProcess, ScannerResult, ActiveScanner, LocalScanner, Re
 
 class ScannerProcessDiedError(AppError):
     """Raised when a scanner process has died unexpectedly without reporting an exception."""
-    pass
 
 
 class ScanManager:
@@ -81,7 +80,7 @@ class ScanManager:
 
         self.__started = False
 
-    def start(self):
+    def start(self) -> None:
         """
         Start all scanner processes.
 
@@ -93,7 +92,7 @@ class ScanManager:
         self.__remote_scan_process.start()
         self.__started = True
 
-    def stop(self):
+    def stop(self) -> None:
         """
         Terminate and join all scanner processes.
 
@@ -101,7 +100,11 @@ class ScanManager:
         """
         if not self.__started:
             return
+        self.__started = False
+        self._terminate_and_join_all()
 
+    def _terminate_and_join_all(self) -> None:
+        """Terminate and join all scanner processes unconditionally."""
         self.logger.debug("Stopping scanner processes")
         self.__active_scan_process.terminate()
         self.__local_scan_process.terminate()
@@ -109,7 +112,6 @@ class ScanManager:
         self.__active_scan_process.join()
         self.__local_scan_process.join()
         self.__remote_scan_process.join()
-        self.__started = False
         self.logger.debug("Scanner processes stopped")
 
     def pop_latest_results(self) -> Tuple[Optional[ScannerResult], Optional[ScannerResult], Optional[ScannerResult]]:
@@ -128,7 +130,7 @@ class ScanManager:
         active_result = self.__active_scan_process.pop_latest_result()
         return remote_result, local_result, active_result
 
-    def update_active_files(self, file_names: List[str]):
+    def update_active_files(self, file_names: List[str]) -> None:
         """
         Update the list of actively downloading/extracting files.
 
@@ -141,7 +143,7 @@ class ScanManager:
         """
         self.__active_scanner.set_active_files(file_names)
 
-    def propagate_exceptions(self):
+    def propagate_exceptions(self) -> None:
         """
         Propagate any exceptions from scanner processes to the caller.
 
@@ -156,6 +158,8 @@ class ScanManager:
             Any exception that occurred in a scanner process.
             ScannerProcessDiedError if a process died without reporting an error.
         """
+        # Drain exception queues first: if a process reported an error before dying,
+        # the specific exception takes priority over the generic ScannerProcessDiedError.
         self.__active_scan_process.propagate_exception()
         self.__local_scan_process.propagate_exception()
         self.__remote_scan_process.propagate_exception()
@@ -165,7 +169,7 @@ class ScanManager:
         if self.__started:
             self._check_process_health()
 
-    def _check_process_health(self):
+    def _check_process_health(self) -> None:
         """
         Verify all scanner processes are still alive.
 
@@ -185,16 +189,17 @@ class ScanManager:
             dead_processes.append("ActiveScanner")
 
         if dead_processes:
+            self.__started = False
             names = ", ".join(dead_processes)
             self.logger.error(
                 "Scanner process(es) died unexpectedly: {}".format(names)
             )
+            self._terminate_and_join_all()
             raise ScannerProcessDiedError(
-                "Scanner process(es) died unexpectedly without reporting an error: {}. "
-                "Possible causes: OOM kill, SIGKILL, or unhandled OS-level failure.".format(names)
+                "A scanner process stopped unexpectedly. Please check server logs for details."
             )
 
-    def force_local_scan(self):
+    def force_local_scan(self) -> None:
         """
         Force an immediate local scan.
 
@@ -203,7 +208,7 @@ class ScanManager:
         """
         self.__local_scan_process.force_scan()
 
-    def force_remote_scan(self):
+    def force_remote_scan(self) -> None:
         """
         Force an immediate remote scan.
 

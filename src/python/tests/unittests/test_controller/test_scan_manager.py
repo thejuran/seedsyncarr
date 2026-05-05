@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from controller import ScanManager
+from controller import ScanManager, ScannerProcessDiedError
 
 
 class TestScanManager(unittest.TestCase):
@@ -241,8 +241,6 @@ class TestScanManager(unittest.TestCase):
         call_kwargs = mock_remote_scanner.call_args.kwargs
         self.assertIsNone(call_kwargs['remote_password'])
 
-
-
     @patch('controller.scan_manager.ScannerProcess')
     @patch('controller.scan_manager.ActiveScanner')
     @patch('controller.scan_manager.LocalScanner')
@@ -251,8 +249,6 @@ class TestScanManager(unittest.TestCase):
             self, mock_remote_scanner, mock_local_scanner,
             mock_active_scanner, mock_scanner_process):
         """Test that propagate_exceptions raises when a scanner process dies."""
-        from controller.scan_manager import ScannerProcessDiedError
-
         # Create distinct mock processes
         mock_active_process = MagicMock()
         mock_local_process = MagicMock()
@@ -270,9 +266,8 @@ class TestScanManager(unittest.TestCase):
         mock_local_process.is_alive.return_value = True
         mock_active_process.is_alive.return_value = True
 
-        with self.assertRaises(ScannerProcessDiedError) as ctx:
+        with self.assertRaises(ScannerProcessDiedError):
             manager.propagate_exceptions()
-        self.assertIn("RemoteScanner", str(ctx.exception))
 
     @patch('controller.scan_manager.ScannerProcess')
     @patch('controller.scan_manager.ActiveScanner')
@@ -282,15 +277,28 @@ class TestScanManager(unittest.TestCase):
             self, mock_remote_scanner, mock_local_scanner,
             mock_active_scanner, mock_scanner_process):
         """Test that propagate_exceptions does not raise when all processes are alive."""
-        mock_process = MagicMock()
-        mock_process.is_alive.return_value = True
-        mock_scanner_process.return_value = mock_process
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+
+        mock_active_process.is_alive.return_value = True
+        mock_local_process.is_alive.return_value = True
+        mock_remote_process.is_alive.return_value = True
+
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
 
         manager = ScanManager(self.mock_context, self.mock_mp_logger)
         manager.start()
 
         # Should not raise
         manager.propagate_exceptions()
+
+        # Verify is_alive was checked on each distinct process
+        mock_active_process.is_alive.assert_called_once()
+        mock_local_process.is_alive.assert_called_once()
+        mock_remote_process.is_alive.assert_called_once()
 
     @patch('controller.scan_manager.ScannerProcess')
     @patch('controller.scan_manager.ActiveScanner')
