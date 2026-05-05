@@ -1,7 +1,13 @@
 from typing import List, Optional, Tuple
 
-from common import Context, MultiprocessingLogger
+from common import Context, MultiprocessingLogger, AppError
 from .scan import ScannerProcess, ScannerResult, ActiveScanner, LocalScanner, RemoteScanner
+
+
+class ScannerProcessDiedError(AppError):
+    """Raised when a scanner process has died unexpectedly without reporting an exception."""
+    pass
+
 
 class ScanManager:
     """
@@ -14,6 +20,7 @@ class ScanManager:
     - Updating active file tracking
     - Exception propagation
     - Force scan triggers
+    - Health monitoring (detecting dead processes)
 
     Thread-safety: The scanner processes run in separate processes and communicate
     via multiprocessing queues, which are inherently thread-safe. The ScanManager
@@ -138,15 +145,54 @@ class ScanManager:
         """
         Propagate any exceptions from scanner processes to the caller.
 
+        Also checks that all scanner processes are still alive. If a process
+        has died without reporting an exception (e.g., killed by OOM or SIGKILL),
+        raises ScannerProcessDiedError.
+
         Should be called periodically to detect and re-raise any errors
         that occurred in the scanner processes.
 
         Raises:
             Any exception that occurred in a scanner process.
+            ScannerProcessDiedError if a process died without reporting an error.
         """
         self.__active_scan_process.propagate_exception()
         self.__local_scan_process.propagate_exception()
         self.__remote_scan_process.propagate_exception()
+
+        # Health check: detect processes that died without putting an exception
+        # on the queue (e.g., SIGKILL, OOM killer, segfault).
+        if self.__started:
+            self._check_process_health()
+
+    def _check_process_health(self):
+        """
+        Verify all scanner processes are still alive.
+
+        If a process has died without reporting an exception via the exception
+        queue, this raises ScannerProcessDiedError so the controller can
+        handle the failure (e.g., restart or shut down gracefully).
+
+        This catches the case where a process is killed externally (OOM, SIGKILL)
+        and no exception reaches the parent process.
+        """
+        dead_processes = []
+        if not self.__remote_scan_process.is_alive():
+            dead_processes.append("RemoteScanner")
+        if not self.__local_scan_process.is_alive():
+            dead_processes.append("LocalScanner")
+        if not self.__active_scan_process.is_alive():
+            dead_processes.append("ActiveScanner")
+
+        if dead_processes:
+            names = ", ".join(dead_processes)
+            self.logger.error(
+                "Scanner process(es) died unexpectedly: {}".format(names)
+            )
+            raise ScannerProcessDiedError(
+                "Scanner process(es) died unexpectedly without reporting an error: {}. "
+                "Possible causes: OOM kill, SIGKILL, or unhandled OS-level failure.".format(names)
+            )
 
     def force_local_scan(self):
         """

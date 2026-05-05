@@ -527,21 +527,21 @@ class TestControllerFeedModelBuilder(BaseControllerTestCase):
     """Tests for Controller._feed_model_builder()."""
 
     def test_remote_scan_sets_remote_files(self):
-        remote_scan = MagicMock()
+        remote_scan = MagicMock(failed=False)
         self.controller._feed_model_builder(
             remote_scan, None, None, None, None, []
         )
         self.mock_model_builder.set_remote_files.assert_called_once_with(remote_scan.files)
 
     def test_local_scan_sets_local_files(self):
-        local_scan = MagicMock()
+        local_scan = MagicMock(failed=False)
         self.controller._feed_model_builder(
             None, local_scan, None, None, None, []
         )
         self.mock_model_builder.set_local_files.assert_called_once_with(local_scan.files)
 
     def test_active_scan_sets_active_files(self):
-        active_scan = MagicMock()
+        active_scan = MagicMock(failed=False)
         self.controller._feed_model_builder(
             None, None, active_scan, None, None, []
         )
@@ -605,6 +605,27 @@ class TestControllerFeedModelBuilder(BaseControllerTestCase):
         self.assertIn("file_b", self.persist.extracted_file_names)
         self.mock_model_builder.set_extracted_files.assert_called_once()
 
+
+    def test_failed_remote_scan_does_not_set_remote_files(self):
+        remote_scan = MagicMock(failed=True)
+        self.controller._feed_model_builder(
+            remote_scan, None, None, None, None, []
+        )
+        self.mock_model_builder.set_remote_files.assert_not_called()
+
+    def test_failed_local_scan_does_not_set_local_files(self):
+        local_scan = MagicMock(failed=True)
+        self.controller._feed_model_builder(
+            None, local_scan, None, None, None, []
+        )
+        self.mock_model_builder.set_local_files.assert_not_called()
+
+    def test_failed_active_scan_does_not_set_active_files(self):
+        active_scan = MagicMock(failed=True)
+        self.controller._feed_model_builder(
+            None, None, active_scan, None, None, []
+        )
+        self.mock_model_builder.set_active_files.assert_not_called()
 
 class TestControllerDetectAndTrackQueued(BaseControllerTestCase):
     """Tests for Controller._detect_and_track_queued()."""

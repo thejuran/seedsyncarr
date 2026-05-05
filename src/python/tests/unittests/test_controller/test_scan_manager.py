@@ -242,5 +242,72 @@ class TestScanManager(unittest.TestCase):
         self.assertIsNone(call_kwargs['remote_password'])
 
 
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_propagate_exceptions_raises_when_process_dies(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """Test that propagate_exceptions raises when a scanner process dies."""
+        from controller.scan_manager import ScannerProcessDiedError
+
+        # Create distinct mock processes
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        manager.start()
+
+        # Simulate remote scanner process dying
+        mock_remote_process.is_alive.return_value = False
+        mock_local_process.is_alive.return_value = True
+        mock_active_process.is_alive.return_value = True
+
+        with self.assertRaises(ScannerProcessDiedError) as ctx:
+            manager.propagate_exceptions()
+        self.assertIn("RemoteScanner", str(ctx.exception))
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_propagate_exceptions_no_error_when_all_alive(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """Test that propagate_exceptions does not raise when all processes are alive."""
+        mock_process = MagicMock()
+        mock_process.is_alive.return_value = True
+        mock_scanner_process.return_value = mock_process
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        manager.start()
+
+        # Should not raise
+        manager.propagate_exceptions()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_propagate_exceptions_skips_health_check_when_not_started(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """Test that health check is skipped when manager is not started."""
+        mock_process = MagicMock()
+        mock_process.is_alive.return_value = False
+        mock_scanner_process.return_value = mock_process
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        # NOT started
+
+        # Should not raise because health check is skipped
+        manager.propagate_exceptions()
 if __name__ == '__main__':
     unittest.main()

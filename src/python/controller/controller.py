@@ -427,11 +427,11 @@ class Controller:
             extract_statuses: Current extract statuses, or None.
             extracted_results: List of completed extraction results.
         """
-        if remote_scan is not None:
+        if remote_scan is not None and not remote_scan.failed:
             self.__model_builder.set_remote_files(remote_scan.files)
-        if local_scan is not None:
+        if local_scan is not None and not local_scan.failed:
             self.__model_builder.set_local_files(local_scan.files)
-        if active_scan is not None:
+        if active_scan is not None and not active_scan.failed:
             self.__model_builder.set_active_files(active_scan.files)
         if lftp_statuses is not None:
             self.__model_builder.set_lftp_statuses(lftp_statuses)
