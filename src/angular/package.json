@@ -61,6 +61,7 @@
     "typescript-eslint": "^8.59.1"
   },
   "overrides": {
+    "ip-address": "^10.2.0",
     "undici": "^7.24.0",
     "lodash": "^4.18.0",
     "vite": "^7.3.2",
