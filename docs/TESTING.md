@@ -91,6 +91,14 @@ cd src/e2e
 npx playwright test
 ```
 
+### Release Metadata Verifier
+
+```bash
+npm run test:release-metadata
+```
+
+This focused Node test suite covers the release metadata guard used by tag publishing workflows.
+
 ---
 
 ## Writing New Tests
@@ -147,10 +155,11 @@ Tests are run in the **CI** workflow (`.github/workflows/ci.yml`) on every push 
 
 | Job | Trigger | Command |
 |-----|---------|---------|
+| `unittests-release-metadata` | push/PR to `main` | `npm run test:release-metadata` |
 | `unittests-python` | push/PR to `main` | `make run-tests-python` |
 | `unittests-angular` | push/PR to `main` | `make run-tests-angular` (15-minute timeout) |
 | `e2etests-docker-image` | after Docker image is built | `make run-tests-e2e` (runs on both `amd64` and `arm64`) |
 
-The Docker image build (`build-docker-image`) depends on both unit test jobs passing. End-to-end tests are gated behind a successful image build and run in parallel on `ubuntu-latest` (amd64) and `ubuntu-24.04-arm` (arm64).
+The Docker image build (`build-docker-image`) depends on the Python, Angular, and release metadata unit test jobs, both lint jobs, and the release metadata guard. On non-tag runs the guard completes as a no-op; on `v*` tag runs it verifies release metadata before release-capable jobs continue. End-to-end tests are gated behind a successful image build and run in parallel on `ubuntu-latest` (amd64) and `ubuntu-24.04-arm` (arm64).
 
 In CI, Playwright retries failing tests up to 2 times and uses a 10-second assertion timeout (vs 5 seconds locally). Screenshots are captured on failure; traces are saved on first retry.

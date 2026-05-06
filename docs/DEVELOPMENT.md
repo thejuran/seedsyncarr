@@ -66,6 +66,30 @@ make docker-image STAGING_REGISTRY=localhost:5000 STAGING_VERSION=dev
 | `npm run lint` | Lint all TypeScript source files with ESLint |
 | `npm run e2e` | Run Playwright end-to-end tests |
 
+### Root scripts
+
+| Command | Description |
+|---|---|
+| `npm run verify:release-metadata -- <version>` | Verify release metadata matches a release version or tag, for example `1.2.2` or `v1.2.2` |
+| `npm run test:release-metadata` | Run focused unit tests for the release metadata verifier |
+
+### Release metadata guard
+
+Before publishing a release tag, ensure the app-facing release metadata matches the tag:
+
+```bash
+npm run verify:release-metadata -- 1.2.2
+```
+
+The tag release workflow runs this guard automatically before Docker image, GitHub Release, and PyPI publishing jobs. The guard verifies:
+
+- `CHANGELOG.md` has a section for the release version.
+- `release-notes.md` keeps the `{{VERSION}}` placeholder and links to `CHANGELOG.md` for generated GitHub release bodies.
+- root `package.json` matches the release version.
+- `src/angular/package.json` and both root version fields in `src/angular/package-lock.json` match the release version.
+
+`src/python/pyproject.toml` is intentionally not part of this guard because the PyPI release job stamps it from the git tag immediately before building the Python package.
+
 ## Code Style
 
 ### Python

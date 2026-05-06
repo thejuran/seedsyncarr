@@ -1,5 +1,9 @@
 {
   "version": "1.2.2",
+  "scripts": {
+    "verify:release-metadata": "node scripts/verify-release-metadata.mjs",
+    "test:release-metadata": "node --test scripts/verify-release-metadata.test.mjs"
+  },
   "devDependencies": {
     "puppeteer": "^24.42.0"
   },
