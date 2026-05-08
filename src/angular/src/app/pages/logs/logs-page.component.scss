@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use '../../common/common' as *;
 
 // Page-specific semantic colors — these are NOT in the shared palette.
@@ -357,7 +358,7 @@ $error: #c45b5b;
     }
 
     &--error {
-        color: lighten($error, 20%);
+        color: color.adjust($error, $lightness: 20%);
         font-weight: 500;
     }
 

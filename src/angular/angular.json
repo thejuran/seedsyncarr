@@ -35,12 +35,22 @@
               "src/assets"
             ],
             "styles": [
-              "node_modules/font-awesome/scss/font-awesome.scss",
+              "node_modules/font-awesome/css/font-awesome.css",
               "node_modules/@phosphor-icons/web/src/regular/style.css",
               "node_modules/@phosphor-icons/web/src/bold/style.css",
               "node_modules/@phosphor-icons/web/src/fill/style.css",
               "src/styles.scss"
             ],
+            "stylePreprocessorOptions": {
+              "sass": {
+                "silenceDeprecations": [
+                  "import",
+                  "global-builtin",
+                  "color-functions",
+                  "if-function"
+                ]
+              }
+            },
             "scripts": [
               "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
             ],
@@ -94,12 +104,22 @@
             "tsConfig": "src/tsconfig.spec.json",
             "karmaConfig": "karma.conf.js",
             "styles": [
-              "node_modules/font-awesome/scss/font-awesome.scss",
+              "node_modules/font-awesome/css/font-awesome.css",
               "node_modules/@phosphor-icons/web/src/regular/style.css",
               "node_modules/@phosphor-icons/web/src/bold/style.css",
               "node_modules/@phosphor-icons/web/src/fill/style.css",
               "src/styles.scss"
             ],
+            "stylePreprocessorOptions": {
+              "sass": {
+                "silenceDeprecations": [
+                  "import",
+                  "global-builtin",
+                  "color-functions",
+                  "if-function"
+                ]
+              }
+            },
             "scripts": [
               "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
             ],
