@@ -1,9 +1,18 @@
-Scanner process health check hardening — failed scans no longer clear transfer state, and scanner shutdown/death handling is now explicit and clean.
+Security and maintenance update for SeedSyncarr.
 
-### Fixed
+This release updates the bundled Python HTTP dependency stack to address a high-severity urllib3 advisory affecting compressed streaming responses. SeedSyncarr does not appear to use the affected streaming paths directly, but published Docker/PyPI builds now include the patched dependency.
 
-- Failed remote, local, or active scans are ignored when feeding the model builder, preserving visible transfer state through transient scan failures.
-- Scanner dead-process detection now avoids false error reports during shutdown and terminates scanner subprocesses after unexpected failures.
-- User-facing scanner failure messages no longer expose internal diagnostic details.
+No configuration changes or migrations are required.
+
+### Security
+
+- Updated urllib3 to 2.7.0 to address GHSA-mf9v-mfxr-j63j / CVE-2026-44432.
+
+### Changed
+
+- Refreshed frontend and Python runtime dependencies, including timezone data.
+- Updated frontend build dependencies and resolved dependency advisory coverage in the web UI toolchain.
+- Improved release validation so future published versions are checked against their release metadata before publishing.
+
 
 **Full changelog:** https://github.com/thejuran/seedsyncarr/blob/v{{VERSION}}/CHANGELOG.md

@@ -4,6 +4,18 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.3] - 2026-05-11
+
+### Security
+
+- Updated `urllib3` to 2.7.0 to address GHSA-mf9v-mfxr-j63j / CVE-2026-44432.
+
+### Changed
+
+- Refreshed frontend and Python runtime dependencies, including timezone data.
+- Updated frontend build dependencies and resolved dependency advisory coverage in the web UI toolchain.
+- Improved release validation so future published versions are checked against their release metadata before publishing.
+
 ## [1.2.2] - 2026-05-05
 
 ### Fixed
@@ -111,6 +123,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - API token authentication (Bearer tokens)
 - Security hardening: HMAC webhooks, CSP, DNS rebinding prevention, credential redaction
 
+[1.2.3]: https://github.com/thejuran/seedsyncarr/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/thejuran/seedsyncarr/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/thejuran/seedsyncarr/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/thejuran/seedsyncarr/compare/v1.1.2...v1.2.0
