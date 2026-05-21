@@ -4,6 +4,13 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.4] - 2026-05-20
+
+### Changed
+
+- Refreshed frontend and Python dependencies, including Angular 21.2.13 patch updates, `zone.js` 0.16.2, `requests` 2.34.2, and `patool` 4.0.5.
+- Updated development tooling: Puppeteer 25, Playwright 1.60, TypeScript ESLint 8.59.4, ESLint 10.4, and Ruff 0.15.13.
+
 ## [1.2.3] - 2026-05-11
 
 ### Security
