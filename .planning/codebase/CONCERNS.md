@@ -1,264 +1,341 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-02-03
+**Analysis Date:** 2026-05-26
 
 ## Tech Debt
 
-**Deprecated distutils import in config module:**
-- Issue: `from distutils.util import strtobool` is used for boolean parsing. The `distutils` module was deprecated in Python 3.10 and removed in Python 3.12.
-- Files: `src/python/common/config.py:7`
-- Impact: Will fail in Python 3.12+. Current pyproject.toml constrains to `<3.13`, but this creates a hard migration blocker.
-- Fix approach: Replace with custom boolean parsing or use a third-party library like `marshmallow` or implement a simple replacement.
-  ```python
-  # Instead of: bool(strtobool(value))
-  # Use: value.lower() in ('true', '1', 'yes', 'on')
-  ```
+**Mock-model toggle hardcoded in production service:**
+- Issue: `USE_MOCK_MODEL` private boolean lives as a class field in production code rather than as a build-time environment flag.
+- Files: `src/angular/src/app/services/files/view-file.service.ts:71`, `src/angular/src/app/services/files/mock-model-files.ts`
+- Impact: Toggling requires a code edit and rebuild. The mock dataset (`screenshot-model-files.ts`, `mock-model-files.ts`) is bundled into production output instead of being tree-shaken via environment branching.
+- Fix approach: Move the toggle into `src/angular/src/environments/environment.ts` and import the flag from there. Use `fileReplacements` so production builds drop the mock data entirely.
 
-**Large monolithic controller class:**
-- Issue: `src/python/controller/controller.py` is 756 lines. While managers have been extracted, the controller still coordinates complex state and interactions.
-- Files: `src/python/controller/controller.py`
-- Impact: Difficult to test all edge cases, hard to maintain error handling logic consistently.
-- Fix approach: Further extract pattern matching/queue processing logic into separate helper classes. Add comprehensive unit tests for command callback patterns.
+**Mutable model state pattern leaks through controller:**
+- Issue: `Controller` calls protected methods `_unfreeze()`, `_set_parent()`, `_replace_children()` on `ModelFile` (which is otherwise frozen/immutable). The "controller owns the freeze lifecycle" comment acknowledges this is intentional protected-API access.
+- Files: `src/python/controller/controller.py:355-381`, `src/python/model/file.py:74-78`
+- Impact: The freeze contract is fragile. A future contributor mutating a ModelFile outside the controller will silently break thread-safety assumptions documented in `model/file.py:17`.
+- Fix approach: Replace the freeze/unfreeze pattern with a builder/factory (`ModelFile.with_import_status(status)` returns a new frozen copy). Eliminates protected-access calls and makes immutability a true invariant.
 
-**Large LFTP job status parser:**
-- Issue: `src/python/lftp/job_status_parser.py` is 761 lines with complex regex patterns and state machines for parsing LFTP output.
-- Files: `src/python/lftp/job_status_parser.py`
-- Impact: Difficult to understand regex patterns, hard to extend with new LFTP output formats. Changes to parsing logic are high-risk.
-- Fix approach: Split parser into separate classes per job type (PGET parser, Mirror parser, etc.). Add integration tests that parse real LFTP output.
+**`InnerConfig` global property metadata map:**
+- Issue: `InnerConfig.__prop_addon_map` is a class-level `OrderedDict` shared across all config subclasses (General, Lftp, Controller, etc.). The TODO-style comment in code asks "Is there a way for each concrete class to do this separately?"
+- Files: `src/python/common/config.py:137-145`
+- Impact: Property ordering across sections relies on import order and class definition order. Test isolation is impossible without monkeypatching the class attribute.
+- Fix approach: Move metadata into a per-class `__init_subclass__` hook, or convert to a class-level dict keyed by `(cls, name)`.
 
-**Model builder complexity:**
-- Issue: `src/python/controller/model_builder.py` is 573 lines building the complete file model from scanner/LFTP data.
-- Files: `src/python/controller/model_builder.py`
-- Impact: Complex merge logic between remote/local/LFTP state is hard to understand and verify.
-- Fix approach: Split into smaller modules (RemoteFileBuilder, LocalFileBuilder, StateReconciler). Add focused unit tests for each reconciliation scenario.
+**Per-action HTTP handlers duplicate the same scaffold:**
+- Issue: `__handle_action_queue`, `__handle_action_stop`, `__handle_action_extract`, `__handle_action_delete_local`, `__handle_action_delete_remote` all repeat the same 15-line pattern (unquote → guard → callback → wait → response).
+- Files: `src/python/web/handler/controller.py:76-181`
+- Impact: Bug fixes (e.g., timeout adjustments) must be applied in five places. Drift risk is real — only the path-guarded actions call `_check_path_safe`.
+- Fix approach: Extract a `_dispatch_command(action, file_name, success_msg, *, guard=False)` helper. The bulk path (`_process_bulk_commands`) already uses a single loop and can share it.
 
-## Known Limitations
+**Duplicate-by-five secret-field walk in `Config`:**
+- Issue: Encrypt and decrypt loops both iterate `_SECRET_FIELD_PATHS` (5 hardcoded tuples) and embed the same `is_ciphertext`/`encrypt_field`/`decrypt_field` choreography.
+- Files: `src/python/common/config.py:19-25`, `src/python/common/config.py:420-498`
+- Impact: Adding a new secret field requires touching the tuple AND verifying both `from_str` and `to_str` branches handle it. Easy to miss.
+- Fix approach: Push field metadata into the `PROP` declaration (e.g. `PROP("api_token", ..., secret=True)`) so the encrypt/decrypt loops discover secrets dynamically.
 
-**Fixed bounded collections may lose data:**
-- Issue: `BoundedOrderedSet` in `src/python/common/bounded_ordered_set.py` has a DEFAULT_MAXLEN of 10,000 items. When this limit is reached, oldest items are silently evicted.
-- Files: `src/python/common/bounded_ordered_set.py:35`, `src/python/controller/controller.py` (usage)
-- Config: `src/python/common/config.py` has `max_tracked_files` config option (default: 10000)
-- Impact: On systems with >10,000 downloaded/extracted files, older files disappear from tracking. Users may not know which files have been silently dropped from the model.
-- Current behavior: Evictions are logged, but users could miss the logs or misunderstand the feature.
-- Safe modification: Document this limitation prominently. Consider adding a warning in the UI when approaching capacity. Allow users to increase `max_tracked_files` in config.
+**Backward-compatibility branches in `Config.from_dict`:**
+- Issue: Eight separate `if "<section>" not in config_dict:` blocks fall back to defaults for older config files (Sonarr, Radarr, AutoDelete, Encryption, webhook_secret, api_token, allowed_hostname, rate_limit).
+- Files: `src/python/common/config.py:515-569`
+- Impact: Each new feature compounds the entrance code. Reading the function requires holding the deprecation timeline in mind.
+- Fix approach: Introduce a `Config.MIGRATIONS = [(version, migrate_fn), ...]` list applied in order. Drop migrations older than N releases as a documented breaking change.
 
-**No validation of SSH key file permissions:**
-- Issue: When `use_ssh_key=true`, the SSH key path is not validated for proper permissions (should be 0600).
-- Files: `src/python/controller/file_operation_manager.py:57-59`
-- Impact: SSH with incorrect key permissions will fail silently or with unclear error messages.
-- Fix approach: Add permission validation when SSH key is configured. Provide clear error message if permissions are wrong.
+**`USE_MOCK_MODEL` companion files shipped in dist:**
+- Issue: `mock-model-files.ts` (192 lines) and `screenshot-model-files.ts` (135 lines) are committed in `services/files/` despite being development-only fixtures.
+- Files: `src/angular/src/app/services/files/mock-model-files.ts`, `src/angular/src/app/services/files/screenshot-model-files.ts`
+- Impact: Production bundles include unused mock data. Source tree mixes test fixtures with production services.
+- Fix approach: Move to `src/angular/src/app/tests/fixtures/` and import only behind the environment-flag check.
 
-**Memory monitoring incomplete on non-Unix systems:**
-- Issue: `src/python/controller/memory_monitor.py` imports `resource` module which doesn't exist on Windows.
-- Files: `src/python/controller/memory_monitor.py:10-15`
-- Impact: Memory monitoring silently disabled on Windows (HAS_RESOURCE=False). No way to detect memory leaks on Windows deployments.
-- Current behavior: Gracefully handled with fallback, but users won't know monitoring is disabled.
-- Fix approach: Add explicit warning log when memory monitoring is unavailable.
+## Known Bugs
+
+**`asyncio` `wait()` swallows premature `Empty` in `MultiprocessingLogger`:**
+- Symptoms: A `queue.Empty` raised from the inner `get(block=False)` ends the inner-loop but does not end the listener-thread iteration; the `except Exception` outer handler captures *any* downstream exception (including programming errors) and shuts down listener silently.
+- Files: `src/python/common/multiprocessing_logger.py:71-83`
+- Trigger: Any unexpected exception inside `self.logger.getChild(record.name).handle(record)` (e.g., a logging filter raising) terminates the entire MP-logger pipeline; child-process logs stop appearing in the main log.
+- Workaround: Restart the service. The exception is captured in `self.__listener_exc_info` and surfaces on `propagate_exception()`.
+
+**`set_property` swallows non-string values that are not properly typed:**
+- Issue: `InnerConfig.set_property` only runs the converter when `type(value) is str`. If a caller passes a non-string value of a wrong type (e.g. an `int` to a `bool` property), the value bypasses conversion and only hits the checker.
+- Files: `src/python/common/config.py:208-218`
+- Trigger: Programmatic config mutation via `inner_config.set_property("debug", 1)` — sets `debug=1` rather than `debug=True`.
+- Workaround: Always pass strings or pre-converted native values from callers.
+
+**ServiceExit-loop relies on broad `except Exception`:**
+- Symptoms: In `Seedsyncarr.run()`, an unexpected exception in the main loop is logged as "Exiting Seedsyncarr" before threads are torn down, regardless of the actual failure mode. The bare `except Exception:` block at line 198 catches both `ServiceExit`/`ServiceRestart` (subclasses of `BaseException` derivatives) and unexpected errors with identical handling.
+- Files: `src/python/seedsyncarr.py:167-223`
+- Trigger: Any unhandled exception that reaches the main thread.
+- Workaround: None — relies on the outer `main()` while-loop to re-raise and exit. Recovery semantics depend on `--exit` arg.
+
+**Bulk command timeouts can leave commands queued in controller:**
+- Issue: When `_process_bulk_commands` times out a per-file wait, the callback is reported as failed to the HTTP client, but the underlying `Controller.Command` is still in the controller's command queue. If the controller eventually processes it, the callback's `on_success`/`on_failure` will fire on a no-longer-referenced object (no-op), but the action (queue/extract/delete) executes anyway.
+- Files: `src/python/web/handler/controller.py:400-415`
+- Trigger: Bulk action against many files when controller is busy; per-file timeout fires for some files while controller is still draining the batch.
+- Workaround: None visible. The action may execute server-side after the client has been told it failed.
 
 ## Security Considerations
 
-**Credentials passed to child processes:**
-- Risk: Remote passwords are passed to LFTP and SSH processes via command-line arguments or environment variables.
-- Files: `src/python/lftp/lftp.py:66`, `src/python/ssh/sshcp.py`, `src/python/controller/file_operation_manager.py:192`
-- Current mitigation: LFTP uses `-u user,password` format (standard LFTP practice). SSH operations use pexpect for interactive password entry or SSH key files.
-- Recommendations:
-  - Verify that `pexpect` doesn't expose passwords in process listing (it shouldn't, but verify)
-  - Document that SSH keys are more secure than passwords
-  - Consider adding credential masking in logs (ensure passwords never appear)
+**`innerHTML` used to build confirmation modal:**
+- Risk: Direct `innerHTML` assignment is an XSS sink. Although every interpolated value is run through `ConfirmModalService.escapeHtml`, this depends on every caller never passing through code paths that bypass the escape.
+- Files: `src/angular/src/app/services/utils/confirm-modal.service.ts:100-116`
+- Current mitigation: A static `escapeHtml` helper escapes `&<>"'` for each of `title`, `body`, button labels and classes before substitution.
+- Recommendations: Replace `innerHTML` with `Renderer2.createElement` + `createText` calls for content nodes. Or render the modal as an actual Angular component (the project already has standalone components) and let Angular's sanitizer/binding handle escaping.
 
-**No HTTPS by default:**
-- Risk: Web UI is served over HTTP without TLS encryption.
-- Files: `src/python/web/web_app.py` (Bottle web framework)
-- Current mitigation: Security docs recommend using a reverse proxy with authentication if exposing to the internet.
-- Recommendations:
-  - Document the security considerations more prominently in README
-  - Consider adding TLS support with self-signed certificate generation
-  - Add warning log if binding to non-localhost addresses
+**API token shipped in HTML response body:**
+- Risk: `WebApp.__index` injects `<meta name="api-token" content="...">` into the SPA shell. Any XSS or local file disclosure exposes the token; the token grants full `/server/*` access.
+- Files: `src/python/web/web_app.py:219-235`, `src/angular/src/app/services/utils/auth.interceptor.ts:10-17`
+- Current mitigation: CSP, `X-Frame-Options: DENY`, HTML escape via `html.escape(api_token, quote=True)`, and `/server/*` Bearer enforcement. Token value is also visible to anyone with browser DevTools access.
+- Recommendations: Document that the homelab/single-user threat model is acceptable. For a future hardened mode, move auth to short-lived session cookies issued by a login endpoint and drop the meta-tag approach.
 
-**Configuration file permissions not validated:**
-- Risk: Config file contains SSH passwords/keys but no permission validation is performed.
-- Files: `src/python/common/config.py`, `src/python/common/persist.py`
-- Impact: If config file has world-readable permissions, credentials are exposed.
-- Fix approach: Add permission check on startup, warn if config is world-readable.
+**SSRF DNS-rebind known limitation:**
+- Risk: `ConfigHandler._validate_url` resolves the hostname at validation time then trusts `requests.get` to resolve again at request time. A DNS rebinding attack can pass validation and still hit a private IP.
+- Files: `src/python/web/handler/config.py:55-85`
+- Current mitigation: Inline docstring acknowledges this limitation; rate-limited to 5 requests/minute on test-connection endpoints (`config.py:31-37`).
+- Recommendations: Accepted risk per code comment ("out of scope for a homelab tool"). For hardening, swap `requests` for a socket-level intercepted HTTP client that validates the resolved IP at connect time (e.g. ssrfpy).
 
-**No input validation on web API parameters:**
-- Risk: File operation endpoints accept file paths without comprehensive validation.
-- Files: `src/python/web/handler/controller.py` (bulk command handler)
-- Current mitigation: Controller validates file existence before executing operations. LFTP/SSH operations are path-constrained to configured remote/local directories.
-- Recommendations:
-  - Document the path restrictions clearly
-  - Add explicit path traversal prevention tests
-  - Validate that requested paths are within allowed directories before reaching LFTP
+**Trust of `requests.json` parsing in webhook path:**
+- Risk: `body = request.json` (via Bottle) reads up to 1 MB (`_WEBHOOK_MAX_BODY_BYTES = 1_048_576`) and parses JSON before HMAC verification when no secret is configured.
+- Files: `src/python/web/handler/webhook.py:90-103`
+- Current mitigation: Body-size cap before reading; HMAC verification when `webhook_secret` is configured (`webhook.py:43-77`).
+- Recommendations: The startup warning (`seedsyncarr.py:372-378`) already warns about the empty-secret case. Consider making `webhook_secret` mandatory when `sonarr.enabled` or `radarr.enabled` is True.
+
+**File-rename / log injection partially mitigated:**
+- Risk: Webhook-supplied file names flow into log lines and SSE events.
+- Files: `src/python/controller/webhook_manager.py:35-38`, `src/python/controller/webhook_manager.py:73-91`
+- Current mitigation: Newline characters are replaced with `\n`/`\r` literals before logging (CWE-117 mitigation explicitly called out in code comments).
+- Recommendations: Audit every other log site that interpolates webhook/user-supplied names — the controller and lftp_manager also log filenames without going through `safe_file_name`.
+
+**Plain HTTP between Angular and Bottle:**
+- Risk: `MyWSGIRefServer` binds to `0.0.0.0` with no TLS support. The api-token meta tag is then served in cleartext.
+- Files: `src/python/web/web_app_job.py:25-45`
+- Current mitigation: None at the application layer. Users are expected to terminate TLS at a reverse proxy (nginx) or restrict access to LAN.
+- Recommendations: Document the expectation in `SECURITY.md`. Optional: detect `X-Forwarded-Proto: https` and emit a startup banner when the proxy chain looks correct.
+
+**Bottle attribute-bypass via `object.__setattr__`:**
+- Risk: `WebApp.__init__` and `WebApp.stop` use `object.__setattr__(self, '_stop_flag', ...)` to bypass Bottle's `__setattr__` (which treats unknown attribute writes as plugin-conflict errors).
+- Files: `src/python/web/web_app.py:75-78`, `src/python/web/web_app.py:206-207`
+- Current mitigation: Comment explains why. Behavior is correct but couples the app to internal Bottle dispatch logic.
+- Recommendations: Migrate to a composition pattern (`self._app = bottle.Bottle()`) so app state can be tracked without bypassing the framework, or wait for Bottle to expose a public extension hook.
 
 ## Performance Bottlenecks
 
-**O(n log n) sorting on every file update:**
-- Problem: ViewFileService sorts entire file list on every update that changes file state.
-- Files: `src/angular/src/app/services/files/view-file.service.ts:49-51`
-- Cause: Immutable list update requires re-sorting. For 10,000 files with frequent state changes, this becomes expensive.
-- Improvement path:
-  1. Use insertion sort for small changes (O(n) instead of O(n log n))
-  2. Batch updates and sort once
-  3. Consider IndexedDB or virtual scrolling for very large file lists
+**`ViewFileService.buildViewFromModelFiles` is O(2N) per tick:**
+- Problem: The diff loop walks both `_prevModelFiles.keySeq()` and `modelFiles.keySeq()` on every update from the SSE stream. The `setComparator` path re-sorts the full list and rebuilds the indices map.
+- Files: `src/angular/src/app/services/files/view-file.service.ts:114-192`, `src/angular/src/app/services/files/view-file.service.ts:278-295`
+- Cause: Acknowledged in code comments ("This is a roughly O(2N) operation on every update, so won't scale well, But should be fine for small models").
+- Improvement path: Subscribe to incremental model events rather than rebuilding from the full map; piggyback on the existing `EVENT_ADDED`/`EVENT_UPDATED`/`EVENT_REMOVED` SSE channel that `ModelFileService` already exposes.
 
-**Model rebuild on every scanner result:**
-- Problem: `ModelBuilder` rebuilds the entire model from scratch when scanner results arrive.
-- Files: `src/python/controller/controller.py` (model rebuild), `src/python/controller/model_builder.py`
-- Cause: Full merge of remote/local/LFTP state on each scanner update cycle.
-- Improvement path:
-  1. Implement incremental model updates (add/remove specific files)
-  2. Batch scanner results and debounce updates
-  3. Profile the rebuild time - if <100ms, may not be worth optimizing
+**LFTP status parsing rebuilds large regex set per parse:**
+- Problem: `LftpJobStatusParser.parse` calls a chain of compiled-but-still-greedy regex matches across the entire `jobs -v` output every poll cycle. Some patterns contain nested `?P<>` alternation and run on tens to hundreds of lines.
+- Files: `src/python/lftp/job_status_parser.py:13-149`, `src/python/lftp/job_status_parser.py:710-748`
+- Cause: LFTP output format constraints — patterns must remain permissive for SFTP variants.
+- Improvement path: Profile under a busy queue with multiple parallel jobs. If hot, switch from regex to a line-prefix dispatch table (pget/mirror/queue/chunk) before regex matching.
 
-**Web API streams without backpressure:**
-- Problem: Streaming endpoints (logs, status) use polling without rate limiting or backpressure handling.
-- Files: `src/python/web/web_app.py:59-61` (STREAM_POLL_INTERVAL_IN_MS = 100ms)
-- Impact: On slow connections, streaming data can accumulate and cause memory pressure.
-- Safe modification: Add configurable stream rate limits. Monitor queue depth in memory monitor.
+**`Model.get_file_names` + `get_file` loop builds new list every API call:**
+- Problem: `_get_model_files` iterates `get_file_names()` and calls `get_file()` for each, returning a new list — happens on every `/server/command/*` request (under the model lock) and once per SSE handler setup.
+- Files: `src/python/controller/controller.py:310-317`
+- Cause: Defensive against external callers; the comment notes "Files are frozen (immutable) after being added to the model, so we can safely return direct references without deep copying."
+- Improvement path: Cache the list inside the model and invalidate on add/remove/update. The lock window for command processing is already a known contention point.
+
+**`Job` thread polls at 500ms regardless of activity:**
+- Problem: Every `Job` (controller + webapp) sleeps `_DEFAULT_SLEEP_INTERVAL_IN_SECS = 0.5` between executes. The controller's `process()` runs even when nothing changed.
+- Files: `src/python/common/job.py:13-47`
+- Cause: Simple polling model.
+- Improvement path: Switch to a condition variable signaled by command queue inserts and SSE events. The 500ms latency floor on commands is unnecessary.
+
+**`StreamQueue` drops oldest events under load:**
+- Problem: `StreamQueue.put` drops events when `maxsize` (default 1000) is reached. The dropped count is logged at every 100th drop only.
+- Files: `src/python/web/utils.py:33-63`
+- Cause: Memory-safety tradeoff for SSE clients that disconnect without unsubscribing.
+- Improvement path: Already monitored via `MemoryMonitor` (`controller.py:151-187`). For high-frequency model updates (large directories), consider coalescing consecutive `UPDATED` events for the same file before queueing.
 
 ## Fragile Areas
 
-**LFTP job status parsing is tightly coupled to LFTP version:**
-- Files: `src/python/lftp/job_status_parser.py`
-- Why fragile: Regex patterns assume specific LFTP output format. Minor LFTP version changes can break parsing.
-- Safe modification:
-  1. Pin LFTP version in Dockerfile/packaging
-  2. Add integration tests with multiple LFTP versions
-  3. Use regex with more flexibility and fallback patterns
-- Test coverage: Job status parser has unit tests but lacks integration tests with actual LFTP output.
+**`Config` property machinery (lambdas + class-level state):**
+- Files: `src/python/common/config.py:118-218`
+- Why fragile: Properties are built with `lambda` closures referencing the parent class via `__prop_addon_map`. Adding a new property requires repeating the pattern correctly in three places (class-level `PROP` declaration, `__init__` initializer to `None`, and entry in `_SECRET_FIELD_PATHS` if secret).
+- Safe modification: Always follow the existing 3-step pattern. Run `tests/integration/test_web/test_handler/test_config.py` and the encryption round-trip suite.
+- Test coverage: Good for happy paths; thin for "what happens if you set the property twice during from_dict" type edge cases.
 
-**State synchronization between multiple managers:**
-- Files: `src/python/controller/controller.py`, `src/python/controller/scan_manager.py`, `src/python/controller/lftp_manager.py`, `src/python/controller/file_operation_manager.py`
-- Why fragile: Controllers coordinates three separate process managers. Race conditions possible if state becomes inconsistent.
-- Safe modification:
-  1. Add invariant checks (e.g., verify file status is consistent across managers)
-  2. Add integration tests that trigger concurrent operations
-  3. Use event sourcing or event-driven architecture to make state changes explicit
-- Test coverage: Managers have unit tests but lack integration tests for concurrent scenarios.
+**`Controller` god-class (1115 lines):**
+- Files: `src/python/controller/controller.py`
+- Why fragile: Owns command queue, model, all scanners (via ScanManager), LFTP manager, file operation manager, webhook manager, memory monitor, and auto-delete timers. Thread safety relies on careful comments around `__model_lock`, `__auto_delete_lock`, and which methods release the lock before subprocess dispatch.
+- Safe modification: Read the multiline docstrings above each method (e.g. `controller.py:823-833` documents why `delete_local` runs outside the lock). Never extend the lock to cover subprocess spawns.
+- Test coverage: Heavy integration coverage in `tests/integration/test_web/`. Unit coverage for auto-delete edge cases is in `test_seedsyncarr.py`.
 
-**Angular file list rendering with large datasets:**
-- Files: `src/angular/src/app/pages/files/file-list.component.ts` (481 lines)
-- Why fragile: Component handles sorting, filtering, selection, pagination, and bulk operations. UI can become unresponsive with 10,000+ files.
-- Safe modification:
-  1. Implement virtual scrolling (CDK virtual scroll)
-  2. Move filtering/sorting to service layer
-  3. Debounce user interactions
-- Test coverage: Good unit test coverage (761-line spec file) but no performance tests.
+**LFTP `pexpect.spawn` and prompt regex:**
+- Files: `src/python/lftp/lftp.py:38-100`
+- Why fragile: The prompt-match regex `lftp {user}@{host}:.*>` depends on lftp's prompt output format; any lftp version that changes prompt formatting silently breaks job control. `__timeout = 180` for command responses, but `pexpect.expect` blocks the whole controller indirectly.
+- Safe modification: Run `tests/integration/test_lftp/` against a real lftp binary before changing any pexpect interaction. Never change `_SET_COMMAND_AT_EXIT = "cmd:at-exit"` value — it prevents zombie processes.
+- Test coverage: `tests/integration/test_lftp/test_lftp.py` and `test_lftp_protocol.py` exercise the protocol against a real lftp.
 
-**HTTP status code handling inconsistent in web handlers:**
-- Files: `src/python/web/handler/controller.py`, `src/python/web/handler/config.py`, `src/python/web/handler/*.py`
-- Why fragile: Some endpoints return 400 for validation, others 409 for state conflicts. Inconsistent status codes make client error handling unpredictable.
-- Safe modification: Define and document HTTP status code semantics. Add middleware to normalize error responses.
-- Test coverage: Web handlers have tests but lack comprehensive error scenario coverage.
+**`SshCp` brittle expect-list:**
+- Files: `src/python/ssh/sshcp.py:74-130`
+- Why fragile: 9 expect-string alternatives mapped to numeric indices. SSH client message text varies by OpenSSH version; the parser is best-effort.
+- Safe modification: Add new error strings to the end of the expect list and assign new indices in the `if i in {...}` branches. Don't reorder existing entries.
+- Test coverage: Limited — most tests mock `Sshcp` rather than exercising the expect loop.
+
+**Auto-delete BFS + coverage check sequence:**
+- Files: `src/python/controller/controller.py:823-975`
+- Why fragile: A 150-line method with multiple early-return paths under three different locks (`__auto_delete_lock`, `__model_lock`) and an in-band BFS bounded by `_AUTO_DELETE_BFS_NODE_LIMIT = 10_000`. WR-02 comment block (`controller.py:960-970`) documents a TOCTOU mitigation that depends on dispatch happening BEFORE `imported_children.pop` releases.
+- Safe modification: Preserve the relative order of `pop` and `delete_local` dispatch. The lock-held window must include the coverage check.
+- Test coverage: Phase 75 (GH #19) tests cover D-01 through D-16 decision points.
+
+**`MyWSGIHandler` chunk-encoding override:**
+- Files: `src/python/web/web_app_job.py:47-54`
+- Why fragile: Subclasses `paste.httpserver.WSGIHandler` to coerce `str` chunks to `bytes`. The comment says "fix a bug in Paste http server" but doesn't link to the bug. If Paste fixes the upstream issue, this override could subtly change behavior.
+- Safe modification: Keep the override until Paste is replaced.
+- Test coverage: SSE integration tests in `tests/integration/test_web/test_handler/test_stream_*.py` exercise the chunked encoding path.
+
+**Bulk action queueing + waiting model:**
+- Files: `src/python/web/handler/controller.py:317-448`
+- Why fragile: Per-file timeout (`_BULK_TIMEOUT_PER_FILE = 5.0`) and aggregate cap (`_BULK_MAX_TIMEOUT = 300.0`) are tuned empirically. Cancellation isn't supported — once queued, a command will execute even after the HTTP client gives up.
+- Safe modification: If timeouts are raised, ensure rate-limit window (`max_requests=10, window_seconds=60.0` at `controller.py:73`) still keeps total in-flight commands bounded.
+- Test coverage: `tests/integration/test_web/test_handler/test_controller.py` covers bulk action paths.
 
 ## Scaling Limits
 
-**Bounded file tracking (10,000 files default):**
-- Current capacity: 10,000 downloaded/extracted files tracked by default
-- Limit: When exceeded, oldest files are silently evicted
-- Scaling path:
-  1. Increase `max_tracked_files` in config
-  2. Consider database-backed storage for larger deployments
-  3. Implement pagination/archival of old file records
+**Tracked-files cap of 10,000:**
+- Current capacity: `DEFAULT_MAX_TRACKED_FILES = 10000` for each of downloaded/extracted/stopped/imported sets.
+- Limit: At cap, oldest entries are LRU-evicted. A library with >10k completed downloads will lose the earliest "do not re-queue" signal first.
+- Files: `src/python/controller/controller_persist.py:25`, `src/python/common/bounded_ordered_set.py:32`
+- Scaling path: Configurable via `Controller.max_tracked_files` setting. Increasing it linearly increases memory (~200 bytes/entry × N) and persist-file write cost (full rewrite on each persist cycle).
 
-**Scanner process memory usage with large remote directories:**
-- Current capacity: Scanner can handle typical 100k+ file remote directories (tested)
-- Limit: Very large directories (1M+ files) may consume significant memory
-- Scaling path:
-  1. Implement incremental scanning (scan subdirectories in batches)
-  2. Add memory limits to scanner processes
-  3. Implement database-backed file tree for remote filesystem
+**Bulk request file cap of 1000:**
+- Current capacity: `_MAX_BULK_FILES = 1000` for `/server/command/bulk`.
+- Limit: Hard 400 response above 1000. Sonarr/Radarr cannot bulk-trigger more than 1000 episode imports in one webhook batch (though webhooks are per-import in practice).
+- Files: `src/python/web/handler/controller.py:207`
+- Scaling path: Raise the cap and adjust `_BULK_TIMEOUT_PER_FILE`. Memory is bounded since responses are streamed in single response.
 
-**Web API endpoint rate limiting:**
-- Current capacity: Single-threaded Bottle server with paste multithreading
-- Limit: No explicit rate limiting; heavy API usage can starve other requests
-- Scaling path:
-  1. Add request queuing/rate limiting middleware
-  2. Implement API caching for frequently accessed endpoints
-  3. Consider async/await architecture for I/O-bound operations
+**Auto-delete BFS at 10,000 nodes:**
+- Current capacity: `_AUTO_DELETE_BFS_NODE_LIMIT = 10_000` per pack-guard traversal.
+- Limit: A pack-root with >10k descendants is skipped on every Timer fire with a warning. The user has no way to bypass.
+- Files: `src/python/controller/controller.py:45`
+- Scaling path: Raise the cap if real-world packs exceed it. Consider switching to iterative traversal with yield-points so a single pack doesn't monopolize the controller thread.
+
+**`StreamQueue` dropping at 1000 events:**
+- Current capacity: `DEFAULT_QUEUE_MAXSIZE = 1000` per stream subscriber.
+- Limit: Slow SSE clients (laggy reverse proxies, browser tabs in background) drop oldest events first. Drops are logged every 100th.
+- Files: `src/python/web/utils.py:8`
+- Scaling path: Increase cap or add backpressure (close the stream on too many drops).
+
+**Per-root child cap of 500:**
+- Current capacity: `DEFAULT_MAX_CHILDREN_PER_ROOT = 500` for `imported_children` tracking.
+- Limit: A pack with >500 imported children loses oldest child tracking; auto-delete coverage check may pass falsely after eviction.
+- Files: `src/python/controller/controller_persist.py:31`
+- Scaling path: Configurable raise. Multi-season anime packs are the realistic concern.
 
 ## Dependencies at Risk
 
-**pexpect for LFTP/SSH interaction:**
-- Risk: `pexpect` (^4.9.0) is stable but relatively niche. Regex-based terminal interaction is fragile.
-- Impact: Updates to pexpect or LFTP output format can break interactive command handling.
-- Migration plan: If pexpect becomes unmaintained, consider switching to `paramiko` (pure Python SSH) or `asyncio`-based subprocess management. This would be a major refactoring.
+**jQuery 4.x in Angular app:**
+- Risk: jQuery 4.0 is a major version recently released; ecosystem compat (e.g. Bootstrap 5 plugins) targets jQuery 3.x. Listed as direct dep but no usages found in source — only Bootstrap consumes it.
+- Files: `src/angular/package.json:31`
+- Impact: Bundle size penalty + version-mismatch fragility against Bootstrap 5.3 plugins.
+- Migration plan: Bootstrap 5 no longer requires jQuery. Audit `_bootstrap-overrides.scss` and the `@popperjs/core` dep to confirm jQuery can be dropped entirely.
 
-**paste for WSGI multithreading:**
-- Risk: `paste` (^3.10.1) is an older WSGI server. Modern alternatives include `gunicorn`, `waitress`, or `uvicorn`.
-- Impact: Limited performance and no async support. Single-threaded bottleneck for high-concurrency scenarios.
-- Migration plan: Evaluate `waitress` (easier drop-in replacement) or refactor to async with `uvicorn`/`hypercorn`.
+**`font-awesome` 4.7 (legacy):**
+- Risk: Font Awesome 4.x is end-of-life (FA5 was released in 2018). Project also depends on `@phosphor-icons/web` 2.x, indicating an in-progress migration.
+- Files: `src/angular/package.json:29`, `src/angular/package.json:24`
+- Impact: Duplicate icon libraries shipped; FA4 receives no fixes.
+- Migration plan: Inventory remaining `fa-*` class usages in HTML templates and replace with Phosphor equivalents, then drop the FA4 dep.
 
-**Bottle web framework:**
-- Risk: Bottle (^0.13.4) is a micro-framework with limited feature set. Not ideal for growing applications.
-- Impact: No built-in request validation, no automatic OpenAPI generation, limited middleware ecosystem.
-- Migration plan: For significant scaling, consider FastAPI (async, Pydantic validation) or Flask with extensions. This would require rewriting most web handlers.
+**`css-element-queries` (unmaintained):**
+- Risk: `css-element-queries` had its last release in 2019. Now superseded by `ResizeObserver` (cross-browser available since 2020).
+- Files: `src/angular/package.json:28`
+- Impact: Carries polyfills/legacy code; small bundle penalty.
+- Migration plan: Search for usages and replace with native `ResizeObserver`. If unused, drop the dep.
 
-**distutils deprecation (high priority):**
-- Risk: Python 3.12 removes distutils entirely
-- Impact: Code will not run on Python 3.12+
-- Migration plan: Implement custom boolean parsing or upgrade to Python 3.11 max until distutils replacement is available (see Tech Debt section)
+**`paste` HTTP server (low-activity upstream):**
+- Risk: `paste` (used via `paste.httpserver`) has very low release cadence and was originally an early-2000s WSGI server. SSE-friendly but lacks HTTP/2 and modern TLS.
+- Files: `src/python/web/web_app_job.py:6-7`, `src/python/pyproject.toml:13`
+- Impact: Couples the project to a server that may not be maintained long-term. `MyWSGIHandler` already monkey-patches a bug fix.
+- Migration plan: Evaluate `waitress` or `gunicorn` with SSE support. Behavior-test the streaming path heavily.
+
+**`bottle` 0.13.x:**
+- Risk: Bottle is a tiny single-file framework with infrequent releases. Project pins `>=0.13.4` and uses internal hook semantics (`hook('before_request')`, `hook('after_request')`) that may shift across major versions.
+- Files: `src/python/pyproject.toml:12`, `src/python/web/web_app.py:83-164`
+- Impact: Upgrade risk for security patches.
+- Migration plan: Pin upper bound. Evaluate `flask` or `starlette` for a future rewrite if bottle stalls.
+
+**`pexpect`-driven LFTP and SSH:**
+- Risk: Whole product depends on pexpect's prompt-driven interaction with binaries that are not API-stable (lftp prompt format, OpenSSH message strings).
+- Files: `src/python/lftp/lftp.py`, `src/python/ssh/sshcp.py`
+- Impact: Distro-version-specific failures.
+- Migration plan: No good Python SFTP library matches lftp's feature set (mirror with parallel jobs, queue-parallel). Continue treating lftp as an external runtime requirement; document version range in `SECURITY.md`/`README.md`.
+
+**`patoolib` for archive extraction:**
+- Risk: Pins `>=4.0.3`; v4 was a major rewrite. Catches `patoolib.util.PatoolError` broadly.
+- Files: `src/python/controller/extract/extract.py`, `src/pyinstaller_hooks/hook-patoolib.py`
+- Impact: A future patool API change in `get_archive_format` return shape would break `is_archive`. Already requires a PyInstaller hook for packaging.
+- Migration plan: Pin upper bound (`<5`). Audit test coverage of `extract.py`.
 
 ## Missing Critical Features
 
-**No persistent job queue:**
-- Problem: LFTP job queue is in-memory. If application crashes, queued transfers are lost.
-- Blocks: Can't guarantee all queued transfers will eventually complete (reliability issue).
-- Workaround: User must manually re-queue files. Consider adding config to save job queue to disk.
+**No structured cancellation for queued bulk commands:**
+- Problem: Once a `Controller.Command` is enqueued, there is no way to cancel it. Even when the HTTP handler times out (`_BULK_TIMEOUT_PER_FILE = 5.0`), the underlying action will still run when the controller drains.
+- Blocks: Reliable rate-limited bulk operations against many files. Race recovery on controller restart.
 
-**No automatic retry for failed transfers:**
-- Problem: Failed LFTP transfers don't automatically retry. User must manually restart.
-- Blocks: Large-scale, long-running transfers are unreliable.
-- Workaround: Manual retry through UI. Consider adding auto-retry config with exponential backoff.
+**No TLS termination guidance baked into the product:**
+- Problem: Project ships with `0.0.0.0` bind and api-token in HTML body. No documented deployment story for HTTPS.
+- Blocks: Safe internet exposure. Users must DIY a reverse proxy.
 
-**No bandwidth throttling:**
-- Problem: LFTP rate limiting is configured but not adjustable from UI. Requires config file edit.
-- Blocks: Can't dynamically adjust transfer speed without stopping service.
-- Workaround: Edit config file and restart. Consider adding UI controls for dynamic rate limiting.
+**No persistent settings audit log:**
+- Problem: Settings can be changed via `/server/config/set/...` with rate-limit `60 req/min` but no audit trail of who/when/what.
+- Blocks: Forensics if credentials are leaked. Tracking back when an SSRF-friendly Sonarr URL was set.
 
-**No transfer scheduling:**
-- Problem: Transfers start immediately when queued. No ability to schedule transfers for off-peak hours.
-- Blocks: Can't optimize network usage for bandwidth-capped connections.
-- Workaround: Manual queuing. Consider adding cron-like scheduling to auto-queue patterns.
+**No graceful handling of clock skew in Fernet keys:**
+- Problem: Fernet tokens embed a 64-bit timestamp. Code accepts any timestamp; no max-age check on stored secrets. Not strictly a bug but worth noting for credential rotation.
+- Blocks: Forward secrecy on rotated keys.
 
 ## Test Coverage Gaps
 
-**LFTP job status parsing edge cases:**
-- What's not tested: Malformed LFTP output, timeout messages, connection errors, partial job failures
-- Files: `src/python/lftp/job_status_parser.py`, `src/python/tests/unittests/test_lftp/test_lftp.py`
-- Risk: Parser may crash or return incorrect status for edge cases that occur in production.
-- Priority: **High** - Parser is critical for accurate transfer status reporting.
+**`confirm-modal.service.ts` XSS escape logic:**
+- What's not tested: The `escapeHtml` static helper has no dedicated tests; every modal call passes through it but no test verifies an attacker-controlled string is escaped end-to-end.
+- Files: `src/angular/src/app/services/utils/confirm-modal.service.ts:33-40`
+- Risk: A regression that bypasses the helper would silently re-introduce an XSS sink against bulk action confirmations.
+- Priority: Medium — the surface is small (only callers within the codebase) but the helper IS the only thing standing between user input and `innerHTML`.
 
-**Model builder state reconciliation:**
-- What's not tested: Concurrent file operations (file deleted while downloading, extract during scan), out-of-order state updates
-- Files: `src/python/controller/model_builder.py`, `src/python/tests/unittests/test_controller/test_model_builder.py`
-- Risk: Model can become inconsistent if state updates arrive out of order.
-- Priority: **High** - State inconsistency can cause silent data loss or incorrect operations.
+**`MultiprocessingLogger` listener-thread shutdown semantics:**
+- What's not tested: The `except Exception` branch (`multiprocessing_logger.py:78`) sets `__listener_shutdown` on any error and stops the listener silently. No test simulates a logger handler raising.
+- Files: `src/python/common/multiprocessing_logger.py:67-86`
+- Risk: A bug in a downstream log handler (e.g. file-rotate failure) could silently stop all child-process logs.
+- Priority: Medium.
 
-**Web API error scenarios:**
-- What's not tested: Invalid file paths, permission errors, network disconnections during bulk operations
-- Files: `src/python/web/handler/controller.py`, `src/python/tests/integration/test_web/` (limited coverage)
-- Risk: Error responses may be unclear, making it hard for users to debug issues.
-- Priority: **Medium** - Users see errors but may not understand causes.
+**`auth.interceptor.ts` token-missing path:**
+- What's not tested: The interceptor reads the meta tag once and caches. There's a reset helper `_resetAuthInterceptorCache` (`auth.interceptor.ts:39`) but production code has no path to re-read the token if the server rotates it.
+- Files: `src/angular/src/app/services/utils/auth.interceptor.ts:7-17`
+- Risk: After token rotation (settings change), the SPA continues to send the old Bearer until reload.
+- Priority: Low — token rotation triggers a page reload via `version-check.service.ts` in practice, but the coupling is implicit.
 
-**Angular file list performance with large datasets:**
-- What's not tested: Rendering 10,000+ files, rapid state updates, bulk selection performance
-- Files: `src/angular/src/app/pages/files/file-list.component.ts`, `src/angular/src/app/tests/unittests/pages/files/file-list.component.spec.ts`
-- Risk: UI becomes unresponsive with large file lists, giving impression of application crash.
-- Priority: **Medium** - Affects UX for power users with large file collections.
+**SSE timeout reconnection paths:**
+- What's not tested fully: `StreamDispatchService.reconnectDueToTimeout` and `checkConnectionTimeout` rely on `setInterval` + `Date.now()` deltas; race conditions between heartbeat arrival and timeout fire are subtle.
+- Files: `src/angular/src/app/services/base/stream-service.registry.ts:111-164`
+- Risk: SSE-related flake on slow CI.
+- Priority: Low — exercised by e2e tests under `src/e2e/tests/`.
 
-**SSH key validation:**
-- What's not tested: Missing keys, incorrect permissions, key format errors
-- Files: `src/python/controller/file_operation_manager.py`, `src/python/ssh/sshcp.py`, `src/python/tests/unittests/test_ssh/`
-- Risk: SSH operations fail with unclear error messages.
-- Priority: **Medium** - Users need clear guidance on SSH setup.
+**SSRF private-IP validation:**
+- What's not tested: `_validate_url` rejects private addresses but the unit tests don't exercise IPv6 link-local (`fe80::/10`) or rare reserved ranges.
+- Files: `src/python/web/handler/config.py:55-85`
+- Risk: A docstring-acknowledged DNS-rebind bypass plus an under-tested IPv6 path could let a crafted Sonarr URL leak credentials.
+- Priority: Medium.
 
-**Configuration validation:**
-- What's not tested: Invalid config values, missing required fields, type mismatches
-- Files: `src/python/common/config.py`, `src/python/tests/unittests/test_common/test_config.spec.ts`
-- Risk: Invalid configs may be silently accepted or cause cryptic errors at runtime.
-- Priority: **Low** - Config is usually set correctly, but validation would catch user errors earlier.
+**`Lftp` parser ValueError recovery:**
+- What's not tested: `LftpJobStatusParser.parse` raises `LftpJobStatusParserError` on internal `ValueError`. The controller catches it via `LftpJobStatusParserError` in its general error queue, but recovery from repeated parser failures (`MAX_CONSECUTIVE_STATUS_ERRORS = 2` in `lftp.py:12`) isn't covered by integration tests.
+- Files: `src/python/lftp/lftp.py:11-13`, `src/python/lftp/job_status_parser.py:710-727`
+- Risk: A new lftp output format quirk could cause the controller to hard-fail.
+- Priority: Medium.
+
+**Auto-delete dry-run vs. enabled toggling under live timer:**
+- What's not tested: The Timer fires `__execute_auto_delete` after `delay_seconds`. If the user disables auto-delete or toggles dry-run between scheduling and firing, the code re-reads config (`controller.py:838-851`). A test where the toggle flips during the Timer window is not visible in the unit suite.
+- Files: `src/python/controller/controller.py:823-851`
+- Risk: User cancels auto-delete after scheduling but a Timer that already started its callback executes anyway.
+- Priority: Low — the in-method config re-read handles this; just lacks explicit test coverage.
+
+**`BoundedOrderedSet` eviction ordering after `touch`:**
+- What's not tested: `touch()` moves an item to the end (most recent). If many items are touched after a `from_iterable` load, eviction order can diverge from insertion order in subtle ways.
+- Files: `src/python/common/bounded_ordered_set.py:91-105`
+- Risk: Tracked-files lists may evict items unexpectedly if a future refactor calls `touch` after `add`.
+- Priority: Low.
 
 ---
 
-*Concerns audit: 2026-02-03*
+*Concerns audit: 2026-05-26*
