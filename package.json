@@ -5,7 +5,7 @@
     "test:release-metadata": "node --test scripts/verify-release-metadata.test.mjs"
   },
   "devDependencies": {
-    "puppeteer": "^25.0.4"
+    "puppeteer": "^25.1.0"
   },
   "overrides": {
     "basic-ftp": "^5.3.0"
