@@ -71,6 +71,26 @@ class TestMultiprocessingLogger(unittest.TestCase):
                 root_logger.addHandler(handler)
             root_logger.setLevel(saved_level)
 
+    @staticmethod
+    def _wait_for_listener_shutdown(mp_logger: MultiprocessingLogger,
+                                    timeout: float = 2.0) -> None:
+        """Block until the listener self-shuts-down after catching a handler exception.
+
+        The listener polls every ``__LISTENER_SLEEP_INTERVAL_IN_SECS`` (0.1s) and, on
+        catching an exception in handle(record), sets ``__listener_shutdown``. A fixed
+        ``time.sleep`` here would race the poll on a loaded CI runner (the assertion could
+        fire before the listener has drained the queue, leaving ``__listener_exc_info``
+        None and failing ``assertRaises`` spuriously). Polling the observable shutdown
+        flag with a generous deadline is deterministic instead.
+        """
+        deadline = time.monotonic() + timeout
+        shutdown = mp_logger._MultiprocessingLogger__listener_shutdown
+        while not shutdown.is_set():
+            if time.monotonic() > deadline:
+                raise AssertionError(
+                    "Listener did not shut down within {}s after handler exception".format(timeout))
+            time.sleep(0.01)
+
     @pytest.mark.timeout(5)
     def test_listener_captures_handler_exception_and_shuts_down(self):
         # Attach a handler that raises onto the child logger the listener routes to:
@@ -86,7 +106,7 @@ class TestMultiprocessingLogger(unittest.TestCase):
         try:
             self._drive_record_in_process(mp_logger, "process_1", logging.ERROR,
                                           "trigger handler raise")
-            time.sleep(0.2)  # let the listener drain and hit the except branch
+            self._wait_for_listener_shutdown(mp_logger)
         finally:
             mp_logger.stop()
 
@@ -107,7 +127,7 @@ class TestMultiprocessingLogger(unittest.TestCase):
         try:
             self._drive_record_in_process(mp_logger, "process_1", logging.ERROR,
                                           "trigger handler raise")
-            time.sleep(0.2)
+            self._wait_for_listener_shutdown(mp_logger)
         finally:
             mp_logger.stop()
 
@@ -128,7 +148,7 @@ class TestMultiprocessingLogger(unittest.TestCase):
         try:
             self._drive_record_in_process(mp_logger, "process_1", logging.ERROR,
                                           "trigger handler raise")
-            time.sleep(0.2)
+            self._wait_for_listener_shutdown(mp_logger)
         finally:
             mp_logger.stop()
 
