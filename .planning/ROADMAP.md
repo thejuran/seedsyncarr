@@ -393,7 +393,18 @@ Plans:
   4. CI is green on the ratcheted thresholds (Python + Angular) across amd64+arm64.
   5. The ratchet is monotonic — thresholds only increase; any floor decision is logged in PROJECT.md Key Decisions.
 
-**Plans**: TBD (3 plans: 100-01 SSE timeout, 100-02 auth interceptor, 100-03 CI ratchet)
+**Plans**: 3 plans (2 waves)
+
+Plans:
+**Wave 1**
+
+- [ ] 100-01-PLAN.md — COVLOW-03: SSE heartbeat-vs-timeout race regression test (D-01/D-02 same-frame heartbeat saves the race + paired no-heartbeat positive control)
+- [ ] 100-02-PLAN.md — COVLOW-04: auth interceptor token-rotation regression test via the _resetAuthInterceptorCache seam (D-03 mirror of cache test, D-04 page-reload coupling comment)
+
+**Wave 2** *(blocked on 100-01 + 100-02 — re-measure must reflect their added coverage)*
+
+- [ ] 100-03-PLAN.md — RATCHET-02: re-measure coverage, add Karma check.global + Dockerfile --code-coverage + bump pyproject fail_under in one commit, record before/after (D-05/D-06/D-07/D-08)
+
 **UI hint**: yes
 
 </details>
