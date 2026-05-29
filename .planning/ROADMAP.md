@@ -369,7 +369,11 @@ Plans:
   2. A regression test loads N items into `BoundedOrderedSet`, touches a middle item, forces eviction, and asserts the touched item is retained while the oldest non-touched item is evicted first (COVLOW-02).
   3. Any trivial fix surfaced lands as a green commit after its red test; larger findings deferred to v1.4.0 with a STATE.md entry.
 
-**Plans**: TBD (2 plans: 99-01 auto-delete toggle, 99-02 BoundedOrderedSet eviction)
+**Plans**: 2 plans
+
+Plans:
+- [ ] 99-01-PLAN.md — COVLOW-01: auto-delete honors enabled/dry_run toggle flipped during a live threading.Timer window (D-01 real-Timer schedule->flip->fire, D-02 both toggles as two tests)
+- [ ] 99-02-PLAN.md — COVLOW-02: BoundedOrderedSet eviction ordering after touch — touched item retained, oldest non-touched evicts first (D-03 three asserts)
 
 ### Phase 100: Low-Priority Angular Coverage + CI Ratchet
 
