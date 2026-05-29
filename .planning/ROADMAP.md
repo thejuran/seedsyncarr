@@ -294,8 +294,8 @@ See `.planning/milestones/v1.2.0-ROADMAP.md` for full details.
 
 **Milestone Goal:** Close the 8 test coverage gaps catalogued in CONCERNS.md — 4 Medium-priority gaps get full path coverage, 4 Low-priority gaps get a targeted regression test. Trivial bugs found while testing (<10 net lines, no public-API or observable-behavior change) are fixed in the same plan; larger findings deferred to v1.4.0. Milestone ends with ratcheted CI coverage thresholds and before/after numbers recorded below.
 
-- [ ] **Phase 97: Medium-Priority Python Coverage** - Baseline capture + full-path coverage for MP-logger, SSRF, LFTP parser
-- [ ] **Phase 98: Medium-Priority Angular Coverage** - Full-path end-to-end XSS coverage for confirm-modal escapeHtml
+- [x] **Phase 97: Medium-Priority Python Coverage** - Baseline capture + full-path coverage for MP-logger, SSRF, LFTP parser (completed 2026-05-28)
+- [x] **Phase 98: Medium-Priority Angular Coverage** - Full-path end-to-end XSS coverage for confirm-modal escapeHtml (completed 2026-05-29)
 - [ ] **Phase 99: Low-Priority Python Coverage** - Targeted regression tests for auto-delete toggle and BoundedOrderedSet eviction
 - [ ] **Phase 100: Low-Priority Angular Coverage + CI Ratchet** - SSE timeout + auth interceptor regressions, then ratchet pytest + Karma thresholds
 
