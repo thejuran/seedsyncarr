@@ -322,7 +322,13 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   3. SSRF `_validate_url` is tested across IPv4 private/loopback/link-local, IPv6 link-local/loopback/unique-local, IPv6-mapped IPv4, unresolved hostnames, and a valid public host — with `socket.getaddrinfo` stubbed (COVMED-02).
   4. LFTP `JobStatusParser` error recovery is tested: a malformed line raises `LftpJobStatusParserError`, the consecutive-error counter increments, `MAX_CONSECUTIVE_STATUS_ERRORS = 2` triggers recovery, and the counter resets on success (COVMED-03).
   5. Any trivial fix (≤10 net lines, no public-API/behavior change) surfaced by these tests lands as a green commit after its red test; larger findings are recorded in STATE.md deferred items and pushed to v1.4.0.
-**Plans**: TBD (baseline capture + 3 test plans: 97-01 MP-logger, 97-02 SSRF, 97-03 LFTP parser)
+**Plans**: 4 plans (baseline capture + 3 test plans)
+
+Plans:
+- [ ] 97-01-PLAN.md — RATCHET-01: capture & commit v1.3.0 coverage baseline (Python + Angular) before any test lands
+- [ ] 97-02-PLAN.md — COVMED-01: full-path coverage of MultiprocessingLogger listener-thread shutdown semantics
+- [ ] 97-03-PLAN.md — COVMED-02: SSRF _validate_url IPv4/IPv6 reserved-range coverage (+ pre-approved IPv6-mapped fix)
+- [ ] 97-04-PLAN.md — COVMED-03: LFTP JobStatusParser error-recovery counter coverage (integration layer)
 
 ### Phase 98: Medium-Priority Angular Coverage
 **Goal**: The `confirm-modal.service.ts` `escapeHtml` path has full end-to-end XSS coverage — every metacharacter and attacker payload is escaped, and no interpolation site bypasses the escape.
