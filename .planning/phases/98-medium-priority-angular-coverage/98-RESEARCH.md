@@ -658,7 +658,7 @@ config, no framework installs.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Supersede vs fold existing partial XSS tests (lines 300-338)**
    - What we know: The test at line 300 asserts `textContent.toContain("<script>")` and
@@ -670,6 +670,9 @@ config, no framework installs.
      supersets of lines 300-338 (they add `innerHTML` entity-string check and `on*`/`javascript:`
      DOM walk). If the planner wants belt-and-suspenders, extend them in-place rather than
      removing them — but the CONTEXT.md default is supersession.
+   - **RESOLVED (98-01-PLAN.md, Task 2):** Supersede both, preserving their unique `textContent`
+     assertions (line 314 `textContent.toContain("<script>")` and line 334
+     `textContent.toContain("<b>file.txt</b>")`) inside the new XSS describe block per D-06.
 
 2. **Separate `describe` block or inline within the outer `describe`**
    - What we know: The outer `describe` is "Testing confirm modal service"; no nested `describe`
@@ -677,6 +680,9 @@ config, no framework installs.
    - Recommendation: Add one nested `describe("XSS / escapeHtml coverage")` block containing
      the D-04 unit tests and D-03/D-05 end-to-end tests. This groups the new work cleanly
      without disturbing the flat structure of the existing tests.
+   - **RESOLVED (98-01-PLAN.md, Task 1):** Add one nested `describe("XSS / escapeHtml coverage")`
+     block housing the D-04 unit tests plus the D-03/D-05 end-to-end tests and the shared
+     `escape()` / `hasOnAttribute()` helpers.
 
 ---
 
