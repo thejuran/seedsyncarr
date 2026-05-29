@@ -218,6 +218,20 @@ class TestBoundedOrderedSet(unittest.TestCase):
         self.assertEqual(['c', 'd', 'e'], bset.as_list())
         self.assertEqual(2, bset.total_evictions)
 
+    def test_eviction_order_after_touch(self):
+        """COVLOW-02: a touched item survives; the oldest NON-touched item evicts first.
+
+        Touches the OLDEST item ('a') per D-03 — a stronger refinement of the spec's
+        'middle item' wording: touching the oldest forces move_to_end to actually change
+        eviction order, so 'b' evicting instead of 'a' is direct proof the touch took effect.
+        """
+        bset = BoundedOrderedSet.from_iterable(['a', 'b', 'c'], maxlen=3)
+        self.assertTrue(bset.touch('a'))        # move_to_end -> order becomes b, c, a
+        evicted = bset.add('d')                 # forces exactly one eviction
+        self.assertEqual('b', evicted)          # (a) oldest NON-touched evicts, not 'a'
+        self.assertEqual(['c', 'a', 'd'], bset.as_list())   # (b) touched 'a' retained + reordered
+        self.assertEqual(1, bset.total_evictions)            # (c) exactly one eviction
+
     def test_bool_false_when_empty(self):
         """Test bool returns False for empty set."""
         bset = BoundedOrderedSet(maxlen=10)
