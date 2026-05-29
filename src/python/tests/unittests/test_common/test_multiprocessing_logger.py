@@ -47,26 +47,29 @@ class TestMultiprocessingLogger(unittest.TestCase):
         ``QueueHandler`` to the MultiprocessingLogger's internal queue. Calling it
         in-process (rather than from a spawned child) routes a real record onto the
         queue without depending on the multiprocessing start method (``spawn`` on
-        macOS cannot pickle local-closure process targets). We snapshot and restore
-        the root logger's handler list + level via ``addCleanup`` so this drive does
-        not leak QueueHandlers into other tests.
+        macOS cannot pickle local-closure process targets).
+
+        The root logger's handler list + level are snapshotted and restored
+        *synchronously* immediately after the record is enqueued. This is load-bearing:
+        the listener handles records on a logger whose ancestry propagates up to the
+        root logger; if the root logger still carried the QueueHandler when the listener
+        ran, every handled record would propagate back onto the same queue and be
+        re-handled forever. Restoring before the listener drains breaks that feedback
+        loop and prevents leaking QueueHandlers into other tests.
         """
         root_logger = logging.getLogger()
         saved_handlers = root_logger.handlers[:]
         saved_level = root_logger.level
-
-        def _restore():
+        try:
+            # get_process_safe_logger() returns the (now queue-backed) root logger
+            process_logger = mp_logger.get_process_safe_logger().getChild(child_name)
+            process_logger.log(level, message)
+        finally:
             for handler in root_logger.handlers[:]:
                 root_logger.removeHandler(handler)
             for handler in saved_handlers:
                 root_logger.addHandler(handler)
             root_logger.setLevel(saved_level)
-
-        self.addCleanup(_restore)
-
-        # get_process_safe_logger() returns the (now queue-backed) root logger
-        process_logger = mp_logger.get_process_safe_logger().getChild(child_name)
-        process_logger.log(level, message)
 
     @pytest.mark.timeout(5)
     def test_listener_captures_handler_exception_and_shuts_down(self):
@@ -133,6 +136,65 @@ class TestMultiprocessingLogger(unittest.TestCase):
         with self.assertRaises(_ListenerSentinelError):
             mp_logger.propagate_exception()
         # ...so the second call is a no-op (returns None, does not raise).
+        self.assertIsNone(mp_logger.propagate_exception())
+
+    @pytest.mark.timeout(5)
+    def test_inner_queue_empty_does_not_terminate_listener(self):
+        # The inner `except queue.Empty: break` (line 77) exits only the drain loop;
+        # the outer `while not __listener_shutdown` (line 70) keeps running across
+        # the 0.1s sleep cycle. Prove survival: send a record, let the queue empty
+        # (sleep past __LISTENER_SLEEP_INTERVAL_IN_SECS=0.1), then send MORE records
+        # and assert the LATER batch is still received.
+        mp_logger = MultiprocessingLogger(self.logger)
+        mp_logger.start()
+        try:
+            with LogCapture("TestMultiprocessingLogger.MPLogger.process_1") as log_capture:
+                # First batch
+                self._drive_record_in_process(mp_logger, "process_1", logging.INFO,
+                                              "before empty cycle")
+                # Let the listener drain, hit queue.Empty (inner break), and loop
+                # back through the outer while across the 0.1s sleep interval.
+                time.sleep(0.3)
+                # Second batch AFTER the listener has gone through an empty cycle.
+                self._drive_record_in_process(mp_logger, "process_1", logging.INFO,
+                                              "after empty cycle")
+                time.sleep(0.3)
+
+                log_capture.check(
+                    ("process_1", "INFO", "before empty cycle"),
+                    ("process_1", "INFO", "after empty cycle"),
+                )
+        finally:
+            mp_logger.stop()
+
+        # Listener never captured an exception during a clean empty-queue cycle.
+        self.assertIsNone(mp_logger.propagate_exception())
+
+    @pytest.mark.timeout(5)
+    def test_clean_shutdown_joins_without_error(self):
+        # NON-HOLLOW: prove the listener was actually PROCESSING records before stop().
+        # Enqueue a real record and assert it was RECEIVED via LogCapture BEFORE
+        # calling stop(); a no-op stop() against an idle listener cannot satisfy this.
+        mp_logger = MultiprocessingLogger(self.logger)
+        mp_logger.start()
+        try:
+            with LogCapture("TestMultiprocessingLogger.MPLogger.process_1") as log_capture:
+                self._drive_record_in_process(mp_logger, "process_1", logging.INFO,
+                                              "processed before shutdown")
+                time.sleep(0.2)  # let the listener drain it
+                # Assert-received BEFORE shutdown: proves the listener thread was alive
+                # and handling records (the test is not hollow).
+                log_capture.check(
+                    ("process_1", "INFO", "processed before shutdown"),
+                )
+            # THEN clean shutdown: stop() must join without raising.
+            mp_logger.stop()  # join completes; if it raised, the test fails here
+        except BaseException:
+            # Ensure the listener thread is not left running on unexpected failure.
+            mp_logger.stop()
+            raise
+
+        # No handler exception occurred during a clean run -> propagate is a no-op.
         self.assertIsNone(mp_logger.propagate_exception())
 
     @pytest.mark.timeout(5)
