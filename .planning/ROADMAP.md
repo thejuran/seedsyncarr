@@ -305,8 +305,8 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 | Layer | Threshold | Before | After |
 |-------|-----------|--------|-------|
-| Python (`--cov-fail-under`) | line | TBD (Phase 97 baseline) | TBD (Phase 100) |
-| Angular (Karma `coverageReporter.check.global`) | statements / branches / functions / lines | TBD (Phase 97 baseline) | TBD (Phase 100) |
+| Python (`--cov-fail-under`) | line | 85.19% measured (floor 84); host/provisional — excludes real-lftp integration suite | TBD (Phase 100) |
+| Angular (Karma `coverageReporter.check.global`) | statements / branches / functions / lines | 83.34% / 69.01% / 79.73% / 84.21% (no Karma global threshold configured yet) | TBD (Phase 100) |
 
 *Filled in during Plan 97-baseline (before) and Plan 100-03 (after). The ratchet is monotonic — only increases.*
 
@@ -330,7 +330,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 Plans:
 **Wave 1**
 
-- [ ] 97-01-PLAN.md — RATCHET-01: capture & commit v1.3.0 coverage baseline (Python + Angular) before any test lands
+- [x] 97-01-PLAN.md — RATCHET-01: capture & commit v1.3.0 coverage baseline (Python + Angular) before any test lands
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
