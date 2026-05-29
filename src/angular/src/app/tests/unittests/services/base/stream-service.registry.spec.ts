@@ -205,6 +205,61 @@ describe("Testing stream dispatch service", () => {
         expect(mockService2.eventList).toEqual([["event2b", "data2b"]]);
         discardPeriodicTasks();
     }));
+
+    describe("heartbeat-vs-timeout race", () => {
+        it("heartbeat after timeout boundary re-arms _lastEventTime and prevents spurious reconnect", fakeAsync(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (dispatchService as any).startTimeoutChecker();
+            // Seed _lastEventTime via onopen so checkConnectionTimeout doesn't bail
+            // at the _lastEventTime === 0 guard (line 125)
+            mockEventSource.onopen!(new Event("connected"));
+            tick();
+
+            // Advance 30001ms: interval checks fire at T=5000..30000.
+            // At T=30000, elapsed==30000 which is NOT > 30000 (strict), so no reconnect.
+            tick(30001);
+
+            // Fire heartbeat AFTER the 30s boundary but BEFORE the next checker tick.
+            // No tick() between this and the subsequent tick(5000) — same fakeAsync frame.
+            // This re-arms _lastEventTime to ~30001ms (registry.ts line 204).
+            mockEventSource.listeners.get("ping")!(new Event("ping"));
+
+            // Advance to next interval boundary (T=35000ms).
+            // elapsed = 35000 - 30001 = 4999ms < 30000ms → NO reconnect.
+            tick(5000);
+
+            // No spurious reconnect and no double subscription
+            expect(EventSourceFactory.createEventSource).toHaveBeenCalledTimes(1);
+            // Services must NOT have received a false disconnect
+            expect(mockService1.connectedSeq).not.toContain(false);
+            expect(mockService2.connectedSeq).not.toContain(false);
+            discardPeriodicTasks();
+        }));
+
+        it("without heartbeat, timeout fires and reconnect occurs (positive control)", fakeAsync(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (dispatchService as any).startTimeoutChecker();
+            // Seed _lastEventTime so checkConnectionTimeout doesn't bail at the guard
+            mockEventSource.onopen!(new Event("connected"));
+            tick();
+
+            // Advance 35001ms: at T=35000 elapsed=35000 > 30000 (strict) →
+            // reconnectDueToTimeout() fires: closes source, notifies disconnect,
+            // sets _lastEventTime=0, schedules setTimeout at STREAM_RETRY_INTERVAL_MS=3000.
+            tick(35001);
+
+            // Timeout triggered: disconnect must have been notified
+            expect(mockService1.connectedSeq).toContain(false);
+            // Reconnect timer is pending but has not yet fired
+            expect(EventSourceFactory.createEventSource).toHaveBeenCalledTimes(1);
+
+            // Advance past STREAM_RETRY_INTERVAL_MS=3000ms → createSseObserver fires →
+            // createEventSource called a 2nd time
+            tick(3001);
+            expect(EventSourceFactory.createEventSource).toHaveBeenCalledTimes(2);
+            discardPeriodicTasks();
+        }));
+    });
 });
 
 
