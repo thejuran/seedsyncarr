@@ -431,3 +431,132 @@ class TestConfigHandlerRateLimit(unittest.TestCase):
         # 6th should be rate limited regardless of connection
         response = rate_limited()
         self.assertEqual(429, response.status_code)
+
+
+class TestValidateUrl(unittest.TestCase):
+    """Full-path coverage for the SSRF guard ConfigHandler._validate_url (COVMED-02).
+
+    _validate_url is a pure @staticmethod, so each case calls it directly with
+    web.handler.config.socket patched (no bottle stack, no real DNS). The IP under
+    test is supplied via socket.getaddrinfo's return value at addr_info[4][0].
+    Every resolving test re-assigns mock_socket.gaierror = socket.gaierror so the
+    real `except socket.gaierror` clause in config.py keeps catching.
+    """
+
+    # --- IPv4 reserved ranges (blocked) ---
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv4_private(self, mock_socket):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("10.0.0.1", 0))]
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIn("private/reserved", result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv4_loopback(self, mock_socket):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("127.0.0.1", 0))]
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIn("private/reserved", result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv4_link_local(self, mock_socket):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("169.254.0.1", 0))]
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIn("private/reserved", result)
+
+    # --- IPv6 reserved ranges (blocked) ---
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_link_local(self, mock_socket):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("fe80::1", 0))]
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIn("private/reserved", result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_loopback(self, mock_socket):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("::1", 0))]
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIn("private/reserved", result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_unique_local(self, mock_socket):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("fc00::1", 0))]
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIn("private/reserved", result)
+
+    # --- IPv6-mapped IPv4: private/loopback/link-local blocked, PUBLIC allowed ---
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_mapped_private_ipv4(self, mock_socket):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("::ffff:10.0.0.1", 0))]
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIn("private/reserved", result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_mapped_loopback_ipv4(self, mock_socket):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("::ffff:127.0.0.1", 0))]
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIn("private/reserved", result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_mapped_link_local_ipv4(self, mock_socket):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("::ffff:169.254.0.1", 0))]
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIn("private/reserved", result)
+
+    @patch('web.handler.config.socket')
+    def test_ACCEPTS_ipv6_mapped_PUBLIC_ipv4(self, mock_socket):
+        # PROVES the guard does unmap-AND-recheck, not a blanket block of all
+        # IPv4-mapped addresses: ::ffff:8.8.8.8 unmaps to the PUBLIC 8.8.8.8.
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("::ffff:8.8.8.8", 0))]
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIsNone(result)
+
+    # --- multi-address result: ANY private => rejected (loop checks ALL results) ---
+
+    @patch('web.handler.config.socket')
+    def test_rejects_multi_address_when_any_private(self, mock_socket):
+        mock_socket.getaddrinfo.return_value = [
+            (None, None, None, None, ("8.8.8.8", 0)),
+            (None, None, None, None, ("10.0.0.1", 0)),
+        ]
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIn("private/reserved", result)
+
+    # --- unresolved hostname ---
+
+    @patch('web.handler.config.socket')
+    def test_unresolved_hostname(self, mock_socket):
+        mock_socket.getaddrinfo.side_effect = socket.gaierror("name resolution failed")
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual("Cannot resolve hostname", result)
+
+    # --- valid public host ---
+
+    @patch('web.handler.config.socket')
+    def test_accepts_public_ip(self, mock_socket):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("8.8.8.8", 0))]
+        mock_socket.gaierror = socket.gaierror
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIsNone(result)
+
+    # --- early returns: no socket call ---
+
+    def test_rejects_ftp_scheme(self):
+        result = ConfigHandler._validate_url("ftp://host.example/")
+        self.assertEqual("Only http and https URLs are allowed", result)
+
+    def test_rejects_no_hostname(self):
+        result = ConfigHandler._validate_url("http:///path")
+        self.assertEqual("Invalid URL: no hostname", result)
