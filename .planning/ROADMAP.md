@@ -297,7 +297,7 @@ See `.planning/milestones/v1.2.0-ROADMAP.md` for full details.
 - [x] **Phase 97: Medium-Priority Python Coverage** - Baseline capture + full-path coverage for MP-logger, SSRF, LFTP parser (completed 2026-05-28)
 - [x] **Phase 98: Medium-Priority Angular Coverage** - Full-path end-to-end XSS coverage for confirm-modal escapeHtml (completed 2026-05-29)
 - [x] **Phase 99: Low-Priority Python Coverage** - Targeted regression tests for auto-delete toggle and BoundedOrderedSet eviction (completed 2026-05-29)
-- [ ] **Phase 100: Low-Priority Angular Coverage + CI Ratchet** - SSE timeout + auth interceptor regressions, then ratchet pytest + Karma thresholds
+- [x] **Phase 100: Low-Priority Angular Coverage + CI Ratchet** - SSE timeout + auth interceptor regressions, then ratchet pytest + Karma thresholds (completed 2026-05-29)
 
 ### Coverage Ratchet — Before / After
 
@@ -305,8 +305,8 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 | Layer | Threshold | Before | After |
 |-------|-----------|--------|-------|
-| Python (`--cov-fail-under`) | line | 85.19% measured (floor 84); host/provisional — excludes real-lftp integration suite | TBD (Phase 100) |
-| Angular (Karma `coverageReporter.check.global`) | statements / branches / functions / lines | 83.34% / 69.01% / 79.73% / 84.21% (no Karma global threshold configured yet) | TBD (Phase 100) |
+| Python (`fail_under` in `[tool.coverage.report]`) | line | 85.19% host/provisional (excludes real-lftp suite); floor 84; container-inclusive re-measure = 89.27% (Plan 100-03) | **89.27%** container-inclusive (1278 passed, 62 skipped); floor raised **84 → 88** (margin 1%, floor(89.27)−1=88, strictly > 84) |
+| Angular (Karma `coverageReporter.check.global`) | statements / branches / functions / lines | 83.34% / 69.01% / 79.73% / 84.21% (no Karma global threshold before) | **84.14% / 69.46% / 80.49% / 84.99%** (post-100-01/02); floors set **83 / 68 / 79 / 83** (margin 1%, floor(measured)−1, first thresholds strictly > 0) |
 
 *Filled in during Plan 97-baseline (before) and Plan 100-03 (after). The ratchet is monotonic — only increases.*
 

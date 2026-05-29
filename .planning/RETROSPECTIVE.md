@@ -78,6 +78,47 @@
 
 ---
 
+## Milestone: v1.3.0 — Test Coverage Gaps
+
+**Shipped:** 2026-05-29
+**Phases:** 4 (97-100) | **Plans:** 10
+
+### What Was Built
+- Captured coverage baseline at milestone start: Python 85.19% host/provisional, Angular Stmts 83.34% / Branches 69.01% / Functions 79.73% / Lines 84.21% (v1.3.0-COVERAGE-BASELINE.md)
+- Full-path Python coverage for 3 medium-priority gaps: MultiprocessingLogger shutdown (4 branches), SSRF IPv4/IPv6 reserved-range validation, LFTP JobStatusParser consecutive-error recovery
+- Full end-to-end Angular coverage for confirm-modal `escapeHtml` (XSS path, including DOM injection probe)
+- Targeted regression tests for 2 low-priority Python gaps: auto-delete dry-run/enabled toggle under live Timer, BoundedOrderedSet eviction-after-touch (COVLOW-01/02 closed by Phase 99 adversarial review)
+- Targeted regression tests for 2 low-priority Angular gaps: SSE timeout reconnection race (heartbeat-saves vs no-heartbeat contrast, fakeAsync), auth.interceptor token-rotation via `_resetAuthInterceptorCache` seam (COVLOW-03/04)
+- CI coverage ratchet: Angular Karma `check.global` gate (first-ever thresholds) + `--code-coverage` Dockerfile flag; Python `fail_under` raised 84 → 88
+- **Coverage before (container-inclusive re-measure):** Python 89.27% / Angular Stmts 84.14% / Branches 69.46% / Functions 80.49% / Lines 84.99%
+- **Floors set:** Python 88 (floor(89.27)−1, strictly > 84); Angular 83/68/79/83 (floor(measured)−1, first Karma thresholds)
+
+### What Worked
+- Wave sequencing (medium-priority first, low-priority second, ratchet last) gave accurate "after" numbers — the ratchet measured post-all-tests, not mid-milestone
+- Container-inclusive Python re-measure (real-lftp suite inside Docker) revealed 89.27% vs provisional 85.19% — the honest "after" was significantly higher
+- The `--code-coverage` + `check.global` dual-patch approach (both in one commit) correctly enforces that the gate is non-silent: text-summary output in CI logs proves coverage was collected, not just config-evaluated
+- The COVERAGE_FILE=/tmp/.coverage env override was a clean solution for the read-only /src mount constraint
+- Adversarial deep-review (Phase 99 close) caught COVLOW-01/02 regression test gaps before plan execution
+
+### What Was Inefficient
+- The container-inclusive Python re-measure command needs the `-e COVERAGE_FILE=/tmp/.coverage` redirect documented prominently — it's non-obvious and would silently fail without it (read-only mount)
+- The Angular Dockerfile CMD had no `--code-coverage` since initial setup — a Karma `check.global` block would have been a permanent silent no-op without this plan's dual-patch
+- No way to run Angular coverage locally (no `ng` in PATH on macOS) — all Angular measurement paths go through Docker, which adds ~5 minutes per iteration
+
+### Patterns Established
+- Container-inclusive Python coverage measurement (COVERAGE_FILE=/tmp/.coverage redirect + `docker compose run --rm -e ...`) as the authoritative ratchet source
+- Dual-patch rule: `check.global` block + `--code-coverage` Dockerfile flag must land in the same commit (otherwise gate is a silent no-op)
+- Monotonic ratchet: `fail_under = floor(container-inclusive measured) − 1`, computed floor strictly > prior floor; Angular = floor(measured) − 1 per metric, all > prior threshold (or > 0 for first-ever thresholds)
+- `COVERAGE_FILE=/tmp/.coverage` env override required whenever running pytest-cov inside containers with read-only source mounts
+
+### Key Lessons
+1. The provisional host-only Python coverage (85.19%) understates the real number by ~4pp — the container-inclusive run (real-lftp suite included) reached 89.27%; always use container-inclusive for threshold-setting
+2. A `check.global` block in `karma.conf.js` is completely inert without `--code-coverage` in the Dockerfile CMD — coverage instrumentation never runs, the block is never evaluated; both files must be patched together
+3. Coverage ratchets should be set at `floor(measured) − 1` (not `floor(measured)`) to avoid immediate failures from measurement noise while still raising the bar from the prior floor
+4. Wave dependencies matter for ratchet accuracy: measure AFTER all test additions land, not before or during
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -93,6 +134,7 @@
 
 | Milestone | Python Tests | Angular Tests | E2E Specs | Python Coverage |
 |-----------|-------------|---------------|-----------|-----------------|
+| v1.3.0 | 1,278 | 614 | 45+ | 89.27% container-inclusive (fail_under 88) |
 | v1.2.0 | 1,200+ | 599 | 45+ | 84% (fail_under enforced) |
 | v1.1.2 | 1,262 | 599 | 37 | 85.05% |
 | v1.1.1 | 1,262 | 599 | 37 | 85.05% |

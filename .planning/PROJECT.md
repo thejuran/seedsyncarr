@@ -397,6 +397,8 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 | SSH key-only auth in test containers | Eliminates hardcoded passwords from Dockerfiles; ephemeral ED25519 keys generated at build time | ✓ Good |
 | Non-root sshd via gosu + setcap | Reduces container attack surface; sshd binds port 22 via CAP_NET_BIND_SERVICE | ✓ Good |
 | WSGI iterator harness for SSE tests | Direct web_app() invocation avoids HTTP stack; enables streaming assertions without real server | ✓ Good |
+| Python `fail_under` raised 84 → 88 (Plan 100-03, RATCHET-02) | Container-inclusive re-measure (real-lftp suite inside Docker) = 89.27%; floor = floor(89.27) − 1 = 88; margin 1%; computed floor 88 strictly > prior floor 84; the host-only provisional number (85.19%) was excluded — container-inclusive is the authoritative ratchet source | ✓ Good |
+| Angular Karma `check.global` set stmts 83 / branches 68 / fns 79 / lines 83 (Plan 100-03, RATCHET-02) | Post-100-01/02 measured: stmts 84.14% / branches 69.46% / fns 80.49% / lines 84.99%; floor = floor(measured) − 1 per metric; margin 1%; first-ever Karma global thresholds (prior floor = 0 for all); `--code-coverage` flag added to Dockerfile CMD in same commit so gate is non-silent (text-summary confirms coverage collected) | ✓ Good |
 
 ## Project Status
 
