@@ -460,4 +460,80 @@ describe("Testing confirm modal service", () => {
         expect(modal!.getAttribute("aria-labelledby")).toBe("confirm-modal-title");
         expect(modal!.querySelector("#confirm-modal-title")).toBeTruthy();
     }));
+
+    describe("XSS / escapeHtml coverage", () => {
+        // Helper: access ConfirmModalService.escapeHtml (private static) via type cast to any.
+        // Casting the class constructor to any is the idiomatic TypeScript test pattern for
+        // private static helpers (PATTERNS.md section F). The cast is on the class, not on a
+        // nullable value, so no runtime null-guard is needed — calling a class method cannot
+        // null-fault (see 98-RESEARCH.md Area 1).
+        function escape(s: string): string {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return (ConfirmModalService as any).escapeHtml(s);
+        }
+
+        // Helper: walk the entire subtree rooted at `root` and return true if any element
+        // carries an attribute whose name starts with "on". CSS has no attribute-name-prefix
+        // selector ([on*=...] matches attribute VALUES), so walking element.attributes is the
+        // only correct approach (RESEARCH.md Pattern 4, Area 4). Used in D-03/D-05 tests below.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        function hasOnAttribute(root: Element): boolean {
+            const allElements = Array.from(root.querySelectorAll("*"));
+            allElements.push(root);
+            for (const el of allElements) {
+                for (let i = 0; i < el.attributes.length; i++) {
+                    if (el.attributes[i].name.startsWith("on")) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // D-04: Direct escapeHtml unit tests (synchronous — escapeHtml is a pure function,
+        // no fakeAsync needed).
+
+        it("should escape each metacharacter to its HTML entity", () => {
+            expect(escape("&")).toBe("&amp;");
+            expect(escape("<")).toBe("&lt;");
+            expect(escape(">")).toBe("&gt;");
+            expect(escape("\"")).toBe("&quot;");
+            expect(escape("'")).toBe("&#039;");
+        });
+
+        it("should replace & first so entity ampersands are not double-escaped", () => {
+            // Input: raw '<' (U+003C). After correct &-first escaping: '&lt;' (5 chars).
+            // If '&' were NOT replaced first, the '&' introduced by escaping '<' would be
+            // re-escaped, yielding '&amp;lt;' (8 chars) — the double-escape regression.
+            expect(escape("<")).toBe("&lt;");
+            expect(escape("&")).toBe("&amp;");
+            // Combined: '<&>' should become '&lt;&amp;&gt;' (not '&amp;lt;&amp;amp;&amp;gt;')
+            expect(escape("<&>")).toBe("&lt;&amp;&gt;");
+        });
+
+        it("should handle a combined attacker payload correctly", () => {
+            expect(escape("<script>alert(\"xss\")</script>"))
+                .toBe("&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;");
+        });
+
+        // D-01 documenting test: the escape set is intentionally limited to &<>"'.
+        // Backtick, U+2028, U+2029, and null byte are NOT escaped because this service
+        // renders into exactly two HTML contexts:
+        //   (a) element content (<h5>, <p>, button text)  — backtick is not a metacharacter here
+        //   (b) double-quoted class attribute              — backtick cannot close a double-quoted attr
+        // U+2028/U+2029 are JavaScript line-separators exploitable only inside <script> sinks
+        // (none present). Null byte is normalized/ignored by the HTML5 parser in these contexts.
+        // This omission is a locked decision (D-01 — see 98-CONTEXT.md); this test records the
+        // reasoning so it reads as intentional, not an oversight.
+        it("should NOT escape backtick / U+2028 / U+2029 / null byte (not XSS-exploitable in service's HTML contexts, per D-01)", () => {
+            // Backtick: not a metacharacter in element content or double-quoted attributes.
+            expect(escape("`")).toBe("`");
+            // U+2028 (line separator): only exploitable in <script> context, which this service lacks.
+            expect(escape("\u2028")).toBe("\u2028");
+            // U+2029 (paragraph separator): same rationale as U+2028.
+            expect(escape("\u2029")).toBe("\u2029");
+            // Null byte (U+0000): HTML5 parser normalizes it; not exploitable in these contexts.
+            expect(escape("\0")).toBe("\0");
+        });
+    });
 });
