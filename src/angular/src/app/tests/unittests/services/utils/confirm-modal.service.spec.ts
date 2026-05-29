@@ -657,6 +657,78 @@ describe("Testing confirm modal service", () => {
                 expect(cancelButton.textContent).toContain("<script>");
             }));
 
+        // D-02: skipCount-exemption documenting test and runtime-boundary probe.
+        //
+        // Success-criterion #3 audit (all six escaped inputs + one exempt numeric site):
+        //   String inputs routed through escapeHtml before innerHTML (source lines 51-56):
+        //     title, body, okBtn, okBtnClass, cancelBtn, cancelBtnClass
+        //   skipMessage (source lines 59-64) is the ONLY un-escaped interpolation site.
+        //   It interpolates only `options.skipCount` (TypeScript type: number | undefined)
+        //   guarded by `if (skipCount && skipCount > 0)`. A real number cannot carry HTML
+        //   metacharacters, so no attacker-controlled string reaches innerHTML through it.
+        //   Routing skipCount through escapeHtml would be a misleading no-op (D-02).
+
+        it("should leave skipCount interpolation un-escaped because skipCount is a " +
+           "TypeScript number, not an attacker-controlled string (D-02 — only " +
+           "bypass-exempt site, no string can reach it)", fakeAsync(() => {
+            service.confirm({ title: "t", body: "b", skipCount: 3 });
+            tick();
+
+            const modal = document.querySelector(".modal")!;
+            const skipP = modal.querySelectorAll(".modal-body p")[1]!;
+
+            // The value rendered is the numeric literal '3', not a string from attacker input.
+            expect(skipP.textContent).toContain("3 file");
+            expect(skipP.textContent).toContain("will be skipped");
+            // The skipCount path injects no executable markup
+            expect(modal.querySelector("script")).toBeNull();
+            expect(hasOnAttribute(modal)).toBe(false);
+        }));
+
+        // Runtime-boundary probe (codex adversarial review, 2026-05-29):
+        // TypeScript types are erased at runtime. The service guards skipCount only with a
+        // truthiness and `> 0` check, then interpolates `${options.skipCount}` un-escaped.
+        // A caller that defeats the TypeScript type by passing a coercible object whose
+        // toString() returns markup is the one theoretical path that bypasses escaping at
+        // this numeric site. This test PINS the service's actual rendered behavior so the
+        // runtime contract is documented, not assumed.
+        //
+        // D-02's "no attacker string reaches this site" is scoped to trusted TypeScript
+        // callers (all current call sites pass real numbers — verified by grep). Runtime
+        // hardening (coerce Number(skipCount) or escape the string) is a PUBLIC-BEHAVIOR
+        // change deferred to v1.4.0 per CONTEXT.md. Do NOT modify confirm-modal.service.ts.
+        it("should pin the runtime behavior of skipCount when a caller defeats the " +
+           "TypeScript number type with a coercible object (D-02 scope: type-safety " +
+           "guards this in trusted TS callers; runtime hardening deferred to v1.4.0)",
+            fakeAsync(() => {
+                // The object satisfies the `if (skipCount && skipCount > 0)` guard via
+                // valueOf(), causing skipMessage to be emitted. The template literal
+                // `${options.skipCount}` then calls toString(), which returns raw HTML markup.
+                // The browser's HTML parser processes that markup when it is assigned to
+                // innerHTML — so the <img> element IS created in the rendered DOM.
+                // This test asserts exactly that observed runtime reality.
+                const coercibleSkipCount = {
+                    valueOf: (): number => 1,
+                    toString: (): string => "<img src=x onerror=\"alert(1)\">"
+                } as unknown as number;
+
+                service.confirm({ title: "t", body: "b", skipCount: coercibleSkipCount });
+                tick();
+
+                const modal = document.querySelector(".modal")!;
+                // The second .modal-body p is rendered because valueOf() satisfies the guard
+                const skipP = modal.querySelectorAll(".modal-body p")[1]!;
+
+                // Observed reality: toString() markup reaches innerHTML un-escaped.
+                // The <img> element IS parsed and exists in the DOM — the service does not
+                // sanitize this path at runtime. (Safe in production: all call sites use
+                // real number literals. Hardening = v1.4.0.)
+                expect(skipP.querySelector("img")).not.toBeNull();
+                // The skip paragraph contains the "file" suffix from the template literal
+                // (plural "s" because strict-equality `=== 1` fails for an object)
+                expect(skipP.textContent).toContain("files will be skipped");
+            }));
+
         // --- Class-attribute inputs (okBtnClass, cancelBtnClass) ---
         //
         // Payload: "btn\" onmouseover=\"alert(1)" attempts to close the double-quoted class
