@@ -6,10 +6,27 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 import pytest
 
-from lftp import Lftp, LftpJobStatus, LftpError
+from lftp import Lftp, LftpJobStatus, LftpError, LftpJobStatusParserError
+
+
+# Malformed `jobs -v` block reused from
+# tests/unittests/test_lftp/test_job_status_parser.py::test_raises_error_on_bad_status
+# (final content line `bad string uh oh`). Feeding this through the GENUINE
+# LftpJobStatusParser.parse() makes it raise LftpJobStatusParserError, which is what
+# the real-parser recovery test below relies on (truth #1, COVMED-03).
+_MALFORMED_JOBS_OUTPUT = """
+        [0] queue (sftp://someone:@localhost)
+        sftp://someone:@localhost/home/someone
+        Now executing: [1] mirror -c /tmp/test_controllerw0sbqxe_/remote/ra /tmp/test_controllerw0sbqxe_/local/ -- 0/1.1k (0%)
+        -[2] mirror -c /tmp/test_controllerw0sbqxe_/remote/rb /tmp/test_controllerw0sbqxe_/local/ -- 49/9.3k (0%)
+        Commands queued:
+        1.  pget -c "/tmp/test_controllerw0sbqxe_/remote/rc" -o "/tmp/test_controllerw0sbqxe_/local/"
+        bad string uh oh
+        """
 
 
 # Test credentials for Docker-based test container (see test/python/Dockerfile).
@@ -719,4 +736,96 @@ class TestLftpProtocol(unittest.TestCase):
         print("Getting empty status")
         statuses = self.lftp.status()
         self.assertEqual(0, len(statuses))
+
+    # ------------------------------------------------------------------
+    # COVMED-03: LftpJobStatusParser ValueError recovery (status() counter)
+    #
+    # The real lftp binary always emits well-formed `jobs -v`, so these tests
+    # inject a deterministic parser failure into the real-Lftp fixture from setUp.
+    #
+    #   * test_status_real_parser_raises_on_malformed_output uses the REAL parser
+    #     (it patches `_Lftp__run_command` to return the malformed fixture, NOT
+    #     `parse`), proving end-to-end that malformed `jobs -v` makes the genuine
+    #     LftpJobStatusParser.parse() raise LftpJobStatusParserError (truth #1).
+    #   * The other three tests scope ONLY the controller consecutive-error
+    #     counter, so they stub `parse` to raise -- parser correctness is already
+    #     covered by the real-parser test above.
+    #
+    # All patches are scoped via `with patch.object(...)` so they are removed
+    # before tearDown's real-binary `exit()` runs (see the fixture teardown
+    # caveat in 97-PATTERNS.md). Name-mangled access (`_Lftp__run_command`,
+    # `_Lftp__job_status_parser`) is acceptable white-box coupling for a
+    # recovery test.
+    # ------------------------------------------------------------------
+
+    @pytest.mark.timeout(5)
+    def test_status_real_parser_raises_on_malformed_output(self):
+        """REAL parser (truth #1): malformed `jobs -v` flows through the genuine
+        LftpJobStatusParser.parse() and raises LftpJobStatusParserError. Proven
+        WITHOUT stubbing parse(): __run_command returns the malformed fixture so
+        the real parser runs. Counter starts at 0, so the 1st and 2nd consecutive
+        real-parser failures are swallowed (return []) and the 3rd re-raises --
+        confirming both that the real parser raised and the >MAX re-raise path."""
+        with patch.object(self.lftp, "_Lftp__run_command",
+                          return_value=_MALFORMED_JOBS_OUTPUT):
+            # 1st real-parser failure: counter -> 1 (<= MAX), swallowed
+            self.assertEqual([], self.lftp.status())
+            # 2nd real-parser failure: counter -> 2 (== MAX), swallowed
+            self.assertEqual([], self.lftp.status())
+            # 3rd real-parser failure: counter -> 3 (> MAX), re-raises
+            with self.assertRaises(LftpJobStatusParserError):
+                self.lftp.status()
+
+    @pytest.mark.timeout(5)
+    def test_status_parser_error_increments_and_swallows(self):
+        """Controller counter: the 1st and 2nd consecutive parse errors increment
+        __consecutive_status_errors to 1 then 2 (both <= MAX) and are swallowed --
+        status() returns [] without raising. (parse-stub scope: counter only.)"""
+        with patch.object(self.lftp._Lftp__job_status_parser, "parse",
+                          side_effect=[
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                          ]):
+            self.assertEqual([], self.lftp.status())  # count -> 1
+            self.assertEqual([], self.lftp.status())  # count -> 2
+
+    @pytest.mark.timeout(5)
+    def test_status_parser_error_exceeds_max_reraises(self):
+        """Controller counter: the 3rd consecutive parse error pushes the counter
+        to 3 (> MAX_CONSECUTIVE_STATUS_ERRORS=2) so status() re-raises
+        LftpJobStatusParserError. (parse-stub scope: counter only.)"""
+        with patch.object(self.lftp._Lftp__job_status_parser, "parse",
+                          side_effect=[
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                          ]):
+            self.assertEqual([], self.lftp.status())  # count -> 1, swallowed
+            self.assertEqual([], self.lftp.status())  # count -> 2, swallowed
+            with self.assertRaises(LftpJobStatusParserError):
+                self.lftp.status()                    # count -> 3, re-raises
+
+    @pytest.mark.timeout(5)
+    def test_status_parser_error_counter_resets_on_success(self):
+        """Controller counter: a successful status() between errors resets
+        __consecutive_status_errors to 0 (lftp.py:305 success branch). Proven via
+        public status() returns only: drive 2 errors (count -> 2), then a success
+        (a clean parse returning []), then 2 MORE errors -- both are swallowed
+        (return []). Had the counter NOT reset, the very next error would be count
+        3 (> MAX) and would re-raise. (parse-stub scope: counter only.)"""
+        with patch.object(self.lftp._Lftp__job_status_parser, "parse",
+                          side_effect=[
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                              [],  # SUCCESS: clean parse -> resets counter to 0
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                          ]):
+            self.assertEqual([], self.lftp.status())  # error, count -> 1, swallowed
+            self.assertEqual([], self.lftp.status())  # error, count -> 2, swallowed
+            self.assertEqual([], self.lftp.status())  # SUCCESS -> count reset to 0
+            # After reset, two further errors are swallowed again (count -> 1, 2),
+            # NOT re-raised -- proving the reset happened.
+            self.assertEqual([], self.lftp.status())  # error, count -> 1, swallowed
+            self.assertEqual([], self.lftp.status())  # error, count -> 2, swallowed
 
