@@ -1,3 +1,4 @@
+import pytest
 import threading
 from unittest.mock import MagicMock
 
@@ -463,3 +464,148 @@ class TestAutoDeleteIntegration(BaseAutoDeleteTestCase):
         self.controller.process()
 
         self.assertEqual(0, len(self.controller._Controller__pending_auto_deletes))
+
+
+class TestAutoDeleteToggleDuringTimer(TestAutoDeleteExecution):
+    """COVLOW-01: regression tests proving the auto-delete callback honors a config
+    toggle (enabled or dry_run) flipped DURING a live threading.Timer window.
+
+    These tests arm a REAL threading.Timer via __schedule_auto_delete, use a
+    threading.Event handshake to guarantee the flip lands strictly before the live
+    callback re-reads config (no schedule->flip race), join the pending timer, and
+    assert deletion is suppressed (negative tests) or fires (positive control).
+
+    The Event handshake makes correctness STRUCTURAL, not timing-dependent:
+    real_execute cannot run before the flip is applied, even on a slow/preempted runner.
+    """
+
+    def _run_gated_timer(self, flip):
+        """Deterministic Event-handshake real-Timer helper for COVLOW-01 tests.
+
+        Installs a wrapper around __execute_auto_delete BEFORE scheduling so the
+        Timer captures it. The wrapper blocks on a threading.Event until the test
+        thread applies the flip (or no-op) and signals — guaranteeing the flip lands
+        strictly before the live callback reads config.
+
+        The gate FAILS CLOSED: if the event is not set within the wait timeout, the
+        wrapper sets self._gate_timed_out = True and returns WITHOUT calling
+        real_execute, so a hung test thread surfaces as a deterministic failure rather
+        than a vacuous pass.
+
+        Returns mock_file so the positive control can assert against it.
+        """
+        # Step 0: Reset the per-run gate flag so a stale True from a prior test method
+        # on the same instance does not leak (setUp recreates the controller, not self).
+        self._gate_timed_out = False
+
+        # Step 1: Short delay — convenience only, correctness does NOT depend on it.
+        self.mock_context.config.autodelete.delay_seconds = 0.05
+
+        # Step 2: Wire a safe file so the enabled+non-dry-run path WOULD reach delete_local.
+        mock_file = self._make_safe_mock_file()
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+
+        # Step 3: Capture the real bound callback BEFORE replacing it.
+        real_execute = self.controller._Controller__execute_auto_delete
+
+        # Step 4: Build the Event-gated wrapper.
+        callback_may_proceed = threading.Event()
+
+        def gated_execute(file_name):
+            gate_opened = callback_may_proceed.wait(timeout=5)
+            if not gate_opened:
+                # Gate timed out — fail closed: do NOT call real_execute.
+                self._gate_timed_out = True
+                return
+            real_execute(file_name)
+
+        # Install BEFORE scheduling so the Timer captures gated_execute as its callback.
+        self.controller._Controller__execute_auto_delete = gated_execute
+
+        # Step 5: Arm the real timer; read it back out of the pending dict.
+        self.controller._Controller__schedule_auto_delete("toggle_file.mkv")
+        timer = self.controller._Controller__pending_auto_deletes["toggle_file.mkv"]
+
+        # Step 6: Apply the flip (or no-op) on the TEST thread.
+        # gated_execute is blocked on callback_may_proceed, so the timer-thread
+        # callback CANNOT have read config yet — flip is guaranteed to land first.
+        flip()
+
+        # Step 7: Release the callback. The wrapper now proceeds into real_execute
+        # which re-reads the (already-flipped) config.
+        callback_may_proceed.set()
+
+        # Step 8: Join and verify the callback actually ran.
+        timer.join(timeout=5)
+        self.assertFalse(timer.is_alive(), "Timer thread did not complete within 5s")
+        self.assertFalse(
+            getattr(self, "_gate_timed_out", False),
+            "Event gate timed out — the real callback was aborted before the config re-read; "
+            "test setup is wrong"
+        )
+
+        return mock_file
+
+    @pytest.mark.timeout(10)
+    def test_disabled_flip_during_timer_window_skips_delete(self):
+        """COVLOW-01 (a): flip enabled True->False during live-Timer window suppresses deletion.
+
+        Proves __execute_auto_delete (controller.py:839-843) re-reads config when the
+        Timer fires, honoring a mid-window toggle. The mandatory log assertion confirms
+        the live callback reached the enabled re-read branch (not just that the thread
+        ended without calling delete_local).
+        """
+        mock_file = self._run_gated_timer(  # noqa: F841
+            flip=lambda: setattr(self.mock_context.config.autodelete, "enabled", False)
+        )
+
+        # Deletion must be suppressed.
+        self.mock_file_op_manager.delete_local.assert_not_called()
+        self.mock_file_op_manager.delete_remote.assert_not_called()
+
+        # MANDATORY: the live callback must have reached the enabled re-read branch
+        # (controller.py:839-843) — not just ended without calling delete_local.
+        logged = [str(c) for c in self.controller.logger.info.call_args_list]
+        self.assertTrue(
+            [m for m in logged if "feature was disabled" in m],
+            "Expected 'feature was disabled' INFO log from the live callback "
+            "(controller.py:841) — proves the callback reached the enabled re-read branch"
+        )
+
+    @pytest.mark.timeout(10)
+    def test_dry_run_flip_during_timer_window_skips_delete(self):
+        """COVLOW-01 (b): flip dry_run False->True during live-Timer window suppresses deletion.
+
+        Proves __execute_auto_delete (controller.py:846-850) re-reads config when the
+        Timer fires, honoring a mid-window dry_run toggle. The mandatory log assertion
+        confirms the live callback reached the dry_run re-read branch.
+        """
+        mock_file = self._run_gated_timer(  # noqa: F841
+            flip=lambda: setattr(self.mock_context.config.autodelete, "dry_run", True)
+        )
+
+        # Deletion must be suppressed.
+        self.mock_file_op_manager.delete_local.assert_not_called()
+        self.mock_file_op_manager.delete_remote.assert_not_called()
+
+        # MANDATORY: the live callback must have reached the dry_run re-read branch
+        # (controller.py:846-850) — not just ended without calling delete_local.
+        logged = [str(c) for c in self.controller.logger.info.call_args_list]
+        self.assertTrue(
+            [m for m in logged if "DRY-RUN: Would delete" in m],
+            "Expected 'DRY-RUN: Would delete' INFO log from the live callback "
+            "(controller.py:848) — proves the callback reached the dry_run re-read branch"
+        )
+
+    @pytest.mark.timeout(10)
+    def test_no_flip_during_timer_window_deletes(self):
+        """COVLOW-01 (c) POSITIVE CONTROL: no flip -> deletion fires through live-Timer path.
+
+        Proves the SAME Event-gated real-Timer path genuinely reaches delete_local when
+        config stays enabled + non-dry-run. Without this, the two negative assert_not_called
+        results cannot prove the config re-read caused the suppression (F3 non-vacuity).
+        """
+        mock_file = self._run_gated_timer(flip=lambda: None)
+
+        # Positive control: deletion MUST be called.
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
