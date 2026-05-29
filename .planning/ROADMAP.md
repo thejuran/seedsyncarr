@@ -31,6 +31,7 @@
 - v1.1.1 Post-Redesign Cleanup & Outstanding Work - Phases 75-82 (shipped 2026-04-23)
 - v1.1.2 Test Suite Audit - Phases 83-86 (shipped 2026-04-24)
 - ✅ v1.2.0 Test & Quality Hardening - Phases 87-96 (shipped 2026-04-28)
+- ▶ v1.3.0 Test Coverage Gaps - Phases 97-100 (in progress, started 2026-05-28)
 
 ## Phases
 
@@ -288,6 +289,78 @@ See `.planning/milestones/v1.2.0-ROADMAP.md` for full details.
 
 </details>
 
+<details open>
+<summary>▶ v1.3.0 Test Coverage Gaps (Phases 97-100) — IN PROGRESS (started 2026-05-28)</summary>
+
+**Milestone Goal:** Close the 8 test coverage gaps catalogued in CONCERNS.md — 4 Medium-priority gaps get full path coverage, 4 Low-priority gaps get a targeted regression test. Trivial bugs found while testing (<10 net lines, no public-API or observable-behavior change) are fixed in the same plan; larger findings deferred to v1.4.0. Milestone ends with ratcheted CI coverage thresholds and before/after numbers recorded below.
+
+- [ ] **Phase 97: Medium-Priority Python Coverage** - Baseline capture + full-path coverage for MP-logger, SSRF, LFTP parser
+- [ ] **Phase 98: Medium-Priority Angular Coverage** - Full-path end-to-end XSS coverage for confirm-modal escapeHtml
+- [ ] **Phase 99: Low-Priority Python Coverage** - Targeted regression tests for auto-delete toggle and BoundedOrderedSet eviction
+- [ ] **Phase 100: Low-Priority Angular Coverage + CI Ratchet** - SSE timeout + auth interceptor regressions, then ratchet pytest + Karma thresholds
+
+### Coverage Ratchet — Before / After
+
+Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at start of Phase 97, against `main` HEAD).
+
+| Layer | Threshold | Before | After |
+|-------|-----------|--------|-------|
+| Python (`--cov-fail-under`) | line | TBD (Phase 97 baseline) | TBD (Phase 100) |
+| Angular (Karma `coverageReporter.check.global`) | statements / branches / functions / lines | TBD (Phase 97 baseline) | TBD (Phase 100) |
+
+*Filled in during Plan 97-baseline (before) and Plan 100-03 (after). The ratchet is monotonic — only increases.*
+
+## Phase Details
+
+### Phase 97: Medium-Priority Python Coverage
+**Goal**: The three Medium-priority Python coverage gaps (MultiprocessingLogger shutdown, SSRF reserved-range validation, LFTP parser error recovery) have full-path coverage, and the milestone's coverage baseline is captured before any test work begins.
+**Depends on**: Phase 96 (v1.2.0 complete — green CI, documented v1.1.2/v1.2.0 baselines)
+**Requirements**: RATCHET-01, COVMED-01, COVMED-02, COVMED-03
+**Success Criteria** (what must be TRUE):
+  1. `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` exists with Python and Angular line/branch/function numbers from `main` HEAD, committed before any new test lands (RATCHET-01).
+  2. The `MultiprocessingLogger` listener thread has tests covering all four documented branches: handler-raises shutdown, `propagate_exception()` re-raise, inner-loop `queue.Empty` non-termination, and clean sentinel shutdown (COVMED-01).
+  3. SSRF `_validate_url` is tested across IPv4 private/loopback/link-local, IPv6 link-local/loopback/unique-local, IPv6-mapped IPv4, unresolved hostnames, and a valid public host — with `socket.getaddrinfo` stubbed (COVMED-02).
+  4. LFTP `JobStatusParser` error recovery is tested: a malformed line raises `LftpJobStatusParserError`, the consecutive-error counter increments, `MAX_CONSECUTIVE_STATUS_ERRORS = 2` triggers recovery, and the counter resets on success (COVMED-03).
+  5. Any trivial fix (≤10 net lines, no public-API/behavior change) surfaced by these tests lands as a green commit after its red test; larger findings are recorded in STATE.md deferred items and pushed to v1.4.0.
+**Plans**: TBD (baseline capture + 3 test plans: 97-01 MP-logger, 97-02 SSRF, 97-03 LFTP parser)
+
+### Phase 98: Medium-Priority Angular Coverage
+**Goal**: The `confirm-modal.service.ts` `escapeHtml` path has full end-to-end XSS coverage — every metacharacter and attacker payload is escaped, and no interpolation site bypasses the escape.
+**Depends on**: Phase 97
+**Requirements**: COVMED-04
+**Success Criteria** (what must be TRUE):
+  1. Every metacharacter from the documented set (`&<>"'`) is asserted escaped in `escapeHtml` output (COVMED-04).
+  2. Attacker payloads injected into title, body, button labels, and button classes produce `innerHTML` with no executable markup (no `<script>`, no `on*=`, no `javascript:`).
+  3. A test confirms `escapeHtml` runs in every interpolation path — there is no bypass call site.
+  4. Any trivial fix surfaced (e.g. adding backtick / U+2028 / U+2029 / null byte to the escape set if a real risk for a current caller) lands as a green commit after its red test; larger findings deferred to v1.4.0 with a STATE.md entry.
+**Plans**: TBD (1 plan: 98-01 escapeHtml end-to-end XSS)
+**UI hint**: yes
+
+### Phase 99: Low-Priority Python Coverage
+**Goal**: The two Low-priority Python gaps each have one targeted regression test that would have caught the documented risk.
+**Depends on**: Phase 98
+**Requirements**: COVLOW-01, COVLOW-02
+**Success Criteria** (what must be TRUE):
+  1. A regression test schedules an auto-delete via the live Timer, flips `auto_delete.enabled`/`dry_run` before fire, and asserts the in-method config re-read (`controller.py:838-851`) honors the new value — no deletion when disabled, logs-only when dry-run (COVLOW-01).
+  2. A regression test loads N items into `BoundedOrderedSet`, touches a middle item, forces eviction, and asserts the touched item is retained while the oldest non-touched item is evicted first (COVLOW-02).
+  3. Any trivial fix surfaced lands as a green commit after its red test; larger findings deferred to v1.4.0 with a STATE.md entry.
+**Plans**: TBD (2 plans: 99-01 auto-delete toggle, 99-02 BoundedOrderedSet eviction)
+
+### Phase 100: Low-Priority Angular Coverage + CI Ratchet
+**Goal**: The two Low-priority Angular gaps each have a targeted regression test, and CI coverage thresholds are ratcheted up to the new bar with before/after numbers recorded.
+**Depends on**: Phase 99
+**Requirements**: COVLOW-03, COVLOW-04, RATCHET-02
+**Success Criteria** (what must be TRUE):
+  1. A fakeAsync regression test simulates a heartbeat arriving in the same tick as `checkConnectionTimeout` fires and asserts no spurious reconnect and no double subscription in the stream-service registry (COVLOW-03).
+  2. A regression test exercises the `auth.interceptor.ts` token-missing / rotation path: meta tag changes, `_resetAuthInterceptorCache` is called, and the next request carries the new token (COVLOW-04).
+  3. `--cov-fail-under` (pytest) and Karma `coverageReporter.check.global` thresholds are ratcheted upward in a single commit, with before/after numbers recorded in this ROADMAP's "Coverage Ratchet" table and the v1.3.0 RETROSPECTIVE entry (RATCHET-02).
+  4. CI is green on the ratcheted thresholds (Python + Angular) across amd64+arm64.
+  5. The ratchet is monotonic — thresholds only increase; any floor decision is logged in PROJECT.md Key Decisions.
+**Plans**: TBD (3 plans: 100-01 SSE timeout, 100-02 auth interceptor, 100-03 CI ratchet)
+**UI hint**: yes
+
+</details>
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -312,7 +385,8 @@ See `.planning/milestones/v1.2.0-ROADMAP.md` for full details.
 | 75-82. Post-Redesign Cleanup | v1.1.1 | 22/22 | Complete | 2026-04-23 |
 | 83-86. Test Suite Audit | v1.1.2 | 6/6 | Complete | 2026-04-24 |
 | 87-96. Test & Quality Hardening | v1.2.0 | 23/23 | Complete | 2026-04-28 |
+| 97-100. Test Coverage Gaps | v1.3.0 | 0/9 | Not started | - |
 
 ---
 
-*Last updated: 2026-04-28 after v1.2.0 milestone complete*
+*Last updated: 2026-05-28 after v1.3.0 roadmap created*
