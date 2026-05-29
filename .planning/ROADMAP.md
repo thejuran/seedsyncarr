@@ -353,10 +353,10 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
+
 - [x] 98-01-PLAN.md — COVMED-04: end-to-end XSS coverage for confirm-modal escapeHtml (D-04 metacharacter/ordering unit tests, D-03/D-05 all-six-input DOM assertions, D-02 skipCount-exemption audit)
 
 **UI hint**: yes
-
 
 ### Phase 99: Low-Priority Python Coverage
 
@@ -372,8 +372,13 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
+
 - [ ] 99-01-PLAN.md — COVLOW-01: auto-delete honors enabled/dry_run toggle flipped during a live threading.Timer window (D-01 real-Timer schedule->flip->fire, D-02 both toggles as two tests)
 - [ ] 99-02-PLAN.md — COVLOW-02: BoundedOrderedSet eviction ordering after touch — touched item retained, oldest non-touched evicts first (D-03 three asserts)
+
+**Cross-cutting constraints:**
+
+- The full Python unit suite still passes (no regressions).
 
 ### Phase 100: Low-Priority Angular Coverage + CI Ratchet
 
