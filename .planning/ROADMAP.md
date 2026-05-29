@@ -403,7 +403,7 @@ Plans:
 
 **Wave 2** *(blocked on 100-01 + 100-02 — re-measure must reflect their added coverage)*
 
-- [ ] 100-03-PLAN.md — RATCHET-02: re-measure coverage, add Karma check.global + Dockerfile --code-coverage + bump pyproject fail_under in one commit, record before/after (D-05/D-06/D-07/D-08)
+- [x] 100-03-PLAN.md — RATCHET-02: re-measure coverage, add Karma check.global + Dockerfile --code-coverage + bump pyproject fail_under in one commit, record before/after (D-05/D-06/D-07/D-08)
 
 **UI hint**: yes
 

@@ -28,7 +28,7 @@ Requirements for milestone v1.3.0. Source: `.planning/codebase/CONCERNS.md` (Tes
 ### CI Coverage Ratchet
 
 - [ ] **RATCHET-01**: Coverage baseline captured before phase 97 (`.planning/milestones/v1.3.0-COVERAGE-BASELINE.md`)
-- [ ] **RATCHET-02**: `--cov-fail-under` (pytest) and Karma `coverageReporter.check.global` thresholds ratcheted up to the new bar after phase 100; before/after numbers recorded in ROADMAP.md and the v1.3.0 retro
+- [x] **RATCHET-02**: `--cov-fail-under` (pytest) and Karma `coverageReporter.check.global` thresholds ratcheted up to the new bar after phase 100; before/after numbers recorded in ROADMAP.md and the v1.3.0 retro
 
 ## v2 Requirements
 
@@ -67,7 +67,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COVLOW-03 | Phase 100 | Pending |
 | COVLOW-04 | Phase 100 | Pending |
 | RATCHET-01 | Phase 97 | Pending |
-| RATCHET-02 | Phase 100 | Pending |
+| RATCHET-02 | Phase 100 | Complete |
 
 **Coverage:**
 - v1 requirements: 10 total
