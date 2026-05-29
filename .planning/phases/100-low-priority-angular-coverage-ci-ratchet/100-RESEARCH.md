@@ -132,7 +132,11 @@ No new packages are installed in this phase. The package legitimacy gate is not 
     → httpClient.get("/api/second")   → assert "Bearer token-v2"
 
 100-03 ratchet
-  Re-measure Python:  make coverage-python  (host, same exclusion: no lftp suite)
+  Re-measure Python:  CONTAINER-INCLUSIVE run is authoritative (real-lftp suite included):
+                      make tests-python && docker compose -f src/docker/test/python/compose.yml \
+                        run --rm -e COVERAGE_FILE=/tmp/.coverage tests \
+                        pytest --cov --cov-report=term-missing -p no:cacheprovider
+                      (host make coverage-python = provisional cross-check only; excludes lftp suite)
   Re-measure Angular: docker run with --code-coverage flag (or local ng test --code-coverage)
   Edit: karma.conf.js → add multi-reporter array + check.global block
   Edit: src/docker/test/angular/Dockerfile → add --code-coverage to CMD
@@ -532,7 +536,7 @@ lines:      84
 
 **What goes wrong:** Setting thresholds based on the Phase 97 baseline (85.19% Python, 83.34%/69.01%/79.73%/84.21% Angular) without re-measuring after Phases 97–100 tests land.
 **Why it happens:** The baseline was captured before any v1.3.0 test work; it is the "Before" anchor, not the "now" number.
-**How to avoid:** Run `make coverage-python` and the Angular coverage command after 100-01/02 are committed, THEN set the thresholds.
+**How to avoid:** Run the CONTAINER-INCLUSIVE Python measurement (real-lftp suite included — the authoritative ratchet source) and the Angular coverage command after 100-01/02 are committed, THEN set the thresholds. The container-inclusive command is `make tests-python && docker compose -f src/docker/test/python/compose.yml run --rm -e COVERAGE_FILE=/tmp/.coverage tests pytest --cov --cov-report=term-missing -p no:cacheprovider`. Host `make coverage-python` is a PROVISIONAL cross-check only (excludes the lftp suite) — never set the floor from it.
 
 ---
 
@@ -669,7 +673,7 @@ fail_under = 85   # PLACEHOLDER — fill with floor(measured) - 1 after re-measu
 | Framework (Python) | pytest + pytest-cov |
 | Config file (Python) | `src/python/pyproject.toml` |
 | Quick run command (Python) | `cd src/python && poetry run pytest -x -q` |
-| Coverage command (Python) | `make coverage-python` |
+| Coverage command (Python) | CONTAINER-INCLUSIVE (authoritative ratchet source): `make tests-python && docker compose -f src/docker/test/python/compose.yml run --rm -e COVERAGE_FILE=/tmp/.coverage tests pytest --cov --cov-report=term-missing -p no:cacheprovider` · host `make coverage-python` = provisional cross-check only (excludes lftp suite) |
 
 ### Phase Requirements → Test Map
 
@@ -679,7 +683,7 @@ fail_under = 85   # PLACEHOLDER — fill with floor(measured) - 1 after re-measu
 | COVLOW-03 (contrast) | No heartbeat → timeout fires → reconnect occurs | unit (fakeAsync) | `make run-tests-angular` | Extends existing ✓ |
 | COVLOW-04 | Token rotation via `_resetAuthInterceptorCache()` → next request carries new token | unit | `make run-tests-angular` | Extends existing ✓ |
 | RATCHET-02 | CI fails when Angular coverage drops below `check.global` thresholds | CI gate | `make run-tests-angular` (after patching Dockerfile + karma.conf.js) | ❌ Wave 0 for karma.conf.js + Dockerfile patch |
-| RATCHET-02 | CI fails when Python line coverage drops below `fail_under` | CI gate | `make coverage-python` | ✓ (already enforced) |
+| RATCHET-02 | CI fails when Python line coverage drops below `fail_under` | CI gate | `make tests-python && docker compose -f src/docker/test/python/compose.yml run --rm -e COVERAGE_FILE=/tmp/.coverage tests pytest --cov --cov-report=term-missing -p no:cacheprovider` (container-inclusive, authoritative; host `make coverage-python` is provisional cross-check only) | ✓ (already enforced) |
 
 ### Sampling Rate
 
