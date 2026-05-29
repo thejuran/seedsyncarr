@@ -286,9 +286,24 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Rate limiting on all mutable HTTP endpoints via reusable decorator — v1.2.0
 - ✓ Tightened Semgrep rules, eliminated 628 false positives — v1.2.0
 
+## Current Milestone: v1.3.0 Test Coverage Gaps
+
+**Goal:** Close the 8 test coverage gaps catalogued in CONCERNS.md — 4 Medium-priority gaps get full path coverage, 4 Low-priority gaps get a targeted regression test. Trivial bugs found while testing (<10 lines, no public-API or observable-behavior change) are fixed in the same plan; larger findings deferred to v1.4.0. Milestone ends with ratcheted CI coverage thresholds.
+
+**Target features:**
+- Medium Python coverage: MultiprocessingLogger shutdown, SSRF IPv6/reserved-range, LFTP JobStatusParser ValueError recovery
+- Medium Angular coverage: confirm-modal escapeHtml end-to-end XSS
+- Low Python regression: auto-delete dry-run/enabled toggle under live Timer, BoundedOrderedSet eviction-after-touch
+- Low Angular regression: SSE timeout reconnection race, auth.interceptor token-missing/rotation
+- Cross-cutting: coverage baseline capture, CI threshold ratchet (pytest --cov-fail-under + Karma global), before/after numbers in ROADMAP.md
+
 ### Active
 
-(No active milestone — ready for `/gsd-new-milestone`)
+<!-- v1.3.0 Test Coverage Gaps — see REQUIREMENTS.md for full REQ-IDs -->
+
+- [ ] Full path coverage for the 4 Medium-priority gaps (MP-logger, SSRF, LFTP parser, escapeHtml)
+- [ ] Targeted regression test for the 4 Low-priority gaps (auto-delete toggle, BoundedOrderedSet, SSE timeout, auth interceptor)
+- [ ] Coverage baseline captured before phase 97 and CI thresholds ratcheted after phase 100
 
 ### Out of Scope
 
@@ -407,4 +422,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-28 after v1.2.0 milestone*
+*Last updated: 2026-05-28 after v1.3.0 milestone start*
