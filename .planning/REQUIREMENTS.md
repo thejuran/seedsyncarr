@@ -16,7 +16,7 @@ Requirements for milestone v1.3.0. Source: `.planning/codebase/CONCERNS.md` (Tes
 - [ ] **COVMED-01**: `MultiprocessingLogger` listener-thread shutdown semantics are covered — handler-raises path, `propagate_exception()` re-raise, inner-loop `queue.Empty` non-termination, clean sentinel shutdown (`src/python/common/multiprocessing_logger.py:67-86`)
 - [ ] **COVMED-02**: SSRF `_validate_url` covers IPv6 and reserved ranges — IPv4 private/loopback/link-local, IPv6 link-local/loopback/unique-local, IPv6-mapped IPv4, unresolved hostnames, valid public host (`src/python/web/handler/config.py:55-85`)
 - [ ] **COVMED-03**: LFTP `JobStatusParser` `ValueError` recovery is covered — malformed line raises `LftpJobStatusParserError`, consecutive-error counter increments, `MAX_CONSECUTIVE_STATUS_ERRORS = 2` triggers recovery, counter resets on success (`src/python/lftp/lftp.py:11-13`, `src/python/lftp/job_status_parser.py:710-727`)
-- [ ] **COVMED-04**: `confirm-modal.service.ts` `escapeHtml` is covered end-to-end for XSS — every metacharacter (`&<>"'`), attacker payloads in title/body/button labels/classes, resulting `innerHTML` has no executable markup, no bypass call site (`src/angular/src/app/services/utils/confirm-modal.service.ts:33-40`)
+- [x] **COVMED-04**: `confirm-modal.service.ts` `escapeHtml` is covered end-to-end for XSS — every metacharacter (`&<>"'`), attacker payloads in title/body/button labels/classes, resulting `innerHTML` has no executable markup, no bypass call site (`src/angular/src/app/services/utils/confirm-modal.service.ts:33-40`)
 
 ### Low-Priority Coverage (targeted regression)
 
@@ -61,7 +61,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COVMED-01 | Phase 97 | Pending |
 | COVMED-02 | Phase 97 | Pending |
 | COVMED-03 | Phase 97 | Pending |
-| COVMED-04 | Phase 98 | Pending |
+| COVMED-04 | Phase 98 | Complete |
 | COVLOW-01 | Phase 99 | Pending |
 | COVLOW-02 | Phase 99 | Pending |
 | COVLOW-03 | Phase 100 | Pending |
