@@ -296,7 +296,7 @@ See `.planning/milestones/v1.2.0-ROADMAP.md` for full details.
 
 - [x] **Phase 97: Medium-Priority Python Coverage** - Baseline capture + full-path coverage for MP-logger, SSRF, LFTP parser (completed 2026-05-28)
 - [x] **Phase 98: Medium-Priority Angular Coverage** - Full-path end-to-end XSS coverage for confirm-modal escapeHtml (completed 2026-05-29)
-- [ ] **Phase 99: Low-Priority Python Coverage** - Targeted regression tests for auto-delete toggle and BoundedOrderedSet eviction
+- [x] **Phase 99: Low-Priority Python Coverage** - Targeted regression tests for auto-delete toggle and BoundedOrderedSet eviction (completed 2026-05-29)
 - [ ] **Phase 100: Low-Priority Angular Coverage + CI Ratchet** - SSE timeout + auth interceptor regressions, then ratchet pytest + Karma thresholds
 
 ### Coverage Ratchet — Before / After
@@ -422,7 +422,7 @@ Plans:
 | 75-82. Post-Redesign Cleanup | v1.1.1 | 22/22 | Complete | 2026-04-23 |
 | 83-86. Test Suite Audit | v1.1.2 | 6/6 | Complete | 2026-04-24 |
 | 87-96. Test & Quality Hardening | v1.2.0 | 23/23 | Complete | 2026-04-28 |
-| 97-100. Test Coverage Gaps | v1.3.0 | 0/9 | Not started | - |
+| 97-100. Test Coverage Gaps | v1.3.0 | 7/9 | In progress | - |
 
 ---
 
