@@ -373,8 +373,8 @@ Plans:
 
 Plans:
 
-- [ ] 99-01-PLAN.md — COVLOW-01: auto-delete honors enabled/dry_run toggle flipped during a live threading.Timer window (D-01 real-Timer schedule->flip->fire, D-02 both toggles as two tests)
-- [ ] 99-02-PLAN.md — COVLOW-02: BoundedOrderedSet eviction ordering after touch — touched item retained, oldest non-touched evicts first (D-03 three asserts)
+- [x] 99-01-PLAN.md — COVLOW-01: auto-delete honors enabled/dry_run toggle flipped during a live threading.Timer window (D-01 real-Timer schedule->flip->fire, D-02 both toggles as two tests)
+- [x] 99-02-PLAN.md — COVLOW-02: BoundedOrderedSet eviction ordering after touch — touched item retained, oldest non-touched evicts first (D-03 three asserts)
 
 **Cross-cutting constraints:**
 
