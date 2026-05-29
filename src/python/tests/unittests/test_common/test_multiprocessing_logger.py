@@ -41,35 +41,29 @@ class TestMultiprocessingLogger(unittest.TestCase):
 
     def _drive_record_in_process(self, mp_logger: MultiprocessingLogger,
                                  child_name: str, level: int, message: str):
-        """Enqueue a single real log record onto the listener's queue from THIS process.
+        """Enqueue a single real log record directly onto the listener's queue.
 
-        ``get_process_safe_logger()`` strips the root logger's handlers and attaches a
-        ``QueueHandler`` to the MultiprocessingLogger's internal queue. Calling it
-        in-process (rather than from a spawned child) routes a real record onto the
-        queue without depending on the multiprocessing start method (``spawn`` on
-        macOS cannot pickle local-closure process targets).
+        The listener consumes ``LogRecord`` objects off the MultiprocessingLogger's
+        internal ``multiprocessing.Queue`` and routes each via
+        ``self.logger.getChild(record.name).handle(record)`` — keyed on ``record.name``.
+        We build a real record with ``name == child_name`` (exactly what a child
+        ``QueueHandler`` would have enqueued) and put it on that queue directly.
 
-        The root logger's handler list + level are snapshotted and restored
-        *synchronously* immediately after the record is enqueued. This is load-bearing:
-        the listener handles records on a logger whose ancestry propagates up to the
-        root logger; if the root logger still carried the QueueHandler when the listener
-        ran, every handled record would propagate back onto the same queue and be
-        re-handled forever. Restoring before the listener drains breaks that feedback
-        loop and prevents leaking QueueHandlers into other tests.
+        This deliberately does NOT go through ``get_process_safe_logger()``: that helper
+        installs a ``QueueHandler`` on the global ROOT logger (after closing + stripping
+        root's existing handlers). Driving records through root meant (a) the listener
+        could propagate a handled record back up to root's QueueHandler and re-enqueue it
+        (a feedback-loop / duplicate window), and (b) restoring the snapshotted root
+        handlers re-added them in a *closed* state, leaking broken handlers into other
+        tests in the same worker. Enqueueing the record directly avoids touching root
+        entirely, so neither hazard exists.
         """
-        root_logger = logging.getLogger()
-        saved_handlers = root_logger.handlers[:]
-        saved_level = root_logger.level
-        try:
-            # get_process_safe_logger() returns the (now queue-backed) root logger
-            process_logger = mp_logger.get_process_safe_logger().getChild(child_name)
-            process_logger.log(level, message)
-        finally:
-            for handler in root_logger.handlers[:]:
-                root_logger.removeHandler(handler)
-            for handler in saved_handlers:
-                root_logger.addHandler(handler)
-            root_logger.setLevel(saved_level)
+        queue = mp_logger._MultiprocessingLogger__queue
+        record = logging.LogRecord(
+            name=child_name, level=level, pathname=__file__, lineno=0,
+            msg=message, args=(), exc_info=None,
+        )
+        queue.put(record)
 
     @staticmethod
     def _wait_for_listener_shutdown(mp_logger: MultiprocessingLogger,
