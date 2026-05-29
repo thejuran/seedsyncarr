@@ -450,6 +450,16 @@ describe("Testing confirm modal service", () => {
             return false;
         }
 
+        // Scans the modal subtree for any href/src attribute carrying a javascript: URL.
+        // Extracted to a describe-scope helper (mirrors hasOnAttribute) so the four D-03
+        // end-to-end tests share one javascript:-URL check instead of duplicating it.
+        function hasJavascriptUrl(root: Element): boolean {
+            return Array.from(root.querySelectorAll("[href],[src]")).some(el =>
+                (el.getAttribute("href") || "").toLowerCase().startsWith("javascript:") ||
+                (el.getAttribute("src") || "").toLowerCase().startsWith("javascript:")
+            );
+        }
+
         // D-04: Direct escapeHtml unit tests (synchronous — escapeHtml is a pure function,
         // no fakeAsync needed).
 
@@ -528,12 +538,7 @@ describe("Testing confirm modal service", () => {
                 // (b) No on* event-handler attribute anywhere in the subtree
                 expect(hasOnAttribute(modal)).toBe(false);
                 // (c) No javascript: URL
-                const linkedEls = Array.from(modal.querySelectorAll("[href],[src]"));
-                const hasJsUrl = linkedEls.some(el =>
-                    (el.getAttribute("href") || "").toLowerCase().startsWith("javascript:") ||
-                    (el.getAttribute("src") || "").toLowerCase().startsWith("javascript:")
-                );
-                expect(hasJsUrl).toBe(false);
+                expect(hasJavascriptUrl(modal)).toBe(false);
                 // (d) Entity-encoded in raw innerHTML \u2014 proves escaping, not silent stripping
                 expect(modal.innerHTML).toContain("&lt;script&gt;");
                 expect(modal.innerHTML).toContain("&lt;/script&gt;");
@@ -554,12 +559,7 @@ describe("Testing confirm modal service", () => {
 
                 expect(modal.querySelector("script")).toBeNull();
                 expect(hasOnAttribute(modal)).toBe(false);
-                const linkedEls = Array.from(modal.querySelectorAll("[href],[src]"));
-                const hasJsUrl = linkedEls.some(el =>
-                    (el.getAttribute("href") || "").toLowerCase().startsWith("javascript:") ||
-                    (el.getAttribute("src") || "").toLowerCase().startsWith("javascript:")
-                );
-                expect(hasJsUrl).toBe(false);
+                expect(hasJavascriptUrl(modal)).toBe(false);
                 expect(modal.innerHTML).toContain("&lt;script&gt;");
                 expect(modal.innerHTML).toContain("&lt;/script&gt;");
                 // Preserved from superseded test (line 315): img-based onerror payload visible
@@ -621,12 +621,7 @@ describe("Testing confirm modal service", () => {
 
                 expect(modal.querySelector("script")).toBeNull();
                 expect(hasOnAttribute(modal)).toBe(false);
-                const linkedEls = Array.from(modal.querySelectorAll("[href],[src]"));
-                const hasJsUrl = linkedEls.some(el =>
-                    (el.getAttribute("href") || "").toLowerCase().startsWith("javascript:") ||
-                    (el.getAttribute("src") || "").toLowerCase().startsWith("javascript:")
-                );
-                expect(hasJsUrl).toBe(false);
+                expect(hasJavascriptUrl(modal)).toBe(false);
                 expect(modal.innerHTML).toContain("&lt;script&gt;");
                 // Payload rendered as inert button text (visible text contains literal tags)
                 expect(okButton.textContent).toContain("<script>");
@@ -646,12 +641,7 @@ describe("Testing confirm modal service", () => {
 
                 expect(modal.querySelector("script")).toBeNull();
                 expect(hasOnAttribute(modal)).toBe(false);
-                const linkedEls = Array.from(modal.querySelectorAll("[href],[src]"));
-                const hasJsUrl = linkedEls.some(el =>
-                    (el.getAttribute("href") || "").toLowerCase().startsWith("javascript:") ||
-                    (el.getAttribute("src") || "").toLowerCase().startsWith("javascript:")
-                );
-                expect(hasJsUrl).toBe(false);
+                expect(hasJavascriptUrl(modal)).toBe(false);
                 expect(modal.innerHTML).toContain("&lt;script&gt;");
                 // Payload rendered as inert button text
                 expect(cancelButton.textContent).toContain("<script>");
