@@ -60,6 +60,7 @@ Items carried forward after v1.2.0 milestone close on 2026-04-28:
 | todo | webob-cgi-upstream-unblock | testing (upstream — blocked on webob 2.0) |
 | todo | migrate-config-set-to-post-body | security (API contract change — separate milestone) |
 | v1.4.0 | mp-logger-analog-tests-macos-spawn | deferred (Phase 97 / 97-02): 3 analog tests in test_multiprocessing_logger.py (test_main_logger_receives_records, test_children_names, test_logger_levels) fail under macOS `spawn` due to local-closure Process targets; pass under Linux/CI `fork`. Pre-existing, not authored by 97-02. Fix = promote `process_1` to module scope. See .planning/phases/97-medium-priority-python-coverage/deferred-items.md |
+| v1.4.0 | confirm-modal-skipcount-type-erasure-hardening | deferred (Phase 98 / 98-01, codex adversarial review 2026-05-29): `ConfirmModalService.skipMessage` (confirm-modal.service.ts:59-64) interpolates `${options.skipCount}` un-escaped, guarded only by `if (skipCount && skipCount > 0)`. TS `number` type is erased at runtime, so a caller passing a `toString()`-overriding object bypasses the guard. SAFE in current app (all call sites pass real numbers); the runtime-boundary probe in 98-01-PLAN.md Task 3 pins the behavior. Hardening (coerce `Number(skipCount)` or escape the rendered string) is a public-behavior change beyond v1.3.0's additive-coverage scope → v1.4.0. Documenting test: confirm-modal.service.spec.ts skipCount runtime-boundary it-block. |
 
 Note: 7 former deferred items were resolved by v1.2.0:
 
