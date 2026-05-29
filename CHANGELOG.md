@@ -4,6 +4,17 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.5] - 2026-05-28
+
+### Security
+
+- Updated `tmp` to 0.2.7 to address GHSA-ph9p-34f9-6g65 / CVE-2026-44705 (path traversal via unsanitized prefix/postfix). The vulnerable package was a transitive dependency of the Angular test toolchain only and is not present in the published Docker runtime, but the lockfile has been updated to clear the advisory.
+
+### Changed
+
+- Updated Angular framework and CLI to 21.2.14, along with `@typescript-eslint/*` 8.60.0 and `sass` 1.100.0.
+- Updated development tooling: Puppeteer 25.1.0, Ruff 0.15.14, and `testfixtures` 12.0.0.
+
 ## [1.2.4] - 2026-05-20
 
 ### Changed
