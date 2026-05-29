@@ -21,8 +21,19 @@ module.exports = function (config) {
             }
         },
         coverageReporter: {
-            type: 'html',
-            dir: 'coverage/'
+            dir: 'coverage/',
+            reporters: [
+                { type: 'html', subdir: '.' },
+                { type: 'text-summary' }
+            ],
+            check: {
+                global: {
+                    statements: 83,
+                    branches: 68,
+                    functions: 79,
+                    lines: 83
+                }
+            }
         },
         angularCli: {
             environment: 'dev'

@@ -30,4 +30,5 @@ WORKDIR /app/src
 # Note: Angular 13+ CLI binary is ng.js
 CMD ["node", "/app/node_modules/@angular/cli/bin/ng.js", "test", \
      "--browsers", "ChromeHeadless", \
-     "--watch=false"]
+     "--watch=false", \
+     "--code-coverage"]
