@@ -353,7 +353,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 98-01-PLAN.md — COVMED-04: end-to-end XSS coverage for confirm-modal escapeHtml (D-04 metacharacter/ordering unit tests, D-03/D-05 all-six-input DOM assertions, D-02 skipCount-exemption audit)
+- [x] 98-01-PLAN.md — COVMED-04: end-to-end XSS coverage for confirm-modal escapeHtml (D-04 metacharacter/ordering unit tests, D-03/D-05 all-six-input DOM assertions, D-02 skipCount-exemption audit)
 
 **UI hint**: yes
 
