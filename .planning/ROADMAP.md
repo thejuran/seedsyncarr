@@ -398,8 +398,8 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 100-01-PLAN.md — COVLOW-03: SSE heartbeat-vs-timeout race regression test (D-01/D-02 same-frame heartbeat saves the race + paired no-heartbeat positive control)
-- [ ] 100-02-PLAN.md — COVLOW-04: auth interceptor token-rotation regression test via the _resetAuthInterceptorCache seam (D-03 mirror of cache test, D-04 page-reload coupling comment)
+- [x] 100-01-PLAN.md — COVLOW-03: SSE heartbeat-vs-timeout race regression test (D-01/D-02 same-frame heartbeat saves the race + paired no-heartbeat positive control)
+- [x] 100-02-PLAN.md — COVLOW-04: auth interceptor token-rotation regression test via the _resetAuthInterceptorCache seam (D-03 mirror of cache test, D-04 page-reload coupling comment)
 
 **Wave 2** *(blocked on 100-01 + 100-02 — re-measure must reflect their added coverage)*
 
