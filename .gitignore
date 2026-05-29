@@ -53,3 +53,7 @@ vendor/
 coverage/
 .cache/
 tmp/
+
+# TuringMind code-review working state (state files + run snapshots).
+# REVIEW.md from --finalize is the only artifact meant to be committed (copy it elsewhere).
+.turingmind/
