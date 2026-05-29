@@ -25,7 +25,7 @@ created: 2026-05-29
 | **Quick run command (Angular spec subset)** | `cd src/angular && ng test --watch=false --browsers=ChromeHeadlessCI --include=src/app/tests/unittests/services/base/stream-service.registry.spec.ts` (100-01) / `--include=.../services/utils/auth.interceptor.spec.ts` (100-02) |
 | **Full suite (Angular)** | `make run-tests-angular` |
 | **Coverage gate (Angular, after 100-03 patches Dockerfile + karma.conf.js)** | `make run-tests-angular` (now with `--code-coverage` → `check.global` enforced) |
-| **Coverage gate (Python)** | `make coverage-python` (already enforces `fail_under`) |
+| **Coverage gate (Python)** | Authoritative ratchet source = CONTAINER-INCLUSIVE: `make tests-python && docker compose -f src/docker/test/python/compose.yml run --rm -e COVERAGE_FILE=/tmp/.coverage tests pytest --cov --cov-report=term-missing -p no:cacheprovider` (real-lftp suite INCLUDED; `-e COVERAGE_FILE=/tmp/.coverage` redirects the data file off the read-only `/src` mount; enforces `fail_under`). Host `make coverage-python` is a PROVISIONAL cross-check only (excludes the real-lftp suite), NOT the ratchet source. |
 | **Lint command** | `cd src/angular && npx eslint "<spec path>" --max-warnings 0` |
 | **Estimated runtime** | ~5–10s per Angular spec (headless); full Angular suite + Python coverage within standard CI budget |
 

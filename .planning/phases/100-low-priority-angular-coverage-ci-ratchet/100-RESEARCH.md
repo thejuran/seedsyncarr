@@ -428,12 +428,36 @@ CMD ["node", "/app/node_modules/@angular/cli/bin/ng.js", "test", \
 
 ### Re-Measurement Commands
 
-**Python (host, matching baseline conditions):**
+**Python (CONTAINER-INCLUSIVE — THIS is the authoritative ratchet source):**
 ```bash
-cd src/python && make coverage-python
-# Expands to: poetry run pytest --cov --cov-report=term-missing --cov-report=html
-# Same exclusion as baseline: lftp integration suite is not available on host (no lftp binary)
-# This is the correct "matching" measurement — same provisos as the 85.19% baseline
+# The ratchet "before"/"now" MUST come from a CONTAINER-INCLUSIVE run that INCLUDES the
+# real-lftp integration suite (the host has no `lftp` binary / `sshd`). Per the baseline
+# mandate (v1.3.0-COVERAGE-BASELINE.md lines 85-91), the host-only number is PROVISIONAL —
+# NOT the authoritative ratchet source. Run pytest with --cov INSIDE the test container
+# (which has lftp + sshd) by overriding the CMD on a one-off run.
+#
+# The compose `tests` service mounts /src READ-ONLY (compose.yml:13) and WORKDIR is /src/.
+# pytest-cov writes its `.coverage` data file to CWD by default, which would FAIL on the
+# read-only mount — redirect it off the mount with `-e COVERAGE_FILE=/tmp/.coverage`
+# (the -e flag goes BEFORE the service name in `docker compose run`). Use
+# --cov-report=term-missing (stdout); do NOT use --cov-report=html (it would also write /src).
+make tests-python && docker compose -f src/docker/test/python/compose.yml run --rm \
+  -e COVERAGE_FILE=/tmp/.coverage tests \
+  pytest --cov --cov-report=term-missing -p no:cacheprovider
+# Capture the printed TOTAL line %. This container-inclusive number is the ratchet source
+# and the honest "before" (expected >= the provisional host 85.19% since the real-lftp suite
+# adds covered lines).
+```
+
+**Python (host — PROVISIONAL sanity reference ONLY, NOT the ratchet source):**
+```bash
+# The repo-root `make coverage-python` target is HOST-only / provisional: it EXCLUDES the
+# real-lftp integration suite (no lftp binary / sshd on the host). It is acceptable as a
+# cross-check only and MUST NOT be used to set the floor.
+make coverage-python   # run FROM THE REPO ROOT — there is NO src/python/Makefile, so
+                       # `cd src/python && make coverage-python` would FAIL (no Makefile).
+# WARNING: do NOT treat this host number as "correct" / "matching" / authoritative — it is
+# provisional and excludes the lftp suite. The container-inclusive run above is authoritative.
 ```
 
 **Angular (headless, with coverage):**
