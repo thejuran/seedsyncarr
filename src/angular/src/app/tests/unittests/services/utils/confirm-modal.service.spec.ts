@@ -297,45 +297,6 @@ describe("Testing confirm modal service", () => {
         expect(skipMessage!.classList.contains("small")).toBe(true);
     }));
 
-    it("should sanitize HTML in title and body to prevent XSS", fakeAsync(() => {
-        const options: ConfirmModalOptions = {
-            title: "<script>alert(\"xss\")</script>",
-            body: "<img src=x onerror=alert(1)> test"
-        };
-
-        service.confirm(options);
-        tick();
-
-        const modal = document.querySelector(".modal");
-        const modalTitle = modal!.querySelector(".modal-title");
-        const modalBodyP = modal!.querySelector(".modal-body p");
-
-        // The literal tag strings should appear as text content, not as injected elements
-        expect(modalTitle!.textContent).toContain("<script>");
-        expect(modalBodyP!.textContent).toContain("<img src=x onerror=alert(1)>");
-
-        // No actual script or img elements should be injected inside the modal
-        expect(modal!.querySelector("script")).toBeNull();
-        expect(modal!.querySelector("img")).toBeNull();
-    }));
-
-    it("should render HTML entities as literal text in body", fakeAsync(() => {
-        const options: ConfirmModalOptions = {
-            title: "Confirm",
-            body: "Delete <b>file.txt</b> from server?"
-        };
-
-        service.confirm(options);
-        tick();
-
-        const modalBodyP = document.querySelector(".modal-body p");
-
-        // The <b> tags should appear as literal text, not as a bold element
-        expect(modalBodyP!.textContent).toContain("<b>file.txt</b>");
-
-        // No actual <b> element should be created inside the modal body paragraph
-        expect(modalBodyP!.querySelector("b")).toBeNull();
-    }));
 
     it("should focus cancel button when modal opens", fakeAsync(() => {
         const options: ConfirmModalOptions = {
@@ -476,7 +437,6 @@ describe("Testing confirm modal service", () => {
         // carries an attribute whose name starts with "on". CSS has no attribute-name-prefix
         // selector ([on*=...] matches attribute VALUES), so walking element.attributes is the
         // only correct approach (RESEARCH.md Pattern 4, Area 4). Used in D-03/D-05 tests below.
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         function hasOnAttribute(root: Element): boolean {
             const allElements = Array.from(root.querySelectorAll("*"));
             allElements.push(root);
@@ -535,5 +495,213 @@ describe("Testing confirm modal service", () => {
             // Null byte (U+0000): HTML5 parser normalizes it; not exploitable in these contexts.
             expect(escape("\0")).toBe("\0");
         });
+
+        // D-03 / D-05: End-to-end DOM XSS tests for all six escaped inputs.
+        //
+        // Each test follows the canonical idiom (spec lines 29-42):
+        //   service.confirm(options) \u2192 tick() \u2192 const modal = document.querySelector(".modal")!
+        // Four assertion layers per test (D-03):
+        //   (a) modal.querySelector("script") is null          \u2014 no script element parsed
+        //   (b) hasOnAttribute(modal) is false                 \u2014 no on* attribute in subtree
+        //   (c) no [href]/[src] value starts with "javascript:"
+        //   (d) modal.innerHTML contains the escaped entity string
+        //       (proves entity encoding, not silent browser stripping \u2014 Pitfall 1)
+        //
+        // Supersedes the two former partial XSS tests (spec lines 300-320 and 322-338, D-06).
+        // Their unique textContent assertions are preserved in the title and body blocks below.
+
+        // --- Element-content inputs (title, body, okBtn, cancelBtn) ---
+
+        it("should produce no executable markup when title contains a script payload",
+            fakeAsync(() => {
+                service.confirm({
+                    title: "<script>alert(\"xss\")</script>",
+                    body: "safe body"
+                });
+                tick();
+
+                const modal = document.querySelector(".modal")!;
+                const modalTitle = modal.querySelector(".modal-title")!;
+
+                // (a) No parsed script element
+                expect(modal.querySelector("script")).toBeNull();
+                // (b) No on* event-handler attribute anywhere in the subtree
+                expect(hasOnAttribute(modal)).toBe(false);
+                // (c) No javascript: URL
+                const linkedEls = Array.from(modal.querySelectorAll("[href],[src]"));
+                const hasJsUrl = linkedEls.some(el =>
+                    (el.getAttribute("href") || "").toLowerCase().startsWith("javascript:") ||
+                    (el.getAttribute("src") || "").toLowerCase().startsWith("javascript:")
+                );
+                expect(hasJsUrl).toBe(false);
+                // (d) Entity-encoded in raw innerHTML \u2014 proves escaping, not silent stripping
+                expect(modal.innerHTML).toContain("&lt;script&gt;");
+                expect(modal.innerHTML).toContain("&lt;/script&gt;");
+                // Preserved from superseded test (line 314): browser-decoded visible text
+                expect(modalTitle.textContent).toContain("<script>");
+            }));
+
+        it("should produce no executable markup when body contains a script payload",
+            fakeAsync(() => {
+                service.confirm({
+                    title: "safe title",
+                    body: "<script>alert(1)</script>"
+                });
+                tick();
+
+                const modal = document.querySelector(".modal")!;
+                const modalBodyP = modal.querySelector(".modal-body p")!;
+
+                expect(modal.querySelector("script")).toBeNull();
+                expect(hasOnAttribute(modal)).toBe(false);
+                const linkedEls = Array.from(modal.querySelectorAll("[href],[src]"));
+                const hasJsUrl = linkedEls.some(el =>
+                    (el.getAttribute("href") || "").toLowerCase().startsWith("javascript:") ||
+                    (el.getAttribute("src") || "").toLowerCase().startsWith("javascript:")
+                );
+                expect(hasJsUrl).toBe(false);
+                expect(modal.innerHTML).toContain("&lt;script&gt;");
+                expect(modal.innerHTML).toContain("&lt;/script&gt;");
+                // Preserved from superseded test (line 315): img-based onerror payload visible
+                // as literal text (mirrors the former textContent assertion for body)
+                expect(modalBodyP.textContent).toContain("<script>");
+            }));
+
+        it("should produce no executable markup when body contains an img onerror payload",
+            fakeAsync(() => {
+                service.confirm({
+                    title: "safe title",
+                    body: "<img src=x onerror=alert(1)> test"
+                });
+                tick();
+
+                const modal = document.querySelector(".modal")!;
+                const modalBodyP = modal.querySelector(".modal-body p")!;
+
+                expect(modal.querySelector("img")).toBeNull();
+                expect(modal.querySelector("script")).toBeNull();
+                expect(hasOnAttribute(modal)).toBe(false);
+                expect(modal.innerHTML).toContain("&lt;img");
+                // Preserved from superseded test (line 315): decoded visible text
+                expect(modalBodyP.textContent).toContain("<img src=x onerror=alert(1)>");
+            }));
+
+        it("should render HTML-tagged body text as escaped entities, not live elements",
+            fakeAsync(() => {
+                service.confirm({
+                    title: "Confirm",
+                    body: "Delete <b>file.txt</b> from server?"
+                });
+                tick();
+
+                const modal = document.querySelector(".modal")!;
+                const modalBodyP = modal.querySelector(".modal-body p")!;
+
+                expect(modal.querySelector("script")).toBeNull();
+                expect(hasOnAttribute(modal)).toBe(false);
+                // Entity-encoded \u2014 the '<' was escaped
+                expect(modal.innerHTML).toContain("&lt;b&gt;");
+                // Preserved from superseded test (line 334): visible text contains literal tags
+                expect(modalBodyP.textContent).toContain("<b>file.txt</b>");
+                // No live <b> element created (preserved from line 337)
+                expect(modalBodyP.querySelector("b")).toBeNull();
+            }));
+
+        it("should produce no executable markup when okBtn contains a script payload",
+            fakeAsync(() => {
+                service.confirm({
+                    title: "t",
+                    body: "b",
+                    okBtn: "<script>alert(1)</script>"
+                });
+                tick();
+
+                const modal = document.querySelector(".modal")!;
+                const okButton = modal.querySelector("[data-action=\"ok\"]")!;
+
+                expect(modal.querySelector("script")).toBeNull();
+                expect(hasOnAttribute(modal)).toBe(false);
+                const linkedEls = Array.from(modal.querySelectorAll("[href],[src]"));
+                const hasJsUrl = linkedEls.some(el =>
+                    (el.getAttribute("href") || "").toLowerCase().startsWith("javascript:") ||
+                    (el.getAttribute("src") || "").toLowerCase().startsWith("javascript:")
+                );
+                expect(hasJsUrl).toBe(false);
+                expect(modal.innerHTML).toContain("&lt;script&gt;");
+                // Payload rendered as inert button text (visible text contains literal tags)
+                expect(okButton.textContent).toContain("<script>");
+            }));
+
+        it("should produce no executable markup when cancelBtn contains a script payload",
+            fakeAsync(() => {
+                service.confirm({
+                    title: "t",
+                    body: "b",
+                    cancelBtn: "<script>alert(1)</script>"
+                });
+                tick();
+
+                const modal = document.querySelector(".modal")!;
+                const cancelButton = modal.querySelector("[data-action=\"cancel\"]")!;
+
+                expect(modal.querySelector("script")).toBeNull();
+                expect(hasOnAttribute(modal)).toBe(false);
+                const linkedEls = Array.from(modal.querySelectorAll("[href],[src]"));
+                const hasJsUrl = linkedEls.some(el =>
+                    (el.getAttribute("href") || "").toLowerCase().startsWith("javascript:") ||
+                    (el.getAttribute("src") || "").toLowerCase().startsWith("javascript:")
+                );
+                expect(hasJsUrl).toBe(false);
+                expect(modal.innerHTML).toContain("&lt;script&gt;");
+                // Payload rendered as inert button text
+                expect(cancelButton.textContent).toContain("<script>");
+            }));
+
+        // --- Class-attribute inputs (okBtnClass, cancelBtnClass) ---
+        //
+        // Payload: "btn\" onmouseover=\"alert(1)" attempts to close the double-quoted class
+        // attribute and inject an event-handler attribute. escapeHtml encodes '"' to '&quot;',
+        // keeping the payload inside the class value string (Pitfall 4, RESEARCH.md).
+
+        it("should neutralize an attribute-breakout payload in okBtnClass", fakeAsync(() => {
+            service.confirm({
+                title: "t",
+                body: "b",
+                okBtnClass: "btn\" onmouseover=\"alert(1)"
+            });
+            tick();
+
+            const modal = document.querySelector(".modal")!;
+            const okButton = modal.querySelector("[data-action=\"ok\"]")!;
+
+            // Primary DOM assertion: no onmouseover attribute on the button
+            expect(okButton.getAttribute("onmouseover")).toBeNull();
+            // Subtree walk: no on* attribute anywhere
+            expect(hasOnAttribute(modal)).toBe(false);
+            // String assertion: the '"' was encoded, trapping the payload inside class value
+            expect(modal.innerHTML).toContain("&quot;");
+            expect(modal.querySelector("script")).toBeNull();
+        }));
+
+        it("should neutralize an attribute-breakout payload in cancelBtnClass",
+            fakeAsync(() => {
+                service.confirm({
+                    title: "t",
+                    body: "b",
+                    cancelBtnClass: "btn\" onmouseover=\"alert(1)"
+                });
+                tick();
+
+                const modal = document.querySelector(".modal")!;
+                const cancelButton = modal.querySelector("[data-action=\"cancel\"]")!;
+
+                // Primary DOM assertion: no onmouseover attribute on the button
+                expect(cancelButton.getAttribute("onmouseover")).toBeNull();
+                // Subtree walk: no on* attribute anywhere
+                expect(hasOnAttribute(modal)).toBe(false);
+                // String assertion: the '"' was encoded
+                expect(modal.innerHTML).toContain("&quot;");
+                expect(modal.querySelector("script")).toBeNull();
+            }));
     });
 });
