@@ -350,8 +350,13 @@ Plans:
   3. A test confirms `escapeHtml` runs in every interpolation path — there is no bypass call site.
   4. Any trivial fix surfaced (e.g. adding backtick / U+2028 / U+2029 / null byte to the escape set if a real risk for a current caller) lands as a green commit after its red test; larger findings deferred to v1.4.0 with a STATE.md entry.
 
-**Plans**: TBD (1 plan: 98-01 escapeHtml end-to-end XSS)
+**Plans**: 1 plan
+
+Plans:
+- [ ] 98-01-PLAN.md — COVMED-04: end-to-end XSS coverage for confirm-modal escapeHtml (D-04 metacharacter/ordering unit tests, D-03/D-05 all-six-input DOM assertions, D-02 skipCount-exemption audit)
+
 **UI hint**: yes
+
 
 ### Phase 99: Low-Priority Python Coverage
 
