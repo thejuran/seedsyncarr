@@ -805,3 +805,27 @@ class TestLftpProtocol(unittest.TestCase):
             with self.assertRaises(LftpJobStatusParserError):
                 self.lftp.status()                    # count -> 3, re-raises
 
+    @pytest.mark.timeout(5)
+    def test_status_parser_error_counter_resets_on_success(self):
+        """Controller counter: a successful status() between errors resets
+        __consecutive_status_errors to 0 (lftp.py:305 success branch). Proven via
+        public status() returns only: drive 2 errors (count -> 2), then a success
+        (a clean parse returning []), then 2 MORE errors -- both are swallowed
+        (return []). Had the counter NOT reset, the very next error would be count
+        3 (> MAX) and would re-raise. (parse-stub scope: counter only.)"""
+        with patch.object(self.lftp._Lftp__job_status_parser, "parse",
+                          side_effect=[
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                              [],  # SUCCESS: clean parse -> resets counter to 0
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                              LftpJobStatusParserError("Error parsing lftp job status"),
+                          ]):
+            self.assertEqual([], self.lftp.status())  # error, count -> 1, swallowed
+            self.assertEqual([], self.lftp.status())  # error, count -> 2, swallowed
+            self.assertEqual([], self.lftp.status())  # SUCCESS -> count reset to 0
+            # After reset, two further errors are swallowed again (count -> 1, 2),
+            # NOT re-raised -- proving the reset happened.
+            self.assertEqual([], self.lftp.status())  # error, count -> 1, swallowed
+            self.assertEqual([], self.lftp.status())  # error, count -> 2, swallowed
+
