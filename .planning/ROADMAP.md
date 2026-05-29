@@ -334,9 +334,9 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 97-02-PLAN.md — COVMED-01: full-path coverage of MultiprocessingLogger listener-thread shutdown semantics
-- [ ] 97-03-PLAN.md — COVMED-02: SSRF _validate_url IPv4/IPv6 reserved-range coverage (+ pre-approved IPv6-mapped fix)
-- [ ] 97-04-PLAN.md — COVMED-03: LFTP JobStatusParser error-recovery counter coverage (integration layer)
+- [x] 97-02-PLAN.md — COVMED-01: full-path coverage of MultiprocessingLogger listener-thread shutdown semantics
+- [x] 97-03-PLAN.md — COVMED-02: SSRF _validate_url IPv4/IPv6 reserved-range coverage (+ pre-approved IPv6-mapped fix)
+- [x] 97-04-PLAN.md — COVMED-03: LFTP JobStatusParser error-recovery counter coverage (integration layer)
 
 ### Phase 98: Medium-Priority Angular Coverage
 

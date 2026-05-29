@@ -59,6 +59,7 @@ Items carried forward after v1.2.0 milestone close on 2026-04-28:
 |----------|------|--------|
 | todo | webob-cgi-upstream-unblock | testing (upstream — blocked on webob 2.0) |
 | todo | migrate-config-set-to-post-body | security (API contract change — separate milestone) |
+| v1.4.0 | mp-logger-analog-tests-macos-spawn | deferred (Phase 97 / 97-02): 3 analog tests in test_multiprocessing_logger.py (test_main_logger_receives_records, test_children_names, test_logger_levels) fail under macOS `spawn` due to local-closure Process targets; pass under Linux/CI `fork`. Pre-existing, not authored by 97-02. Fix = promote `process_1` to module scope. See .planning/phases/97-medium-priority-python-coverage/deferred-items.md |
 
 Note: 7 former deferred items were resolved by v1.2.0:
 
