@@ -848,3 +848,136 @@ class TestRemoteScannerDfSshFailure(unittest.TestCase):
         self.assertEqual([], files)
         self.assertIsNone(total)
         self.assertIsNone(used)
+
+
+# ============================================================================
+# Phase 101-06: CWE-117 log-injection sanitization for remote_scanner.py:118
+# ============================================================================
+
+class TestRemoteScannerLogSanitization(unittest.TestCase):
+    """
+    Tests for CWE-117 log-injection sanitization at remote_scanner.py:118
+    (the JSON-decode-error log site in the except branch of scan()).
+
+    The plan mandates:
+    - test_json_decode_error_log_sanitized: CRLF-bearing malformed JSON bytes make
+      json.loads raise; the "JSON decode error" ERROR log must have no literal CR/LF
+      from the injected name; scan() raises ScannerError.
+    - test_json_decode_error_log_no_nameerror_on_bytes: non-UTF8 bytes make the
+      decode at line 114 itself raise (UnicodeDecodeError is a ValueError subclass,
+      caught by the except); the except branch must NOT NameError on out_str
+      (which is undefined when the decode raised); still raises ScannerError.
+    - test_scan_still_parses_valid_output: well-formed JSON still parses to the
+      expected SystemFile list (success path unaffected).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temp_dir = tempfile.mkdtemp(prefix="test_remote_scanner_sanitize")
+        cls.temp_scan_script = os.path.join(cls.temp_dir, "script")
+        with open(cls.temp_scan_script, "w") as f:
+            f.write("")
+        with open(cls.temp_scan_script, "rb") as f:
+            cls.scan_script_md5 = hashlib.md5(f.read()).hexdigest()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.temp_dir)
+
+    def _make_scanner(self, mock_ssh):
+        scanner = RemoteScanner(
+            remote_address="host",
+            remote_username="user",
+            remote_password="pw",
+            remote_port=22,
+            remote_path_to_scan="/remote/path",
+            local_path_to_scan_script=self.temp_scan_script,
+            remote_path_to_scan_script="/remote/path/script",
+        )
+        # Skip the install step
+        scanner._RemoteScanner__install_done = True
+        return scanner
+
+    def test_json_decode_error_log_sanitized(self):
+        """
+        mock_ssh.shell returns a string (not bytes) with malformed JSON containing a
+        CRLF-bearing remote name. When out is a str, json.loads raises immediately
+        (no bytes-decode step), the except fires, scan() raises ScannerError, AND the
+        'JSON decode error' ERROR log line has no literal CR/LF from the injected name.
+
+        Using a string return value (not bytes) so that the CRLF in out is a literal
+        control character that would appear verbatim in the log without sanitization.
+        """
+        with patch('controller.scan.remote_scanner.Sshcp') as mock_ssh_cls:
+            mock_ssh = mock_ssh_cls.return_value
+            scanner = self._make_scanner(mock_ssh)
+
+            # Malformed JSON string (not bytes) with a CRLF-bearing remote filename.
+            # When out is a str, out.decode is not called, so out_str = out directly,
+            # and json.loads raises on the malformed JSON. The except then has out as a
+            # str with literal CR/LF that must be sanitized in the log.
+            injected_name = "file\r\nINJECTED_LINE.mkv"
+            malformed_json_str = 'not-valid-json {"name": "' + injected_name + '"}'
+            mock_ssh.shell.return_value = malformed_json_str
+
+            with self.assertRaises(ScannerError) as ctx:
+                with self.assertLogs("RemoteScanner", level=logging.ERROR) as cm:
+                    scanner.scan()
+
+            self.assertFalse(ctx.exception.recoverable)
+
+            json_error_lines = [
+                line for line in cm.output if "JSON decode error" in line
+            ]
+            self.assertGreater(len(json_error_lines), 0,
+                               "Expected at least one 'JSON decode error' log line")
+            for line in json_error_lines:
+                self.assertNotIn("\r", line,
+                                 "Literal CR from injected name must not appear in log")
+
+    def test_json_decode_error_log_no_nameerror_on_bytes(self):
+        """
+        mock_ssh.shell returns non-UTF8 bytes that make the decode at line 114 raise
+        (UnicodeDecodeError is a ValueError subclass, caught by the except).
+        The except branch must NOT raise NameError on out_str (which is undefined when
+        the decode itself raised). Still raises ScannerError.
+        """
+        with patch('controller.scan.remote_scanner.Sshcp') as mock_ssh_cls:
+            mock_ssh = mock_ssh_cls.return_value
+            scanner = self._make_scanner(mock_ssh)
+
+            # Non-UTF8 bytes that will cause out.decode('utf-8') to raise UnicodeDecodeError
+            non_utf8_bytes = b"\xff\xfe\xfd non-utf8 garbage"
+            mock_ssh.shell.return_value = non_utf8_bytes
+
+            # The except branch must not raise NameError — it must only raise ScannerError
+            with self.assertLogs("RemoteScanner", level=logging.ERROR) as cm:
+                with self.assertRaises(ScannerError) as ctx:
+                    scanner.scan()
+
+            self.assertFalse(ctx.exception.recoverable)
+
+            json_error_lines = [
+                line for line in cm.output if "JSON decode error" in line
+            ]
+            self.assertGreater(len(json_error_lines), 0,
+                               "Expected 'JSON decode error' log line even for bytes-decode failure")
+
+    def test_scan_still_parses_valid_output(self):
+        """
+        Well-formed JSON scan output still parses to the expected SystemFile list.
+        The success path at lines 114-116 is unchanged — sanitization touched only
+        the except-branch log.
+        """
+        with patch('controller.scan.remote_scanner.Sshcp') as mock_ssh_cls:
+            mock_ssh = mock_ssh_cls.return_value
+            scanner = self._make_scanner(mock_ssh)
+
+            # Valid JSON: empty list (no files)
+            mock_ssh.shell.side_effect = [
+                json.dumps([]).encode('utf-8'),
+                b"Filesystem 1B-blocks Used Available Use% Mounted on\n/dev/sda1 1000 500 500 50% /\n",
+            ]
+
+            files, total, used = scanner.scan()
+            self.assertEqual([], files)

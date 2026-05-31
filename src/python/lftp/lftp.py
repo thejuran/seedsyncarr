@@ -5,7 +5,7 @@ from typing import Callable, Union, List, Optional
 
 import pexpect
 
-from common import AppError
+from common import AppError, sanitize_log_value
 from .job_status_parser import LftpJobStatus, LftpJobStatusParser, LftpJobStatusParserError
 
 # How many status errors are allowed before error propagates out
@@ -123,10 +123,10 @@ class Lftp:
             out = out.strip()  # remove any CRs
 
             if self.__log_command_output:
-                self.logger.debug("out ({} bytes):\n {}".format(len(out), out))
+                self.logger.debug("out ({} bytes):\n {}".format(len(out), sanitize_log_value(out)))
                 after_raw = self.__process.after
                 after = after_raw.decode('utf8', 'replace').strip() if isinstance(after_raw, bytes) else ""
-                self.logger.debug("after: {}".format(after))
+                self.logger.debug("after: {}".format(sanitize_log_value(after)))
 
         # let's try and detect some errors
         if self.__detect_errors_from_output(out):
@@ -141,11 +141,11 @@ class Lftp:
                 out = self.__process.before.decode('utf8', 'replace')
                 out = out.strip()  # remove any CRs
                 if self.__log_command_output:
-                    self.logger.debug("retry out ({} bytes):\n {}".format(len(out), out))
+                    self.logger.debug("retry out ({} bytes):\n {}".format(len(out), sanitize_log_value(out)))
                     after = self.__process.after.decode('utf8', 'replace').strip() \
                         if self.__process.after not in (pexpect.TIMEOUT, None) else ""
-                    self.logger.debug("retry after: {}".format(after))
-                self.logger.error("Lftp detected error: {}".format(error_out))
+                    self.logger.debug("retry after: {}".format(sanitize_log_value(after)))
+                self.logger.error("Lftp detected error: {}".format(sanitize_log_value(error_out)))
                 # save pending error
                 self.__pending_error = error_out
         return out
@@ -353,16 +353,16 @@ class Lftp:
                 job_to_kill = status
                 break
         if job_to_kill is None:
-            self.logger.debug("Kill failed to find job '{}'".format(name))
+            self.logger.debug("Kill failed to find job '{}'".format(sanitize_log_value(name)))
             return False
         # Note: there's a chance that job ids change between when we called status
         #       and when we execute the kill command
         #       in this case the wrong job may be killed, there's nothing we can do about it
         if job_to_kill.state == LftpJobStatus.State.RUNNING:
-            self.logger.debug("Killing running job '{}'...".format(name))
+            self.logger.debug("Killing running job '{}'...".format(sanitize_log_value(name)))
             self.__run_command("kill {}".format(job_to_kill.id))
         elif job_to_kill.state == LftpJobStatus.State.QUEUED:
-            self.logger.debug("Killing queued job '{}'...".format(name))
+            self.logger.debug("Killing queued job '{}'...".format(sanitize_log_value(name)))
             self.__run_command("queue --delete {}".format(job_to_kill.id))
         else:
             raise NotImplementedError("Unsupported state {}".format(str(job_to_kill.state)))

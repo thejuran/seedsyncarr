@@ -6,7 +6,7 @@ import hashlib
 import shlex
 
 from .scanner_process import IScanner, ScannerError
-from common import overrides, Localization
+from common import overrides, Localization, sanitize_log_value
 from ssh import Sshcp, SshcpError, TRANSIENT_ERROR_PATTERNS, PERMANENT_ERROR_PATTERNS
 from system import SystemFile
 
@@ -115,7 +115,15 @@ class RemoteScanner(IScanner):
             file_dicts = json.loads(out_str)
             remote_files = [SystemFile.from_dict(d) for d in file_dicts]
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as err:
-            self.logger.error("JSON decode error: {}\n{}".format(str(err), out))
+            # out_str (line 114, inside the try) is NOT guaranteed defined here —
+            # if the decode at line 114 itself raised (UnicodeDecodeError is a
+            # ValueError subclass and is caught by this except), out_str would be
+            # undefined (NameError). Derive a safe string locally with errors='replace'
+            # to avoid any decode exception, then sanitize BOTH values (CWE-117).
+            safe_out = out.decode('utf-8', errors='replace') if isinstance(out, bytes) else str(out)
+            self.logger.error("JSON decode error: {}\n{}".format(
+                sanitize_log_value(str(err)),
+                sanitize_log_value(safe_out)))
             raise ScannerError(
                 Localization.Error.REMOTE_SERVER_SCAN.format("Invalid scan data"),
                 recoverable=False
