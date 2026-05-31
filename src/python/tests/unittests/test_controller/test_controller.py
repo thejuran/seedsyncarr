@@ -1,5 +1,8 @@
 import unittest
-from unittest.mock import MagicMock
+from queue import Queue
+from threading import Lock
+from unittest.mock import MagicMock, call
+
 from datetime import datetime
 
 from common import Status
@@ -163,6 +166,157 @@ class TestUpdateControllerStatusCapacity(unittest.TestCase):
             c._Controller__context.status.storage.remote_used,
             "remote_used must NOT be overwritten when its own delta is sub-1%",
         )
+
+
+class TestCheckWebhookImportsSanitization(unittest.TestCase):
+    """CWE-117 log-injection sanitization for __check_webhook_imports (Plan 101-04)."""
+
+    def _make_controller(self):
+        """Build a minimal Controller instance with all private attrs needed by __check_webhook_imports."""
+        c = Controller.__new__(Controller)
+        ctx = MagicMock()
+        ctx.config.autodelete.enabled = False  # disable auto-delete path for simplicity
+        c._Controller__context = ctx
+        c.logger = MagicMock()
+
+        # Model: returns no file names by default — tests override as needed
+        c._Controller__model = MagicMock()
+        c._Controller__model.get_file_names.return_value = []
+        c._Controller__model_lock = Lock()
+
+        # Persist: needs add_imported_child + imported_file_names (a set-like)
+        mock_persist = MagicMock()
+        mock_persist.imported_file_names = set()
+        mock_persist.imported_children = {}
+        c._Controller__persist = mock_persist
+
+        # Webhook manager: returns our crafted tuple
+        c._Controller__webhook_manager = MagicMock()
+
+        return c
+
+    def test_recorded_import_log_is_sanitized(self):
+        """CRLF-bearing root_name must be escaped in the 'Recorded webhook import' log (site 792).
+
+        Site 790 already used an inline escape for matched_name (REPLACED by sanitize_log_value);
+        site 792 logs root_name which is NEWLY wrapped in this plan.  We inject CRLF into root_name
+        so this test fails RED (the current code logs it raw) and passes GREEN (after the wrap).
+        """
+        crlf_root = "Root\r\ninjected"
+        matched_name = "child.file.mkv"
+
+        c = self._make_controller()
+        # Return an import whose root_name contains CRLF (remote-scanner-sourced)
+        c._Controller__webhook_manager.process.return_value = [(crlf_root, matched_name)]
+        c._Controller__persist.imported_file_names = set()
+        c._set_import_status = MagicMock()
+
+        c._Controller__check_webhook_imports()
+
+        # Find any logger.info call whose message starts with "Recorded webhook import"
+        recorded_calls = [
+            args[0][0]
+            for args in c.logger.info.call_args_list
+            if args[0] and "Recorded webhook import" in str(args[0][0])
+        ]
+        self.assertTrue(recorded_calls, "Expected a 'Recorded webhook import' info log call")
+        logged_msg = recorded_calls[0]
+
+        # Must not contain a literal newline or carriage-return
+        self.assertNotIn("\n", logged_msg, "Literal LF must not appear in log output")
+        self.assertNotIn("\r", logged_msg, "Literal CR must not appear in log output")
+        # Must contain escaped tokens
+        self.assertIn("\\r", logged_msg)
+        self.assertIn("\\n", logged_msg)
+
+    def test_recorded_import_persist_value_is_raw(self):
+        """Control-flow persist/add_imported_child uses the RAW matched_name — not the sanitized log value."""
+        crlf_matched = "child\r\ninjected"
+        root_name = "Root"
+
+        c = self._make_controller()
+        c._Controller__webhook_manager.process.return_value = [(root_name, crlf_matched)]
+        c._Controller__persist.imported_file_names = set()
+        c._set_import_status = MagicMock()
+
+        c._Controller__check_webhook_imports()
+
+        # add_imported_child receives the RAW lowercased matched_name (D-01)
+        c._Controller__persist.add_imported_child.assert_called_once_with(
+            root_name, crlf_matched.lower()
+        )
+
+
+class TestProcessCommandsSanitization(unittest.TestCase):
+    """CWE-117 log-injection sanitization for _notify_failure / __process_commands (Plan 101-04)."""
+
+    def _make_controller(self):
+        """Build a minimal Controller instance with private attrs needed by __process_commands."""
+        c = Controller.__new__(Controller)
+        ctx = MagicMock()
+        c._Controller__context = ctx
+        c.logger = MagicMock()
+
+        c._Controller__command_queue = Queue()
+        c._Controller__model = MagicMock()
+        c._Controller__model_lock = Lock()
+
+        return c
+
+    def test_notify_failure_log_is_sanitized(self):
+        """CRLF-bearing command.filename -> 'Command failed.' warning log is sanitized (site 1069)."""
+        crlf_filename = "file\r\ninjected.mkv"
+        # Build a command with the CRLF filename; no matching model file -> ModelError path
+        from model import ModelError
+        c = self._make_controller()
+        c._Controller__model.get_file.side_effect = ModelError("not found")
+
+        cmd = Controller.Command(Controller.Command.Action.QUEUE, crlf_filename)
+        mock_callback = MagicMock()
+        cmd.add_callback(mock_callback)
+        c._Controller__command_queue.put(cmd)
+
+        c._Controller__process_commands()
+
+        # Find the "Command failed." warning log call
+        failed_calls = [
+            args[0][0]
+            for args in c.logger.warning.call_args_list
+            if args[0] and "Command failed." in str(args[0][0])
+        ]
+        self.assertTrue(failed_calls, "Expected a 'Command failed.' warning log call")
+        logged_msg = failed_calls[0]
+
+        # Log must not contain a raw newline or CR
+        self.assertNotIn("\n", logged_msg, "Literal LF must not appear in the warning log")
+        self.assertNotIn("\r", logged_msg, "Literal CR must not appear in the warning log")
+        # Log must contain the escaped tokens
+        self.assertIn("\\r", logged_msg)
+        self.assertIn("\\n", logged_msg)
+
+    def test_notify_failure_callback_receives_raw_msg(self):
+        """on_failure callback receives the RAW _msg — sanitization is log-output-only (site 1071)."""
+        crlf_filename = "file\r\ninjected.mkv"
+        expected_raw_msg = "File '{}' not found".format(crlf_filename)
+
+        from model import ModelError
+        c = self._make_controller()
+        c._Controller__model.get_file.side_effect = ModelError("not found")
+
+        cmd = Controller.Command(Controller.Command.Action.QUEUE, crlf_filename)
+        mock_callback = MagicMock()
+        cmd.add_callback(mock_callback)
+        c._Controller__command_queue.put(cmd)
+
+        c._Controller__process_commands()
+
+        # The on_failure callback must receive the RAW (un-sanitized) message
+        mock_callback.on_failure.assert_called_once()
+        actual_msg = mock_callback.on_failure.call_args[0][0]
+        self.assertEqual(expected_raw_msg, actual_msg,
+                         "on_failure callback must receive the raw (unsanitized) message")
+        # Verify the raw msg does contain the literal newline (confirming it's truly raw)
+        self.assertIn("\r\n", actual_msg)
 
 
 if __name__ == "__main__":
