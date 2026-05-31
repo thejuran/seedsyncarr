@@ -113,13 +113,50 @@ class TestSerializeConfig(unittest.TestCase):
         self.assertEqual("**REDACTED**", out_dict["radarr"]["radarr_api_key"])
         self.assertNotIn("radarr-api-key-xyz789", out)
 
-    def test_config_redacts_webhook_secret(self):
+    def test_config_blanks_webhook_secret(self):
         config = Config()
         config.general.webhook_secret = "super-secret-webhook-key"
         out = SerializeConfig.config(config)
         out_dict = json.loads(out)
-        self.assertEqual("**REDACTED**", out_dict["general"]["webhook_secret"])
+        self.assertEqual("", out_dict["general"]["webhook_secret"])
         self.assertNotIn("super-secret-webhook-key", out)
+
+    def test_config_blanks_api_token_unauthenticated(self):
+        config = Config()
+        config.general.api_token = "super-secret-api-token"
+        out = SerializeConfig.config(config, authenticated=False)
+        out_dict = json.loads(out)
+        self.assertEqual("", out_dict["general"]["api_token"])
+        self.assertNotIn("super-secret-api-token", out)
+
+    def test_config_blanks_secrets_authenticated(self):
+        config = Config()
+        config.general.webhook_secret = "real-webhook-secret"
+        config.general.api_token = "real-api-token"
+        out = SerializeConfig.config(config, authenticated=True)
+        out_dict = json.loads(out)
+        self.assertEqual("", out_dict["general"]["webhook_secret"])
+        self.assertEqual("", out_dict["general"]["api_token"])
+        self.assertNotIn("real-webhook-secret", out)
+        self.assertNotIn("real-api-token", out)
+
+    def test_config_secret_value_absent_from_payload(self):
+        sentinel_whs = "SENTINEL_WHS_UNIQUE_12345"
+        sentinel_tok = "SENTINEL_TOK_UNIQUE_67890"
+        config = Config()
+        config.general.webhook_secret = sentinel_whs
+        config.general.api_token = sentinel_tok
+        for auth in (True, False):
+            out = SerializeConfig.config(config, authenticated=auth)
+            out_dict = json.loads(out)
+            self.assertEqual("", out_dict["general"]["webhook_secret"],
+                             msg=f"webhook_secret not blank (authenticated={auth})")
+            self.assertEqual("", out_dict["general"]["api_token"],
+                             msg=f"api_token not blank (authenticated={auth})")
+            self.assertNotIn(sentinel_whs, out,
+                             msg=f"webhook_secret sentinel leaked (authenticated={auth})")
+            self.assertNotIn(sentinel_tok, out,
+                             msg=f"api_token sentinel leaked (authenticated={auth})")
 
     def test_config_redacts_and_preserves_fields(self):
         config = Config()
@@ -203,10 +240,11 @@ class TestSerializeConfig(unittest.TestCase):
         self.assertEqual("**REDACTED**", out_dict["lftp"]["remote_path"])
         self.assertNotIn("/secret/seedbox/path", out)
 
-    def test_config_redacts_api_token(self):
+    def test_config_blanks_api_token_legacy(self):
+        # SEC-02 (D-10): api_token always serializes as "" (was "**REDACTED**" on unauth path)
         config = Config()
         config.general.api_token = "super-secret-token"
         out = SerializeConfig.config(config)
         out_dict = json.loads(out)
-        self.assertEqual("**REDACTED**", out_dict["general"]["api_token"])
+        self.assertEqual("", out_dict["general"]["api_token"])
         self.assertNotIn("super-secret-token", out)
