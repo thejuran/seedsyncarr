@@ -350,6 +350,11 @@ class TestAutoDeleteLogSanitization(unittest.TestCase):
         c._Controller__persist = MagicMock()
         c._Controller__file_op_manager = MagicMock()
 
+        # managers needed by exit()
+        c._Controller__lftp_manager = MagicMock()
+        c._Controller__scan_manager = MagicMock()
+        c._Controller__mp_logger = MagicMock()
+
         return c
 
     def test_schedule_auto_delete_log_sanitized(self):
