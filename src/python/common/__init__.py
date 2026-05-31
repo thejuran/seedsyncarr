@@ -1,4 +1,4 @@
-from .types import overrides as overrides
+from .types import overrides as overrides, sanitize_log_value as sanitize_log_value
 from .job import Job as Job
 from .context import Context as Context, Args as Args
 from .error import AppError as AppError, ServiceExit as ServiceExit, ServiceRestart as ServiceRestart
