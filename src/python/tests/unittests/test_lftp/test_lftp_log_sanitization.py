@@ -18,6 +18,10 @@ from lftp import LftpJobStatus
 CRLF_NAME = "torrent\r\nINJECTED_LINE name"
 CRLF_OUTPUT = "some lftp output\r\nforged line\r\nmore output"
 
+# These are the escaped token forms that sanitize_log_value produces
+ESCAPED_CR = "\\r"
+ESCAPED_LF = "\\n"
+
 
 def _make_scanner(name: str, state: LftpJobStatus.State, job_id: int) -> LftpJobStatus:
     """Build a minimal LftpJobStatus stub for kill() testing."""
@@ -77,19 +81,20 @@ class TestKillLogSanitization(unittest.TestCase):
             result = lftp.kill(CRLF_NAME)
 
         self.assertFalse(result)
-        # The log output must NOT contain a literal CR or LF from the injected name
-        log_output = "\n".join(cm.output)
         # The log line containing "Kill failed" must be present
         kill_failed_lines = [line for line in cm.output if "Kill failed to find job" in line]
         self.assertEqual(1, len(kill_failed_lines), "Expected exactly one 'Kill failed' log line")
         kill_line = kill_failed_lines[0]
-        # No literal \r\n injection allowed (the log handler output may add real newlines between
-        # record entries — we check the message content itself)
-        self.assertNotIn("INJECTED_LINE", kill_line,
-                         "Raw CRLF injection must not appear verbatim in log")
-        # The escaped form should be present
-        self.assertIn(r"\r", kill_line)
-        self.assertIn(r"\n", kill_line)
+        # No literal CR (\r) or LF (\n) bytes in the log line from the injected name.
+        # assertLogs captures log record message strings; the injected CRLF must not
+        # appear as literal control bytes — they must be escaped to tokens.
+        self.assertNotIn("\r", kill_line,
+                         "Literal CR must not appear in log output")
+        self.assertNotIn("\n", kill_line,
+                         "Literal LF must not appear in log output")
+        # The escaped token representations must be present
+        self.assertIn(ESCAPED_CR, kill_line)
+        self.assertIn(ESCAPED_LF, kill_line)
 
     def test_kill_running_log_sanitized(self):
         """
@@ -110,10 +115,13 @@ class TestKillLogSanitization(unittest.TestCase):
         killing_lines = [line for line in cm.output if "Killing running job" in line]
         self.assertEqual(1, len(killing_lines), "Expected exactly one 'Killing running job' log line")
         kill_line = killing_lines[0]
-        self.assertNotIn("INJECTED_LINE", kill_line,
-                         "Raw CRLF injection must not appear verbatim in log")
-        self.assertIn(r"\r", kill_line)
-        self.assertIn(r"\n", kill_line)
+        # Literal CR/LF must not appear in the log line — must be escaped to tokens
+        self.assertNotIn("\r", kill_line,
+                         "Literal CR must not appear in log output")
+        self.assertNotIn("\n", kill_line,
+                         "Literal LF must not appear in log output")
+        self.assertIn(ESCAPED_CR, kill_line)
+        self.assertIn(ESCAPED_LF, kill_line)
 
     def test_kill_name_match_uses_raw_name(self):
         """
@@ -155,14 +163,21 @@ class TestKillLogSanitization(unittest.TestCase):
         self.assertEqual(raw_out.strip(), returned,
                          "Returned output must be the raw unsanitized value")
 
-        # The debug log lines must have escaped versions
+        # The debug log lines must have escaped versions of the injected CRLF.
+        # Note: the format string "out ({} bytes):\n {}" has a structural \n (not injection).
+        # We check that the raw injected CR/LF bytes from CRLF_OUTPUT are escaped, by
+        # verifying the captured log entry does NOT contain a literal CR (\r) byte from
+        # the user-controlled output (the \r from CRLF_OUTPUT must be escaped to \r token).
         out_lines = [line for line in cm.output if "out (" in line and "bytes)" in line]
         self.assertGreater(len(out_lines), 0, "Expected at least one 'out (N bytes)' log line")
         out_line = out_lines[0]
-        self.assertNotIn("INJECTED_LINE", out_line,
-                         "Raw CRLF injection must not appear verbatim in log")
-        self.assertIn(r"\r", out_line)
-        self.assertIn(r"\n", out_line)
+        # Literal CR from the injected output must not appear in the log line
+        # (the structural \n in the format "out ({} bytes):\n {}" is not from user input)
+        self.assertNotIn("\r", out_line,
+                         "Literal CR from injected output must not appear in log")
+        # The escaped token representations must be present (from the CRLF in CRLF_OUTPUT)
+        self.assertIn(ESCAPED_CR, out_line)
+        self.assertIn(ESCAPED_LF, out_line)
 
 
 if __name__ == "__main__":
