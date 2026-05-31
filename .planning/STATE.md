@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3.0
-milestone_name: Test Coverage Gaps
-status: Awaiting next milestone
-stopped_at: Phase 100 context gathered
-last_updated: "2026-05-31T18:52:29.170Z"
-last_activity: 2026-05-31 — Milestone v1.3.0 completed and archived
+milestone: v1.3.0-s2
+milestone_name: Known Bugs + Security (v1.3.0 slice 2 of 4)
+status: planning
+last_updated: "2026-05-31T19:25:59.620Z"
+last_activity: 2026-05-31
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
-  percent: 100
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 100 — low-priority-angular-coverage-ci-ratchet
+**Current focus:** Phase 101 — webhook-and-log-injection-security-cluster (slice 2 of 4)
 
 ## Current Position
 
-Phase: Milestone v1.3.0 complete
+Phase: Not started (roadmap created — phases 101-103 defined)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-05-31 — Milestone v1.3.0 completed and archived
+Status: Roadmap created — awaiting `/gsd:plan-phase 101`
+Last activity: 2026-05-31 — Milestone v1.3.0-s2 roadmap created (3 phases, 8 requirements mapped, 0 unmapped)
 
 ## Accumulated Context
 
@@ -36,9 +35,14 @@ Last activity: 2026-05-31 — Milestone v1.3.0 completed and archived
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
+Roadmap shape (slice 2): 3 phases derived from the 8 approved Known-Bugs + Security requirements.
+- Phase 101 clusters the shared Python webhook/HTTP-handler/log surface (BUG-02 fail-closed [top priority], SEC-01 log-injection audit, SEC-03 webhook rate-limit, SEC-02 config-response normalization).
+- Phase 102 clusters Python controller concurrency (BUG-03 auto-delete Timer lifecycle) with the small rolled-forward test-infra fix (INFRA-01 MP-logger spawn-safe tests).
+- Phase 103 clusters the two Angular defects (BUG-01 innerHTML→Renderer2 incl. skipCount fold-in, BUG-04 SSE same-tick subscription teardown).
+
 ### Pending Todos
 
-2 deferred items (see below).
+2 deferred items (see below). The two in-scope rolled-forward items (INFRA-01, BUG-01 skipCount fold-in) are now mapped into phases 102/103 respectively.
 
 ### Blockers/Concerns
 
@@ -58,8 +62,8 @@ Items carried forward after v1.2.0 milestone close on 2026-04-28:
 |----------|------|--------|
 | todo | webob-cgi-upstream-unblock | testing (upstream — blocked on webob 2.0) |
 | todo | migrate-config-set-to-post-body | security (API contract change — separate milestone) |
-| v1.4.0 | mp-logger-analog-tests-macos-spawn | deferred (Phase 97 / 97-02): 3 analog tests in test_multiprocessing_logger.py (test_main_logger_receives_records, test_children_names, test_logger_levels) fail under macOS `spawn` due to local-closure Process targets; pass under Linux/CI `fork`. Pre-existing, not authored by 97-02. Fix = promote `process_1` to module scope. See .planning/phases/97-medium-priority-python-coverage/deferred-items.md |
-| v1.4.0 | confirm-modal-skipcount-type-erasure-hardening | deferred (Phase 98 / 98-01, codex adversarial review 2026-05-29): `ConfirmModalService.skipMessage` (confirm-modal.service.ts:59-64) interpolates `${options.skipCount}` un-escaped, guarded only by `if (skipCount && skipCount > 0)`. TS `number` type is erased at runtime, so a caller passing a `toString()`-overriding object bypasses the guard. SAFE in current app (all call sites pass real numbers); the runtime-boundary probe in 98-01-PLAN.md Task 3 pins the behavior. Hardening (coerce `Number(skipCount)` or escape the rendered string) is a public-behavior change beyond v1.3.0's additive-coverage scope → v1.4.0. Documenting test: confirm-modal.service.spec.ts skipCount runtime-boundary it-block. |
+| INFRA-01 (slice 2) | mp-logger-analog-tests-macos-spawn | **Mapped to Phase 102.** From Phase 97/97-02: 3 analog tests in test_multiprocessing_logger.py (test_main_logger_receives_records, test_children_names, test_logger_levels) fail under macOS `spawn` due to local-closure Process targets; pass under Linux/CI `fork`. Fix = promote `process_1` to module scope. See .planning/milestones/v1.3.0-phases/97-medium-priority-python-coverage/deferred-items.md |
+| BUG-01 fold-in (slice 2) | confirm-modal-skipcount-type-erasure-hardening | **Mapped to Phase 103 (folds into BUG-01 Renderer2 rework).** From Phase 98/98-01 (codex review 2026-05-29): `ConfirmModalService.skipMessage` (confirm-modal.service.ts:59-64) interpolates `${options.skipCount}` un-escaped, guarded only by `if (skipCount && skipCount > 0)`. TS `number` erased at runtime, so a `toString()`-overriding object bypasses the guard. SAFE for current callers; runtime-boundary probe in 98-01-PLAN.md Task 3 pins behavior. Hardening (coerce `Number()` / escape) lands with BUG-01. Documenting test: confirm-modal.service.spec.ts skipCount runtime-boundary it-block. |
 
 Note: 7 former deferred items were resolved by v1.2.0:
 
@@ -70,7 +74,7 @@ Note: 7 former deferred items were resolved by v1.2.0:
 - clean-up-test-warnings → PYFIX-07, PYFIX-16 (Phases 87-88)
 - test_fix-resolved debug session → resolved (stale, closed at milestone close)
 
-Note: v1.3.0's trivial-fix policy may add new deferred items here — larger findings surfaced by coverage tests (>10 net lines, public-API, or observable-behavior change) get a one-line entry referencing the documenting test and roll into v1.4.0.
+Note: the trivial-fix policy may add new deferred items here — larger findings (>10 net lines, public-API, or observable-behavior change) get a one-line entry referencing the documenting test and roll into a later v1.3.0 slice.
 
 ## Tech Debt
 
@@ -90,13 +94,14 @@ Note: v1.3.0's trivial-fix policy may add new deferred items here — larger fin
 | v1.1.1 Post-Redesign Cleanup | Phases 75-82 | 2026-04-19 to 2026-04-23 |
 | v1.1.2 Test Suite Audit | Phases 83-86 | 2026-04-24 |
 | v1.2.0 Test & Quality Hardening | Phases 87-96 | 2026-04-24 to 2026-04-28 |
+| v1.3.0 Slice 1 (Test Coverage Gaps) | Phases 97-100 | 2026-05-28 to 2026-05-31 |
 
 ## Session Continuity
 
-Last session: 2026-05-29T20:13:03.821Z
-Stopped at: Phase 100 context gathered
-Next action: `/gsd:plan-phase 97`
+Last session: 2026-05-31T19:25:59.620Z
+Stopped at: v1.3.0 slice 2 roadmap created (phases 101-103)
+Next action: `/gsd:plan-phase 101`
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan the first phase of slice 2 with `/gsd:plan-phase 101`

@@ -31,7 +31,8 @@
 - v1.1.1 Post-Redesign Cleanup & Outstanding Work - Phases 75-82 (shipped 2026-04-23)
 - v1.1.2 Test Suite Audit - Phases 83-86 (shipped 2026-04-24)
 - ✅ v1.2.0 Test & Quality Hardening - Phases 87-96 (shipped 2026-04-28)
-- ✅ v1.3.0 Test Coverage Gaps - Phases 97-100 (shipped 2026-05-31)
+- ✅ v1.3.0 — Slice 1 of 4: Test Coverage Gaps - Phases 97-100 (shipped 2026-05-31)
+- 🔄 v1.3.0 — Slice 2 of 4: Known Bugs + Security - Phases 101-103 (in flight; no tag until slice 4)
 
 ## Phases
 
@@ -290,7 +291,7 @@ See `.planning/milestones/v1.2.0-ROADMAP.md` for full details.
 </details>
 
 <details>
-<summary>✅ v1.3.0 Test Coverage Gaps (Phases 97-100) — SHIPPED 2026-05-31</summary>
+<summary>✅ v1.3.0 — Slice 1 of 4: Test Coverage Gaps (Phases 97-100) — SHIPPED 2026-05-31</summary>
 
 **Milestone Goal:** Close the 8 test coverage gaps catalogued in CONCERNS.md — 4 Medium-priority gaps get full path coverage, 4 Low-priority gaps get a targeted regression test. Trivial bugs found while testing (<10 net lines, no public-API or observable-behavior change) are fixed in the same plan; larger findings deferred to v1.4.0. Milestone ends with ratcheted CI coverage thresholds and before/after numbers recorded below.
 
@@ -409,6 +410,66 @@ Plans:
 
 </details>
 
+<details>
+<summary>🔄 v1.3.0 — Slice 2 of 4: Known Bugs + Security (Phases 101-103) — IN FLIGHT</summary>
+
+**Milestone Goal:** Fix the 7 approved Known-Bugs + Security items from CONCERNS.md buckets 2 + 3 (plus rolled-forward test-infra item INFRA-01) — close the webhook fail-open gap and the log-injection surface, add webhook rate-limiting and config-response normalization, harden auto-delete Timer lifecycle, eliminate the Angular `innerHTML` XSS sink and the SSE same-tick subscription leak. Several code paths already have slice-1 (v1.3.0) regression tests pinning current behavior — reuse them and land fixes test-first where feasible. **This slice cuts no git tag**; the single `v1.3.0` tag is cut only after slice 4 of the 4-slice program completes.
+
+**GSD internal label:** `v1.3.0-s2`. Source: `.planning/codebase/CONCERNS.md` (Known Bugs + Security) + `.planning/REQUIREMENTS.md`.
+
+- [ ] **Phase 101: Webhook + Log-Injection Security Cluster** - Webhook fails closed without a secret, log-injection sanitizer audit, webhook rate-limiting, config-response normalization (BUG-02, SEC-01, SEC-03, SEC-02)
+- [ ] **Phase 102: Controller Concurrency + Test Infra** - Auto-delete Timer tracking/cancellation on shutdown, MultiprocessingLogger spawn-safe analog tests (BUG-03, INFRA-01)
+- [ ] **Phase 103: Angular Defects** - Replace ConfirmModal innerHTML sink with Renderer2 (incl. skipCount hardening), SSE registry same-tick subscription teardown (BUG-01, BUG-04)
+
+## Phase Details
+
+### Phase 101: Webhook + Log-Injection Security Cluster
+
+**Goal**: The webhook endpoint and the backend log surface are hardened — an operator can opt in (new flag, default off) to make an unconfigured webhook secret fail closed instead of accepting unauthenticated calls (default behavior unchanged for backward compat), every remote-/user-supplied string is sanitized before it reaches a log line, the webhook endpoint is rate-limited like other mutable endpoints, and the config GET response no longer leaks secret-present vs unset beyond the explicit boolean flag.
+**Depends on**: Phase 100 (slice 1 complete — green CI, ratcheted coverage floors)
+**Requirements**: BUG-02, SEC-01, SEC-03, SEC-02
+**Success Criteria** (what must be TRUE):
+
+  1. **BUG-02 (opt-in fail-closed, highest priority — must NOT break backward compat):** A new config flag (default **off**) gates fail-closed behavior. With the flag **on** and no secret configured, a POST to the webhook endpoint is rejected with **503** before the body is parsed. With the flag **off** (default), existing behavior is preserved exactly — no secret → HMAC skipped + loud startup warning (honors the `Empty webhook_secret skips HMAC` decision). With a secret configured, valid HMAC requests still succeed unchanged. Existing config files load with no new required field. The flag + required-secret expectation are surfaced to the operator (startup warning / docs).
+  2. Every backend log site that interpolates remote-/webhook-/user-supplied strings (controller.py, lftp/job_status_parser.py, controller/webhook_manager.py, and any other audited site) passes the value through a CR/LF/control-char sanitizer — a crafted filename containing `\r\n` can no longer forge a second log line (CWE-117) (SEC-01).
+  3. The webhook endpoint is wrapped with the same v1.2.0 sliding-window rate-limit middleware used on other mutable endpoints, tuned to legitimate *arr callback frequency; over-limit calls get a generic 429 (SEC-03).
+  4. The config GET response shape is identical whether a given secret is set or unset, apart from the existing explicit boolean flag — no length, key-presence, or value-shape difference distinguishes the two (SEC-02).
+  5. **Cross-cutting (COMPAT):** no breaking changes on upgrade — existing config files load unchanged (no new required fields), and status codes/response shapes for already-supported paths are unchanged. CI green on amd64 + arm64 (Python + Angular + E2E); Python `fail_under` ≥ 88 holds or rises; security fixes log no sensitive data and return generic client errors with detail logged server-side. No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+### Phase 102: Controller Concurrency + Test Infra
+
+**Goal**: The auto-delete `threading.Timer` lifecycle is safe across controller shutdown — pending timers are tracked and cancelled, and a callback that has already fired no-ops when shutdown is in progress so no deletion runs against a half-torn-down model; and the three MultiprocessingLogger analog tests pass under both `fork` and macOS `spawn` start methods.
+**Depends on**: Phase 101
+**Requirements**: BUG-03, INFRA-01
+**Success Criteria** (what must be TRUE):
+
+  1. Every auto-delete `threading.Timer` is registered when scheduled and cancelled on controller shutdown; after shutdown completes, no pending auto-delete Timer remains armed (BUG-03).
+  2. A Timer callback that fires while shutdown is in progress detects the shutdown flag and no-ops — it performs no model read and no `delete_local` dispatch against a torn-down model; the existing slice-1 auto-delete toggle/dry-run regression tests still pass (BUG-03).
+  3. The three MultiprocessingLogger analog tests (`test_main_logger_receives_records`, `test_children_names`, `test_logger_levels`) pass on both `fork` and `spawn` start methods — the `process_1` target is promoted to module scope so it is picklable under `spawn` (INFRA-01).
+  4. **Cross-cutting (COMPAT):** no breaking changes on upgrade — existing config files and on-disk persist formats load unchanged. CI green on amd64 + arm64 (Python); Python `fail_under` ≥ 88 holds or rises; no concurrency fix logs sensitive data; generic client errors with server-side detail. No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+### Phase 103: Angular Defects
+
+**Goal**: The confirmation modal renders without any raw `innerHTML` sink — content is built structurally via `Renderer2` (or a standalone Angular component) so escaping is structural rather than string-concatenation dependent (folding in the deferred `skipCount` type-erasure hardening) — and the SSE stream-service registry never leaves an orphaned subscription when a reconnect fires in the same tick as a timeout.
+**Depends on**: Phase 102
+**Requirements**: BUG-01, BUG-04
+**Success Criteria** (what must be TRUE):
+
+  1. `ConfirmModalService` builds modal content with no raw `innerHTML` assignment — content nodes are created via `Renderer2`/`createText` or a structural Angular component; the slice-1 escapeHtml XSS regression suite still passes (no behavioral regression for existing callers) (BUG-01).
+  2. The `skipCount` interpolation is hardened — the value is coerced via `Number()` and/or escaped so a `toString()`-overriding object can no longer inject markup through the `skipMessage` path; the slice-1 skipCount runtime-boundary probe still passes (BUG-01 fold-in).
+  3. When a reconnect fires in the same tick as a timeout in the stream-service registry, the prior EventSource/subscription is torn down before its replacement is created — exactly one active subscription remains, no orphan; the slice-1 SSE heartbeat-vs-timeout race regression test still passes (BUG-04).
+  4. **Cross-cutting (COMPAT):** no breaking changes to existing UI behavior or observable component APIs. CI green on amd64 + arm64 (Angular + E2E); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; no client-visible behavior regression in confirm-modal or SSE reconnect. No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+**UI hint**: yes
+
+</details>
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -433,8 +494,9 @@ Plans:
 | 75-82. Post-Redesign Cleanup | v1.1.1 | 22/22 | Complete | 2026-04-23 |
 | 83-86. Test Suite Audit | v1.1.2 | 6/6 | Complete | 2026-04-24 |
 | 87-96. Test & Quality Hardening | v1.2.0 | 23/23 | Complete | 2026-04-28 |
-| 97-100. Test Coverage Gaps | v1.3.0 | 10/10 | Complete | 2026-05-31 |
+| 97-100. Test Coverage Gaps (Slice 1) | v1.3.0 | 10/10 | Complete | 2026-05-31 |
+| 101-103. Known Bugs + Security (Slice 2) | v1.3.0-s2 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-05-28 after v1.3.0 roadmap created*
+*Last updated: 2026-05-31 after v1.3.0 slice 2 (Known Bugs + Security) roadmap created — phases 101-103*

@@ -296,7 +296,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Previous Milestone: v1.3.0 Test Coverage Gaps (Shipped 2026-05-31)
 
-**Goal:** Close the 8 test coverage gaps catalogued in CONCERNS.md — 4 Medium-priority gaps get full path coverage, 4 Low-priority gaps get a targeted regression test. Trivial bugs found while testing (<10 lines, no public-API or observable-behavior change) are fixed in the same plan; larger findings deferred to v1.4.0. Milestone ends with ratcheted CI coverage thresholds.
+**Goal:** Close the 8 test coverage gaps catalogued in CONCERNS.md — 4 Medium-priority gaps get full path coverage, 4 Low-priority gaps get a targeted regression test. Trivial bugs found while testing (<10 lines, no public-API or observable-behavior change) are fixed in the same plan; larger findings deferred to the next v1.3.0 slice (Known Bugs + Security). Milestone ends with ratcheted CI coverage thresholds.
 
 **Target features:**
 - Medium Python coverage: MultiprocessingLogger shutdown, SSRF IPv6/reserved-range, LFTP JobStatusParser ValueError recovery
@@ -307,9 +307,9 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-<!-- No active milestone — v1.3.0 shipped 2026-05-31. Next via /gsd:new-milestone. -->
+<!-- v1.3.0 — Slice 2 of 4: Known Bugs + Security. -->
 
-_(none — start the next milestone with `/gsd:new-milestone`. Planned next: v1.4.0 Known Bugs + Security, per the v1.3.0 design spec.)_
+v1.3.0 is delivered in 4 slices under one final `v1.3.0` tag. Slice 1 (Test Coverage Gaps) shipped 2026-05-31. **Now in flight — Slice 2: Known Bugs + Security** (GSD internal label `v1.3.0-s2`): BUG-01..04, SEC-01..03, INFRA-01 (see `.planning/REQUIREMENTS.md`). No tag is cut until slice 4 completes. Slices 3–4: Frontend Deps + Dead Code, then Backend Architecture Refactor.
 
 ### Out of Scope
 
@@ -430,4 +430,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-31 after v1.3.0 milestone close*
+*Last updated: 2026-05-31 after starting v1.3.0 slice 2 of 4: Known Bugs + Security*
