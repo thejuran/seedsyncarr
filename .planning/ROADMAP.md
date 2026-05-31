@@ -417,7 +417,7 @@ Plans:
 
 **GSD internal label:** `v1.3.0-s2`. Source: `.planning/codebase/CONCERNS.md` (Known Bugs + Security) + `.planning/REQUIREMENTS.md`.
 
-- [ ] **Phase 101: Webhook + Log-Injection Security Cluster** - Webhook fails closed without a secret, log-injection sanitizer audit, webhook rate-limiting, config-response normalization (BUG-02, SEC-01, SEC-03, SEC-02)
+- [x] **Phase 101: Webhook + Log-Injection Security Cluster** - Webhook fails closed without a secret, log-injection sanitizer audit, webhook rate-limiting, config-response normalization (BUG-02, SEC-01, SEC-03, SEC-02) (completed 2026-05-31)
 - [ ] **Phase 102: Controller Concurrency + Test Infra** - Auto-delete Timer tracking/cancellation on shutdown, MultiprocessingLogger spawn-safe analog tests (BUG-03, INFRA-01)
 - [ ] **Phase 103: Angular Defects** - Replace ConfirmModal innerHTML sink with Renderer2 (incl. skipCount hardening), SSE registry same-tick subscription teardown (BUG-01, BUG-04)
 
@@ -441,7 +441,7 @@ Plans:
 - [x] 101-02-PLAN.md — BUG-02 + SEC-03: opt-in `webhook_require_secret` fail-closed 503 (guard outside rate_limit, before body parse) + first-run default, per-route rate-limit (60/60s → 429), startup warning (wave 1)
 - [x] 101-03-PLAN.md — SEC-02: config GET response always serializes secret value fields as `""` on both auth paths (wave 1)
 - [x] 101-04-PLAN.md — SEC-01: apply `sanitize_log_value()` at the webhook/command cluster (webhook_manager ×2, controller.py:790/792/760/975/1075) (wave 2, depends on 101-01)
-- [ ] 101-05-PLAN.md — SEC-01: apply `sanitize_log_value()` at the auto-delete timer cluster (controller.py:229/820/841/848/866/876/897/926/948) + model-layer (model.py:81/97/112) (wave 3, depends on 101-04)
+- [x] 101-05-PLAN.md — SEC-01: apply `sanitize_log_value()` at the auto-delete timer cluster (controller.py:229/820/841/848/866/876/897/926/948) + model-layer (model.py:81/97/112) (wave 3, depends on 101-04)
 - [x] 101-06-PLAN.md — SEC-01: apply `sanitize_log_value()` at the lftp cluster (lftp.py kill 356/362/365 + __run_command output 126/129/144/147/148, job_status_parser.py:724/725) (wave 2, depends on 101-01) — lftp sites brought in-scope after adversarial-review round 2
 
 ### Phase 102: Controller Concurrency + Test Infra
