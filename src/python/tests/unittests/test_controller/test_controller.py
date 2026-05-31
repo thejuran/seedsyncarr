@@ -319,5 +319,134 @@ class TestProcessCommandsSanitization(unittest.TestCase):
         self.assertIn("\r\n", actual_msg)
 
 
+class TestAutoDeleteLogSanitization(unittest.TestCase):
+    """CWE-117 log-injection sanitization for auto-delete timer + exit-cancel log sites (Plan 101-05).
+
+    Site coverage:
+      - controller.py:820  __schedule_auto_delete "Scheduled auto-delete of '{}'"
+      - controller.py:841  __execute_auto_delete  "Auto-delete skipped for '{}': feature was disabled"
+      - controller.py:229  exit()                 "Canceled pending auto-delete for '{}'"
+    """
+
+    def _make_controller_for_auto_delete(self):
+        """Build a minimal Controller instance with the attrs needed by schedule/execute/exit."""
+        import threading
+        c = Controller.__new__(Controller)
+
+        ctx = MagicMock()
+        ctx.config.autodelete.enabled = True
+        ctx.config.autodelete.dry_run = False
+        ctx.config.autodelete.delay_seconds = 3600  # long delay so timer never fires in test
+        c._Controller__context = ctx
+        c.logger = MagicMock()
+
+        c._Controller__auto_delete_lock = threading.Lock()
+        c._Controller__pending_auto_deletes = {}
+        c._Controller__started = True
+
+        # model + lock (needed by __execute_auto_delete)
+        c._Controller__model = MagicMock()
+        c._Controller__model_lock = threading.Lock()
+        c._Controller__persist = MagicMock()
+        c._Controller__file_op_manager = MagicMock()
+
+        return c
+
+    def test_schedule_auto_delete_log_sanitized(self):
+        """__schedule_auto_delete with a CRLF-bearing file_name: 'Scheduled auto-delete' log
+        must have no literal newline; __pending_auto_deletes still keyed by the RAW name."""
+        crlf_name = "file\r\ninjected.mkv"
+
+        c = self._make_controller_for_auto_delete()
+
+        # Call the name-mangled method directly
+        c._Controller__schedule_auto_delete(crlf_name)
+
+        # Cancel the timer so it doesn't fire
+        timer = c._Controller__pending_auto_deletes.get(crlf_name)
+        if timer:
+            timer.cancel()
+
+        # Check that a "Scheduled auto-delete" info call exists
+        sched_calls = [
+            args[0][0]
+            for args in c.logger.info.call_args_list
+            if args[0] and "Scheduled auto-delete" in str(args[0][0])
+        ]
+        self.assertTrue(sched_calls, "Expected a 'Scheduled auto-delete' info log call")
+        logged_msg = sched_calls[0]
+
+        # Log must not contain raw CR or LF
+        self.assertNotIn("\n", logged_msg, "Literal LF must not appear in schedule log")
+        self.assertNotIn("\r", logged_msg, "Literal CR must not appear in schedule log")
+        # Must contain escaped tokens
+        self.assertIn("\\r", logged_msg)
+        self.assertIn("\\n", logged_msg)
+
+        # The scheduling dict key must still be the RAW name (for timer cancellation by lookup)
+        self.assertIn(crlf_name, c._Controller__pending_auto_deletes,
+                      "__pending_auto_deletes must be keyed by the raw file name")
+
+    def test_execute_auto_delete_skip_log_sanitized(self):
+        """__execute_auto_delete skip branch (feature disabled): log is escaped, raw name not needed
+        for dict lookup since the timer already fired and the entry was popped."""
+        crlf_name = "file\r\nskip.mkv"
+
+        c = self._make_controller_for_auto_delete()
+        # Disable auto-delete so execution takes the first skip branch (feature disabled)
+        c._Controller__context.config.autodelete.enabled = False
+
+        c._Controller__execute_auto_delete(crlf_name)
+
+        # Check that a "feature was disabled" info call exists
+        skip_calls = [
+            args[0][0]
+            for args in c.logger.info.call_args_list
+            if args[0] and "feature was disabled" in str(args[0][0])
+        ]
+        self.assertTrue(skip_calls, "Expected a 'feature was disabled' info log call")
+        logged_msg = skip_calls[0]
+
+        # Log must not contain raw CR or LF
+        self.assertNotIn("\n", logged_msg, "Literal LF must not appear in skip log")
+        self.assertNotIn("\r", logged_msg, "Literal CR must not appear in skip log")
+        self.assertIn("\\r", logged_msg)
+        self.assertIn("\\n", logged_msg)
+
+    def test_exit_cancel_log_sanitized(self):
+        """exit() 'Canceled pending auto-delete' log (line 229) must escape CRLF-bearing file name;
+        dict must be cleared."""
+        import threading
+        crlf_name = "file\r\nexit.mkv"
+
+        c = self._make_controller_for_auto_delete()
+
+        # Plant a fake timer in the pending dict (cancel-safe mock)
+        fake_timer = MagicMock(spec=threading.Timer)
+        c._Controller__pending_auto_deletes[crlf_name] = fake_timer
+
+        c.exit()
+
+        # The fake timer must have been canceled
+        fake_timer.cancel.assert_called_once()
+        # Dict must be cleared
+        self.assertEqual({}, c._Controller__pending_auto_deletes)
+
+        # Check that a "Canceled pending auto-delete" debug call exists
+        cancel_calls = [
+            args[0][0]
+            for args in c.logger.debug.call_args_list
+            if args[0] and "Canceled pending auto-delete" in str(args[0][0])
+        ]
+        self.assertTrue(cancel_calls, "Expected a 'Canceled pending auto-delete' debug log call")
+        logged_msg = cancel_calls[0]
+
+        # Log must not contain raw CR or LF
+        self.assertNotIn("\n", logged_msg, "Literal LF must not appear in exit cancel log")
+        self.assertNotIn("\r", logged_msg, "Literal CR must not appear in exit cancel log")
+        self.assertIn("\\r", logged_msg)
+        self.assertIn("\\n", logged_msg)
+
+
 if __name__ == "__main__":
     unittest.main()
