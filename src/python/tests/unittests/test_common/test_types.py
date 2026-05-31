@@ -1,6 +1,7 @@
 import unittest
 
 from common import overrides
+from common import sanitize_log_value
 
 
 class _Base:
@@ -75,3 +76,50 @@ class TestOverrides(unittest.TestCase):
             @overrides(some_func)
             def method(self):
                 pass
+
+
+class TestSanitizeLogValue(unittest.TestCase):
+    """Unit tests for sanitize_log_value (CWE-117 log injection guard)."""
+
+    def test_plain_string_unchanged(self):
+        self.assertEqual("hello world", sanitize_log_value("hello world"))
+
+    def test_printable_unicode_unchanged(self):
+        self.assertEqual("naïve – Mövie 2024", sanitize_log_value("naïve – Mövie 2024"))
+
+    def test_newline_escaped(self):
+        self.assertEqual("line1\\nline2", sanitize_log_value("line1\nline2"))
+
+    def test_carriage_return_escaped(self):
+        self.assertEqual("line1\\rline2", sanitize_log_value("line1\rline2"))
+
+    def test_crlf_both_escaped(self):
+        self.assertEqual("line1\\r\\nline2", sanitize_log_value("line1\r\nline2"))
+
+    def test_empty_string(self):
+        self.assertEqual("", sanitize_log_value(""))
+
+    def test_multiple_newlines(self):
+        self.assertEqual("a\\nb\\nc", sanitize_log_value("a\nb\nc"))
+
+    def test_escape_char_neutralized(self):
+        result = sanitize_log_value("ansi\x1b[31mRED")
+        self.assertNotIn("\x1b", result)
+        self.assertIn("\\x1b", result)
+
+    def test_nul_and_c0_control_neutralized(self):
+        result = sanitize_log_value("a\x00b\x07c")
+        self.assertNotIn("\x00", result)
+        self.assertNotIn("\x07", result)
+        self.assertIn("\\x00", result)
+        self.assertIn("\\x07", result)
+
+    def test_tab_neutralized(self):
+        result = sanitize_log_value("a\tb")
+        self.assertNotIn("\t", result)
+        self.assertIn("\\x09", result)
+
+    def test_del_neutralized(self):
+        result = sanitize_log_value("a\x7fb")
+        self.assertNotIn("\x7f", result)
+        self.assertIn("\\x7f", result)
