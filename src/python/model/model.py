@@ -3,7 +3,7 @@ import threading
 from abc import ABC, abstractmethod
 from typing import Set
 
-from common import AppError
+from common import AppError, sanitize_log_value
 from .file import ModelFile
 
 class ModelError(AppError):
@@ -78,7 +78,7 @@ class Model:
         """
         Add a file to the model
         """
-        self.logger.debug("LftpModel: Adding file '{}'".format(file.name))
+        self.logger.debug("LftpModel: Adding file '{}'".format(sanitize_log_value(file.name)))
         if file.name in self.__files:
             raise ModelError("File already exists in the model")
         # Freeze the file to make it immutable before storing
@@ -94,7 +94,7 @@ class Model:
         """
         Remove the file from the model
         """
-        self.logger.debug("LftpModel: Removing file '{}'".format(filename))
+        self.logger.debug("LftpModel: Removing file '{}'".format(sanitize_log_value(filename)))
         if filename not in self.__files:
             raise ModelError("File does not exist in the model")
         file = self.__files[filename]
@@ -109,7 +109,7 @@ class Model:
         """
         Update an already existing file
         """
-        self.logger.debug("LftpModel: Updating file '{}'".format(file.name))
+        self.logger.debug("LftpModel: Updating file '{}'".format(sanitize_log_value(file.name)))
         if file.name not in self.__files:
             raise ModelError("File does not exist in the model")
         old_file = self.__files[file.name]
