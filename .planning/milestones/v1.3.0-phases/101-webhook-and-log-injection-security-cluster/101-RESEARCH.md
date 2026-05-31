@@ -706,13 +706,16 @@ safe_file_name = sanitize_log_value(file_name)
 
 ---
 
-## Open Questions for Planner
+## Open Questions (RESOLVED)
 
 1. **SEC-02 — `*_is_set` booleans:** The CONTEXT.md says "presence is carried only by the already-present explicit boolean (`*_is_set`)." No such boolean exists today. Should SEC-02 add `webhook_secret_is_set: bool` and `api_token_is_set: bool` to the GET response (Option B, additive) or simply zero the value field to `""` (Option A, minimal)? Option A satisfies D-10/D-11 text literally. Option B is a stricter reading. **Recommendation: Option A.**
+   - **RESOLVED:** Option A (zero the value field to `""`). Implemented in 101-03-PLAN.md via the `_ALWAYS_BLANK_FIELDS` loop; no `*_is_set` keys added (no current consumer). CONTEXT.md D-10 corrected to match.
 
 2. **SEC-01 BORDERLINE scope — remote-scanner-sourced file names:** Controller.py lines 229, 760, 975 log model file names that originate from the seedbox remote directory listing (via lftp), not from webhook JSON. Should these be included in the sanitize_log_value application? They are "remote" in a weaker sense than direct webhook payload values. **Recommendation: include lines 760 and 975 (they handle the `root_name` from `__check_webhook_imports` which immediately follows the webhook path), exclude line 229 (auto-delete timer context, more internal).**
+   - **RESOLVED (re-derived during adversarial review — overrides the recommendation above):** The taint set is broader than first scoped. `controller.py:1075` (`command.filename`) was mis-classified as internal here — it is user-supplied via the `/server/command/<file_name>` URL path (unquoted) and the bulk `/server/command/bulk` JSON `files[]` array, unauthenticated when `api_token` is empty — so it is **in scope** (101-04-PLAN.md). Line `229` is **included** (not excluded): it logs a `__pending_auto_deletes` key populated from the same scheduled, remote-derived filename. The full auto-delete-timer cluster (`controller.py:229,820,841,848,866,876,897,926,948`) and the model-layer sites (`model/model.py:81,97,112`) are covered in 101-05-PLAN.md (Wave 3). Final authoritative site set = union of 101-04-PLAN.md + 101-05-PLAN.md.
 
 3. **SEC-02 — authenticated GET path:** Currently the authenticated path returns the real `webhook_secret` value. D-10 says "always serialize as `""`". This is a behavior change for authenticated callers. Since no Angular code reads this value, the practical impact is zero — but the planner should confirm this is acceptable.
+   - **RESOLVED:** Accepted under D-10's authority. Adversarial review confirmed no Angular code reads these values from `/server/config/get` (the `general` model holds only `debug`; the security card reads `apiToken` from the injected meta tag, not the GET response; saves are per-field with unknown-option + blank rejection). The authenticated-path change to `""` is intentional and breaks no current consumer (101-03-PLAN.md threat model T-101-10).
 
 ---
 

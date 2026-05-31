@@ -15,7 +15,9 @@
 | `src/python/common/config.py` (new PROP + from_dict) | config | CRUD | same file — existing `webhook_secret`/`api_token`/`allowed_hostname` PROP declarations (lines 231–233) and `from_dict` block (lines 514–522) | exact |
 | `src/python/web/serialize/serialize_config.py` (SEC-02) | serializer | transform | same file — existing `_SENSITIVE_FIELDS`/`_REDACTED` block (lines 8–36) | exact |
 | `src/python/controller/webhook_manager.py` (SEC-01 × 2) | service | event-driven | same file — existing inline escapes at lines 37, 76 being replaced | exact |
-| `src/python/controller/controller.py` (SEC-01 × 3) | service | event-driven | same file — existing inline escape at line 790; new sites at lines 760, 975 | exact |
+| `src/python/controller/controller.py` (SEC-01 — re-derived) | service | event-driven | same file — existing inline escape at line 790 (replace); new wrap sites 792, 760, 975, 1075 (Plan 04) + auto-delete cluster 229/820/841/848/866/876/897/926/948 (Plan 05) | exact |
+| `src/python/model/model.py` (SEC-01, Plan 05) | model | event-driven | `src/python/controller/controller.py` log-site wrapping (same `sanitize_log_value(name)` pattern) | role-match |
+| `tests/unittests/test_model/test_model.py` (Plan 05 cases) | test | — | `tests/unittests/test_controller/test_controller.py` log-assertion tests | role-match |
 | `src/python/seedsyncarr.py` (BUG-02 warning) | config/startup | request-response | same file — existing `_emit_startup_warnings` block (lines 371–392) | exact |
 | `tests/unittests/test_common/test_types.py` (new class) | test | — | same file — `TestOverrides` class (lines 20–78) | exact |
 | `tests/integration/test_web/test_handler/test_webhook.py` (new classes) | test | — | `TestWebhookIntegration` (lines 4–60) + `tests/unittests/test_web/test_rate_limit.py` `TestRateLimitOverLimit` | exact |
@@ -52,10 +54,10 @@ def overrides(interface_class):
 
 **Pattern to replicate:** module-level pure function, Google-style docstring with Args/Returns sections, no class wrapper, imports only stdlib. Append after `overrides()`.
 
-**New function signature/docstring shape** (matches research recommendation exactly):
+**New function signature/docstring shape** (signature is the analog; the BODY is intentionally broader than this CR/LF-only sketch — see note):
 ```python
 def sanitize_log_value(value: str) -> str:
-    """Escape CR/LF control characters from a string before logging.
+    """Escape CR/LF and control characters from a string before logging.
 
     Prevents log injection (CWE-117) by replacing newlines with their literal
     escape sequences so crafted payloads cannot split log entries.
@@ -68,6 +70,8 @@ def sanitize_log_value(value: str) -> str:
     """
     return value.replace("\r", "\\r").replace("\n", "\\n")
 ```
+
+> **⚠️ NOTE (adversarial-review correction, BLOCKER 5):** the sketch above is CR/LF-only, but REQUIREMENTS.md SEC-01 / CONTEXT D-01 require **"CR/LF/control characters."** The authoritative implementation is in **101-01-PLAN.md**: CR and LF still render as `\r`/`\n` literals (continuity with the replaced inline copies), AND every other C0 control char (0x00–0x1F incl. ESC 0x1B + TAB 0x09) plus DEL (0x7F) is neutralized as `\xHH`. C1 (0x80–0x9F) intentionally left unescaped to preserve UTF-8 filename bytes. Follow 101-01-PLAN.md, not this CR/LF-only sketch.
 
 **Export in `src/python/common/__init__.py`** (line 1 pattern — add alongside `overrides`):
 ```python
