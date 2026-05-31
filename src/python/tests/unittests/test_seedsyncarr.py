@@ -198,10 +198,12 @@ class TestSeedsyncarrApiTokenConfig(unittest.TestCase):
 class TestSeedsyncarrStartupWarnings(unittest.TestCase):
     """Tests for startup security warning emission (WHOOK-02, WARN-01, WARN-02, WARN-03)."""
 
-    def _make_mock_config(self, webhook_secret="", api_token="", decrypt_errors=None):
+    def _make_mock_config(self, webhook_secret="", api_token="", decrypt_errors=None,
+                          webhook_require_secret=False):
         mock_config = MagicMock()
         mock_config.general.webhook_secret = webhook_secret
         mock_config.general.api_token = api_token
+        mock_config.general.webhook_require_secret = webhook_require_secret
         mock_config._decrypt_errors = decrypt_errors if decrypt_errors is not None else []
         return mock_config
 

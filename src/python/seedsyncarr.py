@@ -377,6 +377,11 @@ class Seedsyncarr:
                 "Security: webhook_secret is not configured. "
                 "Webhook endpoints will accept requests from any caller."
             )
+        if config.general.webhook_require_secret and not config.general.webhook_secret:
+            logger.warning(
+                "Security: webhook_require_secret is True but webhook_secret is not set. "
+                "All webhook requests will be rejected with 503 until a secret is configured."
+            )
         if not config.general.api_token:
             logger.warning(
                 "Security: No API token configured. "
