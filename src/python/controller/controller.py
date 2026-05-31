@@ -16,7 +16,7 @@ from .extract import ExtractStatusResult, ExtractCompletedResult
 from .model_builder import ModelBuilder
 from .scan import ScannerResult
 from .memory_monitor import MemoryMonitor
-from common import Context, AppError, MultiprocessingLogger
+from common import Context, AppError, MultiprocessingLogger, sanitize_log_value
 from model import ModelError, ModelFile, Model, ModelDiff, ModelDiffUtil, IModelListener
 from lftp import LftpError, LftpJobStatus, LftpJobStatusParserError
 from .controller_persist import ControllerPersist
@@ -757,7 +757,7 @@ class Controller:
                             name_to_root[child.name.lower()] = root_name
                             frontier.extend(child.get_children())
                 except ModelError:
-                    self.logger.debug("ModelError looking up '{}' for webhook mapping".format(root_name))
+                    self.logger.debug("ModelError looking up '{}' for webhook mapping".format(sanitize_log_value(root_name)))
 
         # Process outside lock -- webhook_manager only touches its own thread-safe Queue
         newly_imported = self.__webhook_manager.process(name_to_root)
@@ -783,14 +783,12 @@ class Controller:
                     # releaseTitle/series.title fallback paths.
                     if matched_name.lower() != root_name.lower():
                         self.__persist.add_imported_child(root_name, matched_name.lower())
-                    # Strip newlines/CRs from webhook-supplied matched_name before
-                    # logging to prevent log-injection (CWE-117). Sonarr/Radarr
-                    # payload fields are user-controllable if the webhook secret
-                    # isn't configured or the HMAC boundary is bypassed.
-                    safe_matched = matched_name.replace("\n", "\\n").replace("\r", "\\r")
+                    # Sanitize webhook-supplied matched_name and remote-scanner-sourced
+                    # root_name before logging to prevent log-injection (CWE-117).
+                    safe_matched = sanitize_log_value(matched_name)
                     self.logger.info(
                         "Recorded webhook import: '{}' (child: '{}')".format(
-                            root_name, safe_matched
+                            sanitize_log_value(root_name), safe_matched
                         )
                     )
                     self._set_import_status(self.__model, root_name)
@@ -972,7 +970,7 @@ class Controller:
         # the lock during a blocking subprocess call would starve model updates.
         # ModelFile is frozen/immutable after add, so `file` reference is safe.
         self.__file_op_manager.delete_local(file)
-        self.logger.info("Auto-deleted local file '{}'".format(file_name))
+        self.logger.info("Auto-deleted local file '{}'".format(sanitize_log_value(file_name)))
 
     def __handle_queue_command(self, file: ModelFile, command: Command) -> (bool, str, int):
         """
@@ -1066,13 +1064,16 @@ class Controller:
 
     def __process_commands(self):
         def _notify_failure(_command: Controller.Command, _msg: str, _code: int = 400):
-            self.logger.warning("Command failed. {}".format(_msg))
+            # Sanitize _msg for log output only — _msg is built from command.filename
+            # (user-supplied via URL path / bulk JSON) and could otherwise forge log entries.
+            # The client-facing callback at line 1071 keeps the RAW _msg (log-output-only).
+            self.logger.warning("Command failed. {}".format(sanitize_log_value(_msg)))
             for _callback in _command.callbacks:
                 _callback.on_failure(_msg, _code)
 
         while not self.__command_queue.empty():
             command = self.__command_queue.get()
-            self.logger.info("Received command {} for file {}".format(str(command.action), command.filename))
+            self.logger.info("Received command {} for file {}".format(str(command.action), sanitize_log_value(command.filename)))
             with self.__model_lock:
                 try:
                     file = self.__model.get_file(command.filename)
