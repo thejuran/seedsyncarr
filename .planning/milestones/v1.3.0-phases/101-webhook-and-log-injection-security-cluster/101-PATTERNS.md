@@ -127,28 +127,18 @@ def add_routes(self, web_app: WebApp):
     )
 ```
 
-**BUG-02 — `_verify_hmac` fail-closed branch** (add inside existing `_verify_hmac` at lines 43–77, modifying the `if not secret:` block at lines 55–57):
-```python
-# current (lines 54–57):
-secret = self.__config.general.webhook_secret
-if not secret:
-    # No secret configured — skip verification for backward compatibility
-    return None
+**BUG-02 — fail-closed 503 guard** (⚠️ SUPERSEDED design below — see the box first)
 
-# becomes:
+> **⚠️ SUPERSEDED by 101-02-PLAN.md (adversarial BLOCKER 2 fix).** Do **NOT** put the 503 inside `_verify_hmac`. `_verify_hmac` runs *inside* the rate-limited callable, so once a route's 60/60s window is exhausted the `rate_limit` decorator returns 429 *before* `_verify_hmac` is ever reached — a 429 then masks the required 503. The authoritative design is in **101-02-PLAN.md Task 2**: add an **outer** `_make_require_secret_guard(handler)` wrapper applied **OUTSIDE** `rate_limit` at `add_post_handler` registration time (`self._make_require_secret_guard(rate_limit(60, 60.0)(handler))`). The guard reads no body and consults no counter, so 503 always precedes both the 429 branch and any body read. **Leave `_verify_hmac` exactly as-is** (its no-secret branch still `return None` for the flag-off case). The Python block below is retained only to show the *original rejected* placement — do not implement it.
+
+```python
+# REJECTED placement (kept for historical context only — implement the outer guard from 101-02-PLAN.md instead):
 secret = self.__config.general.webhook_secret
 if not secret:
     if self.__config.general.webhook_require_secret:
-        logger.warning(
-            "Webhook rejected: webhook_require_secret is enabled "
-            "but no webhook_secret is configured"
-        )
-        return HTTPResponse(status=503, body="Service unavailable")
-    # No secret configured — skip verification for backward compatibility
+        return HTTPResponse(status=503, body="Service unavailable")   # <-- masked by 429 once the window is full
     return None
 ```
-
-**Key constraint:** the 503 return is at line ~57, before `request.body.read()` at line 60 — "before body parse" is satisfied by staying in `_verify_hmac`.
 
 ---
 

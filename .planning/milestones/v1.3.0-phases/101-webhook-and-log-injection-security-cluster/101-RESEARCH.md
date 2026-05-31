@@ -126,11 +126,13 @@ Line 56-57:     return None  # ← "Empty webhook_secret skips HMAC" contract
 
 **Where to insert the BUG-02 503:**
 
+> **⚠️ SUPERSEDED (adversarial BLOCKER 2).** The analysis below predates the discovery that SEC-03 rate-limiting and BUG-02 fail-closed interact: `_verify_hmac` runs *inside* the rate-limited callable, so a full 60/60s window makes `rate_limit` return 429 *before* `_verify_hmac` is reached, masking the required 503. **Option 2 (503 inside `_verify_hmac`) is therefore rejected.** The authoritative design (101-02-PLAN.md Task 2) is an **outer `_make_require_secret_guard` wrapper applied OUTSIDE `rate_limit`**, so 503 precedes both the 429 branch and any body read; `_verify_hmac` is left unchanged. The two-options discussion below is retained as a record of how the decision evolved — do not implement Option 2.
+
 Two valid positions:
 1. **At the top of `_handle_webhook`, before the content_length guard (line 91):** Most explicit. Adds a check before anything.
 2. **Inside `_verify_hmac`, replacing the early return at line 55-57:** More cohesive — all auth logic stays in one method.
 
-Option 2 is recommended (Claude's Discretion): modify `_verify_hmac` so that when `not secret` is true, it checks `self.__config.general.webhook_require_secret`. If `require_secret` is True, return `HTTPResponse(status=503)`. If False, return `None` (existing behavior). This keeps all authentication decision logic in one method and avoids spreading concern into `_handle_webhook`.
+Option 2 was the original recommendation (Claude's Discretion): modify `_verify_hmac` so that when `not secret` is true, it checks `self.__config.general.webhook_require_secret`. If `require_secret` is True, return `HTTPResponse(status=503)`. If False, return `None` (existing behavior). **This is now rejected — see the superseded banner above; the outer guard supersedes both options because neither in-handler position survives an exhausted rate-limit window.**
 
 **Concrete change to `_verify_hmac`:**
 ```python
