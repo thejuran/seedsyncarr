@@ -533,7 +533,7 @@ src/python/
 - **Blanket sanitization:** D-02 says targeted, not blanket. Do not wrap `root_name` in log lines that come from internal model lookups unless the planner explicitly decides to include BORDERLINE sites.
 - **Mutating `_SECRET_FIELD_PATHS`:** `webhook_require_secret` is not a secret and must not be added to that tuple. Encryption only applies to the 5 existing credential fields.
 - **Touching the SET path for SEC-02:** `__handle_set_config` must not be changed. Only the GET serialization changes.
-- **Raising 503 after body parse:** BUG-02's 503 must fire before `request.json` (line 100). The `_verify_hmac` placement at line 95 guarantees this — any alternative placement must verify it comes before line 100.
+- **Raising 503 after body parse:** BUG-02's 503 must fire before `request.json` (line 100). **⚠️ SUPERSEDED placement note:** the authoritative design (101-02-PLAN.md Task 2) raises the 503 in an **outer `_make_require_secret_guard` wrapper applied OUTSIDE `rate_limit`**, not inside `_verify_hmac` — the in-`_verify_hmac` placement this bullet originally cited is rejected because it sits inside the rate-limited callable and is masked by a 429 once the window is exhausted (BLOCKER 2). The outer guard reads no body and consults no counter, so 503 precedes both the 429 branch and `request.json`.
 
 ---
 
@@ -581,9 +581,12 @@ src/python/
 
 ## Code Examples
 
-### BUG-02: Modified _verify_hmac
+### BUG-02: Modified _verify_hmac (⚠️ SUPERSEDED — do NOT implement)
+
+> **⚠️ SUPERSEDED by 101-02-PLAN.md Task 2 (adversarial BLOCKER 2).** The code example below puts the 503 INSIDE `_verify_hmac`, which runs inside the rate-limited callable — so once a route's 60/60s window is exhausted, `rate_limit` returns 429 before `_verify_hmac` is reached and the required 503 is masked. The authoritative design adds an **outer `_make_require_secret_guard(handler)` wrapper applied OUTSIDE `rate_limit`** at `add_post_handler` registration and **leaves `_verify_hmac` unchanged** (its no-secret branch still `return None`). The block below is retained only to show the original rejected approach; do not implement it.
+
 ```python
-# Source: direct analysis of webhook.py:43-77
+# REJECTED — original analysis of webhook.py:43-77, kept for historical context only:
 def _verify_hmac(self) -> Optional[HTTPResponse]:
     secret = self.__config.general.webhook_secret
     if not secret:
@@ -592,7 +595,7 @@ def _verify_hmac(self) -> Optional[HTTPResponse]:
                 "Webhook rejected: webhook_require_secret is enabled "
                 "but no webhook_secret is configured"
             )
-            return HTTPResponse(status=503, body="Service unavailable")
+            return HTTPResponse(status=503, body="Service unavailable")  # <-- masked by 429 once the window is full
         # No secret configured — skip verification for backward compatibility
         return None
     # ... rest of existing HMAC verification unchanged ...
