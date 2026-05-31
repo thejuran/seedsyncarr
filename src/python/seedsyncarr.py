@@ -313,6 +313,7 @@ class Seedsyncarr:
         config.general.webhook_secret = ""
         config.general.api_token = ""
         config.general.allowed_hostname = ""
+        config.general.webhook_require_secret = False  # BUG-02: first-run default (BLOCKER-1)
 
         config.lftp.remote_address = Seedsyncarr.__CONFIG_DUMMY_VALUE
         config.lftp.remote_username = Seedsyncarr.__CONFIG_DUMMY_VALUE
