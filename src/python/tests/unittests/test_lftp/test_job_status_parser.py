@@ -1,3 +1,4 @@
+import logging
 import unittest
 
 from lftp import LftpJobStatusParser, LftpJobStatus, LftpJobStatusParserError
@@ -1462,3 +1463,77 @@ class TestLftpJobStatusParser(unittest.TestCase):
         self.assertEqual(len(golden_jobs), len(statuses))
         statuses_jobs = [j for j in statuses if j.state == LftpJobStatus.State.RUNNING]
         self.assertEqual(golden_jobs, statuses_jobs)
+
+
+class TestLftpJobStatusParserLogSanitization(unittest.TestCase):
+    """
+    Tests for CWE-117 log-injection sanitization in job_status_parser.py parse() except branch.
+
+    Lines 724 (str(e)) and 725 (raw output) must be routed through sanitize_log_value
+    so a CRLF-bearing remote name cannot forge a log line.
+    """
+
+    # A 'jobs -v' output block that contains a CRLF-bearing remote name and will
+    # trigger a ValueError in the parser (malformed/unrecognized content) so the
+    # except branch (lines 723-726) fires.
+    MALFORMED_OUTPUT_WITH_CRLF = "completely garbage\r\nINJECTED_LOG_LINE data"
+
+    def test_parse_error_status_log_sanitized(self):
+        """
+        feed parse() malformed output containing a CRLF-bearing remote name so the
+        except branch fires. The 'Status:' log line (725) must contain no literal CR
+        byte originating from the injected name (the whole block is escaped per CWE-117).
+        Raises LftpJobStatusParserError.
+        """
+        parser = LftpJobStatusParser()
+        with self.assertRaises(LftpJobStatusParserError):
+            with self.assertLogs(level=logging.ERROR) as cm:
+                parser.parse(self.MALFORMED_OUTPUT_WITH_CRLF)
+
+        status_lines = [line for line in cm.output if "Status:" in line]
+        self.assertGreater(len(status_lines), 0, "Expected at least one 'Status:' log line")
+        status_line = status_lines[0]
+        # No literal CR byte from the injected name (the \r from CRLF_NAME must be escaped)
+        self.assertNotIn("\r", status_line,
+                         "Literal CR from injected name must not appear in 'Status:' log")
+        # The injected text must not forge a separate log entry — no ERROR line that
+        # doesn't contain "Status:" or "LftpJobStateParser" but does contain the injected text
+        forged_entries = [
+            line for line in cm.output
+            if "INJECTED_LOG_LINE" in line
+            and "Status:" not in line
+            and "LftpJobStateParser" not in line
+        ]
+        self.assertEqual(0, len(forged_entries),
+                         "Injected text must not forge a separate log entry")
+
+    def test_parse_error_message_log_sanitized(self):
+        """
+        The 'LftpJobStateParser error:' log line (724) must be escaped when the
+        ValueError message interpolates raw content containing CRLF.
+        Raises LftpJobStatusParserError.
+        """
+        parser = LftpJobStatusParser()
+        with self.assertRaises(LftpJobStatusParserError):
+            with self.assertLogs(level=logging.ERROR) as cm:
+                parser.parse(self.MALFORMED_OUTPUT_WITH_CRLF)
+
+        error_lines = [line for line in cm.output if "LftpJobStateParser error:" in line]
+        self.assertGreater(len(error_lines), 0,
+                           "Expected at least one 'LftpJobStateParser error:' log line")
+        error_line = error_lines[0]
+        # No literal CR byte in the log line
+        self.assertNotIn("\r", error_line,
+                         "Literal CR from injected content must not appear in error log")
+
+    def test_parse_still_parses_raw_output(self):
+        """
+        A well-formed output with a printable name still parses correctly.
+        Sanitization touched only the except-branch log, not the parse path itself.
+        """
+        parser = LftpJobStatusParser()
+        output = """
+        [0] Done (queue (sftp://user:@localhost:22))
+        """
+        statuses = parser.parse(output)
+        self.assertEqual([], statuses)
