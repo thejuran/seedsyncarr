@@ -501,7 +501,7 @@ Plans:
 | 83-86. Test Suite Audit | v1.1.2 | 6/6 | Complete | 2026-04-24 |
 | 87-96. Test & Quality Hardening | v1.2.0 | 23/23 | Complete | 2026-04-28 |
 | 97-100. Test Coverage Gaps (Slice 1) | v1.3.0 | 10/10 | Complete | 2026-05-31 |
-| 101-103. Known Bugs + Security (Slice 2) | v1.3.0-s2 | 0/TBD | Not started | - |
+| 101-103. Known Bugs + Security (Slice 2) | v1.3.0-s2 | 6/6 (Phase 101); 102-103 pending | Phase 101 complete | 2026-05-31 (P101) |
 
 ---
 
