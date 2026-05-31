@@ -19,6 +19,25 @@ class TestConfigHandler(BaseTestWebApp):
         self.assertEqual(5678, json_dict["controller"]["interval_ms_local_scan"])
         self.assertEqual(8080, json_dict["web"]["port"])
 
+    def test_get_secret_fields_always_blank(self):
+        """SEC-02: webhook_secret and api_token always serialize as "" in GET response."""
+        self.context.config.general.webhook_secret = "super-secret-value"
+        self.context.config.general.api_token = "super-token-value"
+        # Provide the Bearer token so the auth middleware allows the request.
+        # This exercises the authenticated path (auth_valid=True) — exactly the path
+        # D-10 changes (previously returned the real value, now always returns "").
+        resp = self.test_app.get(
+            "/server/config/get",
+            headers={"Authorization": "Bearer super-token-value"}
+        )
+        self.assertEqual(200, resp.status_int)
+        json_dict = json.loads(str(resp.html))
+        self.assertEqual("", json_dict["general"]["webhook_secret"])
+        self.assertEqual("", json_dict["general"]["api_token"])
+        # Values must not appear anywhere in the response body
+        self.assertNotIn("super-secret-value", str(resp.html))
+        self.assertNotIn("super-token-value", str(resp.html))
+
     def test_set_good(self):
         self.assertEqual(None, self.context.config.general.debug)
         resp = self.test_app.get("/server/config/set/general/debug/True")
