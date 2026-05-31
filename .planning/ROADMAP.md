@@ -436,7 +436,11 @@ Plans:
   4. The config GET response shape is identical whether a given secret is set or unset, apart from the existing explicit boolean flag — no length, key-presence, or value-shape difference distinguishes the two (SEC-02).
   5. **Cross-cutting (COMPAT):** no breaking changes on upgrade — existing config files load unchanged (no new required fields), and status codes/response shapes for already-supported paths are unchanged. CI green on amd64 + arm64 (Python + Angular + E2E); Python `fail_under` ≥ 88 holds or rises; security fixes log no sensitive data and return generic client errors with detail logged server-side. No release/tag/version work in this phase.
 
-**Plans**: TBD
+**Plans**: 4 plans (2 waves)
+- [ ] 101-01-PLAN.md — SEC-01: shared `sanitize_log_value()` CWE-117 helper in `common/types.py` + unit tests (wave 1, leaf dependency)
+- [ ] 101-02-PLAN.md — BUG-02 + SEC-03: opt-in `webhook_require_secret` fail-closed 503, per-route rate-limit (60/60s → 429), startup warning (wave 1)
+- [ ] 101-03-PLAN.md — SEC-02: config GET response always serializes secret value fields as `""` on both auth paths (wave 1)
+- [ ] 101-04-PLAN.md — SEC-01: apply `sanitize_log_value()` at the 5 locked call sites (webhook_manager ×2, controller.py:790/760/975) (wave 2, depends on 101-01)
 
 ### Phase 102: Controller Concurrency + Test Infra
 
