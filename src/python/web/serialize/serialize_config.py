@@ -14,6 +14,12 @@ _SENSITIVE_FIELDS = {
 
 _REDACTED = "**REDACTED**"
 
+# Fields whose value ALWAYS serializes as "" regardless of auth status or whether set.
+# SEC-02 (D-10/D-11): prevents distinguishing set vs unset via value or length.
+_ALWAYS_BLANK_FIELDS = {
+    "general": ["webhook_secret", "api_token"],
+}
+
 class SerializeConfig:
     @staticmethod
     def config(config: Config, authenticated: bool = False) -> str:
@@ -34,5 +40,15 @@ class SerializeConfig:
                     for field in fields:
                         if field in section_dict:
                             section_dict[field] = _REDACTED
+
+        # SEC-02: secret value fields always serialize as "" (D-10/D-11).
+        # Applies on both authenticated and unauthenticated paths, overwriting
+        # **REDACTED** with "" for these two fields on the unauthenticated path
+        # and zeroing the real value on the authenticated path.
+        for section, fields in _ALWAYS_BLANK_FIELDS.items():
+            if section in config_dict_lowercase:
+                for field in fields:
+                    if field in config_dict_lowercase[section]:
+                        config_dict_lowercase[section][field] = ""
 
         return json.dumps(config_dict_lowercase)
