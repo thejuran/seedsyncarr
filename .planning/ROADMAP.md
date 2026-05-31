@@ -437,9 +437,9 @@ Plans:
   5. **Cross-cutting (COMPAT):** no breaking changes on upgrade — existing config files load unchanged (no new required fields), and status codes/response shapes for already-supported paths are unchanged. CI green on amd64 + arm64 (Python + Angular + E2E); Python `fail_under` ≥ 88 holds or rises; security fixes log no sensitive data and return generic client errors with detail logged server-side. No release/tag/version work in this phase.
 
 **Plans**: 6 plans (3 waves)
-- [ ] 101-01-PLAN.md — SEC-01: shared `sanitize_log_value()` CWE-117 helper in `common/types.py` (CR/LF + control chars) + unit tests (wave 1, leaf dependency)
-- [ ] 101-02-PLAN.md — BUG-02 + SEC-03: opt-in `webhook_require_secret` fail-closed 503 (guard outside rate_limit, before body parse) + first-run default, per-route rate-limit (60/60s → 429), startup warning (wave 1)
-- [ ] 101-03-PLAN.md — SEC-02: config GET response always serializes secret value fields as `""` on both auth paths (wave 1)
+- [x] 101-01-PLAN.md — SEC-01: shared `sanitize_log_value()` CWE-117 helper in `common/types.py` (CR/LF + control chars) + unit tests (wave 1, leaf dependency)
+- [x] 101-02-PLAN.md — BUG-02 + SEC-03: opt-in `webhook_require_secret` fail-closed 503 (guard outside rate_limit, before body parse) + first-run default, per-route rate-limit (60/60s → 429), startup warning (wave 1)
+- [x] 101-03-PLAN.md — SEC-02: config GET response always serializes secret value fields as `""` on both auth paths (wave 1)
 - [ ] 101-04-PLAN.md — SEC-01: apply `sanitize_log_value()` at the webhook/command cluster (webhook_manager ×2, controller.py:790/792/760/975/1075) (wave 2, depends on 101-01)
 - [ ] 101-05-PLAN.md — SEC-01: apply `sanitize_log_value()` at the auto-delete timer cluster (controller.py:229/820/841/848/866/876/897/926/948) + model-layer (model.py:81/97/112) (wave 3, depends on 101-04)
 - [ ] 101-06-PLAN.md — SEC-01: apply `sanitize_log_value()` at the lftp cluster (lftp.py kill 356/362/365 + __run_command output 126/129/144/147/148, job_status_parser.py:724/725) (wave 2, depends on 101-01) — lftp sites brought in-scope after adversarial-review round 2
