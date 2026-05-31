@@ -1,3 +1,4 @@
+import functools
 import hmac
 import hashlib
 import json
@@ -10,6 +11,7 @@ from bottle import HTTPResponse, request
 from common import overrides
 from common.config import Config
 from controller.webhook_manager import WebhookManager
+from ..rate_limit import rate_limit
 from ..web_app import IHandler, WebApp
 
 logger = logging.getLogger(__name__)
@@ -28,9 +30,36 @@ class WebhookHandler(IHandler):
 
     @overrides(IHandler)
     def add_routes(self, web_app: WebApp):
-        """Register webhook endpoints."""
-        web_app.add_post_handler("/server/webhook/sonarr", self.__handle_sonarr_webhook)
-        web_app.add_post_handler("/server/webhook/radarr", self.__handle_radarr_webhook)
+        """Register webhook endpoints.
+
+        Execution order per request:
+          1. fail-closed guard (503 if require_secret ON and no secret — reads no body, no counter)
+          2. rate_limit (429 if over 60/60s budget — independent closures per route, D-09)
+          3. _handle_webhook (413 / HMAC / JSON parse / enqueue)
+        """
+        web_app.add_post_handler("/server/webhook/sonarr", self._make_require_secret_guard(rate_limit(max_requests=60, window_seconds=60.0)(self.__handle_sonarr_webhook)))
+        web_app.add_post_handler("/server/webhook/radarr", self._make_require_secret_guard(rate_limit(max_requests=60, window_seconds=60.0)(self.__handle_radarr_webhook)))
+
+    def _make_require_secret_guard(self, handler):
+        """Return a wrapper that fails closed with 503 when webhook_require_secret is on but no secret is set.
+
+        The wrapper is outermost (applied OUTSIDE rate_limit) so 503 fires before:
+        - the rate-limit counter is consulted (BLOCKER 2 — 429 cannot mask 503), and
+        - any request body is read.
+
+        When webhook_require_secret is False (default) OR a secret is configured, the
+        wrapper delegates to handler() unchanged, preserving backward compatibility.
+        """
+        @functools.wraps(handler)
+        def wrapper():
+            if self.__config.general.webhook_require_secret and not self.__config.general.webhook_secret:
+                logger.warning(
+                    "Webhook request rejected: webhook_require_secret is enabled but no "
+                    "webhook_secret is configured."
+                )
+                return HTTPResponse(status=503, body="Service unavailable")
+            return handler()
+        return wrapper
 
     def __handle_sonarr_webhook(self) -> HTTPResponse:
         """Handle Sonarr webhook POST."""
