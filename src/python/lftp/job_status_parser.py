@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 import logging
 
-from common import AppError
+from common import AppError, sanitize_log_value
 from .job_status import LftpJobStatus
 
 class LftpJobStatusParserError(AppError):
@@ -721,8 +721,11 @@ class LftpJobStatusParser:
             statuses += QueueParser.parse(lines)
             statuses += self._active_jobs_parser.parse(lines)
         except ValueError as e:
-            self.logger.error("LftpJobStateParser error: {}".format(str(e)))
-            self.logger.error("Status:\n{}".format(output))
+            self.logger.error("LftpJobStateParser error: {}".format(sanitize_log_value(str(e))))
+            # Escaping the full multi-line block is intentional CWE-117 behavior: legitimate
+            # internal newlines are escaped too so no attacker-controlled newline can forge
+            # a log line. This is the correct outcome, not a bug. (accepted tradeoff)
+            self.logger.error("Status:\n{}".format(sanitize_log_value(output)))
             raise LftpJobStatusParserError("Error parsing lftp job status")
         return statuses
 
