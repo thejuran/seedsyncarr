@@ -285,12 +285,14 @@ class TestConfig(unittest.TestCase):
             "webhook_secret": "",
             "api_token": "",
             "allowed_hostname": "",
+            "webhook_require_secret": "False",
         }
         general = Config.General.from_dict(good_dict)
         self.assertEqual(True, general.debug)
         self.assertEqual(False, general.verbose)
         self.assertEqual("", general.webhook_secret)
         self.assertEqual("", general.api_token)
+        self.assertEqual(False, general.webhook_require_secret)
 
         # webhook_secret with non-empty value
         good_dict_with_secret = dict(good_dict)
@@ -323,6 +325,101 @@ class TestConfig(unittest.TestCase):
         self.check_bad_value_error(Config.General, good_dict, "debug", "-1")
         self.check_bad_value_error(Config.General, good_dict, "verbose", "SomeString")
         self.check_bad_value_error(Config.General, good_dict, "verbose", "-1")
+
+    def test_general_webhook_require_secret_back_compat(self):
+        """from_dict without webhook_require_secret key loads with default False (D-06, BUG-02)."""
+        general_section = {
+            "debug": "True",
+            "verbose": "False",
+            "webhook_secret": "",
+            "api_token": "",
+            "allowed_hostname": "",
+            # webhook_require_secret intentionally absent — old config file
+        }
+        minimal_dict = {
+            "General": general_section,
+            "Lftp": {
+                "remote_address": "h", "remote_username": "u", "remote_password": "p",
+                "remote_port": "22", "remote_path": "/r", "local_path": "/l",
+                "remote_path_to_scan_script": "/s", "use_ssh_key": "False",
+                "num_max_parallel_downloads": "2", "num_max_parallel_files_per_download": "3",
+                "num_max_connections_per_root_file": "4", "num_max_connections_per_dir_file": "5",
+                "num_max_total_connections": "6", "use_temp_file": "False", "rate_limit": "0",
+            },
+            "Controller": {
+                "interval_ms_remote_scan": "30000", "interval_ms_local_scan": "10000",
+                "interval_ms_downloading_scan": "1000", "extract_path": "/e",
+                "use_local_path_as_extract_path": "True", "max_tracked_files": "10000",
+            },
+            "Web": {"port": "8800"},
+            "AutoQueue": {"enabled": "False", "patterns_only": "False", "auto_extract": "True"},
+        }
+        # Must not raise — from_dict injects "False" default
+        config = Config.from_dict(minimal_dict)
+        self.assertIs(False, config.general.webhook_require_secret)
+
+    def test_general_webhook_require_secret_true(self):
+        """from_dict with webhook_require_secret: True loads correctly (BUG-02)."""
+        good_dict_with_flag = {
+            "debug": "True",
+            "verbose": "False",
+            "webhook_secret": "mysecret",
+            "api_token": "",
+            "allowed_hostname": "",
+            "webhook_require_secret": "True",
+        }
+        general = Config.General.from_dict(good_dict_with_flag)
+        self.assertIs(True, general.webhook_require_secret)
+
+    def test_default_config_roundtrips_require_secret(self):
+        """First-run default config serializes and reloads without ConfigError (BLOCKER-1, BUG-02).
+
+        Replicates exactly what _create_default_config() does, then verifies that
+        Config.to_str() -> Config.from_str() succeeds with flag==False.
+        A None / 'None' value would raise ConfigError in Converters.bool on reload.
+        """
+        from seedsyncarr import Seedsyncarr
+        config = Seedsyncarr._create_default_config()
+        serialized = config.to_str()
+        reloaded = Config.from_str(serialized)
+        self.assertIs(False, reloaded.general.webhook_require_secret)
+
+    def test_general_webhook_require_secret_explicit_none_defaults_false(self):
+        """from_dict with explicit None value for webhook_require_secret defaults to False.
+
+        Codex medium: a present-but-None key must be treated the same as an absent key.
+        Without this, None bypasses Converters.bool on first load, then serializes as 'None'
+        and raises ConfigError on the next reload (BLOCKER-1 variant).
+        """
+        general_section = {
+            "debug": "True",
+            "verbose": "False",
+            "webhook_secret": "",
+            "api_token": "",
+            "allowed_hostname": "",
+            "webhook_require_secret": None,  # explicit None — must be treated as absent
+        }
+        minimal_dict = {
+            "General": general_section,
+            "Lftp": {
+                "remote_address": "h", "remote_username": "u", "remote_password": "p",
+                "remote_port": "22", "remote_path": "/r", "local_path": "/l",
+                "remote_path_to_scan_script": "/s", "use_ssh_key": "False",
+                "num_max_parallel_downloads": "2", "num_max_parallel_files_per_download": "3",
+                "num_max_connections_per_root_file": "4", "num_max_connections_per_dir_file": "5",
+                "num_max_total_connections": "6", "use_temp_file": "False", "rate_limit": "0",
+            },
+            "Controller": {
+                "interval_ms_remote_scan": "30000", "interval_ms_local_scan": "10000",
+                "interval_ms_downloading_scan": "1000", "extract_path": "/e",
+                "use_local_path_as_extract_path": "True", "max_tracked_files": "10000",
+            },
+            "Web": {"port": "8800"},
+            "AutoQueue": {"enabled": "False", "patterns_only": "False", "auto_extract": "True"},
+        }
+        # Must not raise — from_dict must collapse None to "False"
+        config = Config.from_dict(minimal_dict)
+        self.assertIs(False, config.general.webhook_require_secret)
 
     def test_lftp(self):
         good_dict = {
@@ -587,6 +684,7 @@ class TestConfig(unittest.TestCase):
         config.general.webhook_secret = ""
         config.general.api_token = ""
         config.general.allowed_hostname = ""
+        config.general.webhook_require_secret = False
         config.lftp.remote_address = "server.remote.com"
         config.lftp.remote_username = "user-on-remote-server"
         config.lftp.remote_password = "pass-on-remote-server"
@@ -634,6 +732,7 @@ class TestConfig(unittest.TestCase):
         webhook_secret =
         api_token =
         allowed_hostname =
+        webhook_require_secret = False
 
         [Lftp]
         remote_address = server.remote.com
@@ -710,6 +809,7 @@ class TestConfig(unittest.TestCase):
         c.general.webhook_secret = "my_webhook"
         c.general.api_token = "my_token"
         c.general.allowed_hostname = ""
+        c.general.webhook_require_secret = False
         c.lftp.remote_address = "remote.host"
         c.lftp.remote_username = "remote_user"
         c.lftp.remote_password = "my_pass"

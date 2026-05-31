@@ -231,6 +231,7 @@ class Config(Persist):
         webhook_secret = PROP("webhook_secret", Checkers.null, Converters.null)
         api_token = PROP("api_token", Checkers.null, Converters.null)
         allowed_hostname = PROP("allowed_hostname", Checkers.null, Converters.null)
+        webhook_require_secret = PROP("webhook_require_secret", Checkers.null, Converters.bool)  # BUG-02
 
         def __init__(self):
             super().__init__()
@@ -239,6 +240,7 @@ class Config(Persist):
             self.webhook_secret = None
             self.api_token = None
             self.allowed_hostname = None
+            self.webhook_require_secret = None  # BUG-02
 
     class Lftp(IC):
         remote_address = PROP("remote_address", Checkers.string_nonempty, Converters.null)
@@ -520,6 +522,12 @@ class Config(Persist):
             general_dict["api_token"] = ""
         if "allowed_hostname" not in general_dict:
             general_dict["allowed_hostname"] = ""
+        # BUG-02: webhook_require_secret — default False (preserve existing behavior on upgrade).
+        # Use .get(...) is None (not just "key" not in) so BOTH an absent key AND an explicit
+        # None value collapse to the STRING "False" — a present-but-None value would otherwise
+        # slip past Converters.bool, serialize as "None", and crash the next reload (BLOCKER-1).
+        if general_dict.get("webhook_require_secret") is None:
+            general_dict["webhook_require_secret"] = "False"
         config.general = Config.General.from_dict(general_dict)
         lftp_dict = Config._check_section(config_dict, "Lftp")
         # Backward compatibility: rate_limit added for e2e throttling — default 0 (unlimited)

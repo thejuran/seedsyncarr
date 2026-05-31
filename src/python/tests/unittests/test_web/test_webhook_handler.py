@@ -2,15 +2,16 @@ import hmac
 import hashlib
 import json
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, PropertyMock
 
 from web.handler.webhook import WebhookHandler
 
 
-def _make_mock_config(webhook_secret: str = "") -> MagicMock:
-    """Create a mock Config with the given webhook_secret."""
+def _make_mock_config(webhook_secret: str = "", webhook_require_secret: bool = False) -> MagicMock:
+    """Create a mock Config with the given webhook_secret and webhook_require_secret."""
     mock_config = MagicMock()
     mock_config.general.webhook_secret = webhook_secret
+    mock_config.general.webhook_require_secret = webhook_require_secret
     return mock_config
 
 
@@ -296,3 +297,76 @@ class TestWebhookPayloadSizeLimit(unittest.TestCase):
         mock_request.json = {"eventType": "Test"}
         response = self.handler._handle_webhook("Sonarr", WebhookHandler._extract_sonarr_title)
         self.assertEqual(200, response.status_code)
+
+
+class TestWebhookFailClosedGuard(unittest.TestCase):
+    """Unit tests for the BUG-02 fail-closed guard wrapper (_make_require_secret_guard).
+
+    These verify the guard short-circuits to 503 BEFORE reading the body or calling the
+    inner handler, mirroring the body-not-read proof pattern in TestWebhookPayloadSizeLimit.
+    """
+
+    def setUp(self):
+        self.mock_webhook_manager = MagicMock()
+
+    @patch('web.handler.webhook.request')
+    def test_require_secret_on_no_secret_503_before_body_read(self, mock_request):
+        """require_secret=True + no secret -> 503 + body not read + inner handler not called.
+
+        Proves guard short-circuits before body parse (mirrors size-limit test line 274).
+        The sentinel inner handler raises if called, proving the guard short-circuited.
+        """
+        handler = WebhookHandler(
+            self.mock_webhook_manager,
+            _make_mock_config(webhook_secret="", webhook_require_secret=True)
+        )
+        # Sentinel inner handler: raises if called, proving guard short-circuits
+        sentinel_inner = MagicMock()
+        guarded = handler._make_require_secret_guard(sentinel_inner)
+
+        # Set up mock request to track body.read calls and json access
+        mock_json = PropertyMock(side_effect=AssertionError("request.json should not be accessed"))
+        type(mock_request).json = mock_json
+
+        response = guarded()
+
+        # (a) status 503
+        self.assertEqual(503, response.status_code)
+        # (b) inner handler NOT called — proves guard short-circuited
+        sentinel_inner.assert_not_called()
+        # (c) body.read NOT called — no body parse
+        mock_request.body.read.assert_not_called()
+        # (d) request.json NOT accessed
+        mock_json.assert_not_called()
+
+    @patch('web.handler.webhook.request')
+    def test_require_secret_off_guard_calls_inner(self, mock_request):
+        """require_secret=False + no secret -> guard passes through to inner handler (COMPAT)."""
+        handler = WebhookHandler(
+            self.mock_webhook_manager,
+            _make_mock_config(webhook_secret="", webhook_require_secret=False)
+        )
+        inner_result = MagicMock()
+        inner = MagicMock(return_value=inner_result)
+        guarded = handler._make_require_secret_guard(inner)
+
+        result = guarded()
+
+        inner.assert_called_once()
+        self.assertIs(inner_result, result)
+
+    @patch('web.handler.webhook.request')
+    def test_require_secret_on_with_secret_calls_inner(self, mock_request):
+        """require_secret=True + secret configured -> guard passes through to inner handler."""
+        handler = WebhookHandler(
+            self.mock_webhook_manager,
+            _make_mock_config(webhook_secret="configured-secret", webhook_require_secret=True)
+        )
+        inner_result = MagicMock()
+        inner = MagicMock(return_value=inner_result)
+        guarded = handler._make_require_secret_guard(inner)
+
+        result = guarded()
+
+        inner.assert_called_once()
+        self.assertIs(inner_result, result)
