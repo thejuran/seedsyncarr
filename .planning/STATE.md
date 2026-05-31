@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.3.0
 milestone_name: Test Coverage Gaps
-status: executing
+status: Awaiting next milestone
 stopped_at: Phase 100 context gathered
-last_updated: "2026-05-29T20:13:03.824Z"
-last_activity: 2026-05-29
+last_updated: "2026-05-31T18:52:29.170Z"
+last_activity: 2026-05-31 — Milestone v1.3.0 completed and archived
 progress:
   total_phases: 4
   completed_phases: 4
@@ -25,11 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-28)
 
 ## Current Position
 
-Phase: 100 (low-priority-angular-coverage-ci-ratchet) — EXECUTING
-Plan: 2 of 3
-Status: Ready to execute
-Progress: [██████████] 100%
-Last activity: 2026-05-29
+Phase: Milestone v1.3.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-05-31 — Milestone v1.3.0 completed and archived
 
 ## Accumulated Context
 
@@ -97,3 +96,7 @@ Note: v1.3.0's trivial-fix policy may add new deferred items here — larger fin
 Last session: 2026-05-29T20:13:03.821Z
 Stopped at: Phase 100 context gathered
 Next action: `/gsd:plan-phase 97`
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

@@ -286,7 +286,15 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Rate limiting on all mutable HTTP endpoints via reusable decorator — v1.2.0
 - ✓ Tightened Semgrep rules, eliminated 628 false positives — v1.2.0
 
-## Current Milestone: v1.3.0 Test Coverage Gaps
+**v1.3.0 (Shipped 2026-05-31):**
+
+- ✓ Full-path coverage for 3 Medium Python gaps: MultiprocessingLogger listener shutdown, SSRF `_validate_url` IPv4/IPv6 reserved ranges (+ pre-approved IPv6-mapped fix), LFTP JobStatusParser error-recovery counter — v1.3.0
+- ✓ Full end-to-end XSS coverage for `confirm-modal.service.ts` escapeHtml (all metacharacters + 6 inputs + skipCount-exemption audit) — v1.3.0
+- ✓ Targeted regression tests for 2 Low Python gaps: auto-delete enabled/dry-run toggle flipped during a live `threading.Timer` window; BoundedOrderedSet eviction-after-touch ordering — v1.3.0
+- ✓ Targeted regression tests for 2 Low Angular gaps: SSE heartbeat-vs-timeout reconnection race (+ positive control); auth interceptor token-rotation via `_resetAuthInterceptorCache` seam — v1.3.0
+- ✓ CI coverage ratchet: Python `fail_under` 84→88 (container-inclusive 89.27%), net-new Karma `check.global` (83/68/79/83) + Angular Dockerfile `--code-coverage` so the gate bites; before/after recorded in ROADMAP + RETROSPECTIVE — v1.3.0
+
+## Previous Milestone: v1.3.0 Test Coverage Gaps (Shipped 2026-05-31)
 
 **Goal:** Close the 8 test coverage gaps catalogued in CONCERNS.md — 4 Medium-priority gaps get full path coverage, 4 Low-priority gaps get a targeted regression test. Trivial bugs found while testing (<10 lines, no public-API or observable-behavior change) are fixed in the same plan; larger findings deferred to v1.4.0. Milestone ends with ratcheted CI coverage thresholds.
 
@@ -299,11 +307,9 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-<!-- v1.3.0 Test Coverage Gaps — see REQUIREMENTS.md for full REQ-IDs -->
+<!-- No active milestone — v1.3.0 shipped 2026-05-31. Next via /gsd:new-milestone. -->
 
-- [ ] Full path coverage for the 4 Medium-priority gaps (MP-logger, SSRF, LFTP parser, escapeHtml)
-- [ ] Targeted regression test for the 4 Low-priority gaps (auto-delete toggle, BoundedOrderedSet, SSE timeout, auth interceptor)
-- [ ] Coverage baseline captured before phase 97 and CI thresholds ratcheted after phase 100
+_(none — start the next milestone with `/gsd:new-milestone`. Planned next: v1.4.0 Known Bugs + Security, per the v1.3.0 design spec.)_
 
 ### Out of Scope
 
@@ -320,7 +326,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 **Codebase state:**
 - ~35.5k Python LOC, ~20k TypeScript LOC
-- 1,200+ Python tests, 84% coverage (fail_under enforced)
+- 1,278 Python tests, 89.27% container-inclusive coverage (fail_under=88 enforced); 614 Angular tests (Karma check.global 83/68/79/83 enforced)
 - 599 Angular unit tests passing
 - 45+ Playwright E2E specs (amd64+arm64), CI-gated
 - Zero TypeScript lint errors
@@ -424,4 +430,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-28 after v1.3.0 milestone start*
+*Last updated: 2026-05-31 after v1.3.0 milestone close*

@@ -1,5 +1,23 @@
 # Project Milestones: SeedSync
 
+## v1.3.0 Test Coverage Gaps (Shipped: 2026-05-31)
+
+**Phases completed:** 4 phases, 10 plans, 4 tasks
+
+**Key accomplishments:**
+
+- 1. [Rule 1 - Bug] ESLint max-len violation on it() description
+- One-liner:
+- Python
+- 1. [Rule 3 - Blocking] Provisioned lockfile-pinned Python dev dependencies
+- 1. [Rule 3 - Blocking] Verify command path corrected to the worktree
+- Ran on host (no lftp/sshd needed):
+- Full end-to-end XSS regression guard for ConfirmModalService: 12 new Jasmine tests covering all five metacharacter mappings, six escaped inputs (element-content + class-attribute), skipCount exemption audit, and coercible-object runtime-boundary probe
+- One-liner:
+- COVLOW-02 regression net: LRU-after-touch eviction pins that touching the oldest item ('a') promotes it past 'b', so 'b' evicts on the next add, not 'a'
+
+---
+
 ## v1.2.0 Test & Quality Hardening (Shipped: 2026-04-29)
 
 **Phases completed:** 10 phases, 23 plans
