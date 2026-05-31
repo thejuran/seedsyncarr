@@ -1,7 +1,7 @@
 from queue import Queue, Empty
 from typing import Dict, List, Tuple
 
-from common import Context
+from common import Context, sanitize_log_value
 
 class WebhookManager:
     """
@@ -32,9 +32,9 @@ class WebhookManager:
             file_name: Name of the imported file
         """
         self.__import_queue.put((source, file_name))
-        # Sanitize newlines before logging -- file_name is webhook-supplied and
-        # could otherwise be used for log injection (CWE-117).
-        safe_file_name = file_name.replace("\n", "\\n").replace("\r", "\\r")
+        # Sanitize newlines and control chars before logging -- file_name is
+        # webhook-supplied and could otherwise be used for log injection (CWE-117).
+        safe_file_name = sanitize_log_value(file_name)
         self.logger.info("{} webhook import enqueued: '{}'".format(source, safe_file_name))
 
     def process(self, name_to_root: Dict[str, str]) -> List[Tuple[str, str]]:
@@ -72,8 +72,8 @@ class WebhookManager:
             root_name = name_to_root.get(file_name.lower())
             # Sanitize webhook-supplied file_name for log output (CWE-117). The
             # queue value is used raw for matching (correct), but log sinks must
-            # strip newlines so crafted payloads can't split log entries.
-            safe_file_name = file_name.replace("\n", "\\n").replace("\r", "\\r")
+            # escape control chars so crafted payloads can't split log entries.
+            safe_file_name = sanitize_log_value(file_name)
             if root_name is not None:
                 newly_imported.append((root_name, file_name))
                 self.logger.info(
