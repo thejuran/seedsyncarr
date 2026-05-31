@@ -113,3 +113,45 @@ class TestWebhookManager(unittest.TestCase):
         self.assertEqual("ShowDir", root_name)
         self.assertEqual("Episode.S01E01.mkv", matched_name)
         self.assertNotEqual(root_name, matched_name)
+
+    # --- CWE-117 log-injection sanitization tests (Plan 101-04) ---
+
+    def test_enqueue_sanitizes_newlines_in_log(self):
+        """CRLF in webhook file_name must be escaped to \\r\\n tokens in log output (CWE-117)."""
+        crlf_name = "File.A\r\ninjected"
+        self.manager.enqueue_import("Sonarr", crlf_name)
+        # Retrieve the actual call arg logged by info
+        call_args = self.manager.logger.info.call_args_list
+        self.assertTrue(call_args, "Expected at least one logger.info call")
+        logged_msg = call_args[-1][0][0]
+        # Must not contain a literal CR or LF
+        self.assertNotIn("\n", logged_msg, "Literal LF must not appear in log output")
+        self.assertNotIn("\r", logged_msg, "Literal CR must not appear in log output")
+        # Must contain the escaped token forms
+        self.assertIn("\\r", logged_msg, "Escaped \\r token must appear in log output")
+        self.assertIn("\\n", logged_msg, "Escaped \\n token must appear in log output")
+
+    def test_enqueue_sanitizes_escape_char_in_log(self):
+        """ESC byte (0x1b) in webhook file_name must be escaped to \\x1b in log output (CWE-117)."""
+        esc_name = "File.A\x1binjected"
+        self.manager.enqueue_import("Sonarr", esc_name)
+        call_args = self.manager.logger.info.call_args_list
+        self.assertTrue(call_args, "Expected at least one logger.info call")
+        logged_msg = call_args[-1][0][0]
+        # Must not contain a raw 0x1b byte
+        self.assertNotIn("\x1b", logged_msg, "Raw ESC byte must not appear in log output")
+        # Must contain the escaped hex form
+        self.assertIn("\\x1b", logged_msg, "Escaped \\x1b must appear in log output")
+
+    def test_queue_value_unchanged_with_newline(self):
+        """file_name with embedded newline matching a model entry: returned matched tuple preserves RAW value."""
+        # Map the lowercased version of the CRLF name to a root
+        raw_name = "file.a\r\n"
+        name_to_root_with_crlf = {raw_name.lower(): "File.A"}
+        self.manager.enqueue_import("Sonarr", raw_name)
+        result = self.manager.process(name_to_root_with_crlf)
+        self.assertEqual(1, len(result), "Injection-bearing file name should match the model entry")
+        root_name, matched_name = result[0]
+        self.assertEqual("File.A", root_name)
+        # matched_name must be the RAW value, not the sanitized log value
+        self.assertEqual(raw_name, matched_name, "Returned matched_name must be the raw (unsanitized) value")
