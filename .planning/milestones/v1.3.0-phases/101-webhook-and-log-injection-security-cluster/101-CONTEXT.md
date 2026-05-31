@@ -24,8 +24,13 @@ Scope anchor from ROADMAP.md (Phase 101) — fixed. Phases 102 (controller concu
 ### SEC-01 — Log-injection sanitizer (CWE-117)
 - **D-01:** Extract a single shared helper (e.g. `sanitize_log_value()`) that strips/escapes CR/LF/control characters. Replace the 3 existing inline `.replace("\n","\\n").replace("\r","\\r")` copies (`webhook_manager.py:37`, `webhook_manager.py:76`, `controller.py:790`) with calls to it — one definition, no copy-paste drift. **Home for the helper: `src/python/common/types.py`** (research-confirmed: zero circular-import risk, already imported transitively by web/handler, controller, and lftp). Helper preserves the existing inline behavior (CR/LF escaping).
 - **D-02:** Apply the helper to log sites whose interpolated value is **provably remote-/webhook-/user-supplied** (filenames/titles from *arr callbacks, scanned remote names) — NOT to internal-only strings. Targeted to the CWE-117 threat model, not a blanket wrap.
-- **D-03 (RESOLVED post-research; ⚠️ RE-DERIVED during planning — see note):** Taint-reachable site set is locked: the **3 confirmed webhook-tainted sites** (the inline-escape consolidation targets) PLUS **`controller.py:760` (webhook root-name mapping lookup) and `controller.py:975` (auto-deleted local file name)** — both log remote-/seedbox-derived names a crafted filename could exploit. **`controller.py:229` (canceled pending auto-delete) is DEFERRED** — it logs an internal dict key validated upstream, lower risk; record as a deferred-item note. delete/extract/dispatch debug logs are out of scope this slice.
+- **D-03 (RESOLVED post-research; ⚠️ RE-DERIVED during planning; ⚠️⚠️ FINALIZED via Option-C in adversarial round 3 — see notes):** Taint-reachable site set is locked: the **3 confirmed webhook-tainted sites** (the inline-escape consolidation targets) PLUS **`controller.py:760` (webhook root-name mapping lookup) and `controller.py:975` (auto-deleted local file name)** — both log remote-/seedbox-derived names a crafted filename could exploit. **`controller.py:229` (canceled pending auto-delete) is DEFERRED** — it logs an internal dict key validated upstream, lower risk; record as a deferred-item note. delete/extract/dispatch debug logs are out of scope this slice.
   > **⚠️ SUPERSEDED by 101-04-PLAN.md / 101-05-PLAN.md (BLOCKER-4 re-derivation).** Adversarial review found the research mis-classified `controller.py:1075` (command-dispatch log) as internal — it is in fact user-supplied via the `/server/command/<file_name>` URL path (unquoted) and the bulk `/server/command/bulk` JSON `files[]` array, unauthenticated when `api_token` is empty — so `1075` is now **in scope** (Plan 04). The auto-delete-timer + model-layer cluster (`controller.py:229,820,841,848,866,876,897,926,948` + `model/model.py:81,97,112`) is **NOT dropped**: it moved to **Plan 05 (Wave 3, same slice)** because it shares controller.py with Plan 04 and must sequence rather than parallelize. The authoritative, final site set is the union specified in **101-04-PLAN.md (`D-03 re-derived`) and 101-05-PLAN.md** — follow those, not the "deferred / out of scope this slice" wording above. 101-VALIDATION.md likewise predates this split.
+  > **⚠️⚠️ OPTION-C FINALIZATION (adversarial round 3, user-approved).** A 3rd codex pass flagged additional SEC-01 taint clusters. The user reviewed the scope tension (REQUIREMENTS.md "ALL sites" vs this D-02/D-03 "provably remote-supplied; delete/extract/dispatch out of scope this slice") and chose **Option C**: fold in ONLY the two highest-risk, clearly attacker-facing sites that are hard to defend as "debug logs," and FORMALLY DEFER the rest:
+  > - **IN (this slice):** `controller.py:1069` (`_notify_failure` "Command failed." warning) — added to **Plan 04**. `_msg` is built by callers from the user-supplied `command.filename` (`controller.py:1080` and sibling failure messages), then logged raw at 1069. Only the LOG is sanitized; the `_callback.on_failure(_msg,_code)` at line 1071 keeps the RAW `_msg` (log-output-only).
+  > - **IN (this slice):** `controller/scan/remote_scanner.py:118` (JSON-decode-error log of the raw SSH scan output) — added to **Plan 06** (the "raw remote process output" cluster; disjoint file from controller.py/lftp, Wave 2, no collision). BOTH `str(err)` and the raw `out` are sanitized; the except is made NameError-safe (it does NOT reference `out_str`, which is defined inside the try at line 114 and may be undefined when the decode itself raised — a locally-derived `safe_out` is used instead).
+  > - **DEFERRED (later v1.3.0 slice):** the remaining codex-flagged clusters — see the `<deferred>` "Deferred SEC-01 sites (later slice)" subsection below for the per-cluster rationale. This is a documented deferral, not a silent drop; it satisfies SEC-01's per-site-justification expectation for the not-yet-covered sites.
+  > The authoritative, final round-3 site set is the union specified in **101-04-PLAN.md (`D-03` incl. 1069), 101-05-PLAN.md, and 101-06-PLAN.md (incl. remote_scanner.py:118)**.
 
 ### BUG-02 — Opt-in webhook fail-closed (highest priority; MUST NOT break back-compat)
 - **D-04:** New config flag **`general.webhook_require_secret`**, type bool, **default `false`**. Lives in the existing General config section next to `webhook_secret`.
@@ -71,6 +76,8 @@ Scope anchor from ROADMAP.md (Phase 101) — fixed. Phases 102 (controller concu
 - `src/python/web/handler/config.py` §`__handle_get_config` (line 87) + `__handle_set_config` — SEC-02 GET response serialization surface.
 - `src/python/common/config.py` §`from_dict` back-compat branches (lines 515-569) — BUG-02 flag default wiring (D-06); `_SECRET_FIELD_PATHS` (lines 19-25) — secret-field inventory for SEC-02.
 - `src/python/controller/webhook_manager.py:37,76` + `src/python/controller/controller.py:790` — the 3 inline CWE-117 replacements to consolidate (SEC-01 D-01).
+- `src/python/controller/controller.py:1069` (`_notify_failure` warning) — SEC-01 round-3 Option-C addition (Plan 04); `_msg` built from `command.filename`.
+- `src/python/controller/scan/remote_scanner.py:118` (JSON-decode-error log of raw SSH scan `out`) — SEC-01 round-3 Option-C addition (Plan 06); NameError-safe (do not reference `out_str`).
 - `seedsyncarr.py:372-378` — existing empty-secret startup warning to extend (BUG-02 D-07).
 
 ### Backward-compat anchor
@@ -105,6 +112,21 @@ Scope anchor from ROADMAP.md (Phase 101) — fixed. Phases 102 (controller concu
 - Settings audit log (who/when/what changed config) — CONCERNS bucket 9 missing-feature, not in this slice.
 - `set_property` non-string coercion, ServiceExit broad-except, bulk-command queue-after-timeout — other known bugs deferred per REQUIREMENTS.md Out-of-Scope.
 
+### Deferred SEC-01 sites (later v1.3.0 slice) — Option-C deferral (adversarial round 3)
+The round-3 codex pass flagged additional SEC-01 taint clusters. Per the user's Option-C decision, the two highest-risk attacker-facing sites (`controller.py:1069` and `remote_scanner.py:118`) are folded into THIS slice (Plans 04/06); the clusters below are **formally deferred** to a later v1.3.0 slice. This is a documented, justified deferral (not a silent drop) — each carries the same one-line `sanitize_log_value(...)` fix when picked up. Per-cluster rationale:
+
+**Delete / extract / dispatch operation logs** (remote-/model-derived names; lower-frequency, not the primary webhook attack path):
+- `delete_process.py:17,19,45,48` — remote/model-derived name; deferred to a later v1.3.0 slice — same `sanitize_log_value` one-line fix when picked up.
+- `extract/dispatch.py:106,152,183` — remote/model-derived name; deferred to a later v1.3.0 slice — same `sanitize_log_value` one-line fix when picked up.
+- `extract/extract_process.py:32,39,79` — remote/model-derived name; deferred to a later v1.3.0 slice — same `sanitize_log_value` one-line fix when picked up.
+
+**AutoQueue / model-builder / controller bookkeeping logs** (remote-/model-derived names; internal bookkeeping/debug surface, not the primary webhook attack path):
+- `auto_queue.py:180,262-265,307-318` — remote/model-derived name; deferred to a later v1.3.0 slice — same `sanitize_log_value` one-line fix when picked up.
+- `controller.py:268-270,541` — remote/model-derived name; deferred to a later v1.3.0 slice — same `sanitize_log_value` one-line fix when picked up.
+- `model_builder.py:559-565` — remote/model-derived name; deferred to a later v1.3.0 slice — same `sanitize_log_value` one-line fix when picked up.
+
+This deferral keeps SEC-01's per-site-justification expectation satisfied: every codex-flagged site is either covered (Plans 04/05/06) or explicitly recorded here with a defer rationale. See D-03 Option-C finalization note above for the IN/DEFERRED split.
+
 ### Reviewed Todos (not folded)
 - 2 pending todos exist (webob-cgi-upstream-unblock, migrate-config-set-to-post-body) — neither matched phase 101 (todo.match-phase returned 0 matches). The config-set-to-POST-body item is a separate-milestone API contract change per STATE.md deferred items.
 
@@ -114,3 +136,4 @@ Scope anchor from ROADMAP.md (Phase 101) — fixed. Phases 102 (controller concu
 
 *Phase: 101-webhook-and-log-injection-security-cluster*
 *Context gathered: 2026-05-31*
+</content>
