@@ -168,3 +168,97 @@ class TestLftpModel(unittest.TestCase):
         # Attempting to modify a frozen file should raise an error
         with self.assertRaises(ValueError):
             new_file.local_size = 300
+
+
+class TestModelDebugLogSanitization(unittest.TestCase):
+    """CWE-117 log-injection sanitization for model add/remove/update debug logs (Plan 101-05).
+
+    Site coverage:
+      - model/model.py:81  add_file    "LftpModel: Adding file '{}'"
+      - model/model.py:97  remove_file "LftpModel: Removing file '{}'"
+      - model/model.py:112 update_file "LftpModel: Updating file '{}'"
+    """
+
+    def setUp(self):
+        self.model = Model()
+
+    def test_add_file_log_sanitized(self):
+        """add_file with CRLF-bearing name: 'Adding file' debug log is escaped;
+        file is stored under and retrievable by the RAW name."""
+        crlf_name = "file\r\nadd.mkv"
+        file = ModelFile(crlf_name, False)
+
+        with self.assertLogs("Model", level=logging.DEBUG) as cm:
+            self.model.add_file(file)
+
+        # Find "Adding file" log message
+        adding_msgs = [m for m in cm.output if "Adding file" in m]
+        self.assertTrue(adding_msgs, "Expected 'Adding file' debug log message")
+        logged = adding_msgs[0]
+
+        # No literal CR or LF in log
+        self.assertNotIn("\n", logged, "Literal LF must not appear in add_file log")
+        self.assertNotIn("\r", logged, "Literal CR must not appear in add_file log")
+        # Must contain escaped tokens
+        self.assertIn("\\r", logged)
+        self.assertIn("\\n", logged)
+
+        # File must still be stored and retrievable by the RAW name
+        retrieved = self.model.get_file(crlf_name)
+        self.assertEqual(crlf_name, retrieved.name,
+                         "Model must store and retrieve file under the raw name")
+
+    def test_remove_file_log_sanitized(self):
+        """remove_file with CRLF-bearing name: 'Removing file' debug log is escaped;
+        removal still works on the raw key."""
+        crlf_name = "file\r\nremove.mkv"
+        file = ModelFile(crlf_name, False)
+        self.model.add_file(file)
+
+        with self.assertLogs("Model", level=logging.DEBUG) as cm:
+            self.model.remove_file(crlf_name)
+
+        # Find "Removing file" log message
+        removing_msgs = [m for m in cm.output if "Removing file" in m]
+        self.assertTrue(removing_msgs, "Expected 'Removing file' debug log message")
+        logged = removing_msgs[0]
+
+        # No literal CR or LF in log
+        self.assertNotIn("\n", logged, "Literal LF must not appear in remove_file log")
+        self.assertNotIn("\r", logged, "Literal CR must not appear in remove_file log")
+        self.assertIn("\\r", logged)
+        self.assertIn("\\n", logged)
+
+        # File must no longer be in the model (removal actually worked on the raw key)
+        with self.assertRaises(ModelError):
+            self.model.get_file(crlf_name)
+
+    def test_update_file_log_sanitized(self):
+        """update_file with CRLF-bearing name: 'Updating file' debug log is escaped;
+        update still keyed on the raw name."""
+        crlf_name = "file\r\nupdate.mkv"
+        file = ModelFile(crlf_name, False)
+        file.local_size = 100
+        self.model.add_file(file)
+
+        new_file = ModelFile(crlf_name, False)
+        new_file.local_size = 200
+
+        with self.assertLogs("Model", level=logging.DEBUG) as cm:
+            self.model.update_file(new_file)
+
+        # Find "Updating file" log message
+        updating_msgs = [m for m in cm.output if "Updating file" in m]
+        self.assertTrue(updating_msgs, "Expected 'Updating file' debug log message")
+        logged = updating_msgs[0]
+
+        # No literal CR or LF in log
+        self.assertNotIn("\n", logged, "Literal LF must not appear in update_file log")
+        self.assertNotIn("\r", logged, "Literal CR must not appear in update_file log")
+        self.assertIn("\\r", logged)
+        self.assertIn("\\n", logged)
+
+        # Model still stores the updated file under the raw name
+        retrieved = self.model.get_file(crlf_name)
+        self.assertEqual(200, retrieved.local_size,
+                         "Model must store updated file under the raw name")

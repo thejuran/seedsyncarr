@@ -226,7 +226,7 @@ class Controller:
             with self.__auto_delete_lock:
                 for file_name, timer in list(self.__pending_auto_deletes.items()):
                     timer.cancel()
-                    self.logger.debug("Canceled pending auto-delete for '{}'".format(file_name))
+                    self.logger.debug("Canceled pending auto-delete for '{}'".format(sanitize_log_value(file_name)))
                 self.__pending_auto_deletes.clear()
 
             self.__lftp_manager.exit()
@@ -815,7 +815,7 @@ class Controller:
             self.__pending_auto_deletes[file_name] = timer
             timer.start()
             self.logger.info(
-                "Scheduled auto-delete of '{}' in {} seconds".format(file_name, delay)
+                "Scheduled auto-delete of '{}' in {} seconds".format(sanitize_log_value(file_name), delay)
             )
 
     def __execute_auto_delete(self, file_name: str):
@@ -836,14 +836,14 @@ class Controller:
         # Re-check config -- user might have disabled auto-delete after timer was scheduled
         if not self.__context.config.autodelete.enabled:
             self.logger.info(
-                "Auto-delete skipped for '{}': feature was disabled".format(file_name)
+                "Auto-delete skipped for '{}': feature was disabled".format(sanitize_log_value(file_name))
             )
             return
 
         # Check dry-run mode
         if self.__context.config.autodelete.dry_run:
             self.logger.info(
-                "DRY-RUN: Would delete local file '{}'".format(file_name)
+                "DRY-RUN: Would delete local file '{}'".format(sanitize_log_value(file_name))
             )
             return
 
@@ -861,7 +861,7 @@ class Controller:
                 file = self.__model.get_file(file_name)
             except ModelError:
                 self.logger.debug(
-                    "File '{}' no longer in model, skipping auto-delete".format(file_name)
+                    "File '{}' no longer in model, skipping auto-delete".format(sanitize_log_value(file_name))
                 )
                 return
 
@@ -872,7 +872,7 @@ class Controller:
             if file.state not in deletable_states:
                 self.logger.info(
                     "Auto-delete skipped for '{}': file is in state {}".format(
-                        file_name, str(file.state)
+                        sanitize_log_value(file_name), str(file.state)
                     )
                 )
                 return
@@ -893,7 +893,7 @@ class Controller:
                     if nodes_visited > _AUTO_DELETE_BFS_NODE_LIMIT:
                         self.logger.warning(
                             "Auto-delete skipped for '{}': BFS node limit ({}) exceeded".format(
-                                file_name, _AUTO_DELETE_BFS_NODE_LIMIT
+                                sanitize_log_value(file_name), _AUTO_DELETE_BFS_NODE_LIMIT
                             )
                         )
                         # Terminal skip: Timer does not re-arm for this firing.
@@ -922,7 +922,7 @@ class Controller:
                 if unsafe_child is not None:
                     self.logger.info(
                         "Auto-delete skipped for '{}': child '{}' is in state {}".format(
-                            file_name, unsafe_child.name, str(unsafe_child.state)
+                            sanitize_log_value(file_name), sanitize_log_value(unsafe_child.name), str(unsafe_child.state)
                         )
                     )
                     return
@@ -946,7 +946,7 @@ class Controller:
                         self.logger.info(
                             "Auto-delete skipped for '{}': partial import "
                             "({} of {} on-disk video children imported; missing: {}{})".format(
-                                file_name,
+                                sanitize_log_value(file_name),
                                 len(on_disk_videos) - len(missing),
                                 len(on_disk_videos),
                                 shown,
