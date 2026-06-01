@@ -4,7 +4,7 @@ milestone: v1.3.0-s3
 milestone_name: Frontend Deps + Dead Code (v1.3.0 slice 3 of 4)
 status: executing
 stopped_at: Phase 106 context gathered
-last_updated: "2026-06-01T17:16:23.880Z"
+last_updated: "2026-06-01T17:29:36.353Z"
 last_activity: 2026-06-01 -- Phase 105 Plan 01 complete (mapping table + sign-off + BEFORE baseline)
 ---
 
