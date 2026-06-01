@@ -335,7 +335,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 - [x] **Phase 104: Light Dependency Removals** - Confirm jQuery 4 and css-element-queries have no source usage, then drop both deps; bundle shrinks and Bootstrap interactions are unaffected (DEPS-01a, DEPS-01c) — completed 2026-06-01
 - [x] **Phase 105: Font Awesome → Phosphor Migration** - Inventory every remaining `fa-*` icon class in templates, replace each with its Phosphor equivalent, then remove the font-awesome dep; no icon renders missing (DEPS-01b) (completed 2026-06-01)
-- [ ] **Phase 106: Mock-Fixture Bundle Hygiene** - Move `USE_MOCK_MODEL` toggle into `environment.ts`, relocate mock files out of `services/files/`, exclude via `fileReplacements`; production bundle contains none of the mock data (DEPS-02)
+- [x] **Phase 106: Mock-Fixture Bundle Hygiene** - Move `USE_MOCK_MODEL` toggle into `environment.ts`, relocate mock files out of `services/files/`, exclude via `fileReplacements`; production bundle contains none of the mock data (DEPS-02) (completed 2026-06-01)
 
 ## Phase Details
 
@@ -447,7 +447,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 **Plans**: 2 plans (2 waves)
 - [x] 106-01-PLAN.md — DEPS-02 mechanism + autonomous proof: add `useMockModel` env flag (both env files), repoint `view-file.service.ts` to `environment.useMockModel`, `git mv` `mock-model-files.ts` → `tests/fixtures/`, add empty prod stub, second `angular.json` production `fileReplacements` entry, delete dead `screenshot-model-files.ts`; then AFTER prod build + bundle delta + dist absence-grep (`A Really Cool Video About Cats`) + Karma floors (wave 1)
-- [ ] 106-02-PLAN.md — DEPS-02 COMPAT half: dev-mode smoke-test checkpoint — `ng serve` with `useMockModel: true` renders mock rows from the relocated fixture (wave 2, depends 106-01, autonomous:false)
+- [x] 106-02-PLAN.md — DEPS-02 COMPAT half: dev-mode smoke-test checkpoint — `ng serve` with `useMockModel: true` renders mock rows from the relocated fixture (wave 2, depends 106-01, autonomous:false)
 
 **UI hint**: yes
 
@@ -479,7 +479,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 | 101-103. Known Bugs + Security (Slice 2) | v1.3.0-s2 | 9/9 (101: 6/6, 102: 1/1, 103: 2/2) | Complete | 2026-06-01 |
 | 104. Light Dependency Removals (Slice 3) | v1.3.0-s3 | 2/2 | Complete | 2026-06-01 |
 | 105. Font Awesome to Phosphor (Slice 3) | v1.3.0-s3 | 4/4 | Complete   | 2026-06-01 |
-| 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 1/2 | In Progress|  |
+| 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 2/2 | Complete   | 2026-06-01 |
 
 ---
 
