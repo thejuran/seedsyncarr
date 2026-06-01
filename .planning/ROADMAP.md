@@ -347,7 +347,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 **GSD internal label:** `v1.3.0-s4`. Source: `.planning/codebase/CONCERNS.md` (Architecture/Maintainability + Tech Debt) + `.planning/REQUIREMENTS.md`.
 
-- [ ] **Phase 107: MP-Logger Spawn Safety** - Production fix to `multiprocessing_logger.py` so the logger queue is created from a shared `spawn`-compatible context; three previously-failing spawn-context analog tests now pass on both macOS and Linux (INFRA-01)
+- [x] **Phase 107: MP-Logger Spawn Safety** - Production fix to `multiprocessing_logger.py` so the logger queue is created from a shared `spawn`-compatible context; three previously-failing spawn-context analog tests now pass on both macOS and Linux (INFRA-01) (completed 2026-06-01)
 - [ ] **Phase 108: Config + Handler Refactors** - Push `secret=True` into each `PROP` declaration so encrypt/decrypt/redact loops discover secrets dynamically (ARCH-02); extract a shared `_dispatch_command(...)` helper from the five duplicate per-action handlers (ARCH-03)
 - [ ] **Phase 109: Controller Decomposition** - Decompose the `Controller` god-class into cohesive collaborators with single responsibilities; public surface and all caller contracts are preserved; existing test suite stays green throughout (ARCH-01)
 
@@ -478,7 +478,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   4. **Cross-cutting (COMPAT):** no change to observable logging output, log levels, log destinations, or any public `MultiprocessingLogger` API. CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises (3 previously-uncounted tests now counted; coverage holds or increases); Angular and E2E suites unaffected. No release/tag/version work in this phase.
 
 **Plans**: 1 plan (1 wave)
-- [ ] 107-01-PLAN.md — INFRA-01: create the MultiprocessingLogger queue from a stored spawn-compatible context (get_context("spawn").Queue) and promote the three analog tests' process_1 closures to module-scope spawn targets launched via that context (wave 1, autonomous)
+- [x] 107-01-PLAN.md — INFRA-01: create the MultiprocessingLogger queue from a stored spawn-compatible context (get_context("spawn").Queue) and promote the three analog tests' process_1 closures to module-scope spawn targets launched via that context (wave 1, autonomous)
 
 ### Phase 108: Config + Handler Refactors
 
@@ -539,7 +539,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 | 104. Light Dependency Removals (Slice 3) | v1.3.0-s3 | 2/2 | Complete | 2026-06-01 |
 | 105. Font Awesome to Phosphor (Slice 3) | v1.3.0-s3 | 4/4 | Complete   | 2026-06-01 |
 | 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 2/2 | Complete   | 2026-06-01 |
-| 107. MP-Logger Spawn Safety (Slice 4) | v1.3.0-s4 | 0/TBD | Not started | - |
+| 107. MP-Logger Spawn Safety (Slice 4) | v1.3.0-s4 | 1/1 | Complete   | 2026-06-01 |
 | 108. Config + Handler Refactors (Slice 4) | v1.3.0-s4 | 0/TBD | Not started | - |
 | 109. Controller Decomposition (Slice 4) | v1.3.0-s4 | 0/TBD | Not started | - |
 
