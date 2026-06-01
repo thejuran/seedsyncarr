@@ -21,7 +21,8 @@ class MultiprocessingLogger:
 
     def __init__(self, base_logger: logging.Logger):
         self.logger = base_logger.getChild("MPLogger")
-        self.__queue = multiprocessing.Queue(-1)
+        self.__mp_context = multiprocessing.get_context("spawn")
+        self.__queue = self.__mp_context.Queue(-1)
         self.__logger_level = base_logger.getEffectiveLevel()
         self.__listener = threading.Thread(name="MPLoggerListener",
                                            target=self.__listener)
@@ -44,6 +45,39 @@ class MultiprocessingLogger:
             exc_info = self.__listener_exc_info
             self.__listener_exc_info = None
             raise exc_info[1].with_traceback(exc_info[2])
+
+    def __getstate__(self) -> dict:
+        """Return only the child-side picklable state for spawn serialization.
+
+        Exists solely so that a MultiprocessingLogger instance survives being
+        pickled by a spawn-started child process (e.g. via
+        ``ctx.Process(target=fn, args=(mp_logger,)).start()``).  The listener
+        thread (threading.Thread), shutdown event (threading.Event), and
+        transient exc_info triple are main-process-only and are EXCLUDED
+        because they hold ``_thread.lock`` objects that are not picklable.
+        The child never calls start()/stop(); it only calls
+        get_process_safe_logger(), which needs only the queue and level.
+        """
+        state = dict(self.__dict__)
+        state.pop("_MultiprocessingLogger__listener", None)
+        state.pop("_MultiprocessingLogger__listener_shutdown", None)
+        state.pop("_MultiprocessingLogger__listener_exc_info", None)
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        """Restore child-side state after spawn deserialization.
+
+        Exists solely so that a MultiprocessingLogger instance survives being
+        pickled by a spawn-started child process.  The listener thread,
+        shutdown event, and exc_info are restored to None so that any
+        accidental attribute access in the child fails loudly (AttributeError-
+        free None) rather than with a missing-attribute error.  The child
+        must NEVER call start()/stop()/propagate_exception().
+        """
+        self.__dict__.update(state)
+        self.__dict__["_MultiprocessingLogger__listener"] = None
+        self.__dict__["_MultiprocessingLogger__listener_shutdown"] = None
+        self.__dict__["_MultiprocessingLogger__listener_exc_info"] = None
 
     def get_process_safe_logger(self) -> logging.Logger:
         """
