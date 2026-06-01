@@ -9,9 +9,9 @@ const STATS_STRIP_TEMPLATE = `
 @if (stats$ | async; as stats) {
 <div class="stats-strip">
   <div class="stat-card">
-    <div class="stat-watermark"><i class="fa fa-cloud"></i></div>
+    <div class="stat-watermark"><i class="ph ph-cloud"></i></div>
     <div class="stat-header">
-      <i class="fa fa-cloud stat-icon stat-icon--amber"></i>
+      <i class="ph ph-cloud stat-icon stat-icon--amber"></i>
       <span class="stat-label">Remote Storage</span>
     </div>
     @if (stats.remoteCapacityTotal !== null && stats.remoteCapacityUsed !== null && stats.remoteCapacityTotal > 0) {
@@ -46,9 +46,9 @@ const STATS_STRIP_TEMPLATE = `
     }
   </div>
   <div class="stat-card">
-    <div class="stat-watermark"><i class="fa fa-database"></i></div>
+    <div class="stat-watermark"><i class="ph ph-database"></i></div>
     <div class="stat-header">
-      <i class="fa fa-database stat-icon stat-icon--amber"></i>
+      <i class="ph ph-database stat-icon stat-icon--amber"></i>
       <span class="stat-label">Local Storage</span>
     </div>
     @if (stats.localCapacityTotal !== null && stats.localCapacityUsed !== null && stats.localCapacityTotal > 0) {
@@ -83,9 +83,9 @@ const STATS_STRIP_TEMPLATE = `
     }
   </div>
   <div class="stat-card">
-    <div class="stat-watermark"><i class="fa fa-arrow-down"></i></div>
+    <div class="stat-watermark"><i class="ph ph-arrow-down"></i></div>
     <div class="stat-header">
-      <i class="fa fa-arrow-down stat-icon stat-icon--success"></i>
+      <i class="ph ph-arrow-down stat-icon stat-icon--success"></i>
       <span class="stat-label">Download Speed</span>
     </div>
     <div class="stat-value-row">
@@ -95,9 +95,9 @@ const STATS_STRIP_TEMPLATE = `
     <div class="stat-sub">Peak: {{ stats.peakSpeedBps | fileSize:1 }}/s</div>
   </div>
   <div class="stat-card">
-    <div class="stat-watermark"><i class="fa fa-tasks"></i></div>
+    <div class="stat-watermark"><i class="ph ph-list-checks"></i></div>
     <div class="stat-header">
-      <i class="fa fa-tasks stat-icon stat-icon--secondary"></i>
+      <i class="ph ph-list-checks stat-icon stat-icon--secondary"></i>
       <span class="stat-label">Active Tasks</span>
     </div>
     <div class="stat-value-row">
@@ -178,8 +178,8 @@ describe("StatsStripComponent", () => {
 
     it("should render Remote Storage card with cloud icon", () => {
         const el: HTMLElement = fixture.nativeElement;
-        // Scope to .stat-icon to skip the .stat-watermark icon (also has fa-cloud)
-        const icon = el.querySelector(".stat-icon.fa-cloud");
+        // Scope to .stat-icon to skip the .stat-watermark icon (also has ph-cloud)
+        const icon = el.querySelector(".stat-icon.ph-cloud");
         expect(icon).toBeTruthy();
         const label = icon!.closest(".stat-header")!.querySelector(".stat-label");
         expect(label!.textContent).toContain("Remote Storage");
@@ -187,7 +187,7 @@ describe("StatsStripComponent", () => {
 
     it("should render Local Storage card with database icon", () => {
         const el: HTMLElement = fixture.nativeElement;
-        const icon = el.querySelector(".stat-icon.fa-database");
+        const icon = el.querySelector(".stat-icon.ph-database");
         expect(icon).toBeTruthy();
         const label = icon!.closest(".stat-header")!.querySelector(".stat-label");
         expect(label!.textContent).toContain("Local Storage");
@@ -195,7 +195,7 @@ describe("StatsStripComponent", () => {
 
     it("should render Download Speed card with arrow-down icon", () => {
         const el: HTMLElement = fixture.nativeElement;
-        const icon = el.querySelector(".stat-icon.fa-arrow-down");
+        const icon = el.querySelector(".stat-icon.ph-arrow-down");
         expect(icon).toBeTruthy();
         const label = icon!.closest(".stat-header")!.querySelector(".stat-label");
         expect(label!.textContent).toContain("Download Speed");
@@ -203,7 +203,7 @@ describe("StatsStripComponent", () => {
 
     it("should render Active Tasks card with tasks icon", () => {
         const el: HTMLElement = fixture.nativeElement;
-        const icon = el.querySelector(".stat-icon.fa-tasks");
+        const icon = el.querySelector(".stat-icon.ph-list-checks");
         expect(icon).toBeTruthy();
         const label = icon!.closest(".stat-header")!.querySelector(".stat-label");
         expect(label!.textContent).toContain("Active Tasks");
@@ -239,7 +239,7 @@ describe("StatsStripComponent", () => {
 
         const el: HTMLElement = fixture.nativeElement;
         // Scope to .stat-icon to skip the .stat-watermark icon
-        const speedCard = el.querySelector(".stat-icon.fa-arrow-down")!.closest(".stat-card")!;
+        const speedCard = el.querySelector(".stat-icon.ph-arrow-down")!.closest(".stat-card")!;
         const sub = speedCard.querySelector(".stat-sub");
         expect(sub!.textContent).toContain("Peak");
     }));

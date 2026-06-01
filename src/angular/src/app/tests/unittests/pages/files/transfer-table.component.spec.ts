@@ -21,7 +21,7 @@ import {Localization} from "../../../../common/localization";
 const TEST_TEMPLATE = `
 <div class="table-header">
   <div class="search-box">
-    <i class="fa fa-search search-icon"></i>
+    <i class="ph ph-magnifying-glass search-icon"></i>
     <input type="search" class="search-input" [value]="nameFilter" (input)="onSearchInput($any($event.target).value)">
   </div>
   <div class="segment-filters">
@@ -199,7 +199,7 @@ describe("TransferTableComponent", () => {
     });
 
     it("should render search input with magnifying glass icon", () => {
-        const icon = fixture.nativeElement.querySelector(".fa-search");
+        const icon = fixture.nativeElement.querySelector(".ph-magnifying-glass");
         expect(icon).toBeTruthy();
         const input = fixture.nativeElement.querySelector(".search-input");
         expect(input).toBeTruthy();

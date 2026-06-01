@@ -12,21 +12,21 @@ const LOG_PANE_TEMPLATE = `
 <section class="log-pane">
   <div class="log-pane__header">
     <span class="log-pane__title">
-      <i class="fa fa-terminal"></i> System Event Log
+      <i class="ph ph-terminal"></i> System Event Log
     </span>
     <div class="log-pane__actions">
       <button class="log-pane__action-btn" (click)="copyLogs()" title="Copy logs">
-        <i class="fa fa-copy"></i>
+        <i class="ph ph-copy"></i>
       </button>
       <a class="log-pane__action-btn" routerLink="/logs" title="Expand logs">
-        <i class="fa fa-expand"></i>
+        <i class="ph ph-arrows-out"></i>
       </a>
     </div>
   </div>
   <div class="log-pane__body">
     @if (!logService.hasReceivedLogs) {
       <div class="log-pane__spinner">
-        <i class="fa fa-circle-o-notch fa-spin"></i>
+        <i class="ph ph-circle-notch ph-spin"></i>
       </div>
     }
     @for (entry of entries; track $index) {
