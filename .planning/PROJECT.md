@@ -307,9 +307,9 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-<!-- v1.3.0 — Slice 2 of 4: Known Bugs + Security. -->
+<!-- v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code. -->
 
-v1.3.0 is delivered in 4 slices under one final `v1.3.0` tag. Slice 1 (Test Coverage Gaps) shipped 2026-05-31. **Now in flight — Slice 2: Known Bugs + Security** (GSD internal label `v1.3.0-s2`): BUG-01..04, SEC-01..03, INFRA-01 (see `.planning/REQUIREMENTS.md`). No tag is cut until slice 4 completes. Slices 3–4: Frontend Deps + Dead Code, then Backend Architecture Refactor.
+v1.3.0 is delivered in 4 slices under one final `v1.3.0` tag. Slice 1 (Test Coverage Gaps) shipped 2026-05-31; Slice 2 (Known Bugs + Security — BUG-01..04, SEC-01..03; INFRA-01 deferred) closed 2026-06-01 (no tag, stayed on main). **Now in flight — Slice 3: Frontend Deps + Dead Code** (GSD internal label `v1.3.0-s3`): DEPS-01 (drop jQuery 4, Font Awesome 4.7, css-element-queries) and DEPS-02 (move mock-model fixtures out of the production bundle via environment `fileReplacements`) — see `.planning/REQUIREMENTS.md`. No tag is cut until slice 4 completes. Slice 4: Backend Architecture Refactor (ARCH-01..03) plus the rolled-forward INFRA-01 MP-logger spawn-safe production fix.
 
 ### Out of Scope
 
@@ -430,4 +430,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-31 after starting v1.3.0 slice 2 of 4: Known Bugs + Security*
+*Last updated: 2026-05-31 after starting v1.3.0 slice 3 of 4: Frontend Deps + Dead Code*
