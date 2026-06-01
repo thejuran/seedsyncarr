@@ -35,7 +35,6 @@
               "src/assets"
             ],
             "styles": [
-              "node_modules/font-awesome/css/font-awesome.css",
               "node_modules/@phosphor-icons/web/src/regular/style.css",
               "node_modules/@phosphor-icons/web/src/bold/style.css",
               "node_modules/@phosphor-icons/web/src/fill/style.css",
@@ -104,7 +103,6 @@
             "tsConfig": "src/tsconfig.spec.json",
             "karmaConfig": "karma.conf.js",
             "styles": [
-              "node_modules/font-awesome/css/font-awesome.css",
               "node_modules/@phosphor-icons/web/src/regular/style.css",
               "node_modules/@phosphor-icons/web/src/bold/style.css",
               "node_modules/@phosphor-icons/web/src/fill/style.css",
