@@ -10,7 +10,7 @@
       }
       @if (icon) {
         <div class="input-with-icon">
-          <span class="input-icon"><i class="fa {{icon}}"></i></span>
+          <span class="input-icon"><i class="ph {{icon}}"></i></span>
           <input
             type="text"
             class="form-control"
@@ -65,7 +65,7 @@
           [ngModel]="value"
           (ngModelChange)="onChange($event)" />
         <button type="button" class="password-toggle" (click)="passwordVisible = !passwordVisible" tabindex="-1">
-          <i class="fa" [class.fa-eye]="!passwordVisible" [class.fa-eye-slash]="passwordVisible"></i>
+          <i class="ph" [class.ph-eye]="!passwordVisible" [class.ph-eye-slash]="passwordVisible"></i>
         </button>
       </div>
     </label>
