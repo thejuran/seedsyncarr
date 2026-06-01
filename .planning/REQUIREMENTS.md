@@ -50,16 +50,16 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ARCH-01 | TBD | Pending |
-| ARCH-02 | TBD | Pending |
-| ARCH-03 | TBD | Pending |
-| INFRA-01 | TBD | Pending |
+| ARCH-01 | Phase 109 | Pending |
+| ARCH-02 | Phase 108 | Pending |
+| ARCH-03 | Phase 108 | Pending |
+| INFRA-01 | Phase 107 | Pending |
 
 **Coverage:**
 - v1 requirements: 4 total
-- Mapped to phases: 0 of 4 (populated by roadmapper)
-- Unmapped: 4 (until roadmap created) ⚠️
+- Mapped to phases: 4 of 4 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-01*
-*Last updated: 2026-06-01 — slice-4 (final) requirements promoted from slice-3 v2 section; ARCH-01/02/03 + INFRA-01*
+*Last updated: 2026-06-01 — traceability populated by roadmapper: INFRA-01 → Phase 107, ARCH-02+ARCH-03 → Phase 108, ARCH-01 → Phase 109*

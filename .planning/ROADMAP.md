@@ -33,7 +33,8 @@
 - ✅ v1.2.0 Test & Quality Hardening - Phases 87-96 (shipped 2026-04-28)
 - ✅ v1.3.0 — Slice 1 of 4: Test Coverage Gaps - Phases 97-100 (shipped 2026-05-31)
 - ✅ v1.3.0 — Slice 2 of 4: Known Bugs + Security - Phases 101-103 (shipped 2026-06-01; no tag until slice 4)
-- 🔄 v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code - Phases 104-106 (in flight; no tag until slice 4)
+- ✅ v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code - Phases 104-106 (shipped 2026-06-01; no tag until slice 4)
+- 🔄 v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra - Phases 107-109 (IN FLIGHT — final slice, cuts v1.3.0 tag on completion)
 
 ## Phases
 
@@ -327,7 +328,8 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 </details>
 
-🔄 v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code (Phases 104-106) — IN FLIGHT
+<details>
+<summary>✅ v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code (Phases 104-106) — SHIPPED 2026-06-01</summary>
 
 **Milestone Goal:** Remove three end-of-life / unmaintained Angular dependencies (jQuery 4, Font Awesome 4.7, css-element-queries) and move the development-only mock-model fixtures out of the production bundle via Angular `fileReplacements`. Every removal follows an audit → replace/confirm-unused → drop → verify-build-bundle-CI rhythm. No tag is cut; the single `v1.3.0` tag is cut only after slice 4 completes.
 
@@ -336,6 +338,18 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 - [x] **Phase 104: Light Dependency Removals** - Confirm jQuery 4 and css-element-queries have no source usage, then drop both deps; bundle shrinks and Bootstrap interactions are unaffected (DEPS-01a, DEPS-01c) — completed 2026-06-01
 - [x] **Phase 105: Font Awesome → Phosphor Migration** - Inventory every remaining `fa-*` icon class in templates, replace each with its Phosphor equivalent, then remove the font-awesome dep; no icon renders missing (DEPS-01b) (completed 2026-06-01)
 - [x] **Phase 106: Mock-Fixture Bundle Hygiene** - Move `USE_MOCK_MODEL` toggle into `environment.ts`, relocate mock files out of `services/files/`, exclude via `fileReplacements`; production bundle contains none of the mock data (DEPS-02) (completed 2026-06-01)
+
+</details>
+
+🔄 v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra (Phases 107-109) — IN FLIGHT
+
+**Milestone Goal:** Close the four backend architecture and test-infra items promoted from the CONCERNS.md Architecture/Maintainability and Tech Debt sections — fix the MP-logger spawn-context bug that blocks `spawn`-mode analog tests on macOS, make `Config` secret-field discovery declarative via `PROP(secret=True)`, deduplicate the five per-action bulk-handler scaffolds into a shared helper, and decompose the 1115-line `Controller` god-class into cohesive single-responsibility collaborators. All ARCH items are behavior-preserving; the existing test suite is the regression net throughout. This is the **final** slice of the 4-slice v1.3.0 program — the single `v1.3.0` tag is cut when this slice completes, preceded by the batched pre-release walkthrough.
+
+**GSD internal label:** `v1.3.0-s4`. Source: `.planning/codebase/CONCERNS.md` (Architecture/Maintainability + Tech Debt) + `.planning/REQUIREMENTS.md`.
+
+- [ ] **Phase 107: MP-Logger Spawn Safety** - Production fix to `multiprocessing_logger.py` so the logger queue is created from a shared `spawn`-compatible context; three previously-failing spawn-context analog tests now pass on both macOS and Linux (INFRA-01)
+- [ ] **Phase 108: Config + Handler Refactors** - Push `secret=True` into each `PROP` declaration so encrypt/decrypt/redact loops discover secrets dynamically (ARCH-02); extract a shared `_dispatch_command(...)` helper from the five duplicate per-action handlers (ARCH-03)
+- [ ] **Phase 109: Controller Decomposition** - Decompose the `Controller` god-class into cohesive collaborators with single responsibilities; public surface and all caller contracts are preserved; existing test suite stays green throughout (ARCH-01)
 
 ## Phase Details
 
@@ -451,6 +465,50 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 **UI hint**: yes
 
+### Phase 107: MP-Logger Spawn Safety
+
+**Goal**: The `MultiprocessingLogger` queue is created from a shared `spawn`-compatible multiprocessing context so the logger works correctly on both `fork` (Linux default) and `spawn` (macOS default) start methods, and the three previously-failing spawn-context analog tests pass on both platforms.
+**Depends on**: Phase 106 (slice 3 complete — green CI, all floors held)
+**Requirements**: INFRA-01
+**Success Criteria** (what must be TRUE):
+
+  1. `python/common/multiprocessing_logger.py` creates its internal queue via a shared `spawn`-compatible `multiprocessing` context (e.g. `multiprocessing.get_context("spawn").Queue()` or equivalent), so a queue handed to a `spawn`-started child no longer raises `RuntimeError: A SemLock created in a fork context is being shared with a process in a spawn context` (INFRA-01).
+  2. The three `MultiprocessingLogger` analog tests that previously required skipping or failed on macOS (spawn context) now run and pass without modification to the test code; the fix is entirely in the production module (INFRA-01).
+  3. Existing `fork`-based logging behavior is unchanged — the Python test suite (including all existing `MultiprocessingLogger` tests) still passes on Linux (fork default); no test is deleted or skipped to accommodate the fix (INFRA-01, COMPAT).
+  4. **Cross-cutting (COMPAT):** no change to observable logging output, log levels, log destinations, or any public `MultiprocessingLogger` API. CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises (3 previously-uncounted tests now counted; coverage holds or increases); Angular and E2E suites unaffected. No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+### Phase 108: Config + Handler Refactors
+
+**Goal**: `Config` secret-field discovery is fully declarative — each secret field carries `secret=True` in its `PROP` declaration and the encrypt/decrypt/redact loops iterate property metadata instead of a hand-maintained tuple — and the five per-action HTTP handlers share a single `_dispatch_command(...)` scaffold eliminating the duplicated boilerplate.
+**Depends on**: Phase 107
+**Requirements**: ARCH-02, ARCH-03
+**Success Criteria** (what must be TRUE):
+
+  1. Each of the five secret fields (`api_token`, `webhook_secret`, `sonarr_api_key`, `radarr_api_key`, `remote_password`) has `secret=True` in its `PROP` declaration; the `_SECRET_FIELD_PATHS` hand-maintained tuple (or equivalent) is removed; the encrypt, decrypt, and redact code paths discover secret fields dynamically from property metadata and cover exactly the same set of fields as before — no field is silently added or dropped (ARCH-02).
+  2. A new secret field can be added by declaring it `secret=True` in its `PROP` without touching any other file; the encrypt/decrypt/redact paths pick it up automatically — verified by adding a temporary `secret=True` field in a test and confirming it appears in the redacted response and round-trips through Fernet encryption (ARCH-02).
+  3. Existing plaintext and Fernet-encrypted config files load, round-trip, and redact identically before and after the refactor — no on-disk format change, no behavioral change for any currently-encrypted field (ARCH-02, COMPAT).
+  4. A shared `_dispatch_command(action, file_name, success_msg, *, guard=False)` helper (or equivalent) is extracted in `web/handler/controller.py` and used by all five `__handle_action_*` methods and the bulk-action loop; the duplicated 15-line scaffold is gone from each individual handler (ARCH-03).
+  5. Every single-action and bulk-action endpoint (`/server/command/queue`, `/stop`, `/extract`, `/delete_local`, `/delete_remote`, and their `/bulk` equivalents) returns the same success/partial-failure HTTP response shapes and status codes as before the refactor — confirmed by the existing integration test suite staying green (ARCH-03, COMPAT). CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises; no test deleted. No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+### Phase 109: Controller Decomposition
+
+**Goal**: The `Controller` god-class (`python/controller/controller.py`, ~1115 lines) is decomposed into cohesive single-responsibility collaborators — the public surface the rest of the app depends on (constructor, `start`/`exit`, command entry points, the model the web layer reads) is preserved unchanged, and the full pre-refactor test suite stays green throughout.
+**Depends on**: Phase 108
+**Requirements**: ARCH-01
+**Success Criteria** (what must be TRUE):
+
+  1. The `controller` package contains clearly-named collaborator modules (e.g. a command-dispatch module, an auto-delete lifecycle module, a model/scan pipeline coordinator) each with a single coherent responsibility; no single new module exceeds ~350 lines; `controller.py` itself is thinned to a facade or coordinator that delegates to these collaborators (ARCH-01).
+  2. The public API the web layer depends on is preserved exactly: the `Controller` constructor signature, `start()`, `exit()`, all command entry-point method names, and the model-access interface (`get_model_files()` or equivalent) are unchanged — no file outside the `controller` package requires modification (ARCH-01, COMPAT).
+  3. The full pre-refactor Python test suite passes without modification or deletion — no test is changed to accommodate the decomposition; all existing `Controller` integration and unit tests continue to exercise the same observable behaviors as before (ARCH-01, COMPAT).
+  4. Thread-safety invariants are preserved — the `__model_lock`, `__auto_delete_lock`, and the documented "release lock before subprocess spawn" contract are maintained across the decomposition; no new lock acquisition ordering is introduced that could create a deadlock (ARCH-01).
+  5. **Cross-cutting (COMPAT):** no user-observable behavior change, no HTTP-contract change, no on-disk config/persist format change. CI green on amd64 + arm64 (Python primary; Angular + E2E unaffected but must stay green); Python `fail_under` ≥ 88 holds or rises; no test deleted. No release/tag/version work in this phase — the single `v1.3.0` tag is a milestone-end action for the orchestrator after the batched pre-release walkthrough.
+
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -480,7 +538,10 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 | 104. Light Dependency Removals (Slice 3) | v1.3.0-s3 | 2/2 | Complete | 2026-06-01 |
 | 105. Font Awesome to Phosphor (Slice 3) | v1.3.0-s3 | 4/4 | Complete   | 2026-06-01 |
 | 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 2/2 | Complete   | 2026-06-01 |
+| 107. MP-Logger Spawn Safety (Slice 4) | v1.3.0-s4 | 0/TBD | Not started | - |
+| 108. Config + Handler Refactors (Slice 4) | v1.3.0-s4 | 0/TBD | Not started | - |
+| 109. Controller Decomposition (Slice 4) | v1.3.0-s4 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-06-01 — Phase 106 planned: 2 plans (2 waves) for DEPS-02 mock-fixture bundle hygiene — 106-01 (env-flag + relocation + fileReplacements + prod-absence proof, autonomous), 106-02 (dev-mode smoke-test checkpoint). No tag until slice 4.*
+*Last updated: 2026-06-01 — Slice 4 (Phases 107-109) roadmap created: INFRA-01 (Phase 107, MP-logger spawn safety), ARCH-02+ARCH-03 (Phase 108, Config declarative secrets + handler dispatch dedup), ARCH-01 (Phase 109, Controller decomposition). No tag until slice 4 complete.*

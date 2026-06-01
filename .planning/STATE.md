@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.3.0-s4
 milestone_name: Backend Architecture Refactor + Test Infra (v1.3.0 slice 4 of 4)
 status: planning
-last_updated: "2026-06-01T19:47:01.416Z"
+last_updated: "2026-06-01T00:00:00.000Z"
 last_activity: 2026-06-01
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-31)
+See: .planning/PROJECT.md (updated 2026-06-01)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 106 — Mock-Fixture Bundle Hygiene
+**Current focus:** Phase 107 — MP-Logger Spawn Safety (INFRA-01)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 107 (Not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-01 — Milestone v1.3.0-s4 started
+Status: Planning — roadmap created, ready for `/gsd:plan-phase 107`
+Last activity: 2026-06-01 — Slice 4 roadmap created (Phases 107-109)
 
 ## Accumulated Context
 
@@ -35,19 +35,17 @@ Last activity: 2026-06-01 — Milestone v1.3.0-s4 started
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
-Roadmap shape (slice 3): 3 phases derived from the 4 v1 requirements (DEPS-01a/b/c, DEPS-02).
+Roadmap shape (slice 4): 3 phases derived from the 4 v1 requirements (INFRA-01, ARCH-01/02/03).
 
-Phase 104 complete (2026-06-01): DEPS-01a (jQuery) and DEPS-01c (css-element-queries) fully verified — AFTER build exit 0, DIST-CLEAN on library-code signatures, Karma 611/611 all floors held, Playwright smoke test APPROVED with zero jQuery/missing-dep console errors.
+- Phase 107 isolates INFRA-01 (MP-logger spawn safety) — a targeted production fix to `multiprocessing_logger.py` that is independent of all ARCH items; sequenced first as the smallest, cleanest warmup.
+- Phase 108 clusters ARCH-02 (Config declarative secret-field discovery) and ARCH-03 (bulk-handler dispatch dedup) — both are localized, behavior-preserving refactors with no dependency on each other or on the Controller decomposition; they share the "small scoped refactor" character.
+- Phase 109 isolates ARCH-01 (Controller god-class decomposition) — the heaviest, riskiest item; sequenced last so the full suite is green and INFRA-01 + ARCH-02/03 are verified before entering the largest change.
 
-Phase 105 Plan 01 complete (2026-06-01): D-01 mapping gate satisfied — 39-class fa→ph mapping table documented (32 confirmed + 8 user-signed-off), Q4 substituted to ph-file-zip (NOT ph-file-archive — authoritative for 105-02 + 105-03), Q5 .ph-spin CSS rule approved. D-07 BEFORE baseline captured: styles 473.05 kB / total 1.16 MB (font-awesome still present, HEAD a0bd106).
-
-- Phase 104 clusters the two lightweight dep removals (DEPS-01a jQuery — likely no source usage per CONCERNS.md; DEPS-01c css-element-queries — likely unused). Both share the same audit→confirm-unused→drop→verify-build rhythm and can execute together.
-- Phase 105 isolates Font Awesome → Phosphor migration (DEPS-01b) as its own phase because it requires a full template inventory and per-icon replacement — the heaviest work in this slice.
-- Phase 106 isolates the mock-fixture bundle hygiene (DEPS-02) — an Angular build-config change (environment.ts + fileReplacements + file relocation) that is independent of the dep removals but sequenced last for simplicity.
+Phase 106 complete (2026-06-01): DEPS-02 verified — mock-fixture bundle hygiene done, slice 3 (Phases 104-106) all complete.
 
 ### Pending Todos
 
-INFRA-01 remains deferred (requires production-module change to MultiprocessingLogger — in scope for slice 4).
+None. INFRA-01 is now in scope (Phase 107).
 
 ### Blockers/Concerns
 
@@ -65,7 +63,6 @@ None.
 |----------|------|--------|
 | todo | webob-cgi-upstream-unblock | testing (upstream — blocked on webob 2.0) |
 | todo | migrate-config-set-to-post-body | security (API contract change — separate milestone) |
-| INFRA-01 (slice 4) | mp-logger-analog-tests-macos-spawn | Deferred from slice 2 Phase 102. Requires production-module change to `multiprocessing_logger.py` (create queue from shared `spawn` context). In scope for slice 4 where a backend production change is thematically appropriate. |
 
 ## Tech Debt
 
@@ -87,13 +84,14 @@ None.
 | v1.2.0 Test & Quality Hardening | Phases 87-96 | 2026-04-24 to 2026-04-28 |
 | v1.3.0 Slice 1 (Test Coverage Gaps) | Phases 97-100 | 2026-05-28 to 2026-05-31 |
 | v1.3.0 Slice 2 (Known Bugs + Security) | Phases 101-103 | 2026-05-31 to 2026-06-01 |
+| v1.3.0 Slice 3 (Frontend Deps + Dead Code) | Phases 104-106 | 2026-06-01 |
 
 ## Session Continuity
 
-Last session: 2026-06-01T19:33:27.316Z
-Stopped at: Phase 106 COMPLETE — DEPS-02 verified (2/2 plans, VERIFICATION passed). Slice 3 (Phases 104-106) all complete.
-Next action: Execute 105-02-PLAN.md (files cluster migration — dashboard-log-pane / stats-strip / bulk-actions-bar)
+Last session: 2026-06-01
+Stopped at: Slice 4 roadmap created — Phases 107-109 defined, REQUIREMENTS.md traceability populated, STATE.md updated.
+Next action: Plan Phase 107 with `/gsd:plan-phase 107`
 
 ## Operator Next Steps
 
-- Plan the first phase of slice 3 with `/gsd:plan-phase 104`
+- Plan the first phase of slice 4 with `/gsd:plan-phase 107`
