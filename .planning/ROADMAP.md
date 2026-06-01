@@ -406,7 +406,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   5. CI is green on amd64 + arm64 (Angular unit + E2E; Python unaffected but stays green); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; Python `fail_under` ≥ 88 unchanged. No release/tag/version work in this phase.
 
 **Plans**: 2 plans (2 waves)
-- [ ] 104-01-PLAN.md — DEPS-01a + DEPS-01c: audit zero-usage + capture pre-removal bundle baseline, then drop jquery and css-element-queries from package.json as two atomic commits (D-03), regenerating package-lock.json (wave 1)
+- [x] 104-01-PLAN.md — DEPS-01a + DEPS-01c: audit zero-usage + capture pre-removal bundle baseline, then drop jquery and css-element-queries from package.json as two atomic commits (D-03), regenerating package-lock.json (wave 1)
 - [ ] 104-02-PLAN.md — DEPS-01a + DEPS-01c: production build + before/after bundle delta (D-02) + dist residual-string grep + Karma floors + manual Bootstrap-interaction smoke test (D-01) (wave 2, depends on 104-01)
 
 **UI hint**: yes
@@ -471,7 +471,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 | 87-96. Test & Quality Hardening | v1.2.0 | 23/23 | Complete | 2026-04-28 |
 | 97-100. Test Coverage Gaps (Slice 1) | v1.3.0 | 10/10 | Complete | 2026-05-31 |
 | 101-103. Known Bugs + Security (Slice 2) | v1.3.0-s2 | 9/9 (101: 6/6, 102: 1/1, 103: 2/2) | Complete | 2026-06-01 |
-| 104. Light Dependency Removals (Slice 3) | v1.3.0-s3 | 0/2 | Not started | - |
+| 104. Light Dependency Removals (Slice 3) | v1.3.0-s3 | 1/2 | In Progress|  |
 | 105. Font Awesome to Phosphor (Slice 3) | v1.3.0-s3 | 0/TBD | Not started | - |
 | 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 0/TBD | Not started | - |
 

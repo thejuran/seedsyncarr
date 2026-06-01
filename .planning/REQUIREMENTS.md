@@ -13,9 +13,9 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Frontend Dependencies
 
-- [ ] **DEPS-01a**: The Angular app no longer depends on **jQuery 4**. The dep is removed from `src/angular/package.json` after confirming no source usage (CONCERNS.md notes only Bootstrap referenced it, and Bootstrap 5.3 does not require jQuery); the `_bootstrap-overrides.scss` and `@popperjs/core` paths are audited to confirm removal is safe. The app builds, all Bootstrap-driven interactions (dropdowns, modals, collapses) still work, and the bundle no longer ships jQuery.
+- [x] **DEPS-01a**: The Angular app no longer depends on **jQuery 4**. The dep is removed from `src/angular/package.json` after confirming no source usage (CONCERNS.md notes only Bootstrap referenced it, and Bootstrap 5.3 does not require jQuery); the `_bootstrap-overrides.scss` and `@popperjs/core` paths are audited to confirm removal is safe. The app builds, all Bootstrap-driven interactions (dropdowns, modals, collapses) still work, and the bundle no longer ships jQuery.
 - [ ] **DEPS-01b**: The Angular app no longer depends on **Font Awesome 4.7** (EOL). Every remaining `fa-*` icon class usage in templates is inventoried and replaced with its `@phosphor-icons/web` equivalent (the in-progress migration is completed), then the `font-awesome` dep is removed from `src/angular/package.json`. No icon renders missing or visually regressed; only one icon library ships.
-- [ ] **DEPS-01c**: The Angular app no longer depends on **css-element-queries** (unmaintained since 2019). Any usage is replaced with the native `ResizeObserver` API; if no usage exists, the dep is removed outright. Element-resize-driven behavior (if any) is unchanged across supported browsers.
+- [x] **DEPS-01c**: The Angular app no longer depends on **css-element-queries** (unmaintained since 2019). Any usage is replaced with the native `ResizeObserver` API; if no usage exists, the dep is removed outright. Element-resize-driven behavior (if any) is unchanged across supported browsers.
 
 ### Dead Code / Bundle Hygiene
 
@@ -58,9 +58,9 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPS-01a | Phase 104 | Pending |
+| DEPS-01a | Phase 104 | Complete |
 | DEPS-01b | Phase 105 | Pending |
-| DEPS-01c | Phase 104 | Pending |
+| DEPS-01c | Phase 104 | Complete |
 | DEPS-02 | Phase 106 | Pending |
 
 **Coverage:**
