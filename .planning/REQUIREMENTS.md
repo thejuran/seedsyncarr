@@ -26,7 +26,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Test Infra (rolled forward from v1.3.0 deferred)
 
-- [ ] **INFRA-01**: The three MultiprocessingLogger analog tests that fail under macOS `spawn` pass on both `fork` and `spawn` start methods (fix = promote the `process_1` target to module scope). Lowest priority; include only if it does not expand the milestone.
+- [ ] **INFRA-01** *(DEFERRED out of Phase 102 — 2026-05-31)*: The three MultiprocessingLogger analog tests that fail under macOS `spawn` pass on both `fork` and `spawn` start methods. The originally-assumed fix ("promote the `process_1` target to module scope") is **necessary but insufficient**: adversarial review (codex, confirmed by live repro) showed the `MultiprocessingLogger` queue is created in the default (fork) context, so handing it to a `spawn` child raises `RuntimeError: A SemLock created in a fork context is being shared with a process in a spawn context`. A correct fix requires creating the queue from a shared `spawn` context — a **production-module change** that exceeds this item's "lowest priority; include only if it does not expand the milestone" guard. Deferred to a later v1.3.0 slice where a `MultiprocessingLogger` production change is in scope.
 
 ## Cross-Cutting Constraints
 
@@ -71,18 +71,19 @@ These apply to **every** phase in this slice; each phase's success criteria must
 | SEC-03 | Phase 101 | Pending |
 | SEC-02 | Phase 101 | Pending |
 | BUG-03 | Phase 102 | Pending |
-| INFRA-01 | Phase 102 | Pending |
+| INFRA-01 | Deferred (was Phase 102) | Deferred — needs production-module change; later v1.3.0 slice |
 | BUG-01 | Phase 103 | Pending |
 | BUG-04 | Phase 103 | Pending |
 
 **Coverage:**
 - v1 requirements: 8 total
-- Mapped to phases: 8 ✓
+- Mapped to active phases: 7 ✓ (BUG-01/02/03/04, SEC-01/02/03)
+- Deferred to a later v1.3.0 slice: 1 (INFRA-01 — test-only fix proven insufficient; needs a MultiprocessingLogger production change)
 - Unmapped: 0 ✓
 
 Phase distribution:
 - Phase 101 (Webhook + Log-Injection Security Cluster): BUG-02, SEC-01, SEC-03, SEC-02
-- Phase 102 (Controller Concurrency + Test Infra): BUG-03, INFRA-01
+- Phase 102 (Controller Concurrency): BUG-03  *(INFRA-01 deferred to a later v1.3.0 slice — test-only fix proven insufficient; needs a MultiprocessingLogger production change)*
 - Phase 103 (Angular Defects): BUG-01, BUG-04
 
 ---
