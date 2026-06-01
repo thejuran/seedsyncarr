@@ -4,8 +4,8 @@ milestone: v1.3.0-s3
 milestone_name: Frontend Deps + Dead Code (v1.3.0 slice 3 of 4)
 status: executing
 stopped_at: Phase 106 context gathered
-last_updated: "2026-06-01T17:29:36.353Z"
-last_activity: 2026-06-01 -- Phase 105 Plan 01 complete (mapping table + sign-off + BEFORE baseline)
+last_updated: "2026-06-01T17:36:20.032Z"
+last_activity: 2026-06-01 -- Phase 106 execution started
 ---
 
 # Project State
@@ -15,14 +15,14 @@ last_activity: 2026-06-01 -- Phase 105 Plan 01 complete (mapping table + sign-of
 See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 105 — Font Awesome to Phosphor Migration
+**Current focus:** Phase 106 — Mock-Fixture Bundle Hygiene
 
 ## Current Position
 
-Phase: 105 (Font Awesome to Phosphor Migration) — EXECUTING
-Plan: 4 of 4
-Status: Executing Phase 105
-Last activity: 2026-06-01 -- Phase 105 Plan 01 complete (mapping table + sign-off + BEFORE baseline)
+Phase: 106 (Mock-Fixture Bundle Hygiene) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 106
+Last activity: 2026-06-01 -- Phase 106 execution started
 
 ## Accumulated Context
 
