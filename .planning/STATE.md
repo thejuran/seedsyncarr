@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.3.0-s3
 milestone_name: Frontend Deps + Dead Code (v1.3.0 slice 3 of 4)
 status: planning
-last_updated: "2026-06-01T03:35:36.315Z"
-last_activity: 2026-06-01
+last_updated: "2026-05-31T00:00:00.000Z"
+last_activity: 2026-05-31
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-28)
+See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 103 — angular-defects
+**Current focus:** Phase 104 — light dependency removals (jQuery 4 + css-element-queries)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 104 — Light Dependency Removals
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-01 — Milestone v1.3.0-s3 started
+Status: Not started / ready to plan
+Last activity: 2026-05-31 — Slice 3 roadmap created (phases 104-106)
 
 ## Accumulated Context
 
@@ -35,15 +35,15 @@ Last activity: 2026-06-01 — Milestone v1.3.0-s3 started
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
-Roadmap shape (slice 2): 3 phases derived from the 8 approved Known-Bugs + Security requirements.
+Roadmap shape (slice 3): 3 phases derived from the 4 v1 requirements (DEPS-01a/b/c, DEPS-02).
 
-- Phase 101 clusters the shared Python webhook/HTTP-handler/log surface (BUG-02 fail-closed [top priority], SEC-01 log-injection audit, SEC-03 webhook rate-limit, SEC-02 config-response normalization).
-- Phase 102 clusters Python controller concurrency (BUG-03 auto-delete Timer lifecycle) with the small rolled-forward test-infra fix (INFRA-01 MP-logger spawn-safe tests).
-- Phase 103 clusters the two Angular defects (BUG-01 innerHTML→Renderer2 incl. skipCount fold-in, BUG-04 SSE same-tick subscription teardown).
+- Phase 104 clusters the two lightweight dep removals (DEPS-01a jQuery — likely no source usage per CONCERNS.md; DEPS-01c css-element-queries — likely unused). Both share the same audit→confirm-unused→drop→verify-build rhythm and can execute together.
+- Phase 105 isolates Font Awesome → Phosphor migration (DEPS-01b) as its own phase because it requires a full template inventory and per-icon replacement — the heaviest work in this slice.
+- Phase 106 isolates the mock-fixture bundle hygiene (DEPS-02) — an Angular build-config change (environment.ts + fileReplacements + file relocation) that is independent of the dep removals but sequenced last for simplicity.
 
 ### Pending Todos
 
-2 deferred items (see below). The two in-scope rolled-forward items (INFRA-01, BUG-01 skipCount fold-in) are now mapped into phases 102/103 respectively.
+INFRA-01 remains deferred (requires production-module change to MultiprocessingLogger — in scope for slice 4).
 
 ### Blockers/Concerns
 
@@ -57,25 +57,11 @@ None.
 
 ## Deferred Items
 
-Items carried forward after v1.2.0 milestone close on 2026-04-28:
-
 | Category | Item | Status |
 |----------|------|--------|
 | todo | webob-cgi-upstream-unblock | testing (upstream — blocked on webob 2.0) |
 | todo | migrate-config-set-to-post-body | security (API contract change — separate milestone) |
-| INFRA-01 (slice 2) | mp-logger-analog-tests-macos-spawn | **Mapped to Phase 102.** From Phase 97/97-02: 3 analog tests in test_multiprocessing_logger.py (test_main_logger_receives_records, test_children_names, test_logger_levels) fail under macOS `spawn` due to local-closure Process targets; pass under Linux/CI `fork`. Fix = promote `process_1` to module scope. See .planning/milestones/v1.3.0-phases/97-medium-priority-python-coverage/deferred-items.md |
-| BUG-01 fold-in (slice 2) | confirm-modal-skipcount-type-erasure-hardening | **Mapped to Phase 103 (folds into BUG-01 Renderer2 rework).** From Phase 98/98-01 (codex review 2026-05-29): `ConfirmModalService.skipMessage` (confirm-modal.service.ts:59-64) interpolates `${options.skipCount}` un-escaped, guarded only by `if (skipCount && skipCount > 0)`. TS `number` erased at runtime, so a `toString()`-overriding object bypasses the guard. SAFE for current callers; runtime-boundary probe in 98-01-PLAN.md Task 3 pins behavior. Hardening (coerce `Number()` / escape) lands with BUG-01. Documenting test: confirm-modal.service.spec.ts skipCount runtime-boundary it-block. |
-
-Note: 7 former deferred items were resolved by v1.2.0:
-
-- e2e-csp-violation-detection → PLAT-01 (Phase 91)
-- rate-limiting-all-endpoints → RATE-01 through RATE-04 (Phase 96)
-- tighten-shield-semgrep-rules → TOOL-01, TOOL-02 (Phase 96)
-- arm64-unicode-sort-e2e-failures → PLAT-02 (Phase 91)
-- clean-up-test-warnings → PYFIX-07, PYFIX-16 (Phases 87-88)
-- test_fix-resolved debug session → resolved (stale, closed at milestone close)
-
-Note: the trivial-fix policy may add new deferred items here — larger findings (>10 net lines, public-API, or observable-behavior change) get a one-line entry referencing the documenting test and roll into a later v1.3.0 slice.
+| INFRA-01 (slice 4) | mp-logger-analog-tests-macos-spawn | Deferred from slice 2 Phase 102. Requires production-module change to `multiprocessing_logger.py` (create queue from shared `spawn` context). In scope for slice 4 where a backend production change is thematically appropriate. |
 
 ## Tech Debt
 
@@ -96,13 +82,14 @@ Note: the trivial-fix policy may add new deferred items here — larger findings
 | v1.1.2 Test Suite Audit | Phases 83-86 | 2026-04-24 |
 | v1.2.0 Test & Quality Hardening | Phases 87-96 | 2026-04-24 to 2026-04-28 |
 | v1.3.0 Slice 1 (Test Coverage Gaps) | Phases 97-100 | 2026-05-28 to 2026-05-31 |
+| v1.3.0 Slice 2 (Known Bugs + Security) | Phases 101-103 | 2026-05-31 to 2026-06-01 |
 
 ## Session Continuity
 
-Last session: 2026-06-01T01:55:36.641Z
-Stopped at: Phase 103 context gathered
-Next action: `/gsd:plan-phase 101`
+Last session: 2026-05-31
+Stopped at: Slice 3 roadmap created
+Next action: `/gsd:plan-phase 104`
 
 ## Operator Next Steps
 
-- Plan the first phase of slice 2 with `/gsd:plan-phase 101`
+- Plan the first phase of slice 3 with `/gsd:plan-phase 104`

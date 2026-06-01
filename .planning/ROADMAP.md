@@ -32,7 +32,8 @@
 - v1.1.2 Test Suite Audit - Phases 83-86 (shipped 2026-04-24)
 - ✅ v1.2.0 Test & Quality Hardening - Phases 87-96 (shipped 2026-04-28)
 - ✅ v1.3.0 — Slice 1 of 4: Test Coverage Gaps - Phases 97-100 (shipped 2026-05-31)
-- 🔄 v1.3.0 — Slice 2 of 4: Known Bugs + Security - Phases 101-103 (in flight; no tag until slice 4)
+- ✅ v1.3.0 — Slice 2 of 4: Known Bugs + Security - Phases 101-103 (shipped 2026-06-01; no tag until slice 4)
+- 🔄 v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code - Phases 104-106 (in flight; no tag until slice 4)
 
 ## Phases
 
@@ -311,106 +312,10 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 *Filled in during Plan 97-baseline (before) and Plan 100-03 (after). The ratchet is monotonic — only increases.*
 
-## Phase Details
-
-### Phase 97: Medium-Priority Python Coverage
-
-**Goal**: The three Medium-priority Python coverage gaps (MultiprocessingLogger shutdown, SSRF reserved-range validation, LFTP parser error recovery) have full-path coverage, and the milestone's coverage baseline is captured before any test work begins.
-**Depends on**: Phase 96 (v1.2.0 complete — green CI, documented v1.1.2/v1.2.0 baselines)
-**Requirements**: RATCHET-01, COVMED-01, COVMED-02, COVMED-03
-**Success Criteria** (what must be TRUE):
-
-  1. `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` exists with Python and Angular line/branch/function numbers from `main` HEAD, committed before any new test lands (RATCHET-01).
-  2. The `MultiprocessingLogger` listener thread has tests covering all four documented branches: handler-raises shutdown, `propagate_exception()` re-raise, inner-loop `queue.Empty` non-termination, and clean sentinel shutdown (COVMED-01).
-  3. SSRF `_validate_url` is tested across IPv4 private/loopback/link-local, IPv6 link-local/loopback/unique-local, IPv6-mapped IPv4, unresolved hostnames, and a valid public host — with `socket.getaddrinfo` stubbed (COVMED-02).
-  4. LFTP `JobStatusParser` error recovery is tested: a malformed line raises `LftpJobStatusParserError`, the consecutive-error counter increments, `MAX_CONSECUTIVE_STATUS_ERRORS = 2` triggers recovery, and the counter resets on success (COVMED-03).
-  5. Any trivial fix (≤10 net lines, no public-API/behavior change) surfaced by these tests lands as a green commit after its red test; larger findings are recorded in STATE.md deferred items and pushed to v1.4.0.
-
-**Plans**: 4 plans (baseline capture + 3 test plans)
-
-Plans:
-**Wave 1**
-
-- [x] 97-01-PLAN.md — RATCHET-01: capture & commit v1.3.0 coverage baseline (Python + Angular) before any test lands
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 97-02-PLAN.md — COVMED-01: full-path coverage of MultiprocessingLogger listener-thread shutdown semantics
-- [x] 97-03-PLAN.md — COVMED-02: SSRF _validate_url IPv4/IPv6 reserved-range coverage (+ pre-approved IPv6-mapped fix)
-- [x] 97-04-PLAN.md — COVMED-03: LFTP JobStatusParser error-recovery counter coverage (integration layer)
-
-### Phase 98: Medium-Priority Angular Coverage
-
-**Goal**: The `confirm-modal.service.ts` `escapeHtml` path has full end-to-end XSS coverage — every metacharacter and attacker payload is escaped, and no interpolation site bypasses the escape.
-**Depends on**: Phase 97
-**Requirements**: COVMED-04
-**Success Criteria** (what must be TRUE):
-
-  1. Every metacharacter from the documented set (`&<>"'`) is asserted escaped in `escapeHtml` output (COVMED-04).
-  2. Attacker payloads injected into title, body, button labels, and button classes produce `innerHTML` with no executable markup (no `<script>`, no `on*=`, no `javascript:`).
-  3. A test confirms `escapeHtml` runs in every interpolation path — there is no bypass call site.
-  4. Any trivial fix surfaced (e.g. adding backtick / U+2028 / U+2029 / null byte to the escape set if a real risk for a current caller) lands as a green commit after its red test; larger findings deferred to v1.4.0 with a STATE.md entry.
-
-**Plans**: 1 plan
-
-Plans:
-
-- [x] 98-01-PLAN.md — COVMED-04: end-to-end XSS coverage for confirm-modal escapeHtml (D-04 metacharacter/ordering unit tests, D-03/D-05 all-six-input DOM assertions, D-02 skipCount-exemption audit)
-
-**UI hint**: yes
-
-### Phase 99: Low-Priority Python Coverage
-
-**Goal**: The two Low-priority Python gaps each have one targeted regression test that would have caught the documented risk.
-**Depends on**: Phase 98
-**Requirements**: COVLOW-01, COVLOW-02
-**Success Criteria** (what must be TRUE):
-
-  1. A regression test schedules an auto-delete via the live Timer, flips `auto_delete.enabled`/`dry_run` before fire, and asserts the in-method config re-read (`controller.py:838-851`) honors the new value — no deletion when disabled, logs-only when dry-run (COVLOW-01).
-  2. A regression test loads N items into `BoundedOrderedSet`, touches a middle item, forces eviction, and asserts the touched item is retained while the oldest non-touched item is evicted first (COVLOW-02).
-  3. Any trivial fix surfaced lands as a green commit after its red test; larger findings deferred to v1.4.0 with a STATE.md entry.
-
-**Plans**: 2 plans
-
-Plans:
-
-- [x] 99-01-PLAN.md — COVLOW-01: auto-delete honors enabled/dry_run toggle flipped during a live threading.Timer window (D-01 real-Timer schedule->flip->fire, D-02 both toggles as two tests)
-- [x] 99-02-PLAN.md — COVLOW-02: BoundedOrderedSet eviction ordering after touch — touched item retained, oldest non-touched evicts first (D-03 three asserts)
-
-**Cross-cutting constraints:**
-
-- The full Python unit suite still passes (no regressions).
-
-### Phase 100: Low-Priority Angular Coverage + CI Ratchet
-
-**Goal**: The two Low-priority Angular gaps each have a targeted regression test, and CI coverage thresholds are ratcheted up to the new bar with before/after numbers recorded.
-**Depends on**: Phase 99
-**Requirements**: COVLOW-03, COVLOW-04, RATCHET-02
-**Success Criteria** (what must be TRUE):
-
-  1. A fakeAsync regression test simulates a heartbeat arriving in the same tick as `checkConnectionTimeout` fires and asserts no spurious reconnect and no double subscription in the stream-service registry (COVLOW-03).
-  2. A regression test exercises the `auth.interceptor.ts` token-missing / rotation path: meta tag changes, `_resetAuthInterceptorCache` is called, and the next request carries the new token (COVLOW-04).
-  3. `--cov-fail-under` (pytest) and Karma `coverageReporter.check.global` thresholds are ratcheted upward in a single commit, with before/after numbers recorded in this ROADMAP's "Coverage Ratchet" table and the v1.3.0 RETROSPECTIVE entry (RATCHET-02).
-  4. CI is green on the ratcheted thresholds (Python + Angular) across amd64+arm64.
-  5. The ratchet is monotonic — thresholds only increase; any floor decision is logged in PROJECT.md Key Decisions.
-
-**Plans**: 3 plans (2 waves)
-
-Plans:
-**Wave 1**
-
-- [x] 100-01-PLAN.md — COVLOW-03: SSE heartbeat-vs-timeout race regression test (D-01/D-02 same-frame heartbeat saves the race + paired no-heartbeat positive control)
-- [x] 100-02-PLAN.md — COVLOW-04: auth interceptor token-rotation regression test via the _resetAuthInterceptorCache seam (D-03 mirror of cache test, D-04 page-reload coupling comment)
-
-**Wave 2** *(blocked on 100-01 + 100-02 — re-measure must reflect their added coverage)*
-
-- [x] 100-03-PLAN.md — RATCHET-02: re-measure coverage, add Karma check.global + Dockerfile --code-coverage + bump pyproject fail_under in one commit, record before/after (D-05/D-06/D-07/D-08)
-
-**UI hint**: yes
-
 </details>
 
-<summary>🔄 v1.3.0 — Slice 2 of 4: Known Bugs + Security (Phases 101-103) — IN FLIGHT</summary>
+<details>
+<summary>✅ v1.3.0 — Slice 2 of 4: Known Bugs + Security (Phases 101-103) — SHIPPED 2026-06-01</summary>
 
 **Milestone Goal:** Fix the 7 approved Known-Bugs + Security items from CONCERNS.md buckets 2 + 3 (plus rolled-forward test-infra item INFRA-01) — close the webhook fail-open gap and the log-injection surface, add webhook rate-limiting and config-response normalization, harden auto-delete Timer lifecycle, eliminate the Angular `innerHTML` XSS sink and the SSE same-tick subscription leak. Several code paths already have slice-1 (v1.3.0) regression tests pinning current behavior — reuse them and land fixes test-first where feasible. **This slice cuts no git tag**; the single `v1.3.0` tag is cut only after slice 4 of the 4-slice program completes.
 
@@ -419,6 +324,18 @@ Plans:
 - [x] **Phase 101: Webhook + Log-Injection Security Cluster** - Webhook fails closed without a secret, log-injection sanitizer audit, webhook rate-limiting, config-response normalization (BUG-02, SEC-01, SEC-03, SEC-02) (completed 2026-05-31)
 - [x] **Phase 102: Controller Concurrency** - Auto-delete Timer in-flight shutdown guard (BUG-03). *(INFRA-01 deferred to a later v1.3.0 slice — a spawn-safe fix requires a production-module change to MultiprocessingLogger's queue context, which exceeds INFRA-01's "lowest priority; must not expand the milestone, test-only" constraint. See Phase 102 notes.)* (completed 2026-06-01)
 - [x] **Phase 103: Angular Defects** - Replace ConfirmModal innerHTML sink with Renderer2 (incl. skipCount hardening), SSE registry same-tick subscription teardown (BUG-01, BUG-04) (completed 2026-06-01)
+
+</details>
+
+🔄 v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code (Phases 104-106) — IN FLIGHT
+
+**Milestone Goal:** Remove three end-of-life / unmaintained Angular dependencies (jQuery 4, Font Awesome 4.7, css-element-queries) and move the development-only mock-model fixtures out of the production bundle via Angular `fileReplacements`. Every removal follows an audit → replace/confirm-unused → drop → verify-build-bundle-CI rhythm. No tag is cut; the single `v1.3.0` tag is cut only after slice 4 completes.
+
+**GSD internal label:** `v1.3.0-s3`. Source: `.planning/codebase/CONCERNS.md` (Dependencies at Risk + Tech Debt) + `.planning/REQUIREMENTS.md`.
+
+- [ ] **Phase 104: Light Dependency Removals** - Confirm jQuery 4 and css-element-queries have no source usage, then drop both deps; bundle shrinks and Bootstrap interactions are unaffected (DEPS-01a, DEPS-01c)
+- [ ] **Phase 105: Font Awesome → Phosphor Migration** - Inventory every remaining `fa-*` icon class in templates, replace each with its Phosphor equivalent, then remove the font-awesome dep; no icon renders missing (DEPS-01b)
+- [ ] **Phase 106: Mock-Fixture Bundle Hygiene** - Move `USE_MOCK_MODEL` toggle into `environment.ts`, relocate mock files out of `services/files/`, exclude via `fileReplacements`; production bundle contains none of the mock data (DEPS-02)
 
 ## Phase Details
 
@@ -475,6 +392,57 @@ Plans:
 
 **UI hint**: yes
 
+### Phase 104: Light Dependency Removals
+
+**Goal**: jQuery 4 and css-element-queries are confirmed unused in Angular source and removed from `package.json`; the production bundle no longer ships either library and all Bootstrap-driven UI interactions remain fully functional.
+**Depends on**: Phase 103 (slice 2 complete — green CI, all Angular floors held)
+**Requirements**: DEPS-01a, DEPS-01c
+**Success Criteria** (what must be TRUE):
+
+  1. A grep/audit of `src/angular/src/` confirms zero direct `import`/`require` of `jquery`, `$`, or `jQuery`, and zero use of `ResizeObserver`-based API from `css-element-queries` — confirming both are exclusively transitive and can be removed without a replacement (DEPS-01a, DEPS-01c).
+  2. `jquery` and `css-element-queries` are removed from `src/angular/package.json`; `npm install` resolves cleanly with no peer-dependency warnings attributable to these removals; `ng build --configuration production` completes without error (DEPS-01a, DEPS-01c).
+  3. The production bundle (`ng build` output) contains no `jquery` chunk and no `css-element-queries` chunk — confirmed by inspecting build stats or `grep` over the dist directory; total bundle size is equal to or smaller than the pre-removal baseline (DEPS-01a, DEPS-01c).
+  4. All Bootstrap-driven interactions — dropdowns, modals, and collapses used in the dashboard, settings, and nav — render and function correctly in a dev-server smoke test; no console errors referencing jQuery or missing dependencies (DEPS-01a).
+  5. CI is green on amd64 + arm64 (Angular unit + E2E; Python unaffected but stays green); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; Python `fail_under` ≥ 88 unchanged. No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+**UI hint**: yes
+
+### Phase 105: Font Awesome to Phosphor Migration
+
+**Goal**: Every `fa-*` icon class usage in Angular templates is replaced with its `@phosphor-icons/web` equivalent, the `font-awesome` 4.7 package is removed from `package.json`, and no icon renders missing or visually degraded — only one icon library ships in the production bundle.
+**Depends on**: Phase 104
+**Requirements**: DEPS-01b
+**Success Criteria** (what must be TRUE):
+
+  1. A complete inventory of all `fa-*` class usages in `src/angular/src/` templates (`.html` files and inline templates in `.ts` files) is documented; every usage is mapped to an explicit Phosphor equivalent before any code change lands (DEPS-01b).
+  2. Every former `fa-*` class is replaced with its Phosphor equivalent (`ph ph-*` or `ph-bold ph-*` as appropriate); a grep over the built dist and source confirms zero remaining `fa-` class strings in production-relevant files (DEPS-01b).
+  3. `font-awesome` is removed from `src/angular/package.json`; `npm install` and `ng build --configuration production` complete cleanly; the Font Awesome CSS and font files are absent from the production bundle (DEPS-01b).
+  4. A visual smoke test (dev server or screenshot comparison) confirms every icon location that previously rendered an `fa-*` icon now renders a visible Phosphor icon of comparable intent — no blank squares, no missing glyphs, no layout shifts (DEPS-01b).
+  5. CI is green on amd64 + arm64 (Angular unit + E2E); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; Python `fail_under` ≥ 88 unchanged; production bundle size is equal to or smaller than the Phase 104 baseline. No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+**UI hint**: yes
+
+### Phase 106: Mock-Fixture Bundle Hygiene
+
+**Goal**: The development-only mock-model fixture data is fully excluded from the production bundle — `USE_MOCK_MODEL` becomes a build-time environment flag, the fixture files move to a non-service directory, and Angular `fileReplacements` ensures the mock data is tree-shaken from production output while the dev-mode toggle still works when the env flag is set.
+**Depends on**: Phase 105
+**Requirements**: DEPS-02
+**Success Criteria** (what must be TRUE):
+
+  1. `USE_MOCK_MODEL` is removed as a hardcoded class field from `view-file.service.ts` and replaced with an import from `src/angular/src/environments/environment.ts`; `environment.prod.ts` sets the flag to `false` (DEPS-02).
+  2. `mock-model-files.ts` and `screenshot-model-files.ts` are relocated out of `services/files/` (e.g. to `src/angular/src/app/tests/fixtures/`) and imported only behind the environment-flag branch; `src/angular/angular.json` includes a `fileReplacements` entry that swaps in a stub or omits the fixture files entirely in the production configuration (DEPS-02).
+  3. A production build (`ng build --configuration production`) produces a dist that contains none of the mock data — confirmed by grepping for a distinctive string from `mock-model-files.ts` (e.g. a mock filename literal) in the bundled JS output (DEPS-02).
+  4. A development build (`ng build` or `ng serve` without `--configuration production`) with the env flag enabled correctly renders mock file rows in the dashboard, confirming the dev-mode path still functions end-to-end (DEPS-02).
+  5. CI is green on amd64 + arm64 (Angular unit + E2E); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; Python `fail_under` ≥ 88 unchanged; production bundle size is measurably smaller than the Phase 105 baseline (mock data removed). No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -500,8 +468,11 @@ Plans:
 | 83-86. Test Suite Audit | v1.1.2 | 6/6 | Complete | 2026-04-24 |
 | 87-96. Test & Quality Hardening | v1.2.0 | 23/23 | Complete | 2026-04-28 |
 | 97-100. Test Coverage Gaps (Slice 1) | v1.3.0 | 10/10 | Complete | 2026-05-31 |
-| 101-103. Known Bugs + Security (Slice 2) | v1.3.0-s2 | 13/13 (101: 6/6, 102: 1/1, 103: 2/2) | Complete | 2026-06-01 |
+| 101-103. Known Bugs + Security (Slice 2) | v1.3.0-s2 | 9/9 (101: 6/6, 102: 1/1, 103: 2/2) | Complete | 2026-06-01 |
+| 104. Light Dependency Removals (Slice 3) | v1.3.0-s3 | 0/TBD | Not started | - |
+| 105. Font Awesome to Phosphor (Slice 3) | v1.3.0-s3 | 0/TBD | Not started | - |
+| 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-06-01 — v1.3.0 slice 2 (Known Bugs + Security) phases 101-103 all complete (BUG-01/02/03/04, SEC-01/02/03); INFRA-01 deferred. No tag until slice 4.*
+*Last updated: 2026-05-31 — v1.3.0 slice 3 (Frontend Deps + Dead Code) roadmap created; phases 104-106 added. Slice 2 (phases 101-103) folded into shipped framing (completed 2026-06-01). No tag until slice 4.*

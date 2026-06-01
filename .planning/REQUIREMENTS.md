@@ -58,16 +58,16 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPS-01a | TBD | Pending |
-| DEPS-01b | TBD | Pending |
-| DEPS-01c | TBD | Pending |
-| DEPS-02 | TBD | Pending |
+| DEPS-01a | Phase 104 | Pending |
+| DEPS-01b | Phase 105 | Pending |
+| DEPS-01c | Phase 104 | Pending |
+| DEPS-02 | Phase 106 | Pending |
 
 **Coverage:**
 - v1 requirements: 4 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 4 ⚠️ (resolved at roadmap creation)
+- Mapped to phases: 4 of 4 mapped, 0 unmapped
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-31*
-*Last updated: 2026-05-31 after defining v1.3.0 slice 3 requirements*
+*Last updated: 2026-05-31 — traceability table filled; all 4 requirements mapped to phases 104-106*
