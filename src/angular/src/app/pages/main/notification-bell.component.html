@@ -1,7 +1,7 @@
 @let notifs = notifications$ | async;
 <div class="bell-wrapper">
   <button class="bell-btn" aria-label="Notifications" (click)="toggleBell()">
-    <i class="fa fa-bell"></i>
+    <i class="ph ph-bell"></i>
     @if (notifs?.size > 0) {
       <span class="bell-badge-dot"></span>
     }
@@ -19,16 +19,16 @@
             <div class="bell-notif" [attr.data-level]="notif.level">
               <span class="bell-notif-icon" aria-hidden="true">
                 @switch (notif.level) {
-                  @case ('success') { <i class="fa fa-check-circle"></i> }
-                  @case ('danger') { <i class="fa fa-exclamation-circle"></i> }
-                  @case ('warning') { <i class="fa fa-exclamation-triangle"></i> }
-                  @default { <i class="fa fa-info-circle"></i> }
+                  @case ('success') { <i class="ph ph-check-circle"></i> }
+                  @case ('danger') { <i class="ph ph-warning-circle"></i> }
+                  @case ('warning') { <i class="ph ph-warning"></i> }
+                  @default { <i class="ph ph-info"></i> }
                 }
               </span>
               <span class="bell-notif-text">{{ notif.text }}</span>
               @if (notif.dismissible) {
                 <button class="bell-notif-dismiss" (click)="dismissNotification(notif); $event.stopPropagation()" aria-label="Dismiss">
-                  <i class="fa fa-times"></i>
+                  <i class="ph ph-x"></i>
                 </button>
               }
             </div>
