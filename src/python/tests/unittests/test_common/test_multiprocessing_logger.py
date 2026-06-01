@@ -27,6 +27,48 @@ class _RaisingHandler(logging.Handler):
         raise _ListenerSentinelError(_RaisingHandler.SENTINEL_MESSAGE)
 
 
+# ---------------------------------------------------------------------------
+# Module-level picklable spawn targets
+# Closures defined inside test methods are not importable by the fresh
+# interpreter in a spawned child process (spawn requires module-level
+# importable targets). These three functions replace the local process_1
+# closures that previously lived inside the three analog test methods.
+# ---------------------------------------------------------------------------
+
+def _spawn_target_main_logger_receives_records(_mp_logger: MultiprocessingLogger) -> None:
+    """Spawn target for test_main_logger_receives_records."""
+    logger = _mp_logger.get_process_safe_logger().getChild("process_1")
+    logger.debug("Debug line")
+    time.sleep(0.1)
+    logger.info("Info line")
+    time.sleep(0.1)
+    logger.warning("Warning line")
+    time.sleep(0.1)
+    logger.error("Error line")
+
+
+def _spawn_target_children_names(_mp_logger: MultiprocessingLogger) -> None:
+    """Spawn target for test_children_names."""
+    logger = _mp_logger.get_process_safe_logger().getChild("process_1")
+    logger.debug("Debug line")
+    logger.getChild("child_1").debug("Debug line")
+    logger.getChild("child_1_1").debug("Debug line")
+
+
+def _spawn_target_logger_levels(_mp_logger: MultiprocessingLogger) -> None:
+    """Spawn target for test_logger_levels (shared across all four sub-cases).
+
+    All four sub-cases have an identical child body (log at DEBUG/INFO/WARNING/ERROR);
+    the level-filtering is configured in the main process via base_logger.setLevel
+    before constructing each mp_logger instance.
+    """
+    logger = _mp_logger.get_process_safe_logger().getChild("process_1")
+    logger.debug("Debug line")
+    logger.info("Info line")
+    logger.warning("Warning line")
+    logger.error("Error line")
+
+
 class TestMultiprocessingLogger(unittest.TestCase):
     def setUp(self):
         self.logger = logging.getLogger(TestMultiprocessingLogger.__name__)
@@ -213,24 +255,16 @@ class TestMultiprocessingLogger(unittest.TestCase):
 
     @pytest.mark.timeout(5)
     def test_main_logger_receives_records(self):
-        def process_1(_mp_logger: MultiprocessingLogger):
-            logger = _mp_logger.get_process_safe_logger().getChild("process_1")
-            logger.debug("Debug line")
-            time.sleep(0.1)
-            logger.info("Info line")
-            time.sleep(0.1)
-            logger.warning("Warning line")
-            time.sleep(0.1)
-            logger.error("Error line")
-
         mp_logger = MultiprocessingLogger(self.logger)
-        p_1 = multiprocessing.Process(target=process_1,
-                                      args=(mp_logger,))
+        p_1 = mp_logger._MultiprocessingLogger__mp_context.Process(
+            target=_spawn_target_main_logger_receives_records,
+            args=(mp_logger,))
 
         with LogCapture("TestMultiprocessingLogger.MPLogger.process_1") as log_capture:
             p_1.start()
             mp_logger.start()
             p_1.join(timeout=2)
+            self.assertEqual(p_1.exitcode, 0)
             time.sleep(0.2)
             mp_logger.stop()
 
@@ -243,20 +277,16 @@ class TestMultiprocessingLogger(unittest.TestCase):
 
     @pytest.mark.timeout(5)
     def test_children_names(self):
-        def process_1(_mp_logger: MultiprocessingLogger):
-            logger = _mp_logger.get_process_safe_logger().getChild("process_1")
-            logger.debug("Debug line")
-            logger.getChild("child_1").debug("Debug line")
-            logger.getChild("child_1_1").debug("Debug line")
-
         mp_logger = MultiprocessingLogger(self.logger)
-        p_1 = multiprocessing.Process(target=process_1,
-                                      args=(mp_logger,))
+        p_1 = mp_logger._MultiprocessingLogger__mp_context.Process(
+            target=_spawn_target_children_names,
+            args=(mp_logger,))
 
         with LogCapture("TestMultiprocessingLogger.MPLogger.process_1") as log_capture:
             p_1.start()
             mp_logger.start()
             p_1.join(timeout=2)
+            self.assertEqual(p_1.exitcode, 0)
             time.sleep(0.2)
             mp_logger.stop()
 
@@ -268,22 +298,17 @@ class TestMultiprocessingLogger(unittest.TestCase):
 
     @pytest.mark.timeout(5)
     def test_logger_levels(self):
-        def process_1(_mp_logger: MultiprocessingLogger):
-            logger = _mp_logger.get_process_safe_logger().getChild("process_1")
-            logger.debug("Debug line")
-            logger.info("Info line")
-            logger.warning("Warning line")
-            logger.error("Error line")
-
         # Debug level
         self.logger.setLevel(logging.DEBUG)
         with LogCapture("TestMultiprocessingLogger.MPLogger.process_1") as log_capture:
             mp_logger = MultiprocessingLogger(self.logger)
-            p_1 = multiprocessing.Process(target=process_1,
-                                          args=(mp_logger,))
+            p_1 = mp_logger._MultiprocessingLogger__mp_context.Process(
+                target=_spawn_target_logger_levels,
+                args=(mp_logger,))
             p_1.start()
             mp_logger.start()
             p_1.join(timeout=2)
+            self.assertEqual(p_1.exitcode, 0)
             time.sleep(0.2)
             mp_logger.stop()
 
@@ -298,11 +323,13 @@ class TestMultiprocessingLogger(unittest.TestCase):
         self.logger.setLevel(logging.INFO)
         with LogCapture("TestMultiprocessingLogger.MPLogger.process_1") as log_capture:
             mp_logger = MultiprocessingLogger(self.logger)
-            p_1 = multiprocessing.Process(target=process_1,
-                                          args=(mp_logger,))
+            p_1 = mp_logger._MultiprocessingLogger__mp_context.Process(
+                target=_spawn_target_logger_levels,
+                args=(mp_logger,))
             p_1.start()
             mp_logger.start()
             p_1.join(timeout=2)
+            self.assertEqual(p_1.exitcode, 0)
             time.sleep(0.2)
             mp_logger.stop()
 
@@ -316,11 +343,13 @@ class TestMultiprocessingLogger(unittest.TestCase):
         self.logger.setLevel(logging.WARNING)
         with LogCapture("TestMultiprocessingLogger.MPLogger.process_1") as log_capture:
             mp_logger = MultiprocessingLogger(self.logger)
-            p_1 = multiprocessing.Process(target=process_1,
-                                          args=(mp_logger,))
+            p_1 = mp_logger._MultiprocessingLogger__mp_context.Process(
+                target=_spawn_target_logger_levels,
+                args=(mp_logger,))
             p_1.start()
             mp_logger.start()
             p_1.join(timeout=2)
+            self.assertEqual(p_1.exitcode, 0)
             time.sleep(0.2)
             mp_logger.stop()
 
@@ -333,11 +362,13 @@ class TestMultiprocessingLogger(unittest.TestCase):
         self.logger.setLevel(logging.ERROR)
         with LogCapture("TestMultiprocessingLogger.MPLogger.process_1") as log_capture:
             mp_logger = MultiprocessingLogger(self.logger)
-            p_1 = multiprocessing.Process(target=process_1,
-                                          args=(mp_logger,))
+            p_1 = mp_logger._MultiprocessingLogger__mp_context.Process(
+                target=_spawn_target_logger_levels,
+                args=(mp_logger,))
             p_1.start()
             mp_logger.start()
             p_1.join(timeout=2)
+            self.assertEqual(p_1.exitcode, 0)
             time.sleep(0.2)
             mp_logger.stop()
 
