@@ -89,7 +89,7 @@ settings" — the gauge/speedometer concept is a direct semantic match.
 
 **Alternate:** None with comparable semantic fit verified in installed package.
 
-**DECISION:** _______________
+**DECISION:** `ph-gauge` — CONFIRMED (accepted as proposed, 2026-06-01)
 
 ---
 
@@ -105,7 +105,7 @@ recognized save icon.
 
 **Alternate:** None.
 
-**DECISION:** _______________
+**DECISION:** `ph-floppy-disk` — CONFIRMED (accepted as proposed, 2026-06-01)
 
 ---
 
@@ -122,7 +122,7 @@ the hard-drive/storage icon semantically correct.
 
 **Alternate:** None with comparable semantic fit.
 
-**DECISION:** _______________
+**DECISION:** `ph-hard-drive` — CONFIRMED (accepted as proposed, 2026-06-01)
 
 ---
 
@@ -141,7 +141,10 @@ Operations" section header and "Extract" button. Both are valid.
 
 **Alternate:** `ph-file-zip` (equally valid; more literal "zip" concept).
 
-**DECISION:** _______________
+**DECISION:** `ph-file-zip` — USER SUBSTITUTED option B (NOT the proposed ph-file-archive), 2026-06-01.
+This is the single authoritative class for fa-file-archive-o. BOTH plan 105-02 (bulk-actions Extract
+button + Archive Operations header) AND plan 105-03 (options-list.ts:222) MUST use `ph-file-zip`.
+Neither plan may use `ph-file-archive`.
 
 ---
 
@@ -180,7 +183,9 @@ be added before FA is removed (plan 105-02) or the spinner freezes.
 2. Approval to add the local `@keyframes ph-spin` / `.ph-spin` CSS rule to
    `dashboard-log-pane.component.scss`.
 
-**DECISION (icon + spin CSS rule):** _______________
+**DECISION (icon + spin CSS rule):** `ph-circle-notch` + local `@keyframes ph-spin` / `.ph-spin` CSS rule
+CONFIRMED (accepted as proposed, 2026-06-01). The `.ph-spin` CSS rule is approved to be added to
+`dashboard-log-pane.component.scss` in plan 105-02.
 
 ---
 
@@ -198,7 +203,7 @@ exist; `ph-squares-four` best matches the "large tiles" / dashboard intent.
 
 **Alternates:** `ph-grid-four` (grid of four smaller squares).
 
-**DECISION:** _______________
+**DECISION:** `ph-squares-four` — CONFIRMED (accepted as proposed, 2026-06-01)
 
 ---
 
@@ -216,7 +221,7 @@ but `ph-sliders` (vertical) works equally well.
 
 **Alternate:** `ph-sliders` (vertical variant — equally valid).
 
-**DECISION:** _______________
+**DECISION:** `ph-sliders-horizontal` — CONFIRMED (accepted as proposed, 2026-06-01)
 
 ---
 
@@ -232,7 +237,7 @@ Phosphor drops the `-o` suffix. Intent is "script file / code file." Single usag
 
 **Alternate:** None.
 
-**DECISION:** _______________
+**DECISION:** `ph-file-code` — CONFIRMED (accepted as proposed, 2026-06-01)
 
 ---
 
@@ -247,7 +252,7 @@ Phosphor drops the `-o` suffix. Intent is "script file / code file." Single usag
 | 5 | `fa-check-circle` | `ph-check-circle` | CONFIRMED |
 | 6 | `fa-circle` | `ph-circle` | CONFIRMED |
 | 7 | `fa-circle-o` | `ph-circle` | CONFIRMED |
-| 8 | `fa-circle-o-notch` + `fa-spin` | `ph-circle-notch` + `.ph-spin` CSS rule | AWAITING SIGN-OFF (Q5) |
+| 8 | `fa-circle-o-notch` + `fa-spin` | `ph-circle-notch` + `.ph-spin` CSS rule | SIGNED OFF (Q5) |
 | 9 | `fa-clock-o` | `ph-clock` | CONFIRMED |
 | 10 | `fa-cloud` | `ph-cloud` | CONFIRMED |
 | 11 | `fa-cog` | `ph-gear` | CONFIRMED |
@@ -259,11 +264,11 @@ Phosphor drops the `-o` suffix. Intent is "script file / code file." Single usag
 | 17 | `fa-expand` | `ph-arrows-out` | CONFIRMED |
 | 18 | `fa-eye` | `ph-eye` | CONFIRMED |
 | 19 | `fa-eye-slash` | `ph-eye-slash` | CONFIRMED |
-| 20 | `fa-file-archive-o` | `ph-file-archive` (proposed) | AWAITING SIGN-OFF (Q4) |
-| 21 | `fa-file-code-o` | `ph-file-code` (proposed) | AWAITING SIGN-OFF (Q8) |
-| 22 | `fa-floppy-o` | `ph-floppy-disk` (proposed) | AWAITING SIGN-OFF (Q2) |
+| 20 | `fa-file-archive-o` | `ph-file-zip` (USER SUBSTITUTED — NOT ph-file-archive) | SIGNED OFF (Q4) |
+| 21 | `fa-file-code-o` | `ph-file-code` | SIGNED OFF (Q8) |
+| 22 | `fa-floppy-o` | `ph-floppy-disk` | SIGNED OFF (Q2) |
 | 23 | `fa-folder-open-o` | `ph-folder-open` | CONFIRMED |
-| 24 | `fa-hdd-o` | `ph-hard-drive` (proposed) | AWAITING SIGN-OFF (Q3) |
+| 24 | `fa-hdd-o` | `ph-hard-drive` | SIGNED OFF (Q3) |
 | 25 | `fa-info-circle` | `ph-info` | CONFIRMED |
 | 26 | `fa-list` | `ph-list` | CONFIRMED |
 | 27 | `fa-play` | `ph-play` | CONFIRMED |
@@ -272,17 +277,18 @@ Phosphor drops the `-o` suffix. Intent is "script file / code file." Single usag
 | 30 | `fa-search` | `ph-magnifying-glass` | CONFIRMED |
 | 31 | `fa-server` | `ph-computer-tower` | CONFIRMED (see corrected mappings callout above) |
 | 32 | `fa-shield` | `ph-shield` | CONFIRMED |
-| 33 | `fa-sliders` | `ph-sliders-horizontal` (proposed) | AWAITING SIGN-OFF (Q7) |
+| 33 | `fa-sliders` | `ph-sliders-horizontal` | SIGNED OFF (Q7) |
 | 34 | `fa-stop` | `ph-stop` | CONFIRMED |
-| 35 | `fa-tachometer` | `ph-gauge` (proposed) | AWAITING SIGN-OFF (Q1) |
+| 35 | `fa-tachometer` | `ph-gauge` | SIGNED OFF (Q1) |
 | 36 | `fa-tasks` | `ph-list-checks` | CONFIRMED |
 | 37 | `fa-terminal` | `ph-terminal` | CONFIRMED |
-| 38 | `fa-th-large` | `ph-squares-four` (proposed) | AWAITING SIGN-OFF (Q6) |
+| 38 | `fa-th-large` | `ph-squares-four` | SIGNED OFF (Q6) |
 | 39 | `fa-times` | `ph-x` | CONFIRMED |
 | 40 | `fa-trash` | `ph-trash` | CONFIRMED |
 
-_Total: 32 confirmed · 8 awaiting sign-off (Q1–Q8)_
+_Total: 32 confirmed · 8 signed off (Q1–Q8, 2026-06-01) — NOTE: Q4 = ph-file-zip (user substituted from proposed ph-file-archive)_
 
 ---
 
-*Plan: 105-01 | D-01 artifact | Status: awaiting user sign-off on Q1–Q8*
+*Plan: 105-01 | D-01 artifact | Status: SIGN-OFF COMPLETE — all 8 ambiguous picks decided by user on 2026-06-01*
+*Q4 substitution: ph-file-zip (NOT ph-file-archive) — authoritative for both 105-02 and 105-03*
