@@ -28,7 +28,6 @@
     "css-element-queries": "^1.1.1",
     "font-awesome": "^4.7.0",
     "immutable": "^5.1.5",
-    "jquery": "^4.0.0",
     "rxjs": "^7.5.0",
     "zone.js": "^0.16.2"
   },
