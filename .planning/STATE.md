@@ -1,11 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3.0-s3
-milestone_name: Frontend Deps + Dead Code (v1.3.0 slice 3 of 4)
-status: executing
-stopped_at: Phase 106 COMPLETE — DEPS-02 verified (2/2 plans, VERIFICATION passed). Slice 3 (Phases 104-106) all complete.
-last_updated: "2026-06-01T19:33:27.319Z"
-last_activity: 2026-06-01 -- Phase 106 execution started
+milestone: v1.3.0-s4
+milestone_name: Backend Architecture Refactor + Test Infra (v1.3.0 slice 4 of 4)
+status: planning
+last_updated: "2026-06-01T19:47:01.416Z"
+last_activity: 2026-06-01
+progress:
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -19,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-31)
 
 ## Current Position
 
-Phase: 106 (Mock-Fixture Bundle Hygiene) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 106
-Last activity: 2026-06-01 -- Phase 106 execution started
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-06-01 — Milestone v1.3.0-s4 started
 
 ## Accumulated Context
 

@@ -307,9 +307,9 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-<!-- v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code. -->
+<!-- v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra (FINAL slice — cuts the v1.3.0 tag). -->
 
-v1.3.0 is delivered in 4 slices under one final `v1.3.0` tag. Slice 1 (Test Coverage Gaps) shipped 2026-05-31; Slice 2 (Known Bugs + Security — BUG-01..04, SEC-01..03; INFRA-01 deferred) closed 2026-06-01 (no tag, stayed on main). **Now in flight — Slice 3: Frontend Deps + Dead Code** (GSD internal label `v1.3.0-s3`): DEPS-01 (drop jQuery 4, Font Awesome 4.7, css-element-queries) and DEPS-02 (move mock-model fixtures out of the production bundle via environment `fileReplacements`) — see `.planning/REQUIREMENTS.md`. No tag is cut until slice 4 completes. Slice 4: Backend Architecture Refactor (ARCH-01..03) plus the rolled-forward INFRA-01 MP-logger spawn-safe production fix.
+v1.3.0 is delivered in 4 slices under one final `v1.3.0` tag. Slice 1 (Test Coverage Gaps) shipped 2026-05-31; Slice 2 (Known Bugs + Security — BUG-01..04, SEC-01..03; INFRA-01 deferred) closed 2026-06-01 (no tag, stayed on main); Slice 3 (Frontend Deps + Dead Code — DEPS-01a/b/c, DEPS-02) closed 2026-06-01 (no tag, stayed on main). **Now in flight — Slice 4: Backend Architecture Refactor + Test Infra** (GSD internal label `v1.3.0-s4`), the **final** program slice: ARCH-01 (extract the `Controller` god-class into cohesive collaborators), ARCH-02 (declarative `Config` secret-field discovery via `secret=True` in `PROP`), ARCH-03 (dedup the bulk-action dispatch scaffold into a shared `_dispatch_command(...)` helper), and the rolled-forward INFRA-01 (MP-logger spawn-safe production fix to `multiprocessing_logger.py` so the three analog tests pass on both `fork` and `spawn`). ARCH work is behavior-preserving (existing suites are the regression net). See `.planning/REQUIREMENTS.md`. The single user-facing `v1.3.0` tag is cut when this slice completes, preceded by one batched pre-release walkthrough.
 
 ### Out of Scope
 
@@ -430,4 +430,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-31 after starting v1.3.0 slice 3 of 4: Frontend Deps + Dead Code*
+*Last updated: 2026-06-01 after starting v1.3.0 slice 4 of 4: Backend Architecture Refactor + Test Infra (final slice)*
