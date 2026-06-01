@@ -260,6 +260,59 @@ describe("Testing stream dispatch service", () => {
             discardPeriodicTasks();
         }));
     });
+
+    describe("BUG-04 same-tick reconnect collision", () => {
+        it("BUG-04: stale onerror after idle-timeout close does not double-notify disconnect or double-reconnect",
+            fakeAsync(() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (dispatchService as any).startTimeoutChecker();
+                // Seed _lastEventTime via onopen so checkConnectionTimeout doesn't bail
+                // at the _lastEventTime === 0 guard; this also pushes one true into connectedSeq
+                mockEventSource.onopen!(new Event("connected"));
+                tick();
+
+                // Advance past timeout boundary: elapsed 35001 > 30000 (strict) →
+                // reconnectDueToTimeout() fires: closes _currentEventSource, notifies
+                // disconnect ONCE, schedules the 3000ms retry timer.
+                tick(35001);
+
+                // One timeout-path disconnect must have been delivered
+                const falsesAfterTimeout = mockService1.connectedSeq.filter(v => v === false).length;
+                expect(falsesAfterTimeout).toBe(1);
+
+                // Simulate the now-closed EventSource firing onerror (some browsers/proxies
+                // do this on .close()). The mockEventSource.close() is a no-op that does NOT
+                // clear .onerror, so this call reaches observer.error() on the subscription.
+                //
+                // RED DISCRIMINATOR: Before the BUG-04 fix, _currentSubscription is still live
+                // here, so observer.error() triggers the error handler which pushes a SECOND
+                // false into connectedSeq → count becomes 2.
+                // After the fix, reconnectDueToTimeout() unsubscribes _currentSubscription
+                // before scheduling the retry, so observer.error() hits a closed subscriber
+                // and the error callback never runs → count stays 1.
+                mockEventSource.onerror!(new Event("error"));
+                tick();
+
+                // RED ASSERTION (discriminator): exactly ONE disconnect notification total.
+                // Before the fix this is 2 (stale subscription error handler ran, pushed a
+                // second false). After the unsubscribe fix it is 1 (torn-down subscription's
+                // error callback never fires).
+                expect(mockService1.connectedSeq.filter(v => v === false).length).toBe(1);
+                // Mirror for mockService2 — same invariant
+                expect(mockService2.connectedSeq.filter(v => v === false).length).toBe(1);
+
+                // Flush the retry timer → exactly one reconnect fires → createSseObserver
+                // called once more.
+                tick(3001);
+
+                // GREEN-INVARIANT GUARD: createEventSource is called exactly twice — initial
+                // (1) + exactly one reconnect (2). Both reconnect paths clear-and-re-arm the
+                // single _reconnectTimer, so this count is 2 on BOTH sides of the fix; it
+                // confirms no double reconnect but is NOT the RED discriminator.
+                expect(EventSourceFactory.createEventSource).toHaveBeenCalledTimes(2);
+                discardPeriodicTasks();
+            }));
+    });
 });
 
 

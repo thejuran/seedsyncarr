@@ -140,6 +140,12 @@ export class StreamDispatchService implements OnDestroy {
      * Proactively close and reconnect when idle timeout is detected
      */
     private reconnectDueToTimeout(): void {
+        // Tear down current subscription immediately so its error handler cannot fire
+        // a competing reconnect after this timeout teardown has already scheduled one.
+        // Mirrors the identical entry teardown in createSseObserver() (lines 181-182).
+        this._currentSubscription?.unsubscribe();
+        this._currentSubscription = null;
+
         // Close the current EventSource if it exists
         if (this._currentEventSource) {
             this._currentEventSource.close();
