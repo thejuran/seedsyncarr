@@ -417,7 +417,7 @@ None — no new test files needed. This phase makes no source changes that would
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Can the planner run `ng build --configuration production` locally for the pre-removal baseline?**
    - What we know: The build runs in Docker for CI; local build requires `node_modules` to be installed.
