@@ -189,6 +189,13 @@ class Controller:
         # Pending auto-delete timers: file_name -> Timer
         self.__pending_auto_deletes: Dict[str, threading.Timer] = {}
         self.__auto_delete_lock = threading.Lock()
+        # BUG-03 criterion #2: dedicated shutdown signal for the auto-delete path.
+        # exit() sets this UNDER __auto_delete_lock (same lock window as the
+        # timer-cancel loop) so the set() is strictly ordered against the
+        # callback's lock-serialized final-commit step.  Do NOT reuse __started
+        # (it is set False at the END of exit(), too late to block a mid-callback
+        # dispatch; see D-03).
+        self.__shutdown_event = threading.Event()
 
         self.__started = False
 
@@ -222,8 +229,20 @@ class Controller:
     def exit(self):
         self.logger.debug("Exiting controller")
         if self.__started:
-            # Cancel all pending auto-delete timers
+            # Signal shutdown and cancel all pending auto-delete timers.
+            # __shutdown_event.set() runs FIRST, inside the SAME lock as the
+            # cancel loop.  This orders the signal against the callback's
+            # lock-serialized final-commit step (D-02, D-04): a callback that
+            # has not yet entered its final __auto_delete_lock block will see
+            # the event set and return without popping imported_children or
+            # dispatching delete_local.  No thread join/drain is required
+            # because the lock — not a join — serializes shutdown vs dispatch.
+            # Lock ordering note: exit() takes ONLY __auto_delete_lock (never
+            # __model_lock).  The callback releases __model_lock before
+            # re-acquiring __auto_delete_lock for the final commit, so there
+            # is no circular wait and no deadlock risk.
             with self.__auto_delete_lock:
+                self.__shutdown_event.set()
                 for file_name, timer in list(self.__pending_auto_deletes.items()):
                     timer.cancel()
                     self.logger.debug("Canceled pending auto-delete for '{}'".format(sanitize_log_value(file_name)))
@@ -829,9 +848,14 @@ class Controller:
         ModelFile is frozen (immutable) after being added to the model, so
         the `file` reference is safe to use after releasing the lock.
         """
-        # Remove from tracking dict
+        # Remove from tracking dict; entry guard for shutdown (BUG-03 criterion #2).
+        # Checking __shutdown_event inside __auto_delete_lock is the fast-path:
+        # if exit() has already set the event under the same lock, we can return
+        # immediately without doing any model read — the callback is a no-op.
         with self.__auto_delete_lock:
             self.__pending_auto_deletes.pop(file_name, None)
+            if self.__shutdown_event.is_set():
+                return
 
         # Re-check config -- user might have disabled auto-delete after timer was scheduled
         if not self.__context.config.autodelete.enabled:
@@ -955,20 +979,33 @@ class Controller:
                         )
                         return
 
-            # WR-02: clear the per-child entry BEFORE dispatching delete_local,
-            # inside the SAME lock window as the coverage guard above. This
-            # eliminates the TOCTOU window between coverage-check and pop where
-            # a concurrent webhook cycle (__check_webhook_imports Window 2)
-            # could add a new child that the pop would then silently discard.
-            # The decision to delete is final here -- any child added after
-            # this point is for a future import cycle. Clearing pre-dispatch
-            # preserves D-04's "on successful __execute_auto_delete" intent
-            # (dispatch IS the success signal). pop() is O(1) so the lock is
-            # not held any longer than the separate-acquisition approach.
+        # `file` is captured here; ModelFile is frozen/immutable after add,
+        # so the reference is safe to use after __model_lock is released.
+
+        # BUG-03 criterion #2 — final-commit serialized under __auto_delete_lock.
+        # Re-acquire the lock AFTER releasing __model_lock (lock ordering:
+        # exit() holds only __auto_delete_lock; the callback releases __model_lock
+        # before taking __auto_delete_lock here — no circular wait, no deadlock).
+        # Because exit() sets __shutdown_event UNDER __auto_delete_lock in the
+        # same acquire that runs the timer-cancel loop, set() cannot interleave
+        # between this check and the pop: if we observe the event unset, exit()
+        # has not yet entered the lock and cannot set it until after we pop and
+        # release.  If we observe it set, shutdown has committed and we must not
+        # dispatch — no pop, no delete_local.
+        #
+        # WR-02 semantics are preserved: the coverage guard above already ran and
+        # committed the "delete is final" decision under __model_lock.  Moving the
+        # pop here (into __auto_delete_lock, immediately after __model_lock) does
+        # not reopen the coverage-check→pop TOCTOU window for the webhook path:
+        # any child added by a concurrent webhook between these two lock acquires
+        # is for a future import cycle — the deletion decision is already final.
+        with self.__auto_delete_lock:
+            if self.__shutdown_event.is_set():
+                return  # no pop, no dispatch (D-02: shutdown has committed)
+            # WR-02: clear the per-child entry before dispatching delete_local.
             self.__persist.imported_children.pop(file_name, None)
         # delete_local is safe outside lock -- it spawns a subprocess, holding
         # the lock during a blocking subprocess call would starve model updates.
-        # ModelFile is frozen/immutable after add, so `file` reference is safe.
         self.__file_op_manager.delete_local(file)
         self.logger.info("Auto-deleted local file '{}'".format(sanitize_log_value(file_name)))
 
