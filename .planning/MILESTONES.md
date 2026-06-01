@@ -1,5 +1,24 @@
 # Project Milestones: SeedSync
 
+## v1.3.0 Slice 2 — Known Bugs + Security (Completed: 2026-06-01)
+
+**Phases completed:** 3 phases (101-103), 9 plans
+**Slice:** v1.3.0-s2 (slice 2 of 4). No git tag — the single `v1.3.0` tag is cut only after slice 4. Stayed on `main` (no merge).
+
+**Delivered:** Closed 7 approved Known-Bugs + Security items (BUG-01/02/03/04, SEC-01/02/03). Webhook hardening + a CWE-117 log-injection sweep, an auto-delete Timer shutdown guard, and two Angular defect fixes (XSS sink elimination + an SSE reconnect race). turingmind deep-review APPROVED; cross-phase integration verified clean.
+
+**Key accomplishments:**
+
+- **Phase 101 (Webhook + Log-Injection Security):** shared `sanitize_log_value()` CWE-117 helper applied across 32 log sites (webhook_manager, controller, lftp, model); opt-in `webhook_require_secret` fail-closed 503 guard (default off — backward-compat preserved) + per-route webhook rate-limiting; config GET response normalized so secret-set vs unset are indistinguishable (BUG-02, SEC-01, SEC-02, SEC-03).
+- **Phase 102 (Controller Concurrency):** dedicated `threading.Event` in-flight shutdown guard in `__execute_auto_delete`, with the final guard + `imported_children.pop` + `delete_local` decision serialized under `__auto_delete_lock` and the event set under the same lock in `exit()` — closes the preempt-after-check race (BUG-03).
+- **Phase 103 (Angular Defects):** replaced the `ConfirmModalService` `innerHTML` sink with `Renderer2`/`createText` structural DOM construction (escaping is now structural, not string-concatenation), folded in `Number(skipCount)` type-erasure hardening, and removed the dead `escapeHtml` helper (BUG-01); added a `_currentSubscription` unsubscribe at the top of `reconnectDueToTimeout()` so a same-tick SSE timeout+reconnect leaves exactly one subscription (BUG-04). 611/611 Angular tests green; Karma coverage floors held.
+
+**Verification note:** Phase 101 has a VERIFICATION.md (passed); phases 102/103 were verified via turingmind deep-review (APPROVED, `.turingmind/REVIEW.md`) + codex adversarial review + green suites + a clean cross-phase integration check, in place of GSD's `gsd-verifier` step. Milestone audit (`v1.3.0-s2-MILESTONE-AUDIT.md`) status `gaps_found` = missing GSD VERIFICATION.md artifacts only; all requirements functionally satisfied (gaps accepted).
+
+**Deferred at close:** INFRA-01 (MultiprocessingLogger spawn-safe tests — needs a production-module change, out of slice scope; re-filed to a later v1.3.0 slice). Pre-existing: webob upstream block, config-set POST migration. Deployed-build walkthrough deferred to one larger pre-release walkthrough before the slice-4 tag.
+
+---
+
 ## v1.3.0 Test Coverage Gaps (Shipped: 2026-05-31)
 
 **Phases completed:** 4 phases, 10 plans, 4 tasks
