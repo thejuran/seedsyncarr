@@ -8,7 +8,8 @@ import {LoggerService} from "../utils/logger.service";
 import {ModelFile} from "./model-file";
 import {ModelFileService} from "./model-file.service";
 import {ViewFile} from "./view-file";
-import {MOCK_MODEL_FILES} from "./mock-model-files";
+import {environment} from "../../../environments/environment";
+import {MOCK_MODEL_FILES} from "../../tests/fixtures/mock-model-files";
 import {StreamServiceRegistry} from "../base/stream-service.registry";
 import {FileSelectionService} from "./file-selection.service";
 
@@ -68,7 +69,6 @@ export type ViewFileComparator = (a: ViewFile, b: ViewFile) => number;
 @Injectable()
 export class ViewFileService implements OnDestroy {
 
-    private readonly USE_MOCK_MODEL = false;
     private destroy$ = new Subject<void>();
 
     private modelFileService: ModelFileService;
@@ -89,7 +89,7 @@ export class ViewFileService implements OnDestroy {
         this.modelFileService = _streamServiceRegistry.modelFileService;
         const _viewFileService = this;
 
-        if (!this.USE_MOCK_MODEL) {
+        if (!environment.useMockModel) {
             this.modelFileService.files
                 .pipe(takeUntil(this.destroy$))
                 .subscribe({
