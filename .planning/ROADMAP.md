@@ -410,7 +410,6 @@ Plans:
 
 </details>
 
-<details>
 <summary>🔄 v1.3.0 — Slice 2 of 4: Known Bugs + Security (Phases 101-103) — IN FLIGHT</summary>
 
 **Milestone Goal:** Fix the 7 approved Known-Bugs + Security items from CONCERNS.md buckets 2 + 3 (plus rolled-forward test-infra item INFRA-01) — close the webhook fail-open gap and the log-injection surface, add webhook rate-limiting and config-response normalization, harden auto-delete Timer lifecycle, eliminate the Angular `innerHTML` XSS sink and the SSE same-tick subscription leak. Several code paths already have slice-1 (v1.3.0) regression tests pinning current behavior — reuse them and land fixes test-first where feasible. **This slice cuts no git tag**; the single `v1.3.0` tag is cut only after slice 4 of the 4-slice program completes.
@@ -456,7 +455,9 @@ Plans:
   3. The three MultiprocessingLogger analog tests (`test_main_logger_receives_records`, `test_children_names`, `test_logger_levels`) pass on both `fork` and `spawn` start methods — the `process_1` target is promoted to module scope so it is picklable under `spawn` (INFRA-01).
   4. **Cross-cutting (COMPAT):** no breaking changes on upgrade — existing config files and on-disk persist formats load unchanged. CI green on amd64 + arm64 (Python); Python `fail_under` ≥ 88 holds or rises; no concurrency fix logs sensitive data; generic client errors with server-side detail. No release/tag/version work in this phase.
 
-**Plans**: TBD
+**Plans**: 2 plans (1 wave)
+- [ ] 102-01-PLAN.md — BUG-03: add a dedicated `threading.Event` in-flight shutdown guard to `__execute_auto_delete` (test-first red→green, reusing the real-Timer Event-gated harness); criterion #1 timer-cancel-on-exit verified by test only (already shipped) (wave 1)
+- [ ] 102-02-PLAN.md — INFRA-01: promote the three MP-logger tests' local `process_1` closure to one module-level picklable helper and force `multiprocessing.get_context('spawn')` so the spawn path runs on CI (test-only, production module unchanged) (wave 1)
 
 ### Phase 103: Angular Defects
 
@@ -473,8 +474,6 @@ Plans:
 **Plans**: TBD
 
 **UI hint**: yes
-
-</details>
 
 ## Progress
 
