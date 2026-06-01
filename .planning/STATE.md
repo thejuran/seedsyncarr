@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3.0-s3
 milestone_name: Frontend Deps + Dead Code (v1.3.0 slice 3 of 4)
 status: executing
-stopped_at: Phase 105 COMPLETE — DEPS-01b verified (4/4 plans, VERIFICATION passed). Awaiting Phase 106 (Mock-Fixture Bundle Hygiene)
-last_updated: "2026-06-01T15:18:05.863Z"
+stopped_at: Phase 106 context gathered
+last_updated: "2026-06-01T17:16:23.880Z"
 last_activity: 2026-06-01 -- Phase 105 Plan 01 complete (mapping table + sign-off + BEFORE baseline)
 ---
 
@@ -85,8 +85,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-01T15:18:05.859Z
-Stopped at: Phase 105 COMPLETE — DEPS-01b verified (4/4 plans, VERIFICATION passed). Awaiting Phase 106 (Mock-Fixture Bundle Hygiene)
+Last session: 2026-06-01T17:16:23.876Z
+Stopped at: Phase 106 context gathered
 Next action: Execute 105-02-PLAN.md (files cluster migration — dashboard-log-pane / stats-strip / bulk-actions-bar)
 
 ## Operator Next Steps
