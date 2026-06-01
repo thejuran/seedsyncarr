@@ -609,3 +609,201 @@ class TestAutoDeleteToggleDuringTimer(TestAutoDeleteExecution):
 
         # Positive control: deletion MUST be called.
         self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+
+
+class TestAutoDeleteShutdownGuard(BaseAutoDeleteTestCase):
+    """BUG-03 criterion #2: synchronous shutdown-guard regression tests.
+
+    Proves that a fired auto-delete callback that encounters a set
+    __shutdown_event performs no model read (entry guard) and, even when
+    shutdown begins mid-callback after the entry guard, performs no
+    imported_children.pop and no delete_local dispatch (final-commit guard
+    serialized under __auto_delete_lock).
+
+    All tests invoke __execute_auto_delete DIRECTLY and SYNCHRONOUSLY — no
+    threading.Timer, no gate Event reused from TestAutoDeleteToggleDuringTimer.
+    A short-circuiting entry guard never reaches a gated wrapper body; reusing
+    the gate would either hang or false-pass.
+    """
+
+    def _make_safe_mock_file(self, state=ModelFile.State.DOWNLOADED, is_dir=False, children=None):
+        """Build a ModelFile mock that passes all state + pack guards."""
+        mock_file = MagicMock(spec=ModelFile)
+        mock_file.state = state
+        mock_file.is_dir = is_dir
+        mock_file.get_children.return_value = children or []
+        return mock_file
+
+    # ------------------------------------------------------------------ #
+    # Test A — entry guard: event set BEFORE invocation                   #
+    # ------------------------------------------------------------------ #
+
+    def test_a_entry_guard_no_delete_when_shutdown_set_before_invoke(self):
+        """BUG-03 criterion #2 Test A (entry guard).
+
+        Set __shutdown_event BEFORE calling __execute_auto_delete.
+        Asserts: delete_local is NOT called AND imported_children entry for
+        the file is NOT popped.
+
+        RED: fails before Task 2 lands (__shutdown_event attribute absent
+        → AttributeError, or guard absent → delete still dispatched).
+        GREEN: entry guard returns early → no delete, no pop.
+        """
+        file_name = "shutdown_test.mkv"
+        mock_file = self._make_safe_mock_file()
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+
+        # Seed imported_children so we can assert the pop does NOT happen.
+        self.persist.add_imported_child(file_name, "ep01.mkv")
+        self.assertIn(file_name, self.persist.imported_children)
+
+        # Set shutdown event BEFORE entry — simulates callback firing after
+        # exit() has already set the event.
+        self.controller._Controller__shutdown_event.set()
+
+        self.controller._Controller__execute_auto_delete(file_name)
+
+        # Guard: no dispatch against a stopped subsystem.
+        self.mock_file_op_manager.delete_local.assert_not_called()
+        self.mock_file_op_manager.delete_remote.assert_not_called()
+        # Guard: no persist mutation when suppressed (criterion #2).
+        self.assertIn(
+            file_name,
+            self.persist.imported_children,
+            "imported_children must NOT be popped when shutdown suppresses auto-delete",
+        )
+
+    # ------------------------------------------------------------------ #
+    # Test B — mid-callback / pre-commit guard                            #
+    # ------------------------------------------------------------------ #
+
+    def test_b_final_commit_guard_no_delete_when_shutdown_set_mid_callback(self):
+        """BUG-03 criterion #2 Test B (final-commit guard).
+
+        Shutdown begins AFTER the entry guard passes but BEFORE the final
+        commit step.  Uses a side_effect on model.get_file to inject the
+        shutdown signal in the middle of the __model_lock work — after the
+        entry window, before the lock-serialized commit block.
+
+        Asserts: delete_local is NOT called AND imported_children is NOT
+        popped — proving the FINAL guard (not the entry guard) is responsible
+        for suppression.
+
+        RED: fails before Task 2 lands (final-commit guard absent →
+        delete_local still called after model lock released).
+        GREEN: final-commit guard under __auto_delete_lock fires → return,
+        no pop, no dispatch.
+        """
+        file_name = "midcallback_test.mkv"
+        mock_file = self._make_safe_mock_file()
+
+        # Seed imported_children so we can assert no pop on suppression.
+        self.persist.add_imported_child(file_name, "ep01.mkv")
+        self.assertIn(file_name, self.persist.imported_children)
+
+        # Side-effect: called during __model_lock work.  Sets the shutdown
+        # event and returns the normal file value so all model-path guards
+        # pass — the ONLY thing that should suppress delete is the final
+        # commit guard that runs after __model_lock releases.
+        def set_event_and_return(name):
+            self.controller._Controller__shutdown_event.set()
+            return mock_file
+
+        self.controller._Controller__model.get_file = MagicMock(
+            side_effect=set_event_and_return
+        )
+
+        self.controller._Controller__execute_auto_delete(file_name)
+
+        # Final-commit guard must prevent dispatch.
+        self.mock_file_op_manager.delete_local.assert_not_called()
+        self.mock_file_op_manager.delete_remote.assert_not_called()
+        # No persist mutation (criterion #2: no pop when suppressed).
+        self.assertIn(
+            file_name,
+            self.persist.imported_children,
+            "imported_children must NOT be popped when final-commit guard suppresses",
+        )
+
+    # ------------------------------------------------------------------ #
+    # Test C — positive control                                           #
+    # ------------------------------------------------------------------ #
+
+    def test_c_positive_control_delete_fires_when_no_shutdown(self):
+        """BUG-03 criterion #2 Test C (positive control).
+
+        __shutdown_event is NEVER set.  Asserts: delete_local is called
+        exactly once with the eligible file AND imported_children entry is
+        popped.  Proves the guards are what suppresses A and B — not some
+        other code path.
+
+        Must PASS both before and after Task 2 (guard code never activates).
+        """
+        file_name = "control_test.mkv"
+        mock_file = self._make_safe_mock_file()
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+
+        # Seed imported_children to verify the pop DOES happen on normal delete.
+        self.persist.add_imported_child(file_name, "ep01.mkv")
+        self.assertIn(file_name, self.persist.imported_children)
+
+        # Event never set — normal execution path.
+        self.controller._Controller__execute_auto_delete(file_name)
+
+        # Positive control: delete must fire.
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        # And the per-child entry must be cleaned up.
+        self.assertNotIn(
+            file_name,
+            self.persist.imported_children,
+            "imported_children must be popped on a normal (non-suppressed) auto-delete",
+        )
+
+    # ------------------------------------------------------------------ #
+    # Test D — criterion #1 verify-only: no timer armed after exit()     #
+    # ------------------------------------------------------------------ #
+
+    @pytest.mark.timeout(10)
+    def test_d_criterion1_no_timer_armed_after_exit(self):
+        """BUG-03 criterion #1 (verify-only per D-01): no timer remains armed
+        after exit().
+
+        Schedules a real auto-delete timer via the production
+        __schedule_auto_delete path (long delay so it never fires), calls
+        exit(), and asserts both that the pending dict is empty and that the
+        timer itself is no longer alive.
+
+        This pins the already-shipped cancel-on-exit behaviour from Phase 101
+        Plan 05 — no new production code is required or expected to make this
+        test pass.
+        """
+        file_name = "exit_test.mkv"
+
+        # Use a very long delay so the timer cannot fire during the test.
+        self.mock_context.config.autodelete.delay_seconds = 300
+
+        # Schedule via the production path to arm a real Timer.
+        self.controller._Controller__schedule_auto_delete(file_name)
+        timer = self.controller._Controller__pending_auto_deletes[file_name]
+        self.assertTrue(timer.is_alive(), "Timer must be alive before exit()")
+
+        # Mark started so exit() runs cleanup.
+        self.controller._Controller__started = True
+
+        self.controller.exit()
+
+        # Criterion #1: no timer armed after exit().
+        self.assertEqual(
+            {},
+            self.controller._Controller__pending_auto_deletes,
+            "Pending auto-deletes dict must be empty after exit()",
+        )
+        # timer.cancel() sets the internal finished Event synchronously, so
+        # finished.is_set() is the reliable "was cancelled" signal.  The
+        # thread may still be technically alive for a brief moment after cancel
+        # (it takes a scheduler tick for the wait() call to unblock), so we
+        # prefer the canonical finished.is_set() check over is_alive().
+        self.assertTrue(
+            timer.finished.is_set(),
+            "Timer.finished must be set after exit() (timer was cancelled)",
+        )
