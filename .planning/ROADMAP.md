@@ -334,7 +334,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 **GSD internal label:** `v1.3.0-s3`. Source: `.planning/codebase/CONCERNS.md` (Dependencies at Risk + Tech Debt) + `.planning/REQUIREMENTS.md`.
 
 - [x] **Phase 104: Light Dependency Removals** - Confirm jQuery 4 and css-element-queries have no source usage, then drop both deps; bundle shrinks and Bootstrap interactions are unaffected (DEPS-01a, DEPS-01c) — completed 2026-06-01
-- [ ] **Phase 105: Font Awesome → Phosphor Migration** - Inventory every remaining `fa-*` icon class in templates, replace each with its Phosphor equivalent, then remove the font-awesome dep; no icon renders missing (DEPS-01b)
+- [x] **Phase 105: Font Awesome → Phosphor Migration** - Inventory every remaining `fa-*` icon class in templates, replace each with its Phosphor equivalent, then remove the font-awesome dep; no icon renders missing (DEPS-01b) (completed 2026-06-01)
 - [ ] **Phase 106: Mock-Fixture Bundle Hygiene** - Move `USE_MOCK_MODEL` toggle into `environment.ts`, relocate mock files out of `services/files/`, exclude via `fileReplacements`; production bundle contains none of the mock data (DEPS-02)
 
 ## Phase Details
@@ -428,7 +428,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 - [x] 105-01-PLAN.md — D-01: complete 39-class fa→ph mapping table + 8-ambiguous-icon user sign-off checkpoint (gates ambiguous-icon code) + D-07 BEFORE bundle baseline (wave 1, leaf, autonomous:false) — completed 2026-06-01
 - [x] 105-02-PLAN.md — DEPS-01b: migrate the files cluster (dashboard-log-pane/stats-strip/transfer-row/transfer-table/bulk-actions-bar) incl. the net-new .ph-spin CSS rule + corrected ph-prohibit + 3 specs (wave 2, depends 105-01)
 - [x] 105-03-PLAN.md — DEPS-01b: migrate the settings/logs/main clusters across all 5 edit layers, keeping coordinated dynamic-binding edits (options-list.ts + {{icon}} prefix; NAV_ICONS + [ngClass]) together, incl. corrected ph-computer-tower + notification-bell spec (wave 2, depends 105-01)
-- [ ] 105-04-PLAN.md — DEPS-01b: D-06 closing act — drop font-awesome from package.json + both angular.json styles lines + lock regen, AFTER build + dist/source residual grep + D-07 bundle delta + Karma floors + D-04 dev-server smoke test (wave 3, depends 105-02+105-03, autonomous:false)
+- [x] 105-04-PLAN.md — DEPS-01b: D-06 closing act — drop font-awesome from package.json + both angular.json styles lines + lock regen, AFTER build + dist/source residual grep + D-07 bundle delta + Karma floors + D-04 dev-server smoke test (wave 3, depends 105-02+105-03, autonomous:false)
 
 **UI hint**: yes
 
@@ -476,7 +476,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 | 97-100. Test Coverage Gaps (Slice 1) | v1.3.0 | 10/10 | Complete | 2026-05-31 |
 | 101-103. Known Bugs + Security (Slice 2) | v1.3.0-s2 | 9/9 (101: 6/6, 102: 1/1, 103: 2/2) | Complete | 2026-06-01 |
 | 104. Light Dependency Removals (Slice 3) | v1.3.0-s3 | 2/2 | Complete | 2026-06-01 |
-| 105. Font Awesome to Phosphor (Slice 3) | v1.3.0-s3 | 3/4 | In Progress|  |
+| 105. Font Awesome to Phosphor (Slice 3) | v1.3.0-s3 | 4/4 | Complete   | 2026-06-01 |
 | 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 0/TBD | Not started | - |
 
 ---
