@@ -62,6 +62,7 @@ None.
 ## Tech Debt
 
 - Bootstrap 5.3 still uses @import internally (blocked until Bootstrap 6)
+- `AppProcess` spawn-unpicklable (surfaced Phase 107, 2026-06-01): `AppProcess.__init__` creates `self.__exception_queue = Queue()` + `self._terminate = Event()` from the default (fork) multiprocessing context. Under `spawn`, `AppProcess.start()` pickles the whole instance and raises `TypeError: cannot pickle '_thread.lock' object` on its OWN fields — same bug class as INFRA-01 but in `AppProcess`, out of Phase 107's MP-logger-only scope. Pre-existing failure: `test_app_process.py::test_process_with_long_running_thread_terminates_properly` (fails at base commit too). Fix = migrate those two fields to a spawn-compatible context. Candidate for a future phase. See `.planning/milestones/v1.3.0-phases/107-mp-logger-spawn-safety/deferred-items.md`.
 
 ## Milestones Shipped
 
