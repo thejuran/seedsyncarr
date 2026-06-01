@@ -342,6 +342,7 @@ class TestAutoDeleteLogSanitization(unittest.TestCase):
 
         c._Controller__auto_delete_lock = threading.Lock()
         c._Controller__pending_auto_deletes = {}
+        c._Controller__shutdown_event = threading.Event()
         c._Controller__started = True
 
         # model + lock (needed by __execute_auto_delete)
