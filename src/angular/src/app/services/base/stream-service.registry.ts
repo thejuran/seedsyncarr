@@ -142,7 +142,7 @@ export class StreamDispatchService implements OnDestroy {
     private reconnectDueToTimeout(): void {
         // Tear down current subscription immediately so its error handler cannot fire
         // a competing reconnect after this timeout teardown has already scheduled one.
-        // Mirrors the identical entry teardown in createSseObserver() (lines 181-182).
+        // Mirrors the identical entry teardown at the top of createSseObserver().
         this._currentSubscription?.unsubscribe();
         this._currentSubscription = null;
 
