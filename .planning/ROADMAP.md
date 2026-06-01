@@ -477,7 +477,8 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   3. Existing `fork`-based logging behavior is unchanged — the Python test suite (including all existing `MultiprocessingLogger` tests) still passes on Linux (fork default); no test is deleted or skipped to accommodate the fix (INFRA-01, COMPAT).
   4. **Cross-cutting (COMPAT):** no change to observable logging output, log levels, log destinations, or any public `MultiprocessingLogger` API. CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises (3 previously-uncounted tests now counted; coverage holds or increases); Angular and E2E suites unaffected. No release/tag/version work in this phase.
 
-**Plans**: TBD
+**Plans**: 1 plan (1 wave)
+- [ ] 107-01-PLAN.md — INFRA-01: create the MultiprocessingLogger queue from a stored spawn-compatible context (get_context("spawn").Queue) and promote the three analog tests' process_1 closures to module-scope spawn targets launched via that context (wave 1, autonomous)
 
 ### Phase 108: Config + Handler Refactors
 
