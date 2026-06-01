@@ -422,17 +422,7 @@ describe("Testing confirm modal service", () => {
         expect(modal!.querySelector("#confirm-modal-title")).toBeTruthy();
     }));
 
-    describe("XSS / escapeHtml coverage", () => {
-        // Helper: access ConfirmModalService.escapeHtml (private static) via type cast to any.
-        // Casting the class constructor to any is the idiomatic TypeScript test pattern for
-        // private static helpers (PATTERNS.md section F). The cast is on the class, not on a
-        // nullable value, so no runtime null-guard is needed — calling a class method cannot
-        // null-fault (see 98-RESEARCH.md Area 1).
-        function escape(s: string): string {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return (ConfirmModalService as any).escapeHtml(s);
-        }
-
+    describe("XSS / structural DOM safety coverage (BUG-01)", () => {
         // Helper: walk the entire subtree rooted at `root` and return true if any element
         // carries an attribute whose name starts with "on". CSS has no attribute-name-prefix
         // selector ([on*=...] matches attribute VALUES), so walking element.attributes is the
@@ -460,62 +450,17 @@ describe("Testing confirm modal service", () => {
             );
         }
 
-        // D-04: Direct escapeHtml unit tests (synchronous — escapeHtml is a pure function,
-        // no fakeAsync needed).
-
-        it("should escape each metacharacter to its HTML entity", () => {
-            expect(escape("&")).toBe("&amp;");
-            expect(escape("<")).toBe("&lt;");
-            expect(escape(">")).toBe("&gt;");
-            expect(escape("\"")).toBe("&quot;");
-            expect(escape("'")).toBe("&#039;");
-        });
-
-        it("should replace & first so entity ampersands are not double-escaped", () => {
-            // Input: raw '<' (U+003C). After correct &-first escaping: '&lt;' (5 chars).
-            // If '&' were NOT replaced first, the '&' introduced by escaping '<' would be
-            // re-escaped, yielding '&amp;lt;' (8 chars) — the double-escape regression.
-            expect(escape("<")).toBe("&lt;");
-            expect(escape("&")).toBe("&amp;");
-            // Combined: '<&>' should become '&lt;&amp;&gt;' (not '&amp;lt;&amp;amp;&amp;gt;')
-            expect(escape("<&>")).toBe("&lt;&amp;&gt;");
-        });
-
-        it("should handle a combined attacker payload correctly", () => {
-            expect(escape("<script>alert(\"xss\")</script>"))
-                .toBe("&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;");
-        });
-
-        // D-01 documenting test: the escape set is intentionally limited to &<>"'.
-        // Backtick, U+2028, U+2029, and null byte are NOT escaped because this service
-        // renders into exactly two HTML contexts:
-        //   (a) element content (<h5>, <p>, button text)  — backtick is not a metacharacter here
-        //   (b) double-quoted class attribute              — backtick cannot close a double-quoted attr
-        // U+2028/U+2029 are JavaScript line-separators exploitable only inside <script> sinks
-        // (none present). Null byte is normalized/ignored by the HTML5 parser in these contexts.
-        // This omission is a locked decision (D-01 — see 98-CONTEXT.md); this test records the
-        // reasoning so it reads as intentional, not an oversight.
-        it("should NOT escape backtick / U+2028 / U+2029 / null byte (not XSS-exploitable in service's HTML contexts, per D-01)", () => {
-            // Backtick: not a metacharacter in element content or double-quoted attributes.
-            expect(escape("`")).toBe("`");
-            // U+2028 (line separator): only exploitable in <script> context, which this service lacks.
-            expect(escape("\u2028")).toBe("\u2028");
-            // U+2029 (paragraph separator): same rationale as U+2028.
-            expect(escape("\u2029")).toBe("\u2029");
-            // Null byte (U+0000): HTML5 parser normalizes it; not exploitable in these contexts.
-            expect(escape("\0")).toBe("\0");
-        });
-
-        // D-03 / D-05: End-to-end DOM XSS tests for all six escaped inputs.
+        // BUG-01 / D-01-D-05: End-to-end DOM XSS tests for all six inputs.
+        // Modal content is built structurally via Renderer2 createText() (D-01/D-02) —
+        // user strings become text nodes and are never parsed as HTML by the browser.
         //
-        // Each test follows the canonical idiom (spec lines 29-42):
-        //   service.confirm(options) \u2192 tick() \u2192 const modal = document.querySelector(".modal")!
-        // Four assertion layers per test (D-03):
-        //   (a) modal.querySelector("script") is null          \u2014 no script element parsed
-        //   (b) hasOnAttribute(modal) is false                 \u2014 no on* attribute in subtree
+        // Each test follows the canonical idiom:
+        //   service.confirm(options) -> tick() -> const modal = document.querySelector(".modal")!
+        // Assertion layers per test:
+        //   (a) modal.querySelector("script") is null      -- no script element parsed
+        //   (b) hasOnAttribute(modal) is false             -- no on* attribute in subtree
         //   (c) no [href]/[src] value starts with "javascript:"
-        //   (d) modal.innerHTML contains the escaped entity string
-        //       (proves entity encoding, not silent browser stripping \u2014 Pitfall 1)
+        //   (d) textContent contains the literal payload   -- visible text (structural outcome)
         //
         // Supersedes the two former partial XSS tests (spec lines 300-320 and 322-338, D-06).
         // Their unique textContent assertions are preserved in the title and body blocks below.
@@ -539,10 +484,7 @@ describe("Testing confirm modal service", () => {
                 expect(hasOnAttribute(modal)).toBe(false);
                 // (c) No javascript: URL
                 expect(hasJavascriptUrl(modal)).toBe(false);
-                // (d) Entity-encoded in raw innerHTML \u2014 proves escaping, not silent stripping
-                expect(modal.innerHTML).toContain("&lt;script&gt;");
-                expect(modal.innerHTML).toContain("&lt;/script&gt;");
-                // Preserved from superseded test (line 314): browser-decoded visible text
+                // (d) Literal payload visible as text (structural outcome)
                 expect(modalTitle.textContent).toContain("<script>");
             }));
 
@@ -560,10 +502,7 @@ describe("Testing confirm modal service", () => {
                 expect(modal.querySelector("script")).toBeNull();
                 expect(hasOnAttribute(modal)).toBe(false);
                 expect(hasJavascriptUrl(modal)).toBe(false);
-                expect(modal.innerHTML).toContain("&lt;script&gt;");
-                expect(modal.innerHTML).toContain("&lt;/script&gt;");
-                // Preserved from superseded test (line 315): img-based onerror payload visible
-                // as literal text (mirrors the former textContent assertion for body)
+                // Literal payload visible as text (structural outcome)
                 expect(modalBodyP.textContent).toContain("<script>");
             }));
 
@@ -581,8 +520,7 @@ describe("Testing confirm modal service", () => {
                 expect(modal.querySelector("img")).toBeNull();
                 expect(modal.querySelector("script")).toBeNull();
                 expect(hasOnAttribute(modal)).toBe(false);
-                expect(modal.innerHTML).toContain("&lt;img");
-                // Preserved from superseded test (line 315): decoded visible text
+                // Literal payload visible as text (structural outcome)
                 expect(modalBodyP.textContent).toContain("<img src=x onerror=alert(1)>");
             }));
 
@@ -599,9 +537,7 @@ describe("Testing confirm modal service", () => {
 
                 expect(modal.querySelector("script")).toBeNull();
                 expect(hasOnAttribute(modal)).toBe(false);
-                // Entity-encoded \u2014 the '<' was escaped
-                expect(modal.innerHTML).toContain("&lt;b&gt;");
-                // Preserved from superseded test (line 334): visible text contains literal tags
+                // Literal payload visible as text (structural outcome)
                 expect(modalBodyP.textContent).toContain("<b>file.txt</b>");
                 // No live <b> element created (preserved from line 337)
                 expect(modalBodyP.querySelector("b")).toBeNull();
@@ -622,8 +558,7 @@ describe("Testing confirm modal service", () => {
                 expect(modal.querySelector("script")).toBeNull();
                 expect(hasOnAttribute(modal)).toBe(false);
                 expect(hasJavascriptUrl(modal)).toBe(false);
-                expect(modal.innerHTML).toContain("&lt;script&gt;");
-                // Payload rendered as inert button text (visible text contains literal tags)
+                // Payload rendered as inert button text (structural outcome)
                 expect(okButton.textContent).toContain("<script>");
             }));
 
@@ -642,21 +577,17 @@ describe("Testing confirm modal service", () => {
                 expect(modal.querySelector("script")).toBeNull();
                 expect(hasOnAttribute(modal)).toBe(false);
                 expect(hasJavascriptUrl(modal)).toBe(false);
-                expect(modal.innerHTML).toContain("&lt;script&gt;");
-                // Payload rendered as inert button text
+                // Payload rendered as inert button text (structural outcome)
                 expect(cancelButton.textContent).toContain("<script>");
             }));
 
-        // D-02: skipCount-exemption documenting test and runtime-boundary probe.
+        // BUG-01 D-02/D-04: skipCount companion test and D-05 runtime-boundary probe.
         //
-        // Success-criterion #3 audit (all six escaped inputs + one exempt numeric site):
-        //   String inputs routed through escapeHtml before innerHTML (source lines 51-56):
-        //     title, body, okBtn, okBtnClass, cancelBtn, cancelBtnClass
-        //   skipMessage (source lines 59-64) is the ONLY un-escaped interpolation site.
-        //   It interpolates only `options.skipCount` (TypeScript type: number | undefined)
-        //   guarded by `if (skipCount && skipCount > 0)`. A real number cannot carry HTML
-        //   metacharacters, so no attacker-controlled string reaches innerHTML through it.
-        //   Routing skipCount through escapeHtml would be a misleading no-op (D-02).
+        // After BUG-01: all string inputs (title, body, okBtn, okBtnClass, cancelBtn,
+        // cancelBtnClass) are rendered via Renderer2 createText() — structural text nodes.
+        // skipCount is coerced with Number() (D-04) before the guard, then used as a
+        // primitive number in the template literal. A real numeric skipCount still renders
+        // exactly as before. A toString()-overriding object is blocked by the coercion.
 
         it("should leave skipCount interpolation un-escaped because skipCount is a " +
            "TypeScript number, not an attacker-controlled string (D-02 — only " +
@@ -675,28 +606,17 @@ describe("Testing confirm modal service", () => {
             expect(hasOnAttribute(modal)).toBe(false);
         }));
 
-        // Runtime-boundary probe (codex adversarial review, 2026-05-29):
-        // TypeScript types are erased at runtime. The service guards skipCount only with a
-        // truthiness and `> 0` check, then interpolates `${options.skipCount}` un-escaped.
-        // A caller that defeats the TypeScript type by passing a coercible object whose
-        // toString() returns markup is the one theoretical path that bypasses escaping at
-        // this numeric site. This test PINS the service's actual rendered behavior so the
-        // runtime contract is documented, not assumed.
-        //
-        // D-02's "no attacker string reaches this site" is scoped to trusted TypeScript
-        // callers (all current call sites pass real numbers — verified by grep). Runtime
-        // hardening (coerce Number(skipCount) or escape the string) is a PUBLIC-BEHAVIOR
-        // change deferred to v1.4.0 per CONTEXT.md. Do NOT modify confirm-modal.service.ts.
-        it("should pin the runtime behavior of skipCount when a caller defeats the " +
-           "TypeScript number type with a coercible object (D-02 scope: type-safety " +
-           "guards this in trusted TS callers; runtime hardening deferred to v1.4.0)",
+        // D-05 runtime-boundary probe (BUG-01 D-04/D-05, shipped Phase 103):
+        // Phase 103 delivers Number() coercion for skipCount (D-04). The prior deferral
+        // comment from slice-1 is now resolved — this probe is inverted to assert the
+        // hardened behavior. After D-04: Number(coercibleObject) = 1 (via valueOf()),
+        // the toString() method is NEVER called, and no markup reaches the DOM.
+        // The skip paragraph is also a Renderer2 text node (D-01), doubly safe.
+        it("should harden skipCount against toString()-overriding objects via Number() coercion (BUG-01 D-04/D-05)",
             fakeAsync(() => {
-                // The object satisfies the `if (skipCount && skipCount > 0)` guard via
-                // valueOf(), causing skipMessage to be emitted. The template literal
-                // `${options.skipCount}` then calls toString(), which returns raw HTML markup.
-                // The browser's HTML parser processes that markup when it is assigned to
-                // innerHTML — so the <img> element IS created in the rendered DOM.
-                // This test asserts exactly that observed runtime reality.
+                // Number({valueOf: ()=>1, toString: ()=>"<img...>"}) === 1 (valueOf path).
+                // toString() is never called because Number() returns a primitive number.
+                // The skip paragraph renders "1 file will be skipped" as a text node.
                 const coercibleSkipCount = {
                     valueOf: (): number => 1,
                     toString: (): string => "<img src=x onerror=\"alert(1)\">"
@@ -706,24 +626,25 @@ describe("Testing confirm modal service", () => {
                 tick();
 
                 const modal = document.querySelector(".modal")!;
-                // The second .modal-body p is rendered because valueOf() satisfies the guard
+                // The second .modal-body p is rendered because Number(obj) = 1, satisfies guard
                 const skipP = modal.querySelectorAll(".modal-body p")[1]!;
 
-                // Observed reality: toString() markup reaches innerHTML un-escaped.
-                // The <img> element IS parsed and exists in the DOM — the service does not
-                // sanitize this path at runtime. (Safe in production: all call sites use
-                // real number literals. Hardening = v1.4.0.)
-                expect(skipP.querySelector("img")).not.toBeNull();
-                // The skip paragraph contains the "file" suffix from the template literal
-                // (plural "s" because strict-equality `=== 1` fails for an object)
-                expect(skipP.textContent).toContain("files will be skipped");
+                // After D-04: toString() markup does NOT reach the DOM.
+                // No <img> element is created — Number() coercion blocks the attack.
+                expect(skipP.querySelector("img")).toBeNull();
+                // Singular "1 file" because Number(obj) === 1 (primitive, strict-equality holds)
+                expect(skipP.textContent).toContain("1 file will be skipped");
+                expect(modal.querySelector("script")).toBeNull();
+                expect(hasOnAttribute(modal)).toBe(false);
             }));
 
         // --- Class-attribute inputs (okBtnClass, cancelBtnClass) ---
         //
         // Payload: "btn\" onmouseover=\"alert(1)" attempts to close the double-quoted class
-        // attribute and inject an event-handler attribute. escapeHtml encodes '"' to '&quot;',
-        // keeping the payload inside the class value string (Pitfall 4, RESEARCH.md).
+        // attribute and inject an event-handler attribute. After BUG-01, class strings are
+        // applied via renderer.setAttribute(button, "class", value) — Renderer2 bypasses the
+        // HTML parser, so the breakout payload becomes a literal (invalid) class value,
+        // never a new attribute. The onmouseover attribute must not appear on the button.
 
         it("should neutralize an attribute-breakout payload in okBtnClass", fakeAsync(() => {
             service.confirm({
@@ -740,8 +661,7 @@ describe("Testing confirm modal service", () => {
             expect(okButton.getAttribute("onmouseover")).toBeNull();
             // Subtree walk: no on* attribute anywhere
             expect(hasOnAttribute(modal)).toBe(false);
-            // String assertion: the '"' was encoded, trapping the payload inside class value
-            expect(modal.innerHTML).toContain("&quot;");
+            // Structural: breakout payload is inert (Renderer2 setAttribute bypasses HTML parser)
             expect(modal.querySelector("script")).toBeNull();
         }));
 
@@ -761,8 +681,7 @@ describe("Testing confirm modal service", () => {
                 expect(cancelButton.getAttribute("onmouseover")).toBeNull();
                 // Subtree walk: no on* attribute anywhere
                 expect(hasOnAttribute(modal)).toBe(false);
-                // String assertion: the '"' was encoded
-                expect(modal.innerHTML).toContain("&quot;");
+                // Structural: breakout payload is inert (Renderer2 setAttribute bypasses HTML parser)
                 expect(modal.querySelector("script")).toBeNull();
             }));
     });

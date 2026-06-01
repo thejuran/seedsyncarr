@@ -30,15 +30,6 @@ export class ConfirmModalService {
         });
     }
 
-    private static escapeHtml(text: string): string {
-        return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
     private createModal(options: ConfirmModalOptions, resolve: (value: boolean) => void): void {
         // Save previously focused element for focus restoration on close
         this.previouslyFocusedElement = document.activeElement as HTMLElement;
@@ -48,20 +39,11 @@ export class ConfirmModalService {
         const cancelBtn = options.cancelBtn || "Cancel";
         const cancelBtnClass = options.cancelBtnClass || "btn btn-secondary";
 
-        const safeTitle = ConfirmModalService.escapeHtml(options.title);
-        const safeBody = ConfirmModalService.escapeHtml(options.body);
-        const safeOkBtn = ConfirmModalService.escapeHtml(okBtn);
-        const safeOkBtnClass = ConfirmModalService.escapeHtml(okBtnClass);
-        const safeCancelBtn = ConfirmModalService.escapeHtml(cancelBtn);
-        const safeCancelBtnClass = ConfirmModalService.escapeHtml(cancelBtnClass);
-
-        // Build skip count message if provided
-        let skipMessage = "";
-        if (options.skipCount && options.skipCount > 0) {
-            const plural = options.skipCount === 1 ? "" : "s";
-            skipMessage = `<p class="text-muted small mt-2">${options.skipCount} file${plural} ` +
-                `will be skipped (not eligible for this action)</p>`;
-        }
+        // Coerce skipCount to a primitive number (D-04 / BUG-01):
+        // Number() calls valueOf() on the argument, yielding a primitive before the guard.
+        // A toString()-overriding object cannot inject markup because n is a primitive number
+        // after coercion, and ${n} in the template literal calls Number.prototype.toString.
+        const n = Number(options.skipCount);
 
         // Create backdrop
         this.backdropElement = this.renderer.createElement("div");
@@ -97,23 +79,15 @@ export class ConfirmModalService {
         this.renderer.setAttribute(this.modalElement, "aria-modal", "true");
         this.renderer.setAttribute(this.modalElement, "aria-labelledby", "confirm-modal-title");
 
-        this.modalElement!.innerHTML = `
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="confirm-modal-title">${safeTitle}</h5>
-                    </div>
-                    <div class="modal-body">
-                        <p>${safeBody}</p>
-                        ${skipMessage}
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="${safeCancelBtnClass}" data-action="cancel">${safeCancelBtn}</button>
-                        <button type="button" class="${safeOkBtnClass}" data-action="ok">${safeOkBtn}</button>
-                    </div>
-                </div>
-            </div>
-        `;
+        // Build modal content tree with Renderer2 structural construction (BUG-01 / D-01):
+        // Each user-supplied string is passed to renderer.createText() which returns a DOM
+        // Text node. Text nodes cannot be parsed as HTML by the browser — a payload such as
+        // <script>alert(1)</script> renders as inert visible text and creates no child elements.
+        // This is a browser-level structural guarantee, strictly stronger than entity-escaping.
+        const modalContent = this.buildModalContent(
+            options.title, options.body, okBtn, okBtnClass, cancelBtn, cancelBtnClass, n
+        );
+        this.renderer.appendChild(this.modalElement, modalContent);
 
         this.renderer.appendChild(document.body, this.modalElement);
         this.renderer.addClass(document.body, "modal-open");
@@ -165,6 +139,102 @@ export class ConfirmModalService {
 
         // Focus the cancel button (safe default) after DOM has settled
         setTimeout(() => cancelButton.focus(), 0);
+    }
+
+    /**
+     * Build the inner modal content tree using Renderer2 structural construction (BUG-01 D-01).
+     *
+     * Every user-supplied string is passed to renderer.createText() — which returns a DOM
+     * Text node. Text nodes are NEVER parsed as HTML by the browser. No escaping routine is
+     * needed or used; the raw (un-escaped) string is correct here. Passing a pre-escaped
+     * string would render literal entities (e.g. "&lt;") as visible text — Pitfall 1.
+     *
+     * Class strings are applied via renderer.setAttribute(el, "class", value), which assigns
+     * the attribute structurally without HTML parsing. A breakout payload such as
+     * `btn" onmouseover="alert(1)` becomes an inert (possibly invalid) class value — the
+     * quote character cannot terminate an HTML attribute because no HTML parser is involved.
+     *
+     * Returns the fully assembled modal-dialog element, ready to be appended to modalElement
+     * before querySelector wiring (lines immediately after the call site) executes.
+     */
+    private buildModalContent(
+        title: string,
+        body: string,
+        okBtn: string,
+        okBtnClass: string,
+        cancelBtn: string,
+        cancelBtnClass: string,
+        n: number
+    ): HTMLElement {
+        // modal-dialog
+        const modalDialog = this.renderer.createElement("div");
+        this.renderer.addClass(modalDialog, "modal-dialog");
+        this.renderer.setAttribute(modalDialog, "role", "document");
+
+        const modalContent = this.renderer.createElement("div");
+        this.renderer.addClass(modalContent, "modal-content");
+
+        // modal-header
+        const modalHeader = this.renderer.createElement("div");
+        this.renderer.addClass(modalHeader, "modal-header");
+        const h5 = this.renderer.createElement("h5");
+        this.renderer.addClass(h5, "modal-title");
+        this.renderer.setAttribute(h5, "id", "confirm-modal-title");
+        // Pass raw title — createText() makes it an inert Text node (never parsed as HTML)
+        this.renderer.appendChild(h5, this.renderer.createText(title));
+        this.renderer.appendChild(modalHeader, h5);
+
+        // modal-body
+        const modalBody = this.renderer.createElement("div");
+        this.renderer.addClass(modalBody, "modal-body");
+        const bodyP = this.renderer.createElement("p");
+        this.renderer.appendChild(bodyP, this.renderer.createText(body));
+        this.renderer.appendChild(modalBody, bodyP);
+
+        // Optional skip-count paragraph (D-04): n is a primitive number after Number() coercion,
+        // so ${n} calls Number.prototype.toString — never the object's custom toString.
+        if (Number.isFinite(n) && n > 0) {
+            const plural = n === 1 ? "" : "s";
+            const skipP = this.renderer.createElement("p");
+            this.renderer.addClass(skipP, "text-muted");
+            this.renderer.addClass(skipP, "small");
+            this.renderer.addClass(skipP, "mt-2");
+            this.renderer.appendChild(skipP, this.renderer.createText(
+                `${n} file${plural} will be skipped (not eligible for this action)`
+            ));
+            this.renderer.appendChild(modalBody, skipP);
+        }
+
+        // modal-footer
+        const modalFooter = this.renderer.createElement("div");
+        this.renderer.addClass(modalFooter, "modal-footer");
+
+        // Cancel button (before OK per footer ordering convention)
+        const cancelButton = this.renderer.createElement("button");
+        this.renderer.setAttribute(cancelButton, "type", "button");
+        // data-action="cancel" required for querySelector wiring at createModal() lines 122-123
+        this.renderer.setAttribute(cancelButton, "data-action", "cancel");
+        // setAttribute bypasses HTML parser — breakout payloads become inert class values (D-03)
+        this.renderer.setAttribute(cancelButton, "class", cancelBtnClass);
+        this.renderer.appendChild(cancelButton, this.renderer.createText(cancelBtn));
+
+        // OK button
+        const okButton = this.renderer.createElement("button");
+        this.renderer.setAttribute(okButton, "type", "button");
+        // data-action="ok" required for querySelector wiring at createModal() lines 122-123
+        this.renderer.setAttribute(okButton, "data-action", "ok");
+        this.renderer.setAttribute(okButton, "class", okBtnClass);
+        this.renderer.appendChild(okButton, this.renderer.createText(okBtn));
+
+        this.renderer.appendChild(modalFooter, cancelButton);
+        this.renderer.appendChild(modalFooter, okButton);
+
+        this.renderer.appendChild(modalContent, modalHeader);
+        this.renderer.appendChild(modalContent, modalBody);
+        this.renderer.appendChild(modalContent, modalFooter);
+        this.renderer.appendChild(modalDialog, modalContent);
+
+        return modalDialog;
     }
 
     private destroyModal(): void {
