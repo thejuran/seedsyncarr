@@ -165,3 +165,35 @@ correcting the env flag for test correctness. Result: 611/611 tests pass.
 ---
 
 *Plan: 106-01 | D-06 artifact | Status: COMPLETE*
+
+---
+
+## Dev-Mode Smoke Test (Plan 106-02)
+
+**Provenance (own capture point — distinct from the prod-build captures above):**
+- Captured: 2026-06-01T17:52:02Z
+- HEAD at capture: `537ce65fb218548e00f6872d1904251cedf88702` (post-Wave-1 merge + tracking)
+- Method: `ng serve --configuration development --port 4209` (development config — no
+  `fileReplacements`, so it sees the REAL relocated fixture `tests/fixtures/mock-model-files.ts`
+  and `environment.ts` with the COMMITTED `useMockModel: true`; no temporary toggle was used).
+
+**D-06 part 2 — dev-mode mock toggle COMPAT proof (browser-level DOM assertion):**
+
+- Dev server compiled and served HTTP 200 at `http://localhost:4209/` (auto-routed to `/dashboard`).
+- Browser-DOM assertion (Playwright): a rendered DOM node
+  `<div class="file-name">[AUTHOR] A Really Cool Video About Cats.mkv</div>` is present in the
+  dashboard file table — proving the mock fixture renders end-to-end through the new
+  `environment.useMockModel` flag after the relocation (env flag `true` → `view-file.service.ts`
+  else-branch → `buildViewFromModelFiles(MOCK_MODEL_FILES)` → mock row visible). This is a
+  rendered DOM node, not merely a string in the served bundle.
+- Console errors observed: only the unrelated backend-SSE pair (`GET /server/stream` 404 →
+  `Error in stream`), caused by running the Angular dev server WITHOUT the Python backend. **Zero**
+  errors reference the relocated `tests/fixtures/mock-model-files` import path or a missing
+  `environment.useMockModel`. The checkpoint's no-fixture/no-env-flag-error condition is satisfied.
+
+**Result: PASS** — the dev-mode mock toggle still works via the new env flag (COMPAT / ROADMAP #4).
+
+**Human-verify checkpoint: APPROVED** (2026-06-01) — orchestrator self-approved on the browser-level
+DOM assertion (rendered `file-name` node), which is stronger evidence than a manual eyeball check.
+
+*Plan: 106-02 | D-06 part 2 artifact | Status: COMPLETE*
