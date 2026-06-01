@@ -348,7 +348,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 **GSD internal label:** `v1.3.0-s4`. Source: `.planning/codebase/CONCERNS.md` (Architecture/Maintainability + Tech Debt) + `.planning/REQUIREMENTS.md`.
 
 - [x] **Phase 107: MP-Logger Spawn Safety** - Production fix to `multiprocessing_logger.py` so the logger queue is created from a shared `spawn`-compatible context; three previously-failing spawn-context analog tests now pass on both macOS and Linux (INFRA-01) (completed 2026-06-01)
-- [ ] **Phase 108: Config + Handler Refactors** - Push `secret=True` into each `PROP` declaration so encrypt/decrypt/redact loops discover secrets dynamically (ARCH-02); extract a shared `_dispatch_command(...)` helper from the five duplicate per-action handlers (ARCH-03)
+- [x] **Phase 108: Config + Handler Refactors** - Push `secret=True` into each `PROP` declaration so encrypt/decrypt/redact loops discover secrets dynamically (ARCH-02); extract a shared `_dispatch_command(...)` helper from the five duplicate per-action handlers (ARCH-03) (completed 2026-06-01)
 - [ ] **Phase 109: Controller Decomposition** - Decompose the `Controller` god-class into cohesive collaborators with single responsibilities; public surface and all caller contracts are preserved; existing test suite stays green throughout (ARCH-01)
 
 ## Phase Details
@@ -498,8 +498,8 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   5. Every single-action and bulk-action endpoint (`/server/command/queue`, `/stop`, `/extract`, `/delete_local`, `/delete_remote`, and their `/bulk` equivalents) returns the same success/partial-failure HTTP response shapes and status codes as before the refactor — confirmed by the existing integration test suite staying green (ARCH-03, COMPAT). CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises; no test deleted. No release/tag/version work in this phase.
 
 **Plans**: 2 plans (1 wave — independent, disjoint files, both autonomous)
-- [ ] 108-01-PLAN.md — ARCH-02: extend `InnerConfig.PropMetadata` with a `secret` flag, mark the five secret PROPs `secret=True`, build a dynamic `secret_fields()` discovery API (3-tuple `(attr, field, ini_section)`, section derived structurally from the owning subclass), repoint config.py encrypt/decrypt loops + seedsyncarr.py startup hook, delete `_SECRET_FIELD_PATHS` (no alias); new auto-discovery test + Fernet round-trip suite stays green (wave 1, autonomous)
-- [ ] 108-02-PLAN.md — ARCH-03: extract `_dispatch_command(action, file_name, success_msg, *, guard=False)` in `web/handler/controller.py`, collapse the five `__handle_action_*` scaffolds to one-line delegates (guard=True for extract/delete_local/delete_remote), leave the bulk path byte-identical; existing single-action + integration suites pass unmodified (wave 1, autonomous)
+- [x] 108-01-PLAN.md — ARCH-02: extend `InnerConfig.PropMetadata` with a `secret` flag, mark the five secret PROPs `secret=True`, build a dynamic `secret_fields()` discovery API (3-tuple `(attr, field, ini_section)`, section derived structurally from the owning subclass), repoint config.py encrypt/decrypt loops + seedsyncarr.py startup hook, delete `_SECRET_FIELD_PATHS` (no alias); new auto-discovery test + Fernet round-trip suite stays green (wave 1, autonomous)
+- [x] 108-02-PLAN.md — ARCH-03: extract `_dispatch_command(action, file_name, success_msg, *, guard=False)` in `web/handler/controller.py`, collapse the five `__handle_action_*` scaffolds to one-line delegates (guard=True for extract/delete_local/delete_remote), leave the bulk path byte-identical; existing single-action + integration suites pass unmodified (wave 1, autonomous)
 
 ### Phase 109: Controller Decomposition
 
@@ -546,7 +546,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 | 105. Font Awesome to Phosphor (Slice 3) | v1.3.0-s3 | 4/4 | Complete   | 2026-06-01 |
 | 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 2/2 | Complete   | 2026-06-01 |
 | 107. MP-Logger Spawn Safety (Slice 4) | v1.3.0-s4 | 1/1 | Complete   | 2026-06-01 |
-| 108. Config + Handler Refactors (Slice 4) | v1.3.0-s4 | 0/2 | Planned | - |
+| 108. Config + Handler Refactors (Slice 4) | v1.3.0-s4 | 2/2 | Complete   | 2026-06-01 |
 | 109. Controller Decomposition (Slice 4) | v1.3.0-s4 | 0/TBD | Not started | - |
 
 ---
