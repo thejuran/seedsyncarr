@@ -11,19 +11,6 @@ from .error import AppError
 from .persist import Persist, PersistError
 from .types import overrides
 
-# Module-level tuple listing the 5 secret field paths used for encryption.
-# Format: (inner_attr_name_on_Config, field_name, INI_section_name)
-# INI sections are TitleCase; Config attrs are lowercase.
-# The [Encryption] section itself is intentionally NOT listed here —
-# the enabled boolean is not a secret and must never be encrypted (T-81-02-07).
-_SECRET_FIELD_PATHS = (
-    ("general", "webhook_secret", "General"),
-    ("general", "api_token", "General"),
-    ("lftp", "remote_password", "Lftp"),
-    ("sonarr", "sonarr_api_key", "Sonarr"),
-    ("radarr", "radarr_api_key", "Radarr"),
-)
-
 
 def _strtobool(value: str) -> int:
     """Convert a string representation of a boolean to 1 or 0.
@@ -640,8 +627,8 @@ class Config(Persist):
         on an unmapped or unrelated InnerConfig subclass flagged with secret can never
         appear here (F3 — cross-contamination guard).
 
-        The emitted 3-tuple shape is identical to the removed _SECRET_FIELD_PATHS
-        hand-maintained tuple: (attr_lowercase, field_name, ini_section_titlecase).
+        The emitted 3-tuple shape matches the hand-maintained module-level tuple
+        that was removed in ARCH-02: (attr_lowercase, field_name, ini_section_titlecase).
         Both existing consumers expect this shape.
 
         Adding a future secret field to ANY section (including Controller, Web,

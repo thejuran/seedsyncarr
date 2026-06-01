@@ -1236,7 +1236,7 @@ class TestSecretFieldDiscovery(unittest.TestCase):
         section (Controller, Web, AutoQueue, AutoDelete, Encryption) is auto-picked-up.
         """
         triples = list(Config.secret_fields())
-        # Must return exactly 5 entries — same as the removed _SECRET_FIELD_PATHS tuple
+        # Must return exactly 5 entries — same set as the hand-maintained tuple removed in ARCH-02
         self.assertEqual(5, len(triples), f"Expected 5 triples, got {len(triples)}: {triples}")
         # Exact expected set (order within the set is flexible; we sort for comparison)
         expected = {

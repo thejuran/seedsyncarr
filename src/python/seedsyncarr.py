@@ -15,7 +15,6 @@ from common import ServiceRestart
 from common import Localization, Status, ConfigError, Persist, PersistError
 from common import EncryptionError
 from common.encryption import is_ciphertext
-from common.config import _SECRET_FIELD_PATHS
 from controller import Controller, ControllerJob, ControllerPersist, AutoQueue, AutoQueuePersist
 from controller.webhook_manager import WebhookManager
 from web import WebAppJob, WebAppBuilder
@@ -410,7 +409,7 @@ class Seedsyncarr:
         if not config.encryption.enabled:
             return
         has_plaintext = False
-        for attr, field, _ in _SECRET_FIELD_PATHS:
+        for attr, field, _ in Config.secret_fields():
             value = getattr(getattr(config, attr), field, None)
             if value and not is_ciphertext(value):
                 has_plaintext = True
