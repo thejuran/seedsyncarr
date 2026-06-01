@@ -10,6 +10,19 @@ export interface ConfirmModalOptions {
     skipCount?: number;  // Number of items that will be skipped (for bulk actions)
 }
 
+// Fully-resolved inputs for buildModalContent — all defaults already applied and skipCount
+// coerced to a primitive number. Named fields (vs positional args) make an accidental
+// transposition of the interchangeable string fields a compile-time error.
+interface ModalContentOptions {
+    title: string;
+    body: string;
+    okBtn: string;
+    okBtnClass: string;
+    cancelBtn: string;
+    cancelBtnClass: string;
+    skipCount: number;
+}
+
 @Injectable({
     providedIn: "root"
 })
@@ -84,9 +97,15 @@ export class ConfirmModalService {
         // Text node. Text nodes cannot be parsed as HTML by the browser — a payload such as
         // <script>alert(1)</script> renders as inert visible text and creates no child elements.
         // This is a browser-level structural guarantee, strictly stronger than entity-escaping.
-        const modalContent = this.buildModalContent(
-            options.title, options.body, okBtn, okBtnClass, cancelBtn, cancelBtnClass, n
-        );
+        const modalContent = this.buildModalContent({
+            title: options.title,
+            body: options.body,
+            okBtn,
+            okBtnClass,
+            cancelBtn,
+            cancelBtnClass,
+            skipCount: n
+        });
         this.renderer.appendChild(this.modalElement, modalContent);
 
         this.renderer.appendChild(document.body, this.modalElement);
@@ -155,17 +174,14 @@ export class ConfirmModalService {
      * quote character cannot terminate an HTML attribute because no HTML parser is involved.
      *
      * Returns the fully assembled modal-dialog element, ready to be appended to modalElement
-     * before querySelector wiring (lines immediately after the call site) executes.
+     * before the querySelector wiring (immediately after the call site) executes.
+     *
+     * Accepts a single options object rather than positional args: all the string fields are
+     * interchangeable by type, so a named-field object makes an accidental transposition
+     * (e.g. okBtn vs okBtnClass) a compile-time error instead of a silent runtime defect.
      */
-    private buildModalContent(
-        title: string,
-        body: string,
-        okBtn: string,
-        okBtnClass: string,
-        cancelBtn: string,
-        cancelBtnClass: string,
-        n: number
-    ): HTMLElement {
+    private buildModalContent(content: ModalContentOptions): HTMLElement {
+        const {title, body, okBtn, okBtnClass, cancelBtn, cancelBtnClass, skipCount: n} = content;
         // modal-dialog
         const modalDialog = this.renderer.createElement("div");
         this.renderer.addClass(modalDialog, "modal-dialog");
@@ -212,7 +228,7 @@ export class ConfirmModalService {
         // Cancel button (before OK per footer ordering convention)
         const cancelButton = this.renderer.createElement("button");
         this.renderer.setAttribute(cancelButton, "type", "button");
-        // data-action="cancel" required for querySelector wiring at createModal() lines 122-123
+        // data-action="cancel" required for the querySelector wiring in createModal()
         this.renderer.setAttribute(cancelButton, "data-action", "cancel");
         // setAttribute bypasses HTML parser — breakout payloads become inert class values (D-03)
         this.renderer.setAttribute(cancelButton, "class", cancelBtnClass);
@@ -221,7 +237,7 @@ export class ConfirmModalService {
         // OK button
         const okButton = this.renderer.createElement("button");
         this.renderer.setAttribute(okButton, "type", "button");
-        // data-action="ok" required for querySelector wiring at createModal() lines 122-123
+        // data-action="ok" required for the querySelector wiring in createModal()
         this.renderer.setAttribute(okButton, "data-action", "ok");
         this.renderer.setAttribute(okButton, "class", okBtnClass);
         this.renderer.appendChild(okButton, this.renderer.createText(okBtn));
