@@ -445,7 +445,9 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   4. A development build (`ng build` or `ng serve` without `--configuration production`) with the env flag enabled correctly renders mock file rows in the dashboard, confirming the dev-mode path still functions end-to-end (DEPS-02).
   5. CI is green on amd64 + arm64 (Angular unit + E2E); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; Python `fail_under` ≥ 88 unchanged; production bundle size is measurably smaller than the Phase 105 baseline (mock data removed). No release/tag/version work in this phase.
 
-**Plans**: TBD
+**Plans**: 2 plans (2 waves)
+- [ ] 106-01-PLAN.md — DEPS-02 mechanism + autonomous proof: add `useMockModel` env flag (both env files), repoint `view-file.service.ts` to `environment.useMockModel`, `git mv` `mock-model-files.ts` → `tests/fixtures/`, add empty prod stub, second `angular.json` production `fileReplacements` entry, delete dead `screenshot-model-files.ts`; then AFTER prod build + bundle delta + dist absence-grep (`A Really Cool Video About Cats`) + Karma floors (wave 1)
+- [ ] 106-02-PLAN.md — DEPS-02 COMPAT half: dev-mode smoke-test checkpoint — `ng serve` with `useMockModel: true` renders mock rows from the relocated fixture (wave 2, depends 106-01, autonomous:false)
 
 **UI hint**: yes
 
@@ -477,8 +479,8 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 | 101-103. Known Bugs + Security (Slice 2) | v1.3.0-s2 | 9/9 (101: 6/6, 102: 1/1, 103: 2/2) | Complete | 2026-06-01 |
 | 104. Light Dependency Removals (Slice 3) | v1.3.0-s3 | 2/2 | Complete | 2026-06-01 |
 | 105. Font Awesome to Phosphor (Slice 3) | v1.3.0-s3 | 4/4 | Complete   | 2026-06-01 |
-| 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 0/TBD | Not started | - |
+| 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 0/2 | Planned | - |
 
 ---
 
-*Last updated: 2026-06-01 — Phase 105 Plan 01 complete: 39-class mapping table + sign-off (Q4=ph-file-zip, Q5 .ph-spin CSS approved) + BEFORE baseline. Executing Plan 02 (files cluster migration). No tag until slice 4.*
+*Last updated: 2026-06-01 — Phase 106 planned: 2 plans (2 waves) for DEPS-02 mock-fixture bundle hygiene — 106-01 (env-flag + relocation + fileReplacements + prod-absence proof, autonomous), 106-02 (dev-mode smoke-test checkpoint). No tag until slice 4.*
