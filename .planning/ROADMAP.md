@@ -425,7 +425,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   5. CI is green on amd64 + arm64 (Angular unit + E2E); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; Python `fail_under` ≥ 88 unchanged; production bundle size is equal to or smaller than the Phase 104 baseline. No release/tag/version work in this phase.
 
 **Plans**: 4 plans (3 waves)
-- [ ] 105-01-PLAN.md — D-01: complete 39-class fa→ph mapping table + 8-ambiguous-icon user sign-off checkpoint (gates ambiguous-icon code) + D-07 BEFORE bundle baseline (wave 1, leaf, autonomous:false)
+- [x] 105-01-PLAN.md — D-01: complete 39-class fa→ph mapping table + 8-ambiguous-icon user sign-off checkpoint (gates ambiguous-icon code) + D-07 BEFORE bundle baseline (wave 1, leaf, autonomous:false) — completed 2026-06-01
 - [ ] 105-02-PLAN.md — DEPS-01b: migrate the files cluster (dashboard-log-pane/stats-strip/transfer-row/transfer-table/bulk-actions-bar) incl. the net-new .ph-spin CSS rule + corrected ph-prohibit + 3 specs (wave 2, depends 105-01)
 - [ ] 105-03-PLAN.md — DEPS-01b: migrate the settings/logs/main clusters across all 5 edit layers, keeping coordinated dynamic-binding edits (options-list.ts + {{icon}} prefix; NAV_ICONS + [ngClass]) together, incl. corrected ph-computer-tower + notification-bell spec (wave 2, depends 105-01)
 - [ ] 105-04-PLAN.md — DEPS-01b: D-06 closing act — drop font-awesome from package.json + both angular.json styles lines + lock regen, AFTER build + dist/source residual grep + D-07 bundle delta + Karma floors + D-04 dev-server smoke test (wave 3, depends 105-02+105-03, autonomous:false)
@@ -476,9 +476,9 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 | 97-100. Test Coverage Gaps (Slice 1) | v1.3.0 | 10/10 | Complete | 2026-05-31 |
 | 101-103. Known Bugs + Security (Slice 2) | v1.3.0-s2 | 9/9 (101: 6/6, 102: 1/1, 103: 2/2) | Complete | 2026-06-01 |
 | 104. Light Dependency Removals (Slice 3) | v1.3.0-s3 | 2/2 | Complete | 2026-06-01 |
-| 105. Font Awesome to Phosphor (Slice 3) | v1.3.0-s3 | 0/4 | Not started | - |
+| 105. Font Awesome to Phosphor (Slice 3) | v1.3.0-s3 | 1/4 | In progress | - |
 | 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-06-01 — Phase 105 planned (4 plans, 3 waves: ambiguous-mapping sign-off + bundle baseline → files-cluster migration ∥ settings/logs/main migration → FA dep drop + bundle delta + smoke test). Phase 105 ready to execute. No tag until slice 4.*
+*Last updated: 2026-06-01 — Phase 105 Plan 01 complete: 39-class mapping table + sign-off (Q4=ph-file-zip, Q5 .ph-spin CSS approved) + BEFORE baseline. Executing Plan 02 (files cluster migration). No tag until slice 4.*

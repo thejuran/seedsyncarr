@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.3.0-s3
 milestone_name: Frontend Deps + Dead Code (v1.3.0 slice 3 of 4)
-status: completed
+status: executing
 stopped_at: Phase 105 context gathered
-last_updated: "2026-06-01T12:53:10.213Z"
-last_activity: 2026-06-01 -- Phase 104 plan 02 complete (DEPS-01a, DEPS-01c fully verified)
+last_updated: "2026-06-01T13:15:46.631Z"
+last_activity: 2026-06-01 -- Phase 105 execution started
 ---
 
 # Project State
@@ -15,14 +15,14 @@ last_activity: 2026-06-01 -- Phase 104 plan 02 complete (DEPS-01a, DEPS-01c full
 See: .planning/PROJECT.md (updated 2026-05-31)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 104 — Light Dependency Removals
+**Current focus:** Phase 105 — Font Awesome to Phosphor Migration
 
 ## Current Position
 
-Phase: 104 (Light Dependency Removals) — COMPLETE
-Plan: 2 of 2 (all plans complete)
-Status: Phase 104 complete — awaiting Phase 105 (Font Awesome → Phosphor Migration)
-Last activity: 2026-06-01 -- Phase 104 plan 02 complete (DEPS-01a, DEPS-01c fully verified)
+Phase: 105 (Font Awesome to Phosphor Migration) — EXECUTING
+Plan: 2 of 4
+Status: Executing Phase 105
+Last activity: 2026-06-01 -- Phase 105 Plan 01 complete (mapping table + sign-off + BEFORE baseline)
 
 ## Accumulated Context
 
@@ -33,6 +33,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 Roadmap shape (slice 3): 3 phases derived from the 4 v1 requirements (DEPS-01a/b/c, DEPS-02).
 
 Phase 104 complete (2026-06-01): DEPS-01a (jQuery) and DEPS-01c (css-element-queries) fully verified — AFTER build exit 0, DIST-CLEAN on library-code signatures, Karma 611/611 all floors held, Playwright smoke test APPROVED with zero jQuery/missing-dep console errors.
+
+Phase 105 Plan 01 complete (2026-06-01): D-01 mapping gate satisfied — 39-class fa→ph mapping table documented (32 confirmed + 8 user-signed-off), Q4 substituted to ph-file-zip (NOT ph-file-archive — authoritative for 105-02 + 105-03), Q5 .ph-spin CSS rule approved. D-07 BEFORE baseline captured: styles 473.05 kB / total 1.16 MB (font-awesome still present, HEAD a0bd106).
 
 - Phase 104 clusters the two lightweight dep removals (DEPS-01a jQuery — likely no source usage per CONCERNS.md; DEPS-01c css-element-queries — likely unused). Both share the same audit→confirm-unused→drop→verify-build rhythm and can execute together.
 - Phase 105 isolates Font Awesome → Phosphor migration (DEPS-01b) as its own phase because it requires a full template inventory and per-icon replacement — the heaviest work in this slice.
@@ -83,9 +85,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-01T12:24:36.937Z
-Stopped at: Phase 105 context gathered
-Next action: `/gsd:plan-phase 105` (Font Awesome → Phosphor Migration)
+Last session: 2026-06-01T13:35:00.000Z
+Stopped at: Phase 105 Plan 01 complete — 105-MAPPING-SIGNOFF.md (all 8 DECISION lines filled, sign-off approved) + 105-01-SUMMARY.md committed
+Next action: Execute 105-02-PLAN.md (files cluster migration — dashboard-log-pane / stats-strip / bulk-actions-bar)
 
 ## Operator Next Steps
 
