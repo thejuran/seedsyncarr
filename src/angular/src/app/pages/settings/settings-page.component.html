@@ -1,7 +1,7 @@
 <ng-template #optionsList let-header="header" let-options="options" let-id="id" let-icon="icon">
   <div class="settings-card">
     <div class="settings-card-header">
-      <i class="fa {{icon}}"></i>
+      <i class="ph {{icon}}"></i>
       <span>{{header}}</span>
     </div>
     <div class="settings-card-body">
@@ -29,7 +29,7 @@
 
       <div class="settings-card">
         <div class="settings-card-header">
-          <i class="fa fa-sliders"></i>
+          <i class="ph ph-sliders-horizontal"></i>
           <span>General Options</span>
         </div>
         <div class="settings-card-body settings-card-body--separated">
@@ -53,7 +53,7 @@
       <div class="settings-card">
         <div class="settings-card-header settings-card-header--server">
           <div class="settings-card-header-left">
-            <i class="fa fa-server"></i>
+            <i class="ph ph-computer-tower"></i>
             <span>Remote Server (LFTP)</span>
           </div>
           @if (commandsEnabled) {
@@ -88,22 +88,22 @@
           <div></div>
           <!-- Server Directory — full width -->
           <div class="grid-span-2">
-            <app-option [type]="OptionType.Text" [label]="'Server Directory'" [description]="'Path to your files on the remote server'" [icon]="'fa-folder-open-o'" [value]="(config | async)?.get('lftp')?.get('remote_path')" (changeEvent)="onSetConfig('lftp', 'remote_path', $event)"></app-option>
+            <app-option [type]="OptionType.Text" [label]="'Server Directory'" [description]="'Path to your files on the remote server'" [icon]="'ph-folder-open'" [value]="(config | async)?.get('lftp')?.get('remote_path')" (changeEvent)="onSetConfig('lftp', 'remote_path', $event)"></app-option>
           </div>
           <!-- Local Directory — full width -->
           <div class="grid-span-2">
-            <app-option [type]="OptionType.Text" [label]="'Local Directory'" [description]="'Downloaded files are placed here'" [icon]="'fa-hdd-o'" [value]="(config | async)?.get('lftp')?.get('local_path')" (changeEvent)="onSetConfig('lftp', 'local_path', $event)"></app-option>
+            <app-option [type]="OptionType.Text" [label]="'Local Directory'" [description]="'Downloaded files are placed here'" [icon]="'ph-hard-drive'" [value]="(config | async)?.get('lftp')?.get('local_path')" (changeEvent)="onSetConfig('lftp', 'local_path', $event)"></app-option>
           </div>
           <!-- Server Script Path — full width -->
           <div class="grid-span-2">
-            <app-option [type]="OptionType.Text" [label]="'Server Script Path'" [description]="'Where to install scanner script on remote server'" [icon]="'fa-file-code-o'" [value]="(config | async)?.get('lftp')?.get('remote_path_to_scan_script')" (changeEvent)="onSetConfig('lftp', 'remote_path_to_scan_script', $event)"></app-option>
+            <app-option [type]="OptionType.Text" [label]="'Server Script Path'" [description]="'Where to install scanner script on remote server'" [icon]="'ph-file-code'" [value]="(config | async)?.get('lftp')?.get('remote_path_to_scan_script')" (changeEvent)="onSetConfig('lftp', 'remote_path_to_scan_script', $event)"></app-option>
           </div>
         </div>
       </div>
 
       <div class="settings-card">
         <div class="settings-card-header">
-          <i class="fa fa-search"></i>
+          <i class="ph ph-magnifying-glass"></i>
           <span>File Discovery Polling</span>
         </div>
         <div class="settings-card-body">
@@ -138,7 +138,7 @@
 
       <div class="settings-card">
         <div class="settings-card-header">
-          <i class="fa fa-tachometer"></i>
+          <i class="ph ph-gauge"></i>
           <span>LFTP Connection Limits</span>
         </div>
         <div class="settings-card-body settings-card-body--grid-2col">
@@ -172,7 +172,7 @@
       <div class="settings-card">
         <div class="settings-card-header settings-card-header--toggle">
           <div class="settings-card-header-left">
-            <i class="fa fa-list"></i>
+            <i class="ph ph-list"></i>
             <span>AutoQueue Engine</span>
           </div>
           <label class="header-toggle">
@@ -219,7 +219,7 @@
                     [disabled]="!(commandsEnabled && autoqueueEnabled && patternsOnly)"
                     (click)="onRemovePattern(pattern)"
                     aria-label="Remove pattern">
-                    <i class="fa fa-times"></i>
+                    <i class="ph ph-x"></i>
                   </button>
                 </div>
               }
@@ -236,7 +236,7 @@
               <button class="btn-pattern-add" type="button"
                 [disabled]="!(commandsEnabled && newPattern && autoqueueEnabled && patternsOnly)"
                 (click)="onAddPattern()">
-                <i class="fa fa-plus-circle"></i> Add
+                <i class="ph ph-plus-circle"></i> Add
               </button>
             </div>
           </div>
@@ -305,7 +305,7 @@
                   <button class="btn btn-sm btn-secondary webhook-copy-btn" type="button"
                     (click)="onCopyWebhookFromInput(sonarrWebhookInput, 'sonarr')"
                     [title]="sonarrWebhookCopied ? 'Copied!' : 'Copy URL'">
-                    <i class="fa" [class.fa-check]="sonarrWebhookCopied" [class.fa-copy]="!sonarrWebhookCopied"></i>
+                    <i class="ph" [class.ph-check]="sonarrWebhookCopied" [class.ph-copy]="!sonarrWebhookCopied"></i>
                   </button>
                 </div>
               </div>
@@ -374,7 +374,7 @@
                   <button class="btn btn-sm btn-secondary webhook-copy-btn" type="button"
                     (click)="onCopyWebhookFromInput(radarrWebhookInput, 'radarr')"
                     [title]="radarrWebhookCopied ? 'Copied!' : 'Copy URL'">
-                    <i class="fa" [class.fa-check]="radarrWebhookCopied" [class.fa-copy]="!radarrWebhookCopied"></i>
+                    <i class="ph" [class.ph-check]="radarrWebhookCopied" [class.ph-copy]="!radarrWebhookCopied"></i>
                   </button>
                 </div>
               </div>
@@ -386,7 +386,7 @@
       <div class="settings-card settings-card--autodelete">
         <div class="settings-card-header settings-card-header--toggle">
           <div class="settings-card-header-left">
-            <i class="fa fa-trash"></i>
+            <i class="ph ph-trash"></i>
             <span>Post-Import Pruning</span>
           </div>
           <label class="header-toggle header-toggle--compact">
@@ -418,7 +418,7 @@
       @if (apiToken) {
         <div class="settings-card settings-card--security">
           <div class="settings-card-header">
-            <i class="fa fa-shield"></i>
+            <i class="ph ph-shield"></i>
             <span>API &amp; Security</span>
           </div>
           <div class="settings-card-body">
@@ -431,16 +431,16 @@
                 <div class="token-actions">
                   <button type="button" class="token-action-btn"
                     (click)="tokenRevealed = !tokenRevealed">
-                    <i class="fa" [class.fa-eye]="!tokenRevealed" [class.fa-eye-slash]="tokenRevealed"></i>
+                    <i class="ph" [class.ph-eye]="!tokenRevealed" [class.ph-eye-slash]="tokenRevealed"></i>
                   </button>
                   <button type="button" class="token-action-btn"
                     (click)="onCopyToken()">
-                    <i class="fa" [class.fa-check]="tokenCopied" [class.fa-copy]="!tokenCopied"></i>
+                    <i class="ph" [class.ph-check]="tokenCopied" [class.ph-copy]="!tokenCopied"></i>
                   </button>
                 </div>
               </div>
               <button class="btn-regenerate" type="button">
-                <i class="fa fa-refresh"></i> Regenerate Token
+                <i class="ph ph-arrows-clockwise"></i> Regenerate Token
               </button>
             </div>
           </div>
@@ -454,7 +454,7 @@
     <div class="floating-save-inner">
       <div class="floating-save-text">
         @if (saveConfirmed) {
-          <i class="fa fa-check-circle floating-save-icon--success"></i>
+          <i class="ph ph-check-circle floating-save-icon--success"></i>
           <div class="floating-save-labels">
             <span class="save-status-label">Changes Saved</span>
           </div>
@@ -468,7 +468,7 @@
       <button class="btn-save-settings"
         [disabled]="!commandsEnabled"
         (click)="onCommandRestart()">
-        <i class="fa fa-floppy-o"></i> Save Settings
+        <i class="ph ph-floppy-disk"></i> Save Settings
       </button>
     </div>
   </div>

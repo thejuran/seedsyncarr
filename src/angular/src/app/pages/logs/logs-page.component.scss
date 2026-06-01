@@ -146,13 +146,13 @@ $error: #c45b5b;
         background-color: $muted;
     }
 
-    &--active .fa-check-circle {
+    &--active .ph-check-circle {
         color: $success;
         font-size: 1.125rem;
     }
 
     &:not(.action-btn--active) {
-        .fa-circle-o {
+        .ph-circle {
             color: $textsec;
         }
         color: $textsec;

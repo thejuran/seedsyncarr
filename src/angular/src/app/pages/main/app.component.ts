@@ -90,14 +90,14 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     private static readonly NAV_ICONS: Record<string, string> = {
-        dashboard: "fa-th-large",
-        settings: "fa-cog",
-        logs: "fa-terminal",
-        about: "fa-info-circle"
+        dashboard: "ph-squares-four",
+        settings: "ph-gear",
+        logs: "ph-terminal",
+        about: "ph-info"
     };
 
     navIcon(path: string): string {
-        return AppComponent.NAV_ICONS[path] ?? "fa-circle";
+        return AppComponent.NAV_ICONS[path] ?? "ph-circle";
     }
 
     title = "app";

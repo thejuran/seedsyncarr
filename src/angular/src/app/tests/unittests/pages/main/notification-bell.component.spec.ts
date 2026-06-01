@@ -32,7 +32,7 @@ describe("NotificationBellComponent", () => {
             @let notifs = notifications$ | async;
             <div class="bell-wrapper">
               <button class="bell-btn" aria-label="Notifications" (click)="toggleBell()">
-                <i class="fa fa-bell"></i>
+                <i class="ph ph-bell"></i>
                 @if (notifs?.size > 0) {
                   <span class="bell-badge-dot"></span>
                 }
@@ -51,7 +51,7 @@ describe("NotificationBellComponent", () => {
                           <span class="bell-notif-text">{{ notif.text }}</span>
                           @if (notif.dismissible) {
                             <button class="bell-notif-dismiss" (click)="dismissNotification(notif)">
-                              <i class="fa fa-times"></i>
+                              <i class="ph ph-x"></i>
                             </button>
                           }
                         </div>

@@ -18,7 +18,7 @@
 
     <!-- Regex search field -->
     <div class="search-field">
-      <i class="fa fa-search search-icon"></i>
+      <i class="ph ph-magnifying-glass search-icon"></i>
       <input
         type="text"
         class="search-input"
@@ -32,7 +32,7 @@
   <div class="toolbar-right">
     <!-- Auto-scroll toggle -->
     <button class="action-btn" [class.action-btn--active]="autoScroll" (click)="toggleAutoScroll()">
-      <i class="fa" [class.fa-check-circle]="autoScroll" [class.fa-circle-o]="!autoScroll"></i>
+      <i class="ph" [class.ph-check-circle]="autoScroll" [class.ph-circle]="!autoScroll"></i>
       Auto-scroll
     </button>
 
@@ -41,12 +41,12 @@
 
     <!-- Clear -->
     <button class="action-btn action-btn--clear" (click)="clearLogs()">
-      <i class="fa fa-trash"></i> Clear
+      <i class="ph ph-trash"></i> Clear
     </button>
 
     <!-- Export -->
     <button class="action-btn action-btn--export" (click)="exportLogs()">
-      <i class="fa fa-download"></i> Export .log
+      <i class="ph ph-download"></i> Export .log
     </button>
   </div>
 </div>
@@ -96,7 +96,7 @@
   <div class="status-bar__right">
     <span>{{ allLogs.length }} logs indexed</span>
     <span class="status-bar__divider">|</span>
-    <i class="fa fa-clock-o"></i>
+    <i class="ph ph-clock"></i>
     <span class="status-bar__timestamp">LAST UPDATED: {{ formatLastUpdated() }}</span>
   </div>
 </div>

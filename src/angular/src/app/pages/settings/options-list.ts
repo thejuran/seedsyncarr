@@ -16,7 +16,7 @@ export interface IOptionsContext {
 export const OPTIONS_CONTEXT_SERVER: IOptionsContext = {
     header: "Remote Server (LFTP)",
     id: "server",
-    icon: "fa-server",
+    icon: "ph-computer-tower",
     options: [
         {
             type: OptionType.Text,
@@ -72,7 +72,7 @@ export const OPTIONS_CONTEXT_SERVER: IOptionsContext = {
 export const OPTIONS_CONTEXT_DISCOVERY: IOptionsContext = {
     header: "File Discovery Polling",
     id: "file-discovery",
-    icon: "fa-search",
+    icon: "ph-magnifying-glass",
     options: [
         {
             type: OptionType.Text,
@@ -98,7 +98,7 @@ export const OPTIONS_CONTEXT_DISCOVERY: IOptionsContext = {
 export const OPTIONS_CONTEXT_CONNECTIONS: IOptionsContext = {
     header: "LFTP Connection Limits",
     id: "connections",
-    icon: "fa-tachometer",
+    icon: "ph-gauge",
     options: [
         {
             type: OptionType.Text,
@@ -147,7 +147,7 @@ export const OPTIONS_CONTEXT_CONNECTIONS: IOptionsContext = {
 export const OPTIONS_CONTEXT_OTHER: IOptionsContext = {
     header: "General Options",
     id: "other-settings",
-    icon: "fa-sliders",
+    icon: "ph-sliders-horizontal",
     options: [
         {
             type: OptionType.Text,
@@ -167,7 +167,7 @@ export const OPTIONS_CONTEXT_OTHER: IOptionsContext = {
 export const OPTIONS_CONTEXT_AUTOQUEUE: IOptionsContext = {
     header: "AutoQueue Engine",
     id: "autoqueue",
-    icon: "fa-list",
+    icon: "ph-list",
     options: [
         {
             type: OptionType.Checkbox,
@@ -193,7 +193,7 @@ export const OPTIONS_CONTEXT_AUTOQUEUE: IOptionsContext = {
 export const OPTIONS_CONTEXT_AUTODELETE: IOptionsContext = {
     header: "Post-Import Pruning",
     id: "autodelete",
-    icon: "fa-trash",
+    icon: "ph-trash",
     options: [
         {
             type: OptionType.Checkbox,
@@ -219,7 +219,7 @@ export const OPTIONS_CONTEXT_AUTODELETE: IOptionsContext = {
 export const OPTIONS_CONTEXT_EXTRACT: IOptionsContext = {
     header: "Archive Operations",
     id: "extraction",
-    icon: "fa-file-archive-o",
+    icon: "ph-file-zip",
     options: [
         {
             type: OptionType.Checkbox,
