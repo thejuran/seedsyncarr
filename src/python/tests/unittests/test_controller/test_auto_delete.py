@@ -807,3 +807,129 @@ class TestAutoDeleteShutdownGuard(BaseAutoDeleteTestCase):
             timer.finished.is_set(),
             "Timer.finished must be set after exit() (timer was cancelled)",
         )
+
+
+class TestAutoDeleteModelLockSerialization(BaseAutoDeleteTestCase):
+    """Code-review fix (102-02): regression test pinning that imported_children.pop
+    in the final-commit block of __execute_auto_delete executes while __model_lock
+    is held, not only under __auto_delete_lock.
+
+    Context: Phase 102 plan 01's BUG-03 fix moved the pop OUT of __model_lock and
+    INTO __auto_delete_lock to apply the shutdown-event guard. This is thread-unsafe
+    because every other accessor of imported_children (add_imported_child at
+    controller.py:804, the BFS-limit pop at ~928, the coverage-guard read at ~938)
+    holds __model_lock. __execute_auto_delete runs on a daemon threading.Timer thread
+    concurrently with add_imported_child on the controller process() thread; without
+    __model_lock serialization both threads can mutate the same OrderedDict without
+    exclusion, causing structural corruption or wrong coverage results.
+
+    The correct lock order is __model_lock THEN __auto_delete_lock (nested):
+    exit() takes ONLY __auto_delete_lock (never __model_lock), so acquiring
+    __model_lock first cannot deadlock against exit().
+
+    RED: fails against the Phase-102-plan-01 code where pop is ONLY under
+         __auto_delete_lock — __model_lock.locked() is False at pop call time.
+    GREEN: passes after the fix nests __auto_delete_lock inside __model_lock —
+           __model_lock.locked() is True at pop call time.
+    """
+
+    def _make_safe_mock_file(self, state=ModelFile.State.DOWNLOADED, is_dir=False, children=None):
+        """Build a ModelFile mock that passes all state + pack guards."""
+        mock_file = MagicMock(spec=ModelFile)
+        mock_file.state = state
+        mock_file.is_dir = is_dir
+        mock_file.get_children.return_value = children or []
+        return mock_file
+
+    def test_imported_children_pop_holds_model_lock(self):
+        """Regression: imported_children.pop in the final-commit block must execute
+        while __model_lock is held — not only under __auto_delete_lock.
+
+        Mechanism: replaces imported_children.pop with a wrapper whose side_effect
+        asserts __model_lock.locked() is True at call time. Because the test is
+        synchronous and single-threaded, locked() returning True means the current
+        (and only) thread holds the lock — i.e. we are inside a `with __model_lock:`
+        context. In the buggy code the pop runs after __model_lock was released;
+        locked() returns False and the inner assertEqual fails.
+
+        Also asserts:
+        - The pop wrapper was called exactly once (the pop DOES run on the positive path).
+        - delete_local was called exactly once (dispatch still fires, lock held correctly).
+        """
+        file_name = "model_lock_test.mkv"
+        mock_file = self._make_safe_mock_file()
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+
+        # Seed a child entry so the pop has something to remove and the call is
+        # unambiguously from the final-commit path (not from the BFS-limit path at
+        # ~928 which also calls pop and which IS already under __model_lock).
+        self.persist.add_imported_child(file_name, "ep01.mkv")
+        self.assertIn(file_name, self.persist.imported_children)
+
+        # Capture the real OrderedDict.pop before replacing it.
+        real_pop = self.persist.imported_children.pop
+        pop_call_count = []
+        model_lock_held_at_pop = []
+
+        def asserting_pop(key, *args):
+            # Record whether __model_lock is held at the moment pop is called.
+            model_lock_held_at_pop.append(
+                self.controller._Controller__model_lock.locked()
+            )
+            pop_call_count.append(1)
+            return real_pop(key, *args)
+
+        self.persist.imported_children.pop = asserting_pop
+
+        # Shutdown event NOT set — take the full positive path to reach the
+        # final-commit block where the pop runs.
+        self.controller._Controller__execute_auto_delete(file_name)
+
+        # The pop wrapper must have been called exactly once (the final-commit pop).
+        self.assertEqual(
+            1,
+            len(pop_call_count),
+            "imported_children.pop must be called exactly once on the positive path",
+        )
+        # Core assertion: __model_lock was held when pop executed.
+        # FAILS in Phase-102-plan-01 code (pop is only under __auto_delete_lock).
+        # PASSES after the fix (pop nested inside with __model_lock:).
+        self.assertTrue(
+            model_lock_held_at_pop[0],
+            "__model_lock must be held during imported_children.pop in the final-commit "
+            "block — it is NOT under the current (buggy) code, allowing a concurrent "
+            "add_imported_child on the process() thread to race the pop without exclusion.",
+        )
+        # Positive-path invariants: dispatch still fires and entry was cleared.
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.assertNotIn(file_name, self.persist.imported_children)
+
+    def test_delete_local_is_outside_model_lock(self):
+        """Confirm that delete_local is dispatched OUTSIDE __model_lock (must still
+        hold after the fix; ensures the fix does not accidentally hold __model_lock
+        across the subprocess-spawning delete_local call, which would starve model
+        updates on the controller process() thread).
+
+        Reuses the existing TestAutoDeleteExecution.test_execute_releases_lock_before_delete_local
+        semantics but lives here so the model-lock serialization class is self-contained.
+        """
+        file_name = "lock_release_test.mkv"
+        mock_file = self._make_safe_mock_file()
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+
+        lock_held_during_delete = []
+
+        def check_lock_on_delete(file):
+            lock_held_during_delete.append(
+                self.controller._Controller__model_lock.locked()
+            )
+
+        self.mock_file_op_manager.delete_local.side_effect = check_lock_on_delete
+
+        self.controller._Controller__execute_auto_delete(file_name)
+
+        self.assertFalse(
+            lock_held_during_delete[0],
+            "__model_lock must NOT be held during delete_local (it spawns a subprocess; "
+            "holding the lock would starve model updates on the controller thread)",
+        )
