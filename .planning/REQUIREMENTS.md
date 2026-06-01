@@ -51,8 +51,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | ARCH-01 | Phase 109 | Pending |
-| ARCH-02 | Phase 108 | Pending |
-| ARCH-03 | Phase 108 | Pending |
+| ARCH-02 | Phase 108 | Complete |
+| ARCH-03 | Phase 108 | Complete |
 | INFRA-01 | Phase 107 | Pending |
 
 **Coverage:**

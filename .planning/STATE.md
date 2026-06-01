@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.3.0-s4
 milestone_name: Backend Architecture Refactor + Test Infra (v1.3.0 slice 4 of 4)
 status: executing
-stopped_at: Phase 108 context gathered
+stopped_at: Phase 108 complete (ARCH-02 + ARCH-03 landed, reviewed clean)
 last_updated: "2026-06-01T22:16:42.949Z"
-last_activity: 2026-06-01 -- Phase 108 execution started
+last_activity: 2026-06-01 -- Phase 108 complete; next is Phase 109 (Controller Decomposition)
 ---
 
 # Project State
@@ -15,14 +15,14 @@ last_activity: 2026-06-01 -- Phase 108 execution started
 See: .planning/PROJECT.md (updated 2026-06-01)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 108 — Config + Handler Refactors
+**Current focus:** Phase 109 — Controller Decomposition (next)
 
 ## Current Position
 
-Phase: 108 (Config + Handler Refactors) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 108
-Last activity: 2026-06-01 -- Phase 108 execution started
+Phase: 108 (Config + Handler Refactors) — COMPLETE (2/2 plans, reviewed clean)
+Next phase: 109 (Controller Decomposition) — ARCH-01
+Status: Phase 108 complete; ready to discuss/plan Phase 109
+Last activity: 2026-06-01 -- Phase 108 complete (ARCH-02 declarative secret discovery + ARCH-03 dispatch dedup)
 
 ## Accumulated Context
 
@@ -85,9 +85,9 @@ None.
 ## Session Continuity
 
 Last session: 2026-06-01T21:35:44.986Z
-Stopped at: Phase 108 context gathered
-Next action: Plan Phase 107 with `/gsd:plan-phase 107`
+Stopped at: Phase 108 complete (ARCH-02 + ARCH-03 landed, deep-reviewed clean)
+Next action: Discuss/plan Phase 109 with `/gsd:discuss-phase 109` (or `/gsd:plan-phase 109`)
 
 ## Operator Next Steps
 
-- Plan the first phase of slice 4 with `/gsd:plan-phase 107`
+- Phase 109 (Controller Decomposition, ARCH-01) is the final phase of slice 4 — it cuts the v1.3.0 tag on completion.
