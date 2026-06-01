@@ -11,19 +11,6 @@ from .error import AppError
 from .persist import Persist, PersistError
 from .types import overrides
 
-# Module-level tuple listing the 5 secret field paths used for encryption.
-# Format: (inner_attr_name_on_Config, field_name, INI_section_name)
-# INI sections are TitleCase; Config attrs are lowercase.
-# The [Encryption] section itself is intentionally NOT listed here —
-# the enabled boolean is not a secret and must never be encrypted (T-81-02-07).
-_SECRET_FIELD_PATHS = (
-    ("general", "webhook_secret", "General"),
-    ("general", "api_token", "General"),
-    ("lftp", "remote_password", "Lftp"),
-    ("sonarr", "sonarr_api_key", "Sonarr"),
-    ("radarr", "radarr_api_key", "Radarr"),
-)
-
 
 def _strtobool(value: str) -> int:
     """Convert a string representation of a boolean to 1 or 0.
@@ -129,19 +116,22 @@ class InnerConfig(ABC):
     """
     class PropMetadata:
         """Tracks property metadata"""
-        def __init__(self, checker: Callable, converter: Callable):
+        def __init__(self, checker: Callable, converter: Callable, secret: bool = False):
             self.checker = checker
             self.converter = converter
+            self.secret = secret
 
     # Global map to map a property to its metadata
     # Is there a way for each concrete class to do this separately?
     __prop_addon_map = collections.OrderedDict()
 
     @classmethod
-    def _create_property(cls, name: str, checker: Callable, converter: Callable) -> property:
+    def _create_property(
+        cls, name: str, checker: Callable, converter: Callable, secret: bool = False
+    ) -> property:
         prop = property(fget=lambda s: s._get_property(name),
                         fset=lambda s, v: s._set_property(name, v, checker))
-        prop_addon = InnerConfig.PropMetadata(checker=checker, converter=converter)
+        prop_addon = InnerConfig.PropMetadata(checker=checker, converter=converter, secret=secret)
         InnerConfig.__prop_addon_map[prop] = prop_addon
         return prop
 
@@ -217,6 +207,27 @@ class InnerConfig(ABC):
         # Set the property, which will invoke the checker
         self._set_property(name, native_value, prop_addon.checker)
 
+    @classmethod
+    def _iter_secret_field_names(cls) -> "list[str]":
+        """Yield field names of properties on THIS class where secret is True.
+
+        Uses the same per-class filter pattern as as_dict (line 194) to prevent
+        the shared global __prop_addon_map from leaking properties declared on
+        other InnerConfig subclasses. Iteration order matches declaration order
+        (OrderedDict insertion order preserved from _create_property calls).
+
+        Returns only fields owned by cls — not by any sibling or parent subclass.
+        The secret predicate uses identity check (secret is True) per project rule.
+        """
+        my_property_to_name_map = {
+            getattr(cls, p): p for p in dir(cls) if isinstance(getattr(cls, p), property)
+        }
+        result: list[str] = []
+        for prop, prop_addon in InnerConfig.__prop_addon_map.items():
+            if prop in my_property_to_name_map and prop_addon.secret is True:
+                result.append(my_property_to_name_map[prop])
+        return result
+
 # Useful aliases
 IC = InnerConfig
 PROP = InnerConfig._create_property  # intentional protected access: module-level shorthand
@@ -228,8 +239,8 @@ class Config(Persist):
     class General(IC):
         debug = PROP("debug", Checkers.null, Converters.bool)
         verbose = PROP("verbose", Checkers.null, Converters.bool)
-        webhook_secret = PROP("webhook_secret", Checkers.null, Converters.null)
-        api_token = PROP("api_token", Checkers.null, Converters.null)
+        webhook_secret = PROP("webhook_secret", Checkers.null, Converters.null, secret=True)
+        api_token = PROP("api_token", Checkers.null, Converters.null, secret=True)
         allowed_hostname = PROP("allowed_hostname", Checkers.null, Converters.null)
         webhook_require_secret = PROP("webhook_require_secret", Checkers.null, Converters.bool)  # BUG-02
 
@@ -245,7 +256,7 @@ class Config(Persist):
     class Lftp(IC):
         remote_address = PROP("remote_address", Checkers.string_nonempty, Converters.null)
         remote_username = PROP("remote_username", Checkers.string_nonempty, Converters.null)
-        remote_password = PROP("remote_password", Checkers.string_nonempty, Converters.null)
+        remote_password = PROP("remote_password", Checkers.string_nonempty, Converters.null, secret=True)
         remote_port = PROP("remote_port", Checkers.int_positive, Converters.int)
         remote_path = PROP("remote_path", Checkers.string_nonempty, Converters.null)
         local_path = PROP("local_path", Checkers.string_nonempty, Converters.null)
@@ -321,7 +332,7 @@ class Config(Persist):
     class Sonarr(IC):
         enabled = PROP("enabled", Checkers.null, Converters.bool)
         sonarr_url = PROP("sonarr_url", Checkers.null, Converters.null)
-        sonarr_api_key = PROP("sonarr_api_key", Checkers.null, Converters.null)
+        sonarr_api_key = PROP("sonarr_api_key", Checkers.null, Converters.null, secret=True)
 
         def __init__(self):
             super().__init__()
@@ -332,7 +343,7 @@ class Config(Persist):
     class Radarr(IC):
         enabled = PROP("enabled", Checkers.null, Converters.bool)
         radarr_url = PROP("radarr_url", Checkers.null, Converters.null)
-        radarr_api_key = PROP("radarr_api_key", Checkers.null, Converters.null)
+        radarr_api_key = PROP("radarr_api_key", Checkers.null, Converters.null, secret=True)
 
         def __init__(self):
             super().__init__()
@@ -422,7 +433,8 @@ class Config(Persist):
         # ── Decrypt hook (SEC-02 criterion #2) ───────���────────────────────────
         # Resolve encryption flag BEFORE from_dict so plaintext values reach the
         # PROP/Checker/Converter layer. The [Encryption] section itself is never
-        # in _SECRET_FIELD_PATHS (T-81-02-07).
+        # a secret field (T-81-02-07): Config.secret_fields() iterates it but
+        # Encryption.enabled is secret=False so it is never emitted.
         _decrypt_errors_local: list[str] = []
         try:
             encryption_enabled = bool(
@@ -435,26 +447,26 @@ class Config(Persist):
             if "Encryption" in config_dict:
                 config_dict["Encryption"]["enabled"] = "False"
         if encryption_enabled and cls._keyfile_path is not None:
-            # Pitfall 8.4 guard: if the keyfile is missing AND any of the 5
+            # Pitfall 8.4 guard: if the keyfile is missing AND any of the secret
             # fields are already ciphertext-shaped, refuse to create a new key
             # (a new key would orphan the existing ciphertext and cause data
             # loss). Only call load_or_create_key when the keyfile exists OR
-            # all 5 fields are plaintext (first-enable case).
+            # all secret fields are plaintext (first-enable case).
             keyfile_exists = os.path.isfile(cls._keyfile_path)
             has_existing_ciphertext = any(
                 is_ciphertext(config_dict.get(ini_section, {}).get(field_name, ""))
-                for (_, field_name, ini_section) in _SECRET_FIELD_PATHS
+                for (_, field_name, ini_section) in cls.secret_fields()
             )
             if not keyfile_exists and has_existing_ciphertext:
                 # Cannot decrypt — keyfile is gone and values are already
                 # ciphertext. Record errors for plan 03's startup warning hook.
-                for (_, field_name, ini_section) in _SECRET_FIELD_PATHS:
+                for (_, field_name, ini_section) in cls.secret_fields():
                     value = config_dict.get(ini_section, {}).get(field_name, "")
                     if is_ciphertext(value):
                         _decrypt_errors_local.append("{}.{}".format(ini_section, field_name))
             else:
                 key = load_or_create_key(cls._keyfile_path)
-                for (_, field_name, ini_section) in _SECRET_FIELD_PATHS:
+                for (_, field_name, ini_section) in cls.secret_fields():
                     if ini_section in config_dict and field_name in config_dict[ini_section]:
                         value = config_dict[ini_section][field_name]
                         if is_ciphertext(value):
@@ -480,10 +492,11 @@ class Config(Persist):
         config_dict = self.as_dict()
 
         # ── Encrypt hook (SEC-02 criterion #1b, T-81-02-01, T-81-02-05) ──���───
-        # Walk the 5 secret field paths and encrypt any non-empty, non-ciphertext
+        # Walk all secret fields and encrypt any non-empty, non-ciphertext
         # value when encryption is enabled. Already-ciphertext values are left
         # untouched (idempotent). Empty strings remain empty — never encrypted.
-        # The [Encryption] section itself is not in _SECRET_FIELD_PATHS (T-81-02-07).
+        # The [Encryption] section itself is never a secret field (T-81-02-07):
+        # Config.secret_fields() iterates it but Encryption.enabled stays secret=False.
         if self.encryption.enabled:
             if Config._keyfile_path is None:
                 raise ConfigError(
@@ -491,7 +504,7 @@ class Config(Persist):
                     "Call Config.set_keyfile_path() before saving."
                 )
             fernet_key = load_or_create_key(Config._keyfile_path)
-            for (_, field_name, ini_section) in _SECRET_FIELD_PATHS:
+            for (_, field_name, ini_section) in Config.secret_fields():
                 if ini_section in config_dict and field_name in config_dict[ini_section]:
                     value = config_dict[ini_section][field_name]
                     # Encrypt only non-empty plaintext values (research §6.3).
@@ -602,3 +615,47 @@ class Config(Persist):
             return isinstance(getattr(self, name), InnerConfig)
         except AttributeError:
             return False
+
+    @classmethod
+    def secret_fields(cls) -> "list[tuple[str, str, str]]":
+        """Return all (attr, field_name, ini_section) triples for properties flagged secret.
+
+        Iterates EVERY mapped Config section in declaration order (the same nine
+        sections that as_dict() walks: General, Lftp, Controller, Web, AutoQueue,
+        Sonarr, Radarr, AutoDelete, Encryption) and applies the per-class filter
+        inherited from InnerConfig._iter_secret_field_names() so that a property
+        on an unmapped or unrelated InnerConfig subclass flagged with secret can never
+        appear here (F3 — cross-contamination guard).
+
+        The emitted 3-tuple shape matches the hand-maintained module-level tuple
+        that was removed in ARCH-02: (attr_lowercase, field_name, ini_section_titlecase).
+        Both existing consumers expect this shape.
+
+        Adding a future secret field to ANY section (including Controller, Web,
+        AutoQueue, AutoDelete, or Encryption) requires only declaring it in its PROP
+        with the secret flag — this discovery code needs no edits (F1).
+
+        The [Encryption] section IS iterated, but Encryption.enabled carries the
+        default secret=False so it is never emitted (T-81-02-07).
+        """
+        # The nine sections in the same declaration order as Config.as_dict().
+        # Each entry is (attr_lowercase, InnerConfig_subclass).
+        # ini_section is derived structurally from subclass.__name__ (codex-verified:
+        # subclass.__name__ == TitleCase ini-section for every mapped section).
+        _section_map: list[tuple[str, type]] = [
+            ("general", cls.General),
+            ("lftp", cls.Lftp),
+            ("controller", cls.Controller),
+            ("web", cls.Web),
+            ("autoqueue", cls.AutoQueue),
+            ("sonarr", cls.Sonarr),
+            ("radarr", cls.Radarr),
+            ("autodelete", cls.AutoDelete),
+            ("encryption", cls.Encryption),
+        ]
+        result: list[tuple[str, str, str]] = []
+        for attr, subclass in _section_map:
+            ini_section: str = subclass.__name__
+            for field_name in subclass._iter_secret_field_names():
+                result.append((attr, field_name, ini_section))
+        return result

@@ -1194,3 +1194,211 @@ enabled=True
         """
         with self.assertRaises(PersistError):
             Config.from_str(content)
+
+
+# ── ARCH-02: declarative secret discovery tests ───────────────────────────────
+
+class TestSecretFieldDiscovery(unittest.TestCase):
+    """Tests for Config.secret_fields() dynamic discovery API (ARCH-02).
+
+    These tests were written BEFORE the implementation (TDD RED step).
+    Each test class that mutates class state cleans up in tearDown.
+    """
+
+    def setUp(self) -> None:
+        """Create temp dir + keyfile for Fernet round-trip tests."""
+        self.temp_dir = tempfile.mkdtemp(prefix="test_secret_discovery")
+        self.keyfile = os.path.join(self.temp_dir, "secrets.key")
+        Config.set_keyfile_path(self.keyfile)
+        self.addCleanup(Config.set_keyfile_path, None)
+        self.addCleanup(shutil.rmtree, self.temp_dir)
+        # Track injected state for teardown
+        self._injected_prop: Optional[property] = None
+        self._injected_prop_name: Optional[str] = None
+
+    def tearDown(self) -> None:
+        """Remove any injected temporary PROP from Config.General and __prop_addon_map."""
+        if self._injected_prop_name is not None and self._injected_prop is not None:
+            # Remove the property from Config.General
+            if hasattr(Config.General, self._injected_prop_name):
+                delattr(Config.General, self._injected_prop_name)
+            # Remove the PropMetadata entry from the shared global map
+            pam = InnerConfig._InnerConfig__prop_addon_map  # type: ignore[attr-defined]
+            pam.pop(self._injected_prop, None)
+            self._injected_prop = None
+            self._injected_prop_name = None
+
+    def test_discovery_iterates_all_sections_returns_exactly_five_real_triples(self) -> None:
+        """F1: discovery API returns exactly the 5 known (attr, field, ini_section) triples.
+
+        The discovery MUST iterate ALL mapped Config sections (not just
+        General/Lftp/Sonarr/Radarr), so that a future secret=True field in any
+        section (Controller, Web, AutoQueue, AutoDelete, Encryption) is auto-picked-up.
+        """
+        triples = list(Config.secret_fields())
+        # Must return exactly 5 entries — same set as the hand-maintained tuple removed in ARCH-02
+        self.assertEqual(5, len(triples), f"Expected 5 triples, got {len(triples)}: {triples}")
+        # Exact expected set (order within the set is flexible; we sort for comparison)
+        expected = {
+            ("general", "webhook_secret", "General"),
+            ("general", "api_token", "General"),
+            ("lftp", "remote_password", "Lftp"),
+            ("sonarr", "sonarr_api_key", "Sonarr"),
+            ("radarr", "radarr_api_key", "Radarr"),
+        }
+        self.assertEqual(expected, set(triples))
+
+    def test_encryption_enabled_not_discovered(self) -> None:
+        """T-81-02-07: Encryption.enabled is absent from discovery output.
+
+        The Encryption section IS iterated by the all-sections walk, but
+        enabled stays secret=False so it yields nothing.
+        """
+        triples = list(Config.secret_fields())
+        attrs_fields = [(attr, field) for attr, field, _ in triples]
+        # Encryption.enabled must never appear
+        self.assertNotIn(("encryption", "enabled"), attrs_fields)
+        # More generally: no Encryption section entry at all
+        sections = [ini_section for _, _, ini_section in triples]
+        self.assertNotIn("Encryption", sections)
+
+    def test_secret_field_on_unmapped_subclass_not_discovered(self) -> None:
+        """F3: A secret=True PROP on an unmapped throwaway subclass does NOT appear.
+
+        __prop_addon_map is a SHARED GLOBAL across all InnerConfig subclasses.
+        The per-class filter in the discovery API must prevent cross-contamination.
+        """
+        # Create a throwaway unmapped subclass with a secret=True PROP
+        class _ThrowawaySecret(InnerConfig):
+            throwaway_secret = InnerConfig._create_property(
+                "throwaway_secret", Checkers.null, Converters.null, secret=True
+            )
+
+            def __init__(self) -> None:
+                super().__init__()
+                self.throwaway_secret = None
+
+        try:
+            triples = list(Config.secret_fields())
+            fields = [(attr, field) for attr, field, _ in triples]
+            # The throwaway's secret field must NOT appear
+            self.assertNotIn(("_throwawaysecret", "throwaway_secret"), fields)
+            # More robustly: still exactly 5 real triples
+            self.assertEqual(5, len(triples))
+        finally:
+            # Clean up the throwaway's __prop_addon_map entry
+            prop = _ThrowawaySecret.throwaway_secret
+            pam = InnerConfig._InnerConfig__prop_addon_map  # type: ignore[attr-defined]
+            pam.pop(prop, None)
+
+    def test_secret_field_round_trips_through_fernet(self) -> None:
+        """F2, criterion #2: A temp secret=True PROP injected into Config.General is
+        auto-discovered AND round-trips through real to_str -> from_str Fernet path.
+
+        The injected field must appear in Config.secret_fields() output and its
+        value must be ciphertext on disk and original plaintext after decrypt.
+        This test asserts discovery + Fernet round-trip ONLY.
+        It does NOT assert any redacted-response behavior (_SENSITIVE_FIELDS is OUT OF SCOPE).
+        """
+        # Inject a temporary secret=True PROP into Config.General
+        temp_prop_name = "_test_temp_secret_field"
+        temp_prop = InnerConfig._create_property(
+            temp_prop_name, Checkers.null, Converters.null, secret=True
+        )
+        setattr(Config.General, temp_prop_name, temp_prop)
+        self._injected_prop = temp_prop
+        self._injected_prop_name = temp_prop_name
+
+        # Also need to add the field to General.__init__ so from_dict works.
+        # We accomplish this by directly setting on an instance after construction.
+        # The round-trip test uses to_str -> from_str, which goes through from_dict.
+        # Because from_dict calls from_dict on General's dict, and the injected PROP
+        # is now on Config.General, it will appear in as_dict output and be expected
+        # in from_dict input. We need the default Config() general to not crash.
+        # Patch General.__init__ to also init the temp field.
+        original_general_init = Config.General.__init__
+
+        def _patched_general_init(self_inner: "Config.General") -> None:
+            original_general_init(self_inner)
+            # Directly set the private backing store so the property getter works
+            setattr(self_inner, f"__{temp_prop_name}", None)
+
+        Config.General.__init__ = _patched_general_init  # type: ignore[method-assign]
+        self.addCleanup(setattr, Config.General, "__init__", original_general_init)
+
+        try:
+            # 1. Verify the injected field appears in discovery output
+            triples = list(Config.secret_fields())
+            found = any(field == temp_prop_name for _, field, _ in triples)
+            self.assertTrue(
+                found,
+                f"Injected temp field '{temp_prop_name}' not found in secret_fields(): {triples}"
+            )
+
+            # 2. Build a config with a plaintext value for the temp field + encryption enabled
+            c = Config()
+            c.general.debug = False
+            c.general.verbose = False
+            c.general.webhook_secret = ""
+            c.general.api_token = ""
+            c.general.allowed_hostname = ""
+            c.general.webhook_require_secret = False
+            c.lftp.remote_address = "host"
+            c.lftp.remote_username = "user"
+            c.lftp.remote_password = "pass"
+            c.lftp.remote_port = 22
+            c.lftp.remote_path = "/r"
+            c.lftp.local_path = "/l"
+            c.lftp.remote_path_to_scan_script = "/s.sh"
+            c.lftp.use_ssh_key = False
+            c.lftp.num_max_parallel_downloads = 2
+            c.lftp.num_max_parallel_files_per_download = 3
+            c.lftp.num_max_connections_per_root_file = 4
+            c.lftp.num_max_connections_per_dir_file = 5
+            c.lftp.num_max_total_connections = 6
+            c.lftp.use_temp_file = False
+            c.lftp.rate_limit = 0
+            c.controller.interval_ms_remote_scan = 30000
+            c.controller.interval_ms_local_scan = 10000
+            c.controller.interval_ms_downloading_scan = 2000
+            c.controller.extract_path = "/e"
+            c.controller.use_local_path_as_extract_path = False
+            c.controller.max_tracked_files = 5000
+            c.web.port = 8800
+            c.autoqueue.enabled = False
+            c.autoqueue.patterns_only = False
+            c.autoqueue.auto_extract = False
+            c.sonarr.enabled = False
+            c.sonarr.sonarr_url = ""
+            c.sonarr.sonarr_api_key = ""
+            c.radarr.enabled = False
+            c.radarr.radarr_url = ""
+            c.radarr.radarr_api_key = ""
+            c.autodelete.enabled = False
+            c.autodelete.dry_run = False
+            c.autodelete.delay_seconds = 60
+            c.encryption.enabled = True
+            # Set the injected temp field value
+            setattr(c.general, f"__{temp_prop_name}", "my_temp_secret_value")
+
+            # 3. Serialize: the temp field should be encrypted in the output
+            serialized = c.to_str()
+            parser = configparser.ConfigParser()
+            parser.read_string(serialized)
+            on_disk_value = parser.get("General", temp_prop_name)
+            self.assertTrue(
+                is_ciphertext(on_disk_value),
+                f"Expected ciphertext on disk for '{temp_prop_name}', got: {on_disk_value!r}"
+            )
+
+            # 4. Deserialize: the temp field must come back as plaintext
+            reloaded = Config.from_str(serialized)
+            decrypted_value = getattr(reloaded.general, temp_prop_name)
+            self.assertEqual(
+                "my_temp_secret_value",
+                decrypted_value,
+                f"Round-trip failed: got {decrypted_value!r} instead of 'my_temp_secret_value'"
+            )
+        finally:
+            # tearDown handles cleanup of the injected PROP and __prop_addon_map entry
+            pass
