@@ -1,91 +1,73 @@
-# Requirements: SeedSyncarr — v1.3.0 Slice 2 of 4: Known Bugs + Security
+# Requirements: SeedSyncarr — v1.3.0 Slice 3 of 4: Frontend Deps + Dead Code
 
 **Defined:** 2026-05-31
 **Core Value:** Reliable file sync from seedbox to local with automated media library integration.
-**Milestone:** v1.3.0 — Slice 2 of 4: Known Bugs + Security (GSD internal label `v1.3.0-s2`; one user-facing `v1.3.0` tag cut after slice 4)
-**Source:** `.planning/codebase/CONCERNS.md` buckets 2 (Known Bugs) + 3 (Security Considerations), audited 2026-05-26; plus two rolled-forward v1.3.0 deferred items.
+**Milestone:** v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code (GSD internal label `v1.3.0-s3`; one user-facing `v1.3.0` tag cut after slice 4)
+**Source:** `.planning/codebase/CONCERNS.md` — "Dependencies at Risk" (jQuery 4, Font Awesome 4.7, css-element-queries) + "Tech Debt" (mock-model toggle / fixtures in prod bundle); carried as v2 requirements (DEPS-01, DEPS-02) in the slice-2 REQUIREMENTS.md.
 
-> **Release note:** This milestone cuts **no** git tag. The entire 4-milestone program ships under a single combined `v1.3.0` tag, cut only after the final program milestone completes.
+> **Release note:** This milestone cuts **no** git tag. The entire 4-slice v1.3.0 program ships under a single combined `v1.3.0` tag, cut only after the final program slice (slice 4) completes.
 
 ## v1 Requirements
 
 Requirements for this milestone. Each maps to exactly one roadmap phase.
 
-### Known Bugs
+### Frontend Dependencies
 
-- [ ] **BUG-01**: A user-facing confirmation modal renders without any raw `innerHTML` sink — `ConfirmModalService` builds content via `Renderer2` (or a structural Angular component) so escaping is structural, not string-concatenation dependent. Folds in the deferred skipCount type-erasure hardening (coerce/escape `skipCount`).
-- [ ] **BUG-02**: An operator can **opt in** to webhook fail-closed behavior via a new config flag (default **off**, so existing installs are unchanged). When the flag is on and no secret is configured, the webhook endpoint rejects requests with 503 before parsing the body. When the flag is off (default), the existing behavior is preserved exactly: no secret → HMAC skipped + loud startup warning (the current `Empty webhook_secret skips HMAC` backward-compat contract). The required-secret expectation and the new flag are surfaced to the operator (startup warning / docs). **No breaking change on upgrade.**
-- [ ] **BUG-03**: Auto-delete `threading.Timer` callbacks are tracked and cancelled on controller shutdown, and a fired callback no-ops if shutdown is in progress — no deletion runs against a half-torn-down model.
-- [ ] **BUG-04**: The SSE stream-service registry never leaves an orphaned subscription when a reconnect fires in the same tick as a timeout — the prior EventSource/subscription is torn down before its replacement, leaving exactly one active subscription.
+- [ ] **DEPS-01a**: The Angular app no longer depends on **jQuery 4**. The dep is removed from `src/angular/package.json` after confirming no source usage (CONCERNS.md notes only Bootstrap referenced it, and Bootstrap 5.3 does not require jQuery); the `_bootstrap-overrides.scss` and `@popperjs/core` paths are audited to confirm removal is safe. The app builds, all Bootstrap-driven interactions (dropdowns, modals, collapses) still work, and the bundle no longer ships jQuery.
+- [ ] **DEPS-01b**: The Angular app no longer depends on **Font Awesome 4.7** (EOL). Every remaining `fa-*` icon class usage in templates is inventoried and replaced with its `@phosphor-icons/web` equivalent (the in-progress migration is completed), then the `font-awesome` dep is removed from `src/angular/package.json`. No icon renders missing or visually regressed; only one icon library ships.
+- [ ] **DEPS-01c**: The Angular app no longer depends on **css-element-queries** (unmaintained since 2019). Any usage is replaced with the native `ResizeObserver` API; if no usage exists, the dep is removed outright. Element-resize-driven behavior (if any) is unchanged across supported browsers.
 
-### Security
+### Dead Code / Bundle Hygiene
 
-- [ ] **SEC-01**: All log sites that interpolate remote-/webhook-/user-supplied strings pass through a sanitizer that strips or escapes CR/LF/control characters (CWE-117), closing the log-injection gap beyond the already-mitigated `webhook_manager` sites.
-- [ ] **SEC-02**: The config GET response does not leak whether a secret is set vs unset beyond the existing explicit boolean flag — secret-present and secret-absent responses are otherwise indistinguishable in shape.
-- [ ] **SEC-03**: The webhook endpoint is rate-limited with the same middleware applied to other mutable endpoints in v1.2.0, with a limit tuned to legitimate *arr callback frequency.
-
-### Test Infra (rolled forward from v1.3.0 deferred)
-
-- [ ] **INFRA-01** *(DEFERRED out of Phase 102 — 2026-05-31)*: The three MultiprocessingLogger analog tests that fail under macOS `spawn` pass on both `fork` and `spawn` start methods. The originally-assumed fix ("promote the `process_1` target to module scope") is **necessary but insufficient**: adversarial review (codex, confirmed by live repro) showed the `MultiprocessingLogger` queue is created in the default (fork) context, so handing it to a `spawn` child raises `RuntimeError: A SemLock created in a fork context is being shared with a process in a spawn context`. A correct fix requires creating the queue from a shared `spawn` context — a **production-module change** that exceeds this item's "lowest priority; include only if it does not expand the milestone" guard. Deferred to a later v1.3.0 slice where a `MultiprocessingLogger` production change is in scope.
+- [ ] **DEPS-02**: The development-only mock-model fixtures no longer ship in the production bundle. The `USE_MOCK_MODEL` toggle moves from a hardcoded class field in `view-file.service.ts` to a build-time flag in `src/angular/src/environments/environment.ts`, and `mock-model-files.ts` + `screenshot-model-files.ts` are relocated out of `services/files/` and excluded from production output via Angular `fileReplacements` so the mock dataset is tree-shaken from the prod build. Dev-mode mock behavior still works when the env flag is set; production bundle contains none of the mock data.
 
 ## Cross-Cutting Constraints
 
 These apply to **every** phase in this slice; each phase's success criteria must hold them:
 
-- **COMPAT — no breaking changes on upgrade.** Existing config files must load unchanged (no new *required* fields; any new flag defaults to current behavior). No change to existing public API contracts (request/response shapes, status codes for already-supported paths), webhook/HTTP behavior for existing configs, or on-disk persist formats. New behavior is additive and opt-in. (Anchors the project's `Empty webhook_secret skips HMAC` backward-compat decision — BUG-02 must not break it.)
-- **CI green** on amd64 + arm64 (Python + Angular + E2E).
-- **No coverage regression** — slice-1 ratchet floors hold or rise: Python `fail_under` 88; Karma global stmts/branches/fns/lines 83/68/79/83.
-- **Safe observability** — security fixes never log sensitive data; return generic client errors while logging detail server-side.
+- **COMPAT — no visual or behavioral regression.** No `fa-*` icon may be dropped without a verified Phosphor replacement rendered in its place; no Bootstrap interaction may break when jQuery is removed; the dev-mode mock toggle must continue to work via the new env flag. No change to any user-observable UI behavior or component API.
+- **CI green** on amd64 + arm64 (Angular unit + E2E; Python unaffected but must stay green).
+- **No coverage regression** — slice-1 ratchet floors hold or rise: Karma global stmts/branches/fns/lines 83/68/79/83; Python `fail_under` 88 (untouched this slice).
+- **Bundle does not grow** — each dependency removal should reduce (never increase) production bundle size; the mock-fixture removal must measurably drop mock data from the prod build.
 - **No release/tag/version-bump work** in any phase (single `v1.3.0` tag cut only after slice 4).
 
-## v2 Requirements (deferred to later program milestones)
+## v2 Requirements (deferred to the final program slice — v1.3.0 slice 4)
 
-### Frontend Deps + Dead Code (next program milestone)
+### Backend Architecture Refactor (slice 4)
 
-- **DEPS-01**: Drop jQuery 4, Font Awesome 4.7, css-element-queries.
-- **DEPS-02**: Move mock-model fixtures out of the production bundle via environment `fileReplacements`.
+- **ARCH-01**: Extract the `Controller` god-class (`controller.py`, ~1115 lines) into cohesive collaborators.
+- **ARCH-02**: Refactor `Config` property machinery; auto-discover secret fields (push `secret=True` into the `PROP` declaration so encrypt/decrypt loops discover secrets dynamically).
+- **ARCH-03**: Dedup the per-action bulk handler scaffold (`_dispatch_command(...)` helper shared by the five `__handle_action_*` methods and the bulk loop).
 
-### Backend Architecture Refactor (final program milestone)
+### Test Infra (rolled forward — slice 4)
 
-- **ARCH-01**: Extract the `Controller` god-class.
-- **ARCH-02**: Refactor `Config` property machinery; auto-discover secret fields.
-- **ARCH-03**: Dedup the per-action bulk handler scaffold.
+- **INFRA-01**: The three `MultiprocessingLogger` analog tests pass on both `fork` and `spawn` start methods. Requires creating the MP-logger queue from a shared `spawn` context — a **production-module change** to `multiprocessing_logger.py`. Deferred to slice 4 where a backend production change to that module is in thematic scope. (Originally deferred out of slice-2 Phase 102 on 2026-05-31; see slice-2 REQUIREMENTS.md INFRA-01 in git history for the full repro/diagnosis.)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| DNS-rebind hardening for `_validate_url` | Accepted risk per existing inline code comment ("out of scope for a homelab tool"); v1.3.0 test documents the limitation. |
-| Session-cookie auth / dropping api-token meta tag | Homelab single-user threat model accepted; larger redesign, not a bug fix. |
-| TLS termination in-product | Deployment concern (reverse proxy); documented expectation, not a code change here. |
-| Settings audit log | Missing-feature (CONCERNS bucket 9), not a known bug or actionable security item. |
-| Other known-bugs not in the approved set (e.g. `set_property` non-string coercion, ServiceExit broad-except, bulk-command queue-after-timeout) | Deferred — either lower risk or larger behavior change than this milestone's scope; revisit in a later milestone. |
-| Performance / scaling items (CONCERNS buckets 6 + 8) | Out of theme for a bug-fix + security milestone. |
+| Replacing `paste` / `bottle` Python HTTP server | Backend dependency risk noted in CONCERNS.md, but a server swap is a large behavior-test-heavy effort outside a frontend-deps slice; revisit in a future milestone. |
+| Replacing `pexpect`-driven LFTP/SSH | No Python SFTP library matches lftp's parallel-mirror feature set; treated as an external runtime requirement, documented not removed. |
+| Pinning `patoolib` / upper-bound hygiene on Python deps | Backend dep hardening, not frontend dead-code; can fold into slice 4 or a later dependency-maintenance pass. |
+| jQuery **upgrade** (vs. removal) | Goal is removal; if an audit unexpectedly finds a hard jQuery usage, that becomes a scoped finding — not a version bump. |
 
 ## Traceability
 
+Which phases cover which requirements. Populated during roadmap creation.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-02 | Phase 101 | Pending |
-| SEC-01 | Phase 101 | Pending |
-| SEC-03 | Phase 101 | Pending |
-| SEC-02 | Phase 101 | Pending |
-| BUG-03 | Phase 102 | Pending |
-| INFRA-01 | Deferred (was Phase 102) | Deferred — needs production-module change; later v1.3.0 slice |
-| BUG-01 | Phase 103 | Pending |
-| BUG-04 | Phase 103 | Pending |
+| DEPS-01a | TBD | Pending |
+| DEPS-01b | TBD | Pending |
+| DEPS-01c | TBD | Pending |
+| DEPS-02 | TBD | Pending |
 
 **Coverage:**
-- v1 requirements: 8 total
-- Mapped to active phases: 7 ✓ (BUG-01/02/03/04, SEC-01/02/03)
-- Deferred to a later v1.3.0 slice: 1 (INFRA-01 — test-only fix proven insufficient; needs a MultiprocessingLogger production change)
-- Unmapped: 0 ✓
-
-Phase distribution:
-- Phase 101 (Webhook + Log-Injection Security Cluster): BUG-02, SEC-01, SEC-03, SEC-02
-- Phase 102 (Controller Concurrency): BUG-03  *(INFRA-01 deferred to a later v1.3.0 slice — test-only fix proven insufficient; needs a MultiprocessingLogger production change)*
-- Phase 103 (Angular Defects): BUG-01, BUG-04
+- v1 requirements: 4 total
+- Mapped to phases: 0 (pending roadmap)
+- Unmapped: 4 ⚠️ (resolved at roadmap creation)
 
 ---
 *Requirements defined: 2026-05-31*
-*Last updated: 2026-05-31 after roadmap creation — all 8 requirements mapped to phases 101-103 (0 unmapped)*
+*Last updated: 2026-05-31 after defining v1.3.0 slice 3 requirements*
