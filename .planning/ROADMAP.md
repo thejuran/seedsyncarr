@@ -417,7 +417,7 @@ Plans:
 **GSD internal label:** `v1.3.0-s2`. Source: `.planning/codebase/CONCERNS.md` (Known Bugs + Security) + `.planning/REQUIREMENTS.md`.
 
 - [x] **Phase 101: Webhook + Log-Injection Security Cluster** - Webhook fails closed without a secret, log-injection sanitizer audit, webhook rate-limiting, config-response normalization (BUG-02, SEC-01, SEC-03, SEC-02) (completed 2026-05-31)
-- [ ] **Phase 102: Controller Concurrency** - Auto-delete Timer in-flight shutdown guard (BUG-03). *(INFRA-01 deferred to a later v1.3.0 slice — a spawn-safe fix requires a production-module change to MultiprocessingLogger's queue context, which exceeds INFRA-01's "lowest priority; must not expand the milestone, test-only" constraint. See Phase 102 notes.)*
+- [x] **Phase 102: Controller Concurrency** - Auto-delete Timer in-flight shutdown guard (BUG-03). *(INFRA-01 deferred to a later v1.3.0 slice — a spawn-safe fix requires a production-module change to MultiprocessingLogger's queue context, which exceeds INFRA-01's "lowest priority; must not expand the milestone, test-only" constraint. See Phase 102 notes.)* (completed 2026-06-01)
 - [ ] **Phase 103: Angular Defects** - Replace ConfirmModal innerHTML sink with Renderer2 (incl. skipCount hardening), SSE registry same-tick subscription teardown (BUG-01, BUG-04)
 
 ## Phase Details
@@ -457,7 +457,7 @@ Plans:
 > **INFRA-01 deferred (decision 2026-05-31).** Adversarial review (codex, confirmed by a live repro) found the MP-logger spawn-safe fix cannot be done test-only: the `MultiprocessingLogger` queue is created in the default (fork) context, and handing a fork-context queue to a `spawn` child raises `RuntimeError: A SemLock created in a fork context is being shared with a process in a spawn context`. A correct fix requires creating the queue from a shared `spawn` context — a **production-module change** that violates INFRA-01's "lowest priority; include only if it does not expand the milestone" constraint (REQUIREMENTS.md) and the test-only intent (D-08). INFRA-01 is therefore deferred to a later v1.3.0 slice where a production change to `MultiprocessingLogger` is in scope. Phase 102 still delivers its primary requirement, BUG-03.
 
 **Plans**: 1 plan (1 wave)
-- [ ] 102-01-PLAN.md — BUG-03: add a dedicated `threading.Event` in-flight shutdown guard to `__execute_auto_delete`, with the final guard + persist-pop + `delete_local` serialized under `__auto_delete_lock` and the event set under the same lock in `exit()` (test-first red→green, reusing the real-Timer Event-gated harness); criterion #1 timer-cancel-on-exit verified by test only (already shipped) (wave 1)
+- [x] 102-01-PLAN.md — BUG-03: add a dedicated `threading.Event` in-flight shutdown guard to `__execute_auto_delete`, with the final guard + persist-pop + `delete_local` serialized under `__auto_delete_lock` and the event set under the same lock in `exit()` (test-first red→green, reusing the real-Timer Event-gated harness); criterion #1 timer-cancel-on-exit verified by test only (already shipped) (wave 1)
 
 ### Phase 103: Angular Defects
 
