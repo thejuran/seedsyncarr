@@ -54,3 +54,69 @@ by root only — no transitive consumers.
 
 **Conclusion:** D-01 BEFORE gate satisfied. Build is green; Bootstrap surfaces build
 successfully; no jQuery or css-element-queries source usage found. Removals may proceed.
+
+---
+
+## AFTER (post-removal)
+
+`ng build --configuration production` — run from `src/angular/` on 2026-06-01, after
+removing both `jquery ^4.0.0` and `css-element-queries ^1.1.1` (104-01 commits 9a46375
+and 1a42cdb). Node.js v25.9.0 (odd/non-LTS — non-production warning expected, not an error).
+
+```
+Initial chunk files   | Names         |  Raw size | Estimated transfer size
+main-D4LPEGW2.js      | main          | 574.81 kB |               134.31 kB
+styles-KZG6GNQT.css   | styles        | 473.05 kB |                45.47 kB
+scripts-TTWY4XDY.js   | scripts       |  80.45 kB |                21.60 kB
+polyfills-B7LGQ2G6.js | polyfills     |  35.78 kB |                11.61 kB
+
+                      | Initial total |   1.16 MB |               213.00 kB
+
+Application bundle generation complete. [3.565 seconds]
+```
+
+Build exit: 0 (green). No errors or warnings. No "Cannot resolve 'jquery'" or
+"Cannot resolve 'css-element-queries'" errors — confirming neither dep was used.
+
+---
+
+## Before/After Delta (D-02 record)
+
+| Chunk | BEFORE raw | AFTER raw | Delta raw | AFTER ≤ BEFORE? |
+|-------|-----------|----------|-----------|-----------------|
+| main  | 574.86 kB | 574.81 kB | −0.05 kB  | YES (pass)      |
+| styles | 473.05 kB | 473.05 kB | 0.00 kB  | YES (pass)      |
+| scripts | 80.45 kB | 80.45 kB | 0.00 kB  | YES (pass)      |
+| polyfills | 35.78 kB | 35.78 kB | 0.00 kB | YES (pass)      |
+| **Initial total** | **1.16 MB** | **1.16 MB** | **−0.05 kB** | **YES (pass)** |
+
+**Verdict:** No regression. The `main` chunk shrank by ~50 bytes — consistent with
+removal of the `"css-element-queries"` license metadata string that `version.ts`'s
+`require("../../../package.json")` previously embedded. The bundle does not grow.
+The styles, scripts, and polyfills chunks are byte-for-byte identical (same hashes).
+
+**Note:** The `main` chunk hash changed (`PHJ4DNY7` → `D4LPEGW2`) because the
+license-metadata content changed; the `scripts` and `polyfills` hashes are unchanged
+(confirming Bootstrap and polyfill bundles are unaffected by the removals).
+
+---
+
+## Dist Library-Code Residual Grep (D-01 AFTER static half)
+
+Grepped the production dist (`src/angular/dist/`) for library-code signatures.
+All commands run from `src/angular/`.
+
+| Check | Command | Result |
+|-------|---------|--------|
+| jQuery library absent | `grep -lq "jQuery JavaScript Library" dist/*.js` | NO MATCH (pass) |
+| jQuery.fn.jquery absent | `grep -lq "jQuery.fn.jquery" dist/*.js` | NO MATCH (pass) |
+| ResizeSensor/ElementQueries absent | `grep -lqE "ResizeSensor\|ElementQueries" dist/*.js` | NO MATCH (pass) |
+| Combined verify | above three as `! grep...` chain `&& echo DIST-CLEAN` | **DIST-CLEAN** |
+
+**Acceptable strings not gated:**
+- `window.jQuery` appears **1 time** in `scripts-TTWY4XDY.js` — this is Bootstrap's
+  optional jQuery-plugin adapter (`f=()=>window.jQuery&&...?window.jQuery:null`), a
+  no-op when `window.jQuery` is undefined. NOT jQuery the library (RESEARCH Pitfall 2).
+- The bare string `"jquery"` appears in `main-D4LPEGW2.js` as package.json metadata
+  embedded by `version.ts`'s `require("../../../package.json")`. NOT library code
+  (RESEARCH Pitfall 3). A naive `grep "jquery" dist/` is NOT a valid pass/fail gate.
