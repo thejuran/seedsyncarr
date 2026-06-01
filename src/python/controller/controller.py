@@ -979,33 +979,30 @@ class Controller:
                         )
                         return
 
-        # `file` is captured here; ModelFile is frozen/immutable after add,
-        # so the reference is safe to use after __model_lock is released.
+            # Final commit: serialize BOTH against exit()'s shutdown signal AND the
+            # webhook path's add_imported_child. Lock order is __model_lock THEN
+            # __auto_delete_lock (exit() takes ONLY __auto_delete_lock and never
+            # __model_lock, so this ordering cannot deadlock). The pop runs under
+            # __model_lock so it is mutually exclusive with add_imported_child
+            # (controller.py:804), which also mutates imported_children under
+            # __model_lock. The shutdown re-check stays under __auto_delete_lock so
+            # it remains ordered against exit()'s __shutdown_event.set() (both use
+            # the same lock — set() cannot interleave between check and pop).
+            #
+            # WR-02 semantics: the coverage guard above already committed the "delete
+            # is final" decision. Any child added by a concurrent webhook between the
+            # coverage guard and the pop is for a future import cycle. The pop here
+            # is inside __model_lock so add_imported_child (also under __model_lock)
+            # cannot race it — no TOCTOU window between guard and pop.
+            with self.__auto_delete_lock:
+                if self.__shutdown_event.is_set():
+                    return  # no pop, no dispatch (D-02: shutdown has committed)
+                # WR-02: clear the per-child entry before dispatching delete_local.
+                self.__persist.imported_children.pop(file_name, None)
 
-        # BUG-03 criterion #2 — final-commit serialized under __auto_delete_lock.
-        # Re-acquire the lock AFTER releasing __model_lock (lock ordering:
-        # exit() holds only __auto_delete_lock; the callback releases __model_lock
-        # before taking __auto_delete_lock here — no circular wait, no deadlock).
-        # Because exit() sets __shutdown_event UNDER __auto_delete_lock in the
-        # same acquire that runs the timer-cancel loop, set() cannot interleave
-        # between this check and the pop: if we observe the event unset, exit()
-        # has not yet entered the lock and cannot set it until after we pop and
-        # release.  If we observe it set, shutdown has committed and we must not
-        # dispatch — no pop, no delete_local.
-        #
-        # WR-02 semantics are preserved: the coverage guard above already ran and
-        # committed the "delete is final" decision under __model_lock.  Moving the
-        # pop here (into __auto_delete_lock, immediately after __model_lock) does
-        # not reopen the coverage-check→pop TOCTOU window for the webhook path:
-        # any child added by a concurrent webhook between these two lock acquires
-        # is for a future import cycle — the deletion decision is already final.
-        with self.__auto_delete_lock:
-            if self.__shutdown_event.is_set():
-                return  # no pop, no dispatch (D-02: shutdown has committed)
-            # WR-02: clear the per-child entry before dispatching delete_local.
-            self.__persist.imported_children.pop(file_name, None)
-        # delete_local is safe outside lock -- it spawns a subprocess, holding
-        # the lock during a blocking subprocess call would starve model updates.
+        # delete_local is safe outside lock -- it spawns a subprocess; holding
+        # __model_lock across a blocking subprocess call would starve model updates.
+        # `file` is captured above; ModelFile is frozen/immutable after add.
         self.__file_op_manager.delete_local(file)
         self.logger.info("Auto-deleted local file '{}'".format(sanitize_log_value(file_name)))
 
