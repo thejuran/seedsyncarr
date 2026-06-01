@@ -1,56 +1,48 @@
-# Requirements: SeedSyncarr — v1.3.0 Slice 3 of 4: Frontend Deps + Dead Code
+# Requirements: SeedSyncarr — v1.3.0 Slice 4 of 4: Backend Architecture Refactor + Test Infra
 
-**Defined:** 2026-05-31
+**Defined:** 2026-06-01
 **Core Value:** Reliable file sync from seedbox to local with automated media library integration.
-**Milestone:** v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code (GSD internal label `v1.3.0-s3`; one user-facing `v1.3.0` tag cut after slice 4)
-**Source:** `.planning/codebase/CONCERNS.md` — "Dependencies at Risk" (jQuery 4, Font Awesome 4.7, css-element-queries) + "Tech Debt" (mock-model toggle / fixtures in prod bundle); carried as v2 requirements (DEPS-01, DEPS-02) in the slice-2 REQUIREMENTS.md.
+**Milestone:** v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra (GSD internal label `v1.3.0-s4`)
+**Source:** `.planning/codebase/CONCERNS.md` — "Architecture / Maintainability" (Controller god-class, Config secret-field machinery, bulk-handler duplication) + the rolled-forward INFRA-01 (MP-logger spawn-safety), carried as v2 requirements (ARCH-01..03, INFRA-01) in the slice-3 REQUIREMENTS.md.
 
-> **Release note:** This milestone cuts **no** git tag. The entire 4-slice v1.3.0 program ships under a single combined `v1.3.0` tag, cut only after the final program slice (slice 4) completes.
+> **Release note:** This is the **final** slice of the 4-slice v1.3.0 program. The entire program ships under a single combined `v1.3.0` tag, and that tag is cut when **this** slice completes (preceded by one batched pre-release walkthrough across all four slices). Earlier slices (1-3) intentionally cut no tag.
 
 ## v1 Requirements
 
 Requirements for this milestone. Each maps to exactly one roadmap phase.
 
-### Frontend Dependencies
+### Backend Architecture Refactor
 
-- [x] **DEPS-01a**: The Angular app no longer depends on **jQuery 4**. The dep is removed from `src/angular/package.json` after confirming no source usage (CONCERNS.md notes only Bootstrap referenced it, and Bootstrap 5.3 does not require jQuery); the `_bootstrap-overrides.scss` and `@popperjs/core` paths are audited to confirm removal is safe. The app builds, all Bootstrap-driven interactions (dropdowns, modals, collapses) still work, and the bundle no longer ships jQuery.
-- [x] **DEPS-01b**: The Angular app no longer depends on **Font Awesome 4.7** (EOL). Every remaining `fa-*` icon class usage in templates is inventoried and replaced with its `@phosphor-icons/web` equivalent (the in-progress migration is completed), then the `font-awesome` dep is removed from `src/angular/package.json`. No icon renders missing or visually regressed; only one icon library ships.
-- [x] **DEPS-01c**: The Angular app no longer depends on **css-element-queries** (unmaintained since 2019). Any usage is replaced with the native `ResizeObserver` API; if no usage exists, the dep is removed outright. Element-resize-driven behavior (if any) is unchanged across supported browsers.
+- [ ] **ARCH-01**: The `Controller` god-class (`python/controller/controller.py`, ~1115 lines) is decomposed into cohesive collaborators with single responsibilities (e.g. command dispatch, auto-delete lifecycle, model/scan pipeline). The public surface the rest of the app depends on (constructor, `start`/`exit`, command entry points, the model the web layer reads) is preserved — no caller outside the controller package changes. This is a behavior-preserving refactor: the existing Python suite is the regression net and stays green; no user-observable behavior or HTTP-contract change.
+- [ ] **ARCH-02**: `Config` secret-field discovery is declarative. The `secret=True` marker is pushed into each secret field's `PROP` declaration so the encrypt-at-rest / decrypt / redaction loops discover secret fields dynamically from the property metadata instead of from a hand-maintained list. Adding a new secret field requires only declaring it `secret=True`; the encrypt/decrypt/redact paths pick it up automatically. The current set of encrypted/redacted fields (`api_token`, `webhook_secret`, `sonarr_api_key`, `radarr_api_key`, `remote_password`) is unchanged in behavior — same fields encrypted, same fields redacted, existing plaintext and Fernet-encrypted configs load unchanged.
+- [ ] **ARCH-03**: The per-action bulk-handler scaffold is deduplicated. A shared `_dispatch_command(...)` helper is extracted and used by the five `__handle_action_*` methods and the bulk-action loop, removing the repeated per-action boilerplate (selection resolution, error handling, result aggregation) while preserving the exact observable behavior of every single-action and bulk-action path — same success/partial-failure semantics, same response shapes, same per-file error reporting.
 
-### Dead Code / Bundle Hygiene
+### Test Infra
 
-- [ ] **DEPS-02**: The development-only mock-model fixtures no longer ship in the production bundle. The `USE_MOCK_MODEL` toggle moves from a hardcoded class field in `view-file.service.ts` to a build-time flag in `src/angular/src/environments/environment.ts`, and `mock-model-files.ts` + `screenshot-model-files.ts` are relocated out of `services/files/` and excluded from production output via Angular `fileReplacements` so the mock dataset is tree-shaken from the prod build. Dev-mode mock behavior still works when the env flag is set; production bundle contains none of the mock data.
+- [ ] **INFRA-01**: The three `MultiprocessingLogger` analog tests pass on **both** `fork` and `spawn` start methods. The fix is a targeted **production change** to `python/common/multiprocessing_logger.py`: the logger's queue is created from a shared `spawn`-compatible multiprocessing context so a queue handed to a `spawn` child no longer raises `RuntimeError: A SemLock created in a fork context is being shared with a process in a spawn context`. Existing `fork`-based logging behavior is unchanged (no regression on Linux default-fork installs); the three previously-skipped/failing spawn-context analog tests now run and pass on macOS (`spawn`) and Linux (`fork`).
 
 ## Cross-Cutting Constraints
 
 These apply to **every** phase in this slice; each phase's success criteria must hold them:
 
-- **COMPAT — no visual or behavioral regression.** No `fa-*` icon may be dropped without a verified Phosphor replacement rendered in its place; no Bootstrap interaction may break when jQuery is removed; the dev-mode mock toggle must continue to work via the new env flag. No change to any user-observable UI behavior or component API.
-- **CI green** on amd64 + arm64 (Angular unit + E2E; Python unaffected but must stay green).
-- **No coverage regression** — slice-1 ratchet floors hold or rise: Karma global stmts/branches/fns/lines 83/68/79/83; Python `fail_under` 88 (untouched this slice).
-- **Bundle does not grow** — each dependency removal should reduce (never increase) production bundle size; the mock-fixture removal must measurably drop mock data from the prod build.
-- **No release/tag/version-bump work** in any phase (single `v1.3.0` tag cut only after slice 4).
-
-## v2 Requirements (deferred to the final program slice — v1.3.0 slice 4)
-
-### Backend Architecture Refactor (slice 4)
-
-- **ARCH-01**: Extract the `Controller` god-class (`controller.py`, ~1115 lines) into cohesive collaborators.
-- **ARCH-02**: Refactor `Config` property machinery; auto-discover secret fields (push `secret=True` into the `PROP` declaration so encrypt/decrypt loops discover secrets dynamically).
-- **ARCH-03**: Dedup the per-action bulk handler scaffold (`_dispatch_command(...)` helper shared by the five `__handle_action_*` methods and the bulk loop).
-
-### Test Infra (rolled forward — slice 4)
-
-- **INFRA-01**: The three `MultiprocessingLogger` analog tests pass on both `fork` and `spawn` start methods. Requires creating the MP-logger queue from a shared `spawn` context — a **production-module change** to `multiprocessing_logger.py`. Deferred to slice 4 where a backend production change to that module is in thematic scope. (Originally deferred out of slice-2 Phase 102 on 2026-05-31; see slice-2 REQUIREMENTS.md INFRA-01 in git history for the full repro/diagnosis.)
+- **Behavior-preserving (COMPAT).** ARCH-01/02/03 are internal restructurings — no change to any user-observable UI/CLI behavior, HTTP request/response contract, on-disk config/persist format, or any public API the web layer or tests depend on. INFRA-01 changes only the MP-logger queue's multiprocessing context, not its logging behavior. Existing config files (plaintext and Fernet-encrypted) load unchanged.
+- **The existing test suite is the regression net.** Refactors land test-first where a characterization gap exists, but the primary safety guarantee is that the full pre-refactor suite stays green throughout. No test is deleted to make a refactor pass.
+- **CI green** on amd64 + arm64 (Python primary; Angular + E2E unaffected but must stay green).
+- **No coverage regression** — slice-1 ratchet floors hold or rise: Python `fail_under` 88; Karma global stmts/branches/fns/lines 83/68/79/83 (untouched this slice). INFRA-01 brings 3 previously-uncounted tests into the suite — coverage holds or rises.
+- **Release gate (this slice only).** This slice cuts the single user-facing `v1.3.0` tag at completion, after the batched pre-release walkthrough. No per-phase tag/version work — the tag is a milestone-end action.
 
 ## Out of Scope
 
+Explicitly excluded. Documented to prevent scope creep.
+
 | Feature | Reason |
 |---------|--------|
-| Replacing `paste` / `bottle` Python HTTP server | Backend dependency risk noted in CONCERNS.md, but a server swap is a large behavior-test-heavy effort outside a frontend-deps slice; revisit in a future milestone. |
+| Behavior changes bundled into the ARCH refactors | ARCH-01/02/03 are behavior-preserving by definition. Any genuine behavior change discovered mid-refactor becomes a scoped finding (its own decision), not a silent rider on the refactor. |
+| Replacing `paste` / `bottle` Python HTTP server | Backend dependency risk noted in CONCERNS.md, but a server swap is a large behavior-test-heavy effort outside an architecture-refactor slice; revisit in a future milestone. |
 | Replacing `pexpect`-driven LFTP/SSH | No Python SFTP library matches lftp's parallel-mirror feature set; treated as an external runtime requirement, documented not removed. |
-| Pinning `patoolib` / upper-bound hygiene on Python deps | Backend dep hardening, not frontend dead-code; can fold into slice 4 or a later dependency-maintenance pass. |
-| jQuery **upgrade** (vs. removal) | Goal is removal; if an audit unexpectedly finds a hard jQuery usage, that becomes a scoped finding — not a version bump. |
+| Pinning `patoolib` / upper-bound hygiene on Python deps | Backend dep hardening, distinct from the architecture refactor; can fold into a later dependency-maintenance pass. |
+| Migrate `/server/config/set` from GET-path to POST-body | Backend API contract change, tracked separately (deferred item in STATE.md); not an internal refactor. |
+| Frontend / Angular refactors | This slice is backend-Python only; the frontend deps + dead-code work was slice 3. |
 
 ## Traceability
 
@@ -58,16 +50,16 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPS-01a | Phase 104 | Complete |
-| DEPS-01b | Phase 105 | Complete |
-| DEPS-01c | Phase 104 | Complete |
-| DEPS-02 | Phase 106 | Pending |
+| ARCH-01 | TBD | Pending |
+| ARCH-02 | TBD | Pending |
+| ARCH-03 | TBD | Pending |
+| INFRA-01 | TBD | Pending |
 
 **Coverage:**
 - v1 requirements: 4 total
-- Mapped to phases: 4 of 4 mapped, 0 unmapped
-- Unmapped: 0 ✓
+- Mapped to phases: 0 of 4 (populated by roadmapper)
+- Unmapped: 4 (until roadmap created) ⚠️
 
 ---
-*Requirements defined: 2026-05-31*
-*Last updated: 2026-05-31 — traceability table filled; all 4 requirements mapped to phases 104-106*
+*Requirements defined: 2026-06-01*
+*Last updated: 2026-06-01 — slice-4 (final) requirements promoted from slice-3 v2 section; ARCH-01/02/03 + INFRA-01*
