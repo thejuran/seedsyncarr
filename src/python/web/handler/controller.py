@@ -73,112 +73,75 @@ class ControllerHandler(IHandler):
             rate_limit(max_requests=10, window_seconds=60.0)(self.__handle_bulk_command)
         )
 
+    def _dispatch_command(
+        self,
+        action: "Controller.Command.Action",
+        file_name: str,
+        success_msg: str,
+        *,
+        guard: bool = False,
+    ) -> HTTPResponse:
+        """
+        Shared dispatch scaffold for single-action handler endpoints.
+
+        Performs unquote → optional path-safety guard → command queue →
+        timeout/success/failure response, preserving the exact execution
+        ordering and response shapes of the five individual handlers it backs.
+        """
+        # value is double encoded — MUST run before the path-safety guard
+        file_name = unquote(file_name)
+        if guard:
+            path_guard = self._check_path_safe(file_name)
+            if path_guard:
+                return path_guard
+        command = Controller.Command(action, file_name)
+        callback = WebResponseActionCallback()
+        command.add_callback(callback)
+        self.__controller.queue_command(command)
+        if not callback.wait(timeout=self._ACTION_TIMEOUT):
+            return HTTPResponse(body="Operation timed out", status=504)
+        if callback.success:
+            return HTTPResponse(body=success_msg.format(file_name))
+        return HTTPResponse(body=callback.error, status=callback.error_code)
+
     def __handle_action_queue(self, file_name: str) -> HTTPResponse:
         """
         Request a QUEUE action
         """
-        # value is double encoded
-        file_name = unquote(file_name)
-
-        command = Controller.Command(Controller.Command.Action.QUEUE, file_name)
-        callback = WebResponseActionCallback()
-        command.add_callback(callback)
-        self.__controller.queue_command(command)
-        completed = callback.wait(timeout=self._ACTION_TIMEOUT)
-        if not completed:
-            return HTTPResponse(body="Operation timed out", status=504)
-        if callback.success:
-            return HTTPResponse(body="Queued file '{}'".format(file_name))
-        else:
-            return HTTPResponse(body=callback.error, status=callback.error_code)
+        return self._dispatch_command(Controller.Command.Action.QUEUE, file_name, "Queued file '{}'")
 
     def __handle_action_stop(self, file_name: str) -> HTTPResponse:
         """
         Request a STOP action
         """
-        # value is double encoded
-        file_name = unquote(file_name)
-
-        command = Controller.Command(Controller.Command.Action.STOP, file_name)
-        callback = WebResponseActionCallback()
-        command.add_callback(callback)
-        self.__controller.queue_command(command)
-        completed = callback.wait(timeout=self._ACTION_TIMEOUT)
-        if not completed:
-            return HTTPResponse(body="Operation timed out", status=504)
-        if callback.success:
-            return HTTPResponse(body="Stopped file '{}'".format(file_name))
-        else:
-            return HTTPResponse(body=callback.error, status=callback.error_code)
+        return self._dispatch_command(Controller.Command.Action.STOP, file_name, "Stopped file '{}'")
 
     def __handle_action_extract(self, file_name: str) -> HTTPResponse:
         """
         Request a EXTRACT action
         """
-        # value is double encoded
-        file_name = unquote(file_name)
-
-        guard = self._check_path_safe(file_name)
-        if guard:
-            return guard
-
-        command = Controller.Command(Controller.Command.Action.EXTRACT, file_name)
-        callback = WebResponseActionCallback()
-        command.add_callback(callback)
-        self.__controller.queue_command(command)
-        completed = callback.wait(timeout=self._ACTION_TIMEOUT)
-        if not completed:
-            return HTTPResponse(body="Operation timed out", status=504)
-        if callback.success:
-            return HTTPResponse(body="Requested extraction for file '{}'".format(file_name))
-        else:
-            return HTTPResponse(body=callback.error, status=callback.error_code)
+        return self._dispatch_command(
+            Controller.Command.Action.EXTRACT, file_name,
+            "Requested extraction for file '{}'", guard=True,
+        )
 
     def __handle_action_delete_local(self, file_name: str) -> HTTPResponse:
         """
         Request a DELETE LOCAL action
         """
-        # value is double encoded
-        file_name = unquote(file_name)
-
-        guard = self._check_path_safe(file_name)
-        if guard:
-            return guard
-
-        command = Controller.Command(Controller.Command.Action.DELETE_LOCAL, file_name)
-        callback = WebResponseActionCallback()
-        command.add_callback(callback)
-        self.__controller.queue_command(command)
-        completed = callback.wait(timeout=self._ACTION_TIMEOUT)
-        if not completed:
-            return HTTPResponse(body="Operation timed out", status=504)
-        if callback.success:
-            return HTTPResponse(body="Requested local delete for file '{}'".format(file_name))
-        else:
-            return HTTPResponse(body=callback.error, status=callback.error_code)
+        return self._dispatch_command(
+            Controller.Command.Action.DELETE_LOCAL, file_name,
+            "Requested local delete for file '{}'", guard=True,
+        )
 
     def __handle_action_delete_remote(self, file_name: str) -> HTTPResponse:
         """
         Request a DELETE REMOTE action
         """
-        # value is double encoded
-        file_name = unquote(file_name)
-
-        guard = self._check_path_safe(file_name)
-        if guard:
-            return guard
-
-        command = Controller.Command(Controller.Command.Action.DELETE_REMOTE, file_name)
-        callback = WebResponseActionCallback()
-        command.add_callback(callback)
-        self.__controller.queue_command(command)
-        completed = callback.wait(timeout=self._ACTION_TIMEOUT)
-        if not completed:
-            return HTTPResponse(body="Operation timed out", status=504)
-        if callback.success:
-            return HTTPResponse(body="Requested remote delete for file '{}'".format(file_name))
-        else:
-            return HTTPResponse(body=callback.error, status=callback.error_code)
+        return self._dispatch_command(
+            Controller.Command.Action.DELETE_REMOTE, file_name,
+            "Requested remote delete for file '{}'", guard=True,
+        )
 
     # Timeout for individual action endpoints in seconds
     _ACTION_TIMEOUT = 30.0

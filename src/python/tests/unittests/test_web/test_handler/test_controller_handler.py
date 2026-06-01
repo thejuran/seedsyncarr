@@ -79,6 +79,63 @@ class TestControllerHandlerSingleAction(unittest.TestCase):
         self.assertEqual(200, response.status_code)
         self.assertIn("test_file.mkv", response.body)
 
+    def test_single_action_timeout_body_is_exact(self):
+        """Assert the 504 response body is exactly 'Operation timed out' (F4 — exact-equality pin)."""
+        def stuck_side_effect(command):
+            pass  # Never call the callback — simulates a stuck controller
+
+        self.mock_controller.queue_command.side_effect = stuck_side_effect
+
+        original_timeout = ControllerHandler._ACTION_TIMEOUT
+        ControllerHandler._ACTION_TIMEOUT = 0.1
+
+        try:
+            response = self._call_queue_handler("test_file.mkv")
+
+            self.assertEqual(504, response.status_code)
+            self.assertEqual("Operation timed out", response.body)
+        finally:
+            ControllerHandler._ACTION_TIMEOUT = original_timeout
+
+    def test_single_action_failure_returns_callback_error_and_code_404(self):
+        """F4: single-action FAILURE with explicit error_code (404) — asserts EXACT body and status."""
+        def failure_side_effect(command):
+            for callback in command.callbacks:
+                callback.on_failure("File not found", 404)
+
+        self.mock_controller.queue_command.side_effect = failure_side_effect
+
+        response = self._call_queue_handler("test_file.mkv")
+
+        self.assertEqual(404, response.status_code)
+        self.assertEqual("File not found", response.body)
+
+    def test_single_action_failure_default_error_code_returns_400(self):
+        """F4: single-action FAILURE using the default error_code (400) — asserts EXACT body and status."""
+        def failure_side_effect(command):
+            for callback in command.callbacks:
+                callback.on_failure("Internal error")  # no explicit code → default 400
+
+        self.mock_controller.queue_command.side_effect = failure_side_effect
+
+        response = self._call_queue_handler("test_file.mkv")
+
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("Internal error", response.body)
+
+    def test_single_action_guarded_delete_local_success(self):
+        """Pin the guard=True success path via delete_local (optional coverage for guarded delegate)."""
+        def success_side_effect(command):
+            for callback in command.callbacks:
+                callback.on_success()
+
+        self.mock_controller.queue_command.side_effect = success_side_effect
+
+        response = self.handler._ControllerHandler__handle_action_delete_local("movie.mkv")
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("Requested local delete for file 'movie.mkv'", response.body)
+
 
 class TestControllerHandlerBulkCommand(unittest.TestCase):
     def setUp(self):
