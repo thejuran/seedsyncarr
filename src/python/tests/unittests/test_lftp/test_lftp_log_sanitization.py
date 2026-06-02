@@ -8,9 +8,8 @@ These tests pin:
 
 This is a focused test module that avoids the full pexpect-heavy Lftp integration suite.
 """
-import logging
 import unittest
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 from lftp import LftpJobStatus
 

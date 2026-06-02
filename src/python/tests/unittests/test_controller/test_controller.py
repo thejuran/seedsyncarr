@@ -1,7 +1,7 @@
 import unittest
 from queue import Queue
 from threading import Lock
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 from datetime import datetime
 

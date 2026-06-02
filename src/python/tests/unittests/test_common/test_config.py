@@ -3,6 +3,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from typing import Optional
 
 from common import Config, ConfigError, PersistError
 from common.config import InnerConfig, Checkers, Converters

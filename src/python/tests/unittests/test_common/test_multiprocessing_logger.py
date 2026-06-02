@@ -2,7 +2,6 @@ import unittest
 import logging
 import sys
 import time
-import multiprocessing
 
 from testfixtures import LogCapture
 import pytest
