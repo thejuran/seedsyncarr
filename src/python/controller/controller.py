@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 import collections
-import os
 import threading
 from typing import Dict, List, Optional, Tuple
 from threading import Lock
@@ -12,6 +11,7 @@ from .scan_manager import ScanManager
 from .lftp_manager import LftpManager
 from .file_operation_manager import FileOperationManager
 from .command_processor import CommandProcessor
+from .auto_delete_manager import AutoDeleteManager
 from .webhook_manager import WebhookManager
 from .extract import ExtractStatusResult, ExtractCompletedResult
 from .model_builder import ModelBuilder
@@ -19,7 +19,7 @@ from .scan import ScannerResult
 from .memory_monitor import MemoryMonitor
 from common import Context, AppError, MultiprocessingLogger, sanitize_log_value
 from model import ModelError, ModelFile, Model, ModelDiff, ModelDiffUtil, IModelListener
-from lftp import LftpError, LftpJobStatus, LftpJobStatusParserError
+from lftp import LftpJobStatus
 from .controller_persist import ControllerPersist
 
 class ControllerError(AppError):
@@ -27,23 +27,6 @@ class ControllerError(AppError):
     Exception indicating a controller error
     """
     pass
-
-# Video file extensions considered for auto-delete coverage check.
-# Comparison is case-insensitive on the extension. Non-allowlisted files
-# (.nfo, .srt, .sample.mp4, etc.) are intentionally ignored: Sonarr skips
-# these during import, so requiring them would permanently strand real-world
-# packs. See phase 75 (GH #19) D-09, D-10.
-_VIDEO_EXTENSIONS = frozenset({
-    '.mkv', '.mp4', '.avi', '.m4v', '.mov',
-    '.ts', '.wmv', '.flv', '.webm',
-})
-
-# Safety bound on the auto-delete BFS traversal. Caps pack-guard + coverage
-# collection at this many nodes to prevent a pathological pack (BD rip with
-# deep nesting, or a user-introduced symlink loop surfaced in the model) from
-# monopolizing the timer thread. If exceeded, the auto-delete is skipped with
-# a warning log; the next Timer-fire retries.
-_AUTO_DELETE_BFS_NODE_LIMIT = 10_000
 
 class Controller:
     """
@@ -205,6 +188,18 @@ class Controller:
             lftp_manager=self.__lftp_manager,
             file_op_manager=self.__file_op_manager,
             persist=self.__persist,
+            logger=self.logger,
+        )
+
+        # Auto-delete BFS+coverage collaborator — receives already-constructed instances
+        # (D-05: no manager constructed here; injected objects are the same instances
+        # Controller holds so mock.patch targets remain bound in controller.controller).
+        # No lock injected: Controller.__execute_auto_delete owns all lock acquisition
+        # and release; AutoDeleteManager.run_bfs_and_coverage acquires no lock (D-03).
+        self.__auto_delete_mgr = AutoDeleteManager(
+            context=self.__context,
+            persist=self.__persist,
+            file_op_manager=self.__file_op_manager,
             logger=self.logger,
         )
 
@@ -912,83 +907,26 @@ class Controller:
                 )
                 return
 
-            # Pack guard + coverage-basename collection: single BFS over descendants.
+            # Pack guard + coverage-basename collection: delegated to AutoDeleteManager.
+            # run_bfs_and_coverage performs BFS over descendants in a single pass:
             # (a) Pack guard: skip if ANY child is in an active state. Prevents wiping
             #     a season pack while a sibling is still being downloaded or extracted
             #     (Sonarr's per-episode webhook schedules the pack root).
             # (b) Coverage collection: gather lowercased basenames of all on-disk
-            #     video children for the coverage guard below (D-08, D-09).
-            on_disk_videos = set()
+            #     video children for the coverage guard (D-08, D-09).
+            # Caller holds __model_lock; AutoDeleteManager acquires NO lock (D-03).
             if file.is_dir:
-                unsafe_child = None
-                frontier = collections.deque(file.get_children())
-                nodes_visited = 0
-                while frontier:
-                    nodes_visited += 1
-                    if nodes_visited > _AUTO_DELETE_BFS_NODE_LIMIT:
-                        self.logger.warning(
-                            "Auto-delete skipped for '{}': BFS node limit ({}) exceeded".format(
-                                sanitize_log_value(file_name), _AUTO_DELETE_BFS_NODE_LIMIT
-                            )
-                        )
+                skip, reason, _on_disk_videos = self.__auto_delete_mgr.run_bfs_and_coverage(
+                    file, file_name, deletable_states
+                )
+                if skip:
+                    if reason == "bfs_limit":
                         # Terminal skip: Timer does not re-arm for this firing.
                         # Clear the per-child entry so imported_children isn't
                         # stranded on a permanently-oversized pack. All other
-                        # skip paths below are retriable and intentionally leave
-                        # the entry intact.
+                        # skip paths are retriable and leave the entry intact.
                         self.__persist.imported_children.pop(file_name, None)
-                        return
-                    child = frontier.popleft()
-                    if child.state not in deletable_states:
-                        unsafe_child = child
-                        break
-                    # Collect video basenames for coverage check. Only files whose
-                    # extension is in _VIDEO_EXTENSIONS are tracked (D-09/D-10).
-                    # child.is_dir is the authoritative leaf signal -- falls back
-                    # to `not get_children()` would let a directory with an as-yet
-                    # unscanned child set inject its own name into on_disk_videos
-                    # if the folder name ends in a video extension.
-                    grandchildren = child.get_children()
-                    if not child.is_dir:
-                        ext = os.path.splitext(child.name)[1].lower()
-                        if ext in _VIDEO_EXTENSIONS:
-                            on_disk_videos.add(child.name.lower())
-                    frontier.extend(grandchildren)
-                if unsafe_child is not None:
-                    self.logger.info(
-                        "Auto-delete skipped for '{}': child '{}' is in state {}".format(
-                            sanitize_log_value(file_name), sanitize_log_value(unsafe_child.name), str(unsafe_child.state)
-                        )
-                    )
                     return
-
-                # Coverage guard (D-08): pack roots with a directory on disk require
-                # every on-disk video child to appear in imported_children[root].
-                # A missing child indicates Sonarr silently rejected the file;
-                # deleting now would lose data. Grandfather (D-14): if no per-root
-                # entry exists (legacy persist or never imported via webhook), treat
-                # as fully imported and proceed.
-                imported_child_bset = self.__persist.imported_children.get(file_name)
-                if imported_child_bset is not None:
-                    imported_child_set = {c.lower() for c in imported_child_bset.as_list()}
-                    missing = on_disk_videos - imported_child_set
-                    if missing:
-                        missing_list = sorted(missing)
-                        shown = missing_list[:5]
-                        suffix = ""
-                        if len(missing_list) > 5:
-                            suffix = " (+{} more)".format(len(missing_list) - 5)
-                        self.logger.info(
-                            "Auto-delete skipped for '{}': partial import "
-                            "({} of {} on-disk video children imported; missing: {}{})".format(
-                                sanitize_log_value(file_name),
-                                len(on_disk_videos) - len(missing),
-                                len(on_disk_videos),
-                                shown,
-                                suffix,
-                            )
-                        )
-                        return
 
             # Final commit: serialize BOTH against exit()'s shutdown signal AND the
             # webhook path's add_imported_child. Lock order is __model_lock THEN

@@ -52,7 +52,14 @@ class AutoDeleteManager:
         self._context = context
         self._persist = persist
         self._file_op_manager = file_op_manager
-        self.logger = logger.getChild("AutoDeleteManager")
+        # Use the caller's logger directly rather than a child logger. This
+        # preserves observable log routing: the test suite checks
+        # self.controller.logger.info.call_args_list for the "partial import"
+        # log line. If we used logger.getChild("AutoDeleteManager"), the log
+        # would route to a different MagicMock in test, making the assertion fail.
+        # In production, both point to the same underlying Logger hierarchy,
+        # so this is semantically equivalent at the log-sink level.
+        self.logger = logger
 
     def run_bfs_and_coverage(
         self,
