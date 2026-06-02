@@ -2,7 +2,7 @@ import json
 import ipaddress
 import logging
 import socket
-from urllib.parse import urlparse, urljoin, unquote
+from urllib.parse import urlparse, urljoin
 
 import requests
 import bottle
@@ -22,9 +22,8 @@ class ConfigHandler(IHandler):
     @overrides(IHandler)
     def add_routes(self, web_app: WebApp):
         web_app.add_handler("/server/config/get", self.__handle_get_config)
-        # The regex allows slashes in values
-        web_app.add_handler(
-            "/server/config/set/<section>/<key>/<value:re:.+>",
+        web_app.add_post_handler(
+            "/server/config/set",
             rate_limit(max_requests=60, window_seconds=60.0)(self.__handle_set_config)
         )
         web_app.add_handler(
@@ -89,18 +88,45 @@ class ConfigHandler(IHandler):
         out_json = SerializeConfig.config(self.__config, authenticated=authenticated)
         return HTTPResponse(body=out_json)
 
-    def __handle_set_config(self, section: str, key: str, value: str):
-        # value is double encoded
-        value = unquote(value)
+    def __handle_set_config(self) -> HTTPResponse:
+        # No path params — all fields from JSON body (D-01/D-03).
+        # NOTE: no try/except around bottle.request.json — bottle 400s invalid JSON
+        # (with Content-Type: application/json) before this handler runs (FINDING 3 /
+        # RESEARCH §RQ-1 case 3). wrong/absent content-type → returns None silently.
+        body = bottle.request.json
 
+        if not body or not isinstance(body, dict):
+            return HTTPResponse(body="Invalid request body", status=400)
+
+        section = body.get("section")
+        key = body.get("key")
+        value = body.get("value")
+
+        # FINDING 1: reject non-string / empty section|key BEFORE any config lookup.
+        # A truthy non-string (list/dict/number) would reach has_section/getattr/
+        # has_property and raise TypeError → uncaught 500/DoS. isinstance guard first.
+        if not isinstance(section, str) or not section or not isinstance(key, str) or not key:
+            return HTTPResponse(body="Invalid request body", status=400)
+
+        # D-06: missing-or-empty value is 400 (was 404 route-miss under GET regex)
+        if value is None or str(value) == "":
+            return HTTPResponse(body="Invalid request body", status=400)
+
+        value_str = str(value)
+
+        # Preserve existing validation status codes (D-05)
         if not self.__config.has_section(section):
-            return HTTPResponse(body="There is no section '{}' in config".format(section), status=404)
+            return HTTPResponse(
+                body="There is no section '{}' in config".format(section), status=404
+            )
         inner_config = getattr(self.__config, section)
         if not inner_config.has_property(key):
-            return HTTPResponse(body="Section '{}' in config has no option '{}'".format(section, key), status=404)
+            return HTTPResponse(
+                body="Section '{}' in config has no option '{}'".format(section, key), status=404
+            )
         try:
-            inner_config.set_property(key, value)
-            return HTTPResponse(body="{}.{} set to {}".format(section, key, value))
+            inner_config.set_property(key, value_str)
+            return HTTPResponse(body="{}.{} set to {}".format(section, key, value_str))
         except ConfigError as e:
             return HTTPResponse(body=str(e), status=400)
 

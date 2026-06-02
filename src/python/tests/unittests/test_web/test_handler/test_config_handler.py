@@ -2,7 +2,6 @@ import json
 import socket
 import unittest
 from unittest.mock import MagicMock, patch
-from urllib.parse import quote
 
 import requests
 
@@ -38,7 +37,9 @@ class TestConfigHandlerSet(unittest.TestCase):
         mock_inner = MagicMock()
         mock_inner.has_property.return_value = True
         self.mock_config.lftp = mock_inner
-        response = self.handler._ConfigHandler__handle_set_config("lftp", "remote_address", quote("192.168.1.1"))
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = {"section": "lftp", "key": "remote_address", "value": "192.168.1.1"}
+            response = self.handler._ConfigHandler__handle_set_config()
         self.assertEqual(200, response.status_code)
 
     def test_set_calls_set_property(self):
@@ -46,12 +47,16 @@ class TestConfigHandlerSet(unittest.TestCase):
         mock_inner = MagicMock()
         mock_inner.has_property.return_value = True
         self.mock_config.lftp = mock_inner
-        self.handler._ConfigHandler__handle_set_config("lftp", "remote_address", quote("192.168.1.1"))
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = {"section": "lftp", "key": "remote_address", "value": "192.168.1.1"}
+            self.handler._ConfigHandler__handle_set_config()
         mock_inner.set_property.assert_called_once_with("remote_address", "192.168.1.1")
 
     def test_set_missing_section_returns_404(self):
         self.mock_config.has_section.return_value = False
-        response = self.handler._ConfigHandler__handle_set_config("nosection", "key", quote("value"))
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = {"section": "nosection", "key": "key", "value": "value"}
+            response = self.handler._ConfigHandler__handle_set_config()
         self.assertEqual(404, response.status_code)
         self.assertIn("no section", response.body.lower())
 
@@ -60,7 +65,9 @@ class TestConfigHandlerSet(unittest.TestCase):
         mock_inner = MagicMock()
         mock_inner.has_property.return_value = False
         self.mock_config.nosection = mock_inner
-        response = self.handler._ConfigHandler__handle_set_config("nosection", "badkey", quote("value"))
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = {"section": "nosection", "key": "badkey", "value": "value"}
+            response = self.handler._ConfigHandler__handle_set_config()
         self.assertEqual(404, response.status_code)
         self.assertIn("no option", response.body.lower())
 
@@ -70,24 +77,74 @@ class TestConfigHandlerSet(unittest.TestCase):
         mock_inner.has_property.return_value = True
         mock_inner.set_property.side_effect = ConfigError("Invalid")
         self.mock_config.lftp = mock_inner
-        response = self.handler._ConfigHandler__handle_set_config("lftp", "remote_address", quote("bad"))
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = {"section": "lftp", "key": "remote_address", "value": "bad"}
+            response = self.handler._ConfigHandler__handle_set_config()
         self.assertEqual(400, response.status_code)
 
-    def test_set_url_decodes_value(self):
+    def test_set_raw_value_with_spaces_through_body(self):
+        # Replaces test_set_url_decodes_value: value with spaces arrives verbatim in
+        # body — no URL decode step (D-04). set_property receives the raw value.
         self.mock_config.has_section.return_value = True
         mock_inner = MagicMock()
         mock_inner.has_property.return_value = True
         self.mock_config.lftp = mock_inner
-        self.handler._ConfigHandler__handle_set_config("lftp", "remote_path", quote("/path/with spaces"))
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = {"section": "lftp", "key": "remote_path", "value": "/path/with spaces"}
+            self.handler._ConfigHandler__handle_set_config()
         mock_inner.set_property.assert_called_once_with("remote_path", "/path/with spaces")
 
-    def test_set_value_with_slashes(self):
+    def test_set_raw_value_with_slashes_through_body(self):
+        # Replaces test_set_value_with_slashes: slashes in body arrive at set_property
+        # verbatim — no encoding/decoding dance (D-04).
         self.mock_config.has_section.return_value = True
         mock_inner = MagicMock()
         mock_inner.has_property.return_value = True
         self.mock_config.lftp = mock_inner
-        self.handler._ConfigHandler__handle_set_config("lftp", "remote_path", quote("/remote/path/to/dir"))
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = {"section": "lftp", "key": "remote_path", "value": "/remote/path/to/dir"}
+            self.handler._ConfigHandler__handle_set_config()
         mock_inner.set_property.assert_called_once_with("remote_path", "/remote/path/to/dir")
+
+    def test_set_none_body_returns_400(self):
+        # D-07: wrong/absent content-type → bottle.request.json returns None → 400
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = None
+            response = self.handler._ConfigHandler__handle_set_config()
+        self.assertEqual(400, response.status_code)
+
+    def test_set_non_dict_body_returns_400(self):
+        # D-07: valid JSON but not a dict (e.g. JSON array) → 400
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = ["not", "a", "dict"]
+            response = self.handler._ConfigHandler__handle_set_config()
+        self.assertEqual(400, response.status_code)
+
+    def test_set_non_string_section_returns_400(self):
+        # FINDING 1: non-string section (e.g. list) must return 400, NEVER 500.
+        # Proves the isinstance guard fires BEFORE has_section/getattr — a truthy
+        # non-string reaching has_section (which expects str) would raise TypeError → 500.
+        self.mock_config.has_section = MagicMock()
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = {"section": ["general"], "key": "debug", "value": "True"}
+            response = self.handler._ConfigHandler__handle_set_config()
+        self.assertEqual(400, response.status_code)
+        # Assert the unsafe config lookup was never reached
+        self.mock_config.has_section.assert_not_called()
+
+    def test_set_non_string_key_returns_400(self):
+        # FINDING 1: non-string key (e.g. dict) must return 400, NEVER 500.
+        # Proves the isinstance guard fires BEFORE any config lookup.
+        self.mock_config.has_section.return_value = True
+        mock_inner = MagicMock()
+        self.mock_config.general = mock_inner
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = {"section": "general", "key": {"x": 1}, "value": "True"}
+            response = self.handler._ConfigHandler__handle_set_config()
+        self.assertEqual(400, response.status_code)
+        # The has_section check for section="general" is reached (section IS a valid str),
+        # but has_property must NOT be reached (key is non-string — isinstance guard fires)
+        mock_inner.has_property.assert_not_called()
 
 
 class TestConfigHandlerTestSonarrConnection(unittest.TestCase):
@@ -391,13 +448,18 @@ class TestConfigHandlerRateLimit(unittest.TestCase):
             handler._ConfigHandler__handle_set_config
         )
 
+        # Handler now takes no path params — mock bottle.request.json per call (Pitfall 6)
         # First 60 should succeed
         for i in range(60):
-            response = rate_limited(section="lftp", key="key{}".format(i), value="val")
+            with patch('web.handler.config.bottle') as mock_bottle:
+                mock_bottle.request.json = {"section": "lftp", "key": "key{}".format(i), "value": "val"}
+                response = rate_limited()
             self.assertNotEqual(429, response.status_code)
 
         # 61st should be rate limited
-        response = rate_limited(section="lftp", key="extra", value="val")
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = {"section": "lftp", "key": "extra", "value": "val"}
+            response = rate_limited()
         self.assertEqual(429, response.status_code)
         body = json.loads(response.body)
         self.assertIn("Rate limit", body["error"])
