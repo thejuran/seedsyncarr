@@ -516,7 +516,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 **Plans**: 3 plans (3 waves — sequential per D-06; all touch controller.py)
 - [x] 109-01-PLAN.md — ARCH-01: extract `command_processor.py` (the four `__handle_*_command` bodies → `CommandProcessor.handle()`); `__process_commands` stays on Controller and delegates after releasing `__model_lock` (wave 1, autonomous)
-- [ ] 109-02-PLAN.md — ARCH-01: extract `auto_delete_manager.py` (BFS pack-guard + coverage logic → `run_bfs_and_coverage`); `__schedule_auto_delete` + `__execute_auto_delete` stay on Controller as the lock harness, WR-02 ordering preserved verbatim (wave 2, depends_on 109-01, autonomous)
+- [x] 109-02-PLAN.md — ARCH-01: extract `auto_delete_manager.py` (BFS pack-guard + coverage logic → `run_bfs_and_coverage`); `__schedule_auto_delete` + `__execute_auto_delete` stay on Controller as the lock harness, WR-02 ordering preserved verbatim (wave 2, depends_on 109-01, autonomous)
 - [ ] 109-03-PLAN.md — ARCH-01: extract `model_pipeline.py` (scan→build→diff→apply stages → `ModelPipeline.update_model`); `__update_model` thins to a delegate, accessors + `_should_update_capacity` + `_update_controller_status` + `__check_webhook_imports` stay on Controller; coordinator thinned toward ~350 lines (wave 3, depends_on 109-02, autonomous)
 
 ## Progress
@@ -550,7 +550,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 | 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 2/2 | Complete   | 2026-06-01 |
 | 107. MP-Logger Spawn Safety (Slice 4) | v1.3.0-s4 | 1/1 | Complete   | 2026-06-01 |
 | 108. Config + Handler Refactors (Slice 4) | v1.3.0-s4 | 2/2 | Complete   | 2026-06-01 |
-| 109. Controller Decomposition (Slice 4) | v1.3.0-s4 | 1/3 | In Progress|  |
+| 109. Controller Decomposition (Slice 4) | v1.3.0-s4 | 2/3 | In Progress|  |
 
 ---
 
