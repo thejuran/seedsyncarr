@@ -4,6 +4,30 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.3.0] - 2026-06-02
+
+A reliability and quality release delivered across four work streams (test coverage, known bugs + security, dependency cleanup, and a behavior-preserving backend refactor). No configuration changes or migrations are required; existing config files (including encrypted ones) load unchanged.
+
+### Security
+
+- The Sonarr/Radarr webhook can now be configured to reject unauthenticated calls when no secret is set (opt-in fail-closed, default behavior unchanged), and is rate-limited like other mutable endpoints.
+- Remote- and user-supplied file names are sanitized for CR/LF and control characters before reaching log lines, closing a log-forging surface (CWE-117).
+- The config API response no longer distinguishes set-vs-unset secret fields beyond the explicit boolean flag.
+- The confirmation modal is now built structurally via `Renderer2` text nodes instead of an `innerHTML` sink, eliminating an XSS vector when rendering file names.
+
+### Fixed
+
+- Auto-delete timers are tracked and cancelled on controller shutdown, and a timer callback that fires during shutdown no-ops instead of acting against a half-torn-down model.
+- The SSE stream registry no longer leaves an orphaned subscription when a reconnect fires in the same tick as a timeout.
+- Background multiprocessing logging now creates its queue from a shared `spawn`-compatible context, fixing failures under `spawn`-mode process startup.
+
+### Changed
+
+- Removed three end-of-life frontend dependencies (jQuery 4, Font Awesome 4.7, and css-element-queries) and migrated all icons to Phosphor; the production bundle ships less code with no visual or behavioral change.
+- Development-only mock fixtures are now fully excluded from the production bundle via Angular `fileReplacements`.
+- Refactored several large backend components into smaller, single-responsibility pieces — declarative `Config` secret-field discovery, a shared single-action request-dispatch helper, and decomposition of the `Controller` class into focused collaborators. Behavior is unchanged.
+- Closed eight test-coverage gaps and ratcheted CI coverage floors (Python and Angular) so regressions are caught earlier.
+
 ## [1.2.5] - 2026-05-28
 
 ### Security

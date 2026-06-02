@@ -21,4 +21,4 @@ No configuration changes or migrations are required. Existing config files (incl
 - **Stronger test coverage** — Closed test-coverage gaps and raised the project's minimum coverage bar, so regressions are caught earlier.
 
 
-**Full changelog:** https://github.com/thejuran/seedsyncarr/blob/v1.3.0/CHANGELOG.md
+**Full changelog:** https://github.com/thejuran/seedsyncarr/blob/v{{VERSION}}/CHANGELOG.md
