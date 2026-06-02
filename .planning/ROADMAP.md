@@ -563,7 +563,12 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   4. Existing on-disk config files (plaintext and Fernet-encrypted) load unchanged after the migration — there is no config-format change and no user migration step for saved settings; the migration is purely the HTTP transport (CFG-04).
   5. **Cross-cutting (COMPAT + CI):** the POST endpoint reuses the existing config/set rate-limit (60/60s) and any existing auth/redaction behavior; CI is green on amd64 + arm64 (Python + Angular + E2E — the E2E setup must complete against the new endpoint); Python `fail_under` ≥ 88 holds or rises; Karma `check.global` floors 83/68/79/83 hold or rise. No release/tag/version work in this phase.
 
-**Plans**: TBD
+**Plans**: 3 plans (2 waves)
+
+Plans:
+- [ ] 111-01-PLAN.md — Backend contract: POST /server/config/set handler + GET route removal + migrated Python tests (wave 1; CFG-01/02/04)
+- [ ] 111-02-PLAN.md — Angular client: RestService.post body + ConfigService.set POST + migrated spec (wave 2; CFG-01/03)
+- [ ] 111-03-PLAN.md — E2E: setup-script curls + Playwright page objects/fixtures to POST (wave 2; CFG-01/03)
 
 **UI hint**: yes
 
