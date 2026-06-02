@@ -53,10 +53,11 @@ export class RestService {
     /**
      * Send backend a POST request and generate a WebReaction response
      * @param {string} url
+     * @param {object} [body] - optional JSON body; when omitted, sends null (preserving prior no-body callers)
      * @returns {Observable<WebReaction>}
      */
-    public post(url: string): Observable<WebReaction> {
-        return this._http.post(url, null, {responseType: "text"}).pipe(
+    public post(url: string, body?: object): Observable<WebReaction> {
+        return this._http.post(url, body ?? null, {responseType: "text"}).pipe(
             map(this.handleSuccess(url)),
             catchError(this.handleError(url)),
             shareReplay(1)

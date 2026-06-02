@@ -17,10 +17,6 @@ import {RestService, WebReaction} from "../utils/rest.service";
 export class ConfigService extends BaseWebService implements OnDestroy {
     private readonly CONFIG_GET_URL = "/server/config/get";
 
-    private readonly CONFIG_SET_URL =
-        (section: string, option: string, value: string): string =>
-            `/server/config/set/${section}/${option}/${value}`;
-
     private readonly SONARR_TEST_URL = "/server/config/sonarr/test-connection";
     private readonly RADARR_TEST_URL = "/server/config/radarr/test-connection";
 
@@ -62,10 +58,8 @@ export class ConfigService extends BaseWebService implements OnDestroy {
                 );
             });
         } else {
-            // Double-encode the value
-            const valueEncoded = encodeURIComponent(encodeURIComponent(valueStr));
-            const url = this.CONFIG_SET_URL(section, option, valueEncoded);
-            const obs = this._restService.sendRequest(url);
+            // POST raw value in JSON body — no URL encoding (D-04, D-10)
+            const obs = this._restService.post("/server/config/set", {section, key: option, value: valueStr});
             obs.pipe(takeUntil(this.destroy$)).subscribe({
                 next: reaction => {
                     if (reaction.success) {
