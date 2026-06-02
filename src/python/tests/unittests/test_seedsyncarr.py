@@ -3,7 +3,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from common import Config
 from common.encryption import is_ciphertext
@@ -312,6 +312,32 @@ class TestSeedsyncarrStartupWarnings(unittest.TestCase):
         Seedsyncarr._emit_decrypt_warnings(mock_logger_noattr, mock_config_noattr)
         mock_logger_noattr.warning.assert_not_called()
 
+    def test_startup_require_secret_without_secret_does_not_warn_accept_any_caller(self):
+        """GUARD-02: fail-closed state must NOT emit the 'accept any caller' warning."""
+        mock_logger = MagicMock()
+        mock_config = self._make_mock_config(
+            webhook_secret="", api_token="configured", webhook_require_secret=True
+        )
+        Seedsyncarr._emit_startup_warnings(mock_logger, mock_config)
+        warning_calls = [str(call) for call in mock_logger.warning.call_args_list]
+        self.assertFalse(
+            any("any caller" in call for call in warning_calls),
+            msg="'accept any caller' warning must not fire when fail-closed (require_secret=True)"
+        )
+
+    def test_startup_require_secret_without_secret_warns_503(self):
+        """GUARD-02: fail-closed state MUST emit the '503' warning."""
+        mock_logger = MagicMock()
+        mock_config = self._make_mock_config(
+            webhook_secret="", api_token="configured", webhook_require_secret=True
+        )
+        Seedsyncarr._emit_startup_warnings(mock_logger, mock_config)
+        warning_calls = [str(call) for call in mock_logger.warning.call_args_list]
+        self.assertTrue(
+            any("503" in call for call in warning_calls),
+            msg="Expected a '503' warning when require_secret=True and no secret set"
+        )
+
 
 class TestSeedsyncarrReencrypt(unittest.TestCase):
     """Tests for the startup re-encrypt-plaintext-on-enable hook (SEC-02 #3a, 81-03-01)."""
@@ -408,3 +434,51 @@ class TestSeedsyncarrReencrypt(unittest.TestCase):
         self.assertEqual("my_remote_password", final.lftp.remote_password)
         self.assertEqual("my_sonarr_key", final.sonarr.sonarr_api_key)
         self.assertEqual("my_radarr_key", final.radarr.radarr_api_key)
+
+
+class TestSeedsyncarrLegacyFallback(unittest.TestCase):
+    """Tests for GUARD-06: legacy ~/.seedsync fallback warning surfacing."""
+
+    def _make_parse_argv(self, config_dir: str) -> list:
+        return [
+            "-c", config_dir,
+            "--html", "/path/to/html",
+            "--scanfs", "/path/to/scanfs",
+        ]
+
+    @patch("seedsyncarr.os.path.exists")
+    def test_parse_args_emits_legacy_fallback_warning(self, mock_exists):
+        """GUARD-06: when config_dir is absent and ~/.seedsync exists, _parse_args
+        returns a non-None legacy_fallback_warning in the second tuple element so
+        it can be emitted via the configured logger after _create_logger."""
+        legacy_dir = os.path.expanduser("~/.seedsync")
+        config_dir = "/nonexistent/config"
+
+        def exists_side_effect(path):
+            if path == config_dir:
+                return False
+            if path == legacy_dir:
+                return True
+            return False
+
+        mock_exists.side_effect = exists_side_effect
+
+        argv = self._make_parse_argv(config_dir)
+        args, warning = Seedsyncarr._parse_args(argv)
+
+        self.assertIsNotNone(
+            warning,
+            msg="Expected a non-None legacy_fallback_warning when fallback triggers"
+        )
+        self.assertIn(
+            config_dir, warning,
+            msg="Warning should mention the original config_dir"
+        )
+        self.assertIn(
+            legacy_dir, warning,
+            msg="Warning should mention the legacy fallback dir"
+        )
+        self.assertEqual(
+            args.config_dir, legacy_dir,
+            msg="args.config_dir should be updated to the legacy dir"
+        )
