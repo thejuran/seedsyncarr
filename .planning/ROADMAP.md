@@ -362,7 +362,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 - [x] **Phase 110: Hostile-Reader Discovery Pass** - Bounded "what would a skeptical r/selfhosted engineer flag" audit producing a triaged, severity-ranked findings artifact; each finding marked fold-into-fix-phase (with target) or parked (with rationale); gates fix scope for phases 111-112 (SCAN-01, SCAN-02) (completed 2026-06-02)
 - [x] **Phase 111: Config-Set Endpoint Migration** - The one breaking change: `/server/config/set` GET→POST hard cutover (JSON body), legacy GET path fully removed, Angular `ConfigService` + E2E setup/page-objects updated, on-disk config format unchanged (CFG-01, CFG-02, CFG-03, CFG-04) (completed 2026-06-02)
-- [ ] **Phase 112: Defensive Guards & Code Hardening** - Unsafe-default startup warnings (non-loopback bind w/o api_token; webhook w/o secret), logged delete-path failures (replace `ignore_errors=True`), AppProcess spawn-context fix (failing test goes green), `.gitignore` for run artifacts, legacy `~/.seedsync` fallback warning (GUARD-01..06) — 3 plans (1 wave)
+- [x] **Phase 112: Defensive Guards & Code Hardening** - Unsafe-default startup warnings (non-loopback bind w/o api_token; webhook w/o secret), logged delete-path failures (replace `ignore_errors=True`), AppProcess spawn-context fix (failing test goes green), `.gitignore` for run artifacts, legacy `~/.seedsync` fallback warning (GUARD-01..06) — 3 plans (1 wave) (completed 2026-06-02)
 - [ ] **Phase 113: Presentation & Launch Readiness** - Cynical-reader teardown + codex adversarial pass driving a README / SECURITY.md / community-health / release-notes rebuild; Playwright screenshots captured at the milestone-end walkthrough; repo-metadata text drafted for manual maintainer application (LAUNCH-01..06)
 
 ## Phase Details
@@ -587,9 +587,9 @@ Plans:
   6. **Cross-cutting (COMPAT + CI):** no default-behavior change beyond added warnings/logging and the test fix; existing config files and on-disk persist formats load unchanged. CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises (GUARD-04 brings a previously-failing test green; coverage holds or increases); no test deleted or skipped. No release/tag/version work in this phase.
 
 **Plans**: 3 plans (1 wave — all file-disjoint, fully parallel)
-- [ ] 112-01-PLAN.md — GUARD-04 (AppProcess `__getstate__`/`__setstate__` spawn-safe pickling; red test goes green under spawn + fork) + GUARD-05 (`.gitignore` `.orchestrator.json` + `.playwright-mcp/`) (wave 1)
-- [ ] 112-02-PLAN.md — GUARD-01 (`[SECURITY]` prominence prefix) + GUARD-02 (accept-any-caller warning suppressed in fail-closed `require_secret=True` state) + GUARD-06 (legacy `~/.seedsync` fallback warning emitted through the configured logger via Option A flag-threading), test-first (wave 1)
-- [ ] 112-03-PLAN.md — GUARD-03 (replace `ignore_errors=True` with `try/except OSError` + `logger.exception` + `sanitize_log_value`, best-effort preserved; new `TestDeleteLocalProcess` failure-path test), test-first (wave 1)
+- [x] 112-01-PLAN.md — GUARD-04 (AppProcess `__getstate__`/`__setstate__` spawn-safe pickling; red test goes green under spawn + fork) + GUARD-05 (`.gitignore` `.orchestrator.json` + `.playwright-mcp/`) (wave 1)
+- [x] 112-02-PLAN.md — GUARD-01 (`[SECURITY]` prominence prefix) + GUARD-02 (accept-any-caller warning suppressed in fail-closed `require_secret=True` state) + GUARD-06 (legacy `~/.seedsync` fallback warning emitted through the configured logger via Option A flag-threading), test-first (wave 1)
+- [x] 112-03-PLAN.md — GUARD-03 (replace `ignore_errors=True` with `try/except OSError` + `logger.exception` + `sanitize_log_value`, best-effort preserved; new `TestDeleteLocalProcess` failure-path test), test-first (wave 1)
 
 ### Phase 113: Presentation & Launch Readiness
 
@@ -642,7 +642,7 @@ Plans:
 | 109. Controller Decomposition (Slice 4) | v1.3.0-s4 | 3/3 | Complete   | 2026-06-02 |
 | 110. Hostile-Reader Discovery Pass | v1.4.0 | 1/1 | Complete   | 2026-06-02 |
 | 111. Config-Set Endpoint Migration | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
-| 112. Defensive Guards & Code Hardening | v1.4.0 | 0/TBD | Not started | - |
+| 112. Defensive Guards & Code Hardening | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
 | 113. Presentation & Launch Readiness | v1.4.0 | 0/TBD | Not started | - |
 
 ---
