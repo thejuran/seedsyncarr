@@ -143,10 +143,11 @@ full suite green on **amd64 + arm64**, under **both `fork` and `spawn`** start m
   confirms both are untracked). Pure repo hygiene; no code, no test impact.
 
 ### Ordering / waves (planner guidance, not locked)
-- **D-14:** The six items are mutually independent and can be planned as parallel waves. GUARD-04
+- **D-14 [informational]:** The six items are mutually independent and can be planned as parallel waves. GUARD-04
   (spawn fix) is the highest-value/highest-risk item (it touches a base class every worker process
   subclasses and must hold under both start methods) — sequence it so its full-suite-under-both-start-
   methods verification is not blocked by the cosmetic items. GUARD-05 is trivial and can land first.
+  *(Not a code-tracked decision — this is wave-planning guidance the planner consumes, not a behavior to verify. The planner honored it: all three plans are file-disjoint in a single parallel wave with GUARD-04 isolated in 112-01. Tagged [informational] so the decision-coverage gate does not track it.)*
 
 ### Claude's Discretion
 - Exact warning prefix/format chosen for prominence (D-06), provided it is consistent across the
