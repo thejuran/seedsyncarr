@@ -856,7 +856,8 @@ All dependencies confirmed available. No install step required.
 |--------|----------|-----------|-------------------|-------------|
 | CFG-01 | POST with JSON body sets config | integration | `pytest tests/integration/test_web/test_handler/test_config.py::TestConfigHandler::test_set_good -xvs` | ✅ (migrated) |
 | CFG-01 | Angular sends POST not GET | Angular unit | `npm test` — `config.service.spec.ts` "should send a GET on a set config option" → renamed | ✅ (migrated) |
-| CFG-02 | GET path → 404/405 | integration | `pytest tests/integration/test_web/test_handler/test_config.py::TestConfigHandler::test_get_old_path_returns_404 -xvs` | ❌ Wave 0 |
+| CFG-02 | OLD value-bearing GET → 404 | integration | `pytest tests/integration/test_web/test_handler/test_config.py::TestConfigHandler::test_old_value_bearing_path_returns_404 -xvs` | ❌ Wave 0 |
+| CFG-02 | NEW bare GET → 405 | integration | `pytest tests/integration/test_web/test_handler/test_config.py::TestConfigHandler::test_bare_path_get_returns_405 -xvs` | ❌ Wave 0 |
 | CFG-03 | E2E round-trip over POST | E2E | `make run-tests-e2e` — `settings-fields.spec.ts` persist tests | ✅ (migrated) |
 | CFG-04 | On-disk format unchanged | integration | `pytest tests/integration/test_web/test_handler/test_config.py::TestConfigHandler::test_set_good -xvs` (verifies value actually persisted) | ✅ (migrated) |
 | D-06 | Empty value → 400 | integration | `pytest tests/integration/test_web/test_handler/test_config.py::TestConfigHandler::test_set_empty_value -xvs` | ✅ (migrated, status changes 404→400) |
