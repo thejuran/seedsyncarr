@@ -296,6 +296,21 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Targeted regression tests for 2 Low Angular gaps: SSE heartbeat-vs-timeout reconnection race (+ positive control); auth interceptor token-rotation via `_resetAuthInterceptorCache` seam — v1.3.0
 - ✓ CI coverage ratchet: Python `fail_under` 84→88 (container-inclusive 89.27%), net-new Karma `check.global` (83/68/79/83) + Angular Dockerfile `--code-coverage` so the gate bites; before/after recorded in ROADMAP + RETROSPECTIVE — v1.3.0
 
+## Current Milestone: v1.4.0 Launch-Hardening for Public Release
+
+**Goal:** Make SeedSyncarr's public-facing surface — both the code a skeptical engineer reads and the presentation a visitor sees — bulletproof enough to withstand a technical Reddit (r/selfhosted) launch.
+
+**Target features:**
+- Hostile-reader code discovery pass (bounded; only high-visibility findings fold in)
+- `/server/config/set` GET→POST hard cutover (credentials no longer in URLs/logs)
+- Unsafe-default startup warnings (non-loopback bind without `api_token`; webhooks without secret)
+- Delete-path hardening (replace `shutil.rmtree(ignore_errors=True)` with logged error handling)
+- AppProcess spawn-context fix (the currently-failing `test_app_process.py` goes green)
+- `.gitignore` fix (`.orchestrator.json`, `.playwright-mcp/`) + legacy `~/.seedsync` fallback warning
+- Presentation rebuild: README, SECURITY.md, community-health files, release notes — driven by a cynical-reader teardown + a codex adversarial pass; Playwright screenshots captured at walkthrough; repo-metadata text drafted for manual application
+
+**Key context:** Code substance is already strong (post-v1.3.0 audit found zero active functional bugs; ~89% Python coverage; hardened security surface). The launch risk is (a) presentation underselling real quality and (b) a few specific items a hostile reader would find. The config-set GET→POST is a breaking HTTP-contract change → v1.4.0 (minor; no external consumers + lockstep frontend means 2.0.0 would over-signal). Branch-isolated workflow (`launch-hardening`); NAS walkthrough on the branch; merge + tag v1.4.0 only after CI green + maintainer sign-off. Full decisions/scope in the design spec (was `.planning/MILESTONE-CONTEXT.md`).
+
 ## Previous Milestone: v1.3.0 Test Coverage Gaps (Shipped 2026-05-31)
 
 **Goal:** Close the 8 test coverage gaps catalogued in CONCERNS.md — 4 Medium-priority gaps get full path coverage, 4 Low-priority gaps get a targeted regression test. Trivial bugs found while testing (<10 lines, no public-API or observable-behavior change) are fixed in the same plan; larger findings deferred to the next v1.3.0 slice (Known Bugs + Security). Milestone ends with ratcheted CI coverage thresholds.
@@ -309,9 +324,9 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-<!-- v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra (FINAL slice — cuts the v1.3.0 tag). -->
+<!-- v1.4.0 — Launch-Hardening for Public Release. Two tracks (code + presentation) + one cross-cutting change. -->
 
-v1.3.0 is delivered in 4 slices under one final `v1.3.0` tag. Slice 1 (Test Coverage Gaps) shipped 2026-05-31; Slice 2 (Known Bugs + Security — BUG-01..04, SEC-01..03; INFRA-01 deferred) closed 2026-06-01 (no tag, stayed on main); Slice 3 (Frontend Deps + Dead Code — DEPS-01a/b/c, DEPS-02) closed 2026-06-01 (no tag, stayed on main). **Now in flight — Slice 4: Backend Architecture Refactor + Test Infra** (GSD internal label `v1.3.0-s4`), the **final** program slice: ARCH-01 (extract the `Controller` god-class into cohesive collaborators), ARCH-02 (declarative `Config` secret-field discovery via `secret=True` in `PROP`), ARCH-03 (dedup the bulk-action dispatch scaffold into a shared `_dispatch_command(...)` helper), and the rolled-forward INFRA-01 (MP-logger spawn-safe production fix to `multiprocessing_logger.py` so the three analog tests pass on both `fork` and `spawn`). ARCH work is behavior-preserving (existing suites are the regression net). See `.planning/REQUIREMENTS.md`. The single user-facing `v1.3.0` tag is cut when this slice completes, preceded by one batched pre-release walkthrough.
+v1.4.0 hardens SeedSyncarr's public face for a Reddit launch. **Code track:** a bounded hostile-reader discovery pass, the `/server/config/set` GET→POST hard cutover (the one breaking change — credentials no longer travel in URLs/logs), unsafe-default startup warnings, delete-path hardening (logged errors instead of silent `ignore_errors=True`), the AppProcess spawn-context fix (failing `test_app_process.py` goes green), and two cheap launch-visible items (`.gitignore` for `.orchestrator.json`/`.playwright-mcp/`; loud warning on the legacy `~/.seedsync` fallback). **Presentation track:** a cynical-reader teardown + codex adversarial pass driving a README/SECURITY.md/community-health/release-notes rebuild, Playwright screenshots captured at walkthrough, and repo-metadata text drafted for manual application. Branch-isolated; merge + tag `v1.4.0` only after CI green + maintainer sign-off. See `.planning/REQUIREMENTS.md`.
 
 ### Out of Scope
 
@@ -322,7 +337,10 @@ v1.3.0 is delivered in 4 slices under one final `v1.3.0` tag. Slice 1 (Test Cove
 - HTTPS termination — handled by reverse proxy
 - New favicon/logo design — keep existing favicon.png
 - webob/cgi upstream fix — blocked on upstream webob 2.0 release (PR #466 open)
-- Migrate `/server/config/set` from GET-path to POST-body — backend API change, separate milestone
+- Shutdown-readiness Event (replace fixed `time.sleep` in `seedsyncarr.py` shutdown) — real robustness gain but invisible to a launch reader; deferred (v1.4.0 scope decision)
+- `StreamQueue.put` non-atomic drop-oldest — latent, well-mitigated, documented edge-case; deferred (v1.4.0 scope decision)
+- Test-hardening backlog (`.planning/backlog/TEST-HARDENING-REVIEW.md`, A-01..A-06) — test-infra niceties invisible to a launch reader; deferred (v1.4.0 scope decision)
+- NAS local-build QEMU issue — deploy-environment limitation, not a code defect; CI multi-arch publish works
 
 ## Context
 
@@ -432,4 +450,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-02 after shipping v1.3.0 (all 4 slices, phases 97-109)*
+*Last updated: 2026-06-02 after starting milestone v1.4.0 (Launch-Hardening for Public Release)*

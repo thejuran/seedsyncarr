@@ -1,11 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3.0-s4
-milestone_name: Backend Architecture Refactor + Test Infra (v1.3.0 slice 4 of 4)
-status: Awaiting next milestone
-stopped_at: v1.3.0 milestone shipped (all 4 slices complete, tagged v1.3.0)
-last_updated: "2026-06-02T15:32:46.935Z"
-last_activity: 2026-06-02 — Milestone v1.3.0 completed and archived
+milestone: v1.4.0
+milestone_name: Launch-Hardening for Public Release
+status: planning
+last_updated: "2026-06-02T16:37:04.569Z"
+last_activity: 2026-06-02
+progress:
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -19,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 ## Current Position
 
-Phase: Milestone v1.3.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-02 — Milestone v1.3.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-06-02 — Milestone v1.4.0 started
 
 ## Accumulated Context
 
