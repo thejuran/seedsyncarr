@@ -19,7 +19,7 @@ class TestSeedsyncarr(unittest.TestCase):
         argv.append("/path/to/html")
         argv.append("--scanfs")
         argv.append("/path/to/scanfs")
-        args = Seedsyncarr._parse_args(argv)
+        args, _ = Seedsyncarr._parse_args(argv)
         self.assertIsNotNone(args)
         self.assertEqual("/path/to/config", args.config_dir)
 
@@ -30,7 +30,7 @@ class TestSeedsyncarr(unittest.TestCase):
         argv.append("/path/to/html")
         argv.append("--scanfs")
         argv.append("/path/to/scanfs")
-        args = Seedsyncarr._parse_args(argv)
+        args, _ = Seedsyncarr._parse_args(argv)
         self.assertIsNotNone(args)
         self.assertEqual("/path/to/config", args.config_dir)
 
@@ -46,7 +46,7 @@ class TestSeedsyncarr(unittest.TestCase):
         argv.append("/path/to/scanfs")
         argv.append("--html")
         argv.append("/path/to/html")
-        args = Seedsyncarr._parse_args(argv)
+        args, _ = Seedsyncarr._parse_args(argv)
         self.assertIsNotNone(args)
         self.assertEqual("/path/to/html", args.html)
 
@@ -58,7 +58,7 @@ class TestSeedsyncarr(unittest.TestCase):
         argv.append("/path/to/html")
         argv.append("--scanfs")
         argv.append("/path/to/scanfs")
-        args = Seedsyncarr._parse_args(argv)
+        args, _ = Seedsyncarr._parse_args(argv)
         self.assertIsNotNone(args)
         self.assertEqual("/path/to/scanfs", args.scanfs)
 
@@ -72,7 +72,7 @@ class TestSeedsyncarr(unittest.TestCase):
         argv.append("/path/to/html")
         argv.append("--scanfs")
         argv.append("/path/to/scanfs")
-        args = Seedsyncarr._parse_args(argv)
+        args, _ = Seedsyncarr._parse_args(argv)
         self.assertIsNotNone(args)
         self.assertEqual("/path/to/logdir", args.logdir)
 
@@ -83,7 +83,7 @@ class TestSeedsyncarr(unittest.TestCase):
         argv.append("/path/to/html")
         argv.append("--scanfs")
         argv.append("/path/to/scanfs")
-        args = Seedsyncarr._parse_args(argv)
+        args, _ = Seedsyncarr._parse_args(argv)
         self.assertIsNotNone(args)
         self.assertIsNone(args.logdir)
 
@@ -96,7 +96,7 @@ class TestSeedsyncarr(unittest.TestCase):
         argv.append("--scanfs")
         argv.append("/path/to/scanfs")
         argv.append("-d")
-        args = Seedsyncarr._parse_args(argv)
+        args, _ = Seedsyncarr._parse_args(argv)
         self.assertIsNotNone(args)
         self.assertTrue(args.debug)
 
@@ -108,7 +108,7 @@ class TestSeedsyncarr(unittest.TestCase):
         argv.append("/path/to/html")
         argv.append("--scanfs")
         argv.append("/path/to/scanfs")
-        args = Seedsyncarr._parse_args(argv)
+        args, _ = Seedsyncarr._parse_args(argv)
         self.assertIsNotNone(args)
         self.assertTrue(args.debug)
 
@@ -119,7 +119,7 @@ class TestSeedsyncarr(unittest.TestCase):
         argv.append("/path/to/html")
         argv.append("--scanfs")
         argv.append("/path/to/scanfs")
-        args = Seedsyncarr._parse_args(argv)
+        args, _ = Seedsyncarr._parse_args(argv)
         self.assertIsNotNone(args)
         self.assertFalse(args.debug)
 

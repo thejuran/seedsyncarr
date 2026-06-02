@@ -37,7 +37,7 @@ class Seedsyncarr:
 
     def __init__(self):
         # Parse the args
-        args = self._parse_args(sys.argv[1:])
+        args, legacy_fallback_warning = self._parse_args(sys.argv[1:])
 
         # Create/load config
         config = None
@@ -79,6 +79,8 @@ class Seedsyncarr:
                                                 debug=is_debug,
                                                 logdir=args.logdir)
         logger.info("Debug mode is {}.".format("enabled" if is_debug else "disabled"))
+        if legacy_fallback_warning:
+            logger.warning(legacy_fallback_warning)
 
         # Create status
         status = Status()
@@ -262,16 +264,17 @@ class Seedsyncarr:
 
         args = parser.parse_args(args)
 
+        legacy_fallback_warning: str | None = None
         if not os.path.exists(args.config_dir):
             legacy_dir = os.path.expanduser("~/.seedsync")
             if os.path.exists(legacy_dir):
-                logging.warning(
-                    "Config directory %s not found; falling back to legacy %s",
-                    args.config_dir, legacy_dir
+                legacy_fallback_warning = (
+                    "Config directory %s not found; falling back to legacy %s"
+                    % (args.config_dir, legacy_dir)
                 )
                 args.config_dir = legacy_dir
 
-        return args
+        return args, legacy_fallback_warning
 
     @staticmethod
     def _create_logger(name: str, debug: bool, logdir: Optional[str]) -> logging.Logger:
