@@ -120,6 +120,25 @@ class AppProcess(Process):
         except queue.Empty:
             pass
 
+    def __getstate__(self) -> dict:
+        """Return picklable state for spawn serialization.
+
+        Strips threading.Thread instances set by subclasses in __init__ that
+        cannot be pickled under macOS/Windows spawn start method.  Queue and
+        Event objects are retained — Python's spawn mechanism transfers them
+        correctly for Process subclasses.  Subclasses that create Thread
+        objects in __init__ must re-create them in run_init().
+        """
+        state = self.__dict__.copy()
+        stripped = [k for k, v in state.items() if isinstance(v, threading.Thread)]
+        for k in stripped:
+            state.pop(k)
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        """Restore state after spawn deserialization."""
+        self.__dict__.update(state)
+
     @abstractmethod
     def run_init(self):
         """
