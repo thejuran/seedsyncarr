@@ -657,7 +657,7 @@ This is a behavior-preserving code-structure refactor. No new inputs, no new out
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `__check_webhook_imports` stay on Controller or move to model_pipeline?**
    - What we know: Tests call `c._Controller__check_webhook_imports()` at `test_controller.py:214,242`.
