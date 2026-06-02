@@ -11,6 +11,7 @@ import copy
 from .scan_manager import ScanManager
 from .lftp_manager import LftpManager
 from .file_operation_manager import FileOperationManager
+from .command_processor import CommandProcessor
 from .webhook_manager import WebhookManager
 from .extract import ExtractStatusResult, ExtractCompletedResult
 from .model_builder import ModelBuilder
@@ -196,6 +197,16 @@ class Controller:
         # (it is set False at the END of exit(), too late to block a mid-callback
         # dispatch; see D-03).
         self.__shutdown_event = threading.Event()
+
+        # Command dispatch collaborator — receives already-constructed manager instances
+        # (D-05: mock.patch targets resolve against controller.controller where they are
+        # constructed; CommandProcessor constructs none of them)
+        self.__command_processor = CommandProcessor(
+            lftp_manager=self.__lftp_manager,
+            file_op_manager=self.__file_op_manager,
+            persist=self.__persist,
+            logger=self.logger,
+        )
 
         self.__started = False
 
@@ -1006,101 +1017,10 @@ class Controller:
         self.__file_op_manager.delete_local(file)
         self.logger.info("Auto-deleted local file '{}'".format(sanitize_log_value(file_name)))
 
-    def __handle_queue_command(self, file: ModelFile, command: Command) -> (bool, str, int):
-        """
-        Handle QUEUE command action.
-        Returns (success, error_message, error_code) tuple.
-        """
-        if file.remote_size is None:
-            return False, "File '{}' does not exist remotely".format(command.filename), 404
-        try:
-            self.__lftp_manager.queue(file.name, file.is_dir)
-            # Remove from stopped files - user explicitly wants to download this
-            self.__persist.stopped_file_names.discard(file.name)
-            return True, None, None
-        except LftpError as e:
-            return False, "Lftp error: {}".format(str(e)), 500
-
-    def __handle_stop_command(self, file: ModelFile, command: Command) -> (bool, str, int):
-        """
-        Handle STOP command action.
-        Returns (success, error_message, error_code) tuple.
-        """
-        if file.state not in (ModelFile.State.DOWNLOADING, ModelFile.State.QUEUED):
-            return False, "File '{}' is not Queued or Downloading".format(command.filename), 409
-        try:
-            self.__lftp_manager.kill(file.name)
-            # Track this file as stopped so it won't be auto-queued on restart
-            self.__persist.stopped_file_names.add(file.name)
-            return True, None, None
-        except (LftpError, LftpJobStatusParserError) as e:
-            return False, "Lftp error: {}".format(str(e)), 500
-
-    def __handle_extract_command(self, file: ModelFile, command: Command) -> (bool, str, int):
-        """
-        Handle EXTRACT command action.
-        Returns (success, error_message, error_code) tuple.
-        """
-        # Note: We don't check the is_extractable flag because it's just a guess
-        if file.state not in (
-                ModelFile.State.DEFAULT,
-                ModelFile.State.DOWNLOADED,
-                ModelFile.State.EXTRACTED
-        ):
-            return False, "File '{}' in state {} cannot be extracted".format(
-                command.filename, str(file.state)
-            ), 409
-        elif file.local_size is None:
-            return False, "File '{}' does not exist locally".format(command.filename), 404
-        else:
-            self.__file_op_manager.extract(file)
-            return True, None, None
-
-    def __handle_delete_command(self, file: ModelFile, command: Command) -> (bool, str, int):
-        """
-        Handle DELETE_LOCAL and DELETE_REMOTE command actions.
-        Returns (success, error_message, error_code) tuple.
-        """
-        if command.action == Controller.Command.Action.DELETE_LOCAL:
-            if file.state not in (
-                ModelFile.State.DEFAULT,
-                ModelFile.State.DOWNLOADED,
-                ModelFile.State.EXTRACTED
-            ):
-                return False, "Local file '{}' cannot be deleted in state {}".format(
-                    command.filename, str(file.state)
-                ), 409
-            elif file.local_size is None:
-                return False, "File '{}' does not exist locally".format(command.filename), 404
-            else:
-                self.__file_op_manager.delete_local(file)
-                # Track as stopped to prevent auto-queuing on restart
-                self.__persist.stopped_file_names.add(command.filename)
-                return True, None, None
-
-        elif command.action == Controller.Command.Action.DELETE_REMOTE:
-            if file.state not in (
-                ModelFile.State.DEFAULT,
-                ModelFile.State.DOWNLOADED,
-                ModelFile.State.EXTRACTED,
-                ModelFile.State.DELETED
-            ):
-                return False, "Remote file '{}' cannot be deleted in state {}".format(
-                    command.filename, str(file.state)
-                ), 409
-            elif file.remote_size is None:
-                return False, "File '{}' does not exist remotely".format(command.filename), 404
-            else:
-                self.__file_op_manager.delete_remote(file)
-                return True, None, None
-
-        return False, "Unknown delete action", 500
-
     def __process_commands(self):
         def _notify_failure(_command: Controller.Command, _msg: str, _code: int = 400):
             # Sanitize _msg for log output only — _msg is built from command.filename
             # (user-supplied via URL path / bulk JSON) and could otherwise forge log entries.
-            # The client-facing callback at line 1071 keeps the RAW _msg (log-output-only).
             self.logger.warning("Command failed. {}".format(sanitize_log_value(_msg)))
             for _callback in _command.callbacks:
                 _callback.on_failure(_msg, _code)
@@ -1115,22 +1035,10 @@ class Controller:
                     _notify_failure(command, "File '{}' not found".format(command.filename), 404)
                     continue
 
-            success = False
-            error_msg = None
-            error_code = 400
-
-            if command.action == Controller.Command.Action.QUEUE:
-                success, error_msg, error_code = self.__handle_queue_command(file, command)
-
-            elif command.action == Controller.Command.Action.STOP:
-                success, error_msg, error_code = self.__handle_stop_command(file, command)
-
-            elif command.action == Controller.Command.Action.EXTRACT:
-                success, error_msg, error_code = self.__handle_extract_command(file, command)
-
-            elif command.action in (Controller.Command.Action.DELETE_LOCAL,
-                                    Controller.Command.Action.DELETE_REMOTE):
-                success, error_msg, error_code = self.__handle_delete_command(file, command)
+            # __model_lock is now released. Delegate to CommandProcessor — no lock held here.
+            # delete_local (DELETE_LOCAL/DELETE_REMOTE) spawns a subprocess; it MUST run
+            # outside the lock to avoid starving model updates.
+            success, error_msg, error_code = self.__command_processor.handle(file, command)
 
             if not success:
                 _notify_failure(command, error_msg, error_code)
