@@ -566,7 +566,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 **Plans**: 3 plans (2 waves)
 
 Plans:
-- [ ] 111-01-PLAN.md — Backend contract: POST /server/config/set handler + GET route removal + migrated Python tests (wave 1; CFG-01/02/04)
+- [x] 111-01-PLAN.md — Backend contract: POST /server/config/set handler + GET route removal + migrated Python tests (wave 1; CFG-01/02/04)
 - [ ] 111-02-PLAN.md — Angular client: RestService.post body + ConfigService.set POST + migrated spec (wave 2; CFG-01/03)
 - [ ] 111-03-PLAN.md — E2E: setup-script curls + Playwright page objects/fixtures to POST (wave 2; CFG-01/03)
 
@@ -638,7 +638,7 @@ Plans:
 | 108. Config + Handler Refactors (Slice 4) | v1.3.0-s4 | 2/2 | Complete   | 2026-06-01 |
 | 109. Controller Decomposition (Slice 4) | v1.3.0-s4 | 3/3 | Complete   | 2026-06-02 |
 | 110. Hostile-Reader Discovery Pass | v1.4.0 | 1/1 | Complete   | 2026-06-02 |
-| 111. Config-Set Endpoint Migration | v1.4.0 | 0/TBD | Not started | - |
+| 111. Config-Set Endpoint Migration | v1.4.0 | 1/3 | In Progress|  |
 | 112. Defensive Guards & Code Hardening | v1.4.0 | 0/TBD | Not started | - |
 | 113. Presentation & Launch Readiness | v1.4.0 | 0/TBD | Not started | - |
 

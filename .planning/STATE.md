@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.4.0
 milestone_name: Launch-Hardening for Public Release
-status: planning
+status: executing
 stopped_at: Phase 111 planned — 3 plans/2 waves, plan-checker PASSED (iter 2), CFG-01..04 covered
-last_updated: "2026-06-02T20:56:18.525Z"
-last_activity: 2026-06-02 -- Phase 110 complete; maintainer approved 110-FINDINGS.md dispositions
+last_updated: "2026-06-02T21:17:48.580Z"
+last_activity: 2026-06-02 -- Phase 111 execution started
 ---
 
 # Project State
@@ -15,14 +15,14 @@ last_activity: 2026-06-02 -- Phase 110 complete; maintainer approved 110-FINDING
 See: .planning/PROJECT.md (updated 2026-06-02)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 110 complete — next up Phase 111 (Config-Set Endpoint Migration)
+**Current focus:** Phase 111 — config-set-endpoint-migration
 
 ## Current Position
 
-Phase: 110 (hostile-reader-discovery-pass) — COMPLETE
-Plan: 1 of 1 (110-01 complete)
-Status: Phase 110 complete — fix scope for 111-113 locked; ready to plan Phase 111
-Last activity: 2026-06-02 -- Phase 110 complete; maintainer approved 110-FINDINGS.md dispositions
+Phase: 111 (config-set-endpoint-migration) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 111
+Last activity: 2026-06-02 -- Phase 111 execution started
 
 ## Accumulated Context
 
