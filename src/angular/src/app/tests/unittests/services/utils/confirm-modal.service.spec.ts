@@ -440,13 +440,27 @@ describe("Testing confirm modal service", () => {
             return false;
         }
 
-        // Scans the modal subtree for any href/src attribute carrying a javascript: URL.
+        // Scans the modal subtree for any href/src attribute carrying a dangerous-scheme URL.
         // Extracted to a describe-scope helper (mirrors hasOnAttribute) so the four D-03
-        // end-to-end tests share one javascript:-URL check instead of duplicating it.
-        function hasJavascriptUrl(root: Element): boolean {
+        // end-to-end tests share one dangerous-URL check instead of duplicating it.
+        //
+        // Checks the full set of script-executing schemes, not just javascript: — a regression
+        // that emitted a data:text/html or vbscript: URL would otherwise slip past this assertion
+        // and leave the test green (CodeQL js/incomplete-url-scheme-check). Browsers ignore
+        // leading whitespace/control chars before the scheme, so those are stripped before the
+        // prefix test to match how the URL would actually be evaluated.
+        const DANGEROUS_URL_SCHEMES = ["javascript:", "data:", "vbscript:"];
+        // eslint-disable-next-line no-control-regex -- intentional: strip leading control chars to mirror browser scheme parsing
+        const LEADING_WS_OR_CONTROL = /^[\u0000-\u0020]+/;
+        function hasDangerousUrl(root: Element): boolean {
+            const isDangerous = (raw: string | null): boolean => {
+                // Strip leading whitespace + C0 control chars (matches how browsers parse the
+                // scheme), then compare case-insensitively against all script-executing schemes.
+                const normalized = (raw || "").replace(LEADING_WS_OR_CONTROL, "").toLowerCase();
+                return DANGEROUS_URL_SCHEMES.some(scheme => normalized.startsWith(scheme));
+            };
             return Array.from(root.querySelectorAll("[href],[src]")).some(el =>
-                (el.getAttribute("href") || "").toLowerCase().startsWith("javascript:") ||
-                (el.getAttribute("src") || "").toLowerCase().startsWith("javascript:")
+                isDangerous(el.getAttribute("href")) || isDangerous(el.getAttribute("src"))
             );
         }
 
@@ -483,7 +497,7 @@ describe("Testing confirm modal service", () => {
                 // (b) No on* event-handler attribute anywhere in the subtree
                 expect(hasOnAttribute(modal)).toBe(false);
                 // (c) No javascript: URL
-                expect(hasJavascriptUrl(modal)).toBe(false);
+                expect(hasDangerousUrl(modal)).toBe(false);
                 // (d) Literal payload visible as text (structural outcome)
                 expect(modalTitle.textContent).toContain("<script>");
             }));
@@ -501,7 +515,7 @@ describe("Testing confirm modal service", () => {
 
                 expect(modal.querySelector("script")).toBeNull();
                 expect(hasOnAttribute(modal)).toBe(false);
-                expect(hasJavascriptUrl(modal)).toBe(false);
+                expect(hasDangerousUrl(modal)).toBe(false);
                 // Literal payload visible as text (structural outcome)
                 expect(modalBodyP.textContent).toContain("<script>");
             }));
@@ -557,7 +571,7 @@ describe("Testing confirm modal service", () => {
 
                 expect(modal.querySelector("script")).toBeNull();
                 expect(hasOnAttribute(modal)).toBe(false);
-                expect(hasJavascriptUrl(modal)).toBe(false);
+                expect(hasDangerousUrl(modal)).toBe(false);
                 // Payload rendered as inert button text (structural outcome)
                 expect(okButton.textContent).toContain("<script>");
             }));
@@ -576,7 +590,7 @@ describe("Testing confirm modal service", () => {
 
                 expect(modal.querySelector("script")).toBeNull();
                 expect(hasOnAttribute(modal)).toBe(false);
-                expect(hasJavascriptUrl(modal)).toBe(false);
+                expect(hasDangerousUrl(modal)).toBe(false);
                 // Payload rendered as inert button text (structural outcome)
                 expect(cancelButton.textContent).toContain("<script>");
             }));
