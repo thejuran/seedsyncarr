@@ -77,25 +77,22 @@ def add_post_handler(self, path: str, handler: Callable):
 ```
 
 **Core POST body-parsing pattern** (`webhook.py:128-135` — the in-repo precedent to mirror verbatim):
-```python
-# Parse JSON body
-try:
-    body = request.json
-except (ValueError, json.JSONDecodeError):
-    return HTTPResponse(status=400, body="Invalid JSON")
-
-if not body:
-    return HTTPResponse(status=400, body="Empty body")
-```
+> **Invalid-JSON-with-correct-content-type is handled by bottle BEFORE the handler runs**
+> (RESEARCH §RQ-1 case 3): bottle raises `HTTPError(400, 'Invalid JSON')` for a malformed body
+> sent with `Content-Type: application/json`, and returns its own 400 — the handler never
+> executes for that case. Therefore the handler writes **NO** `try/except` around
+> `bottle.request.json` for JSON-parse errors (that except clause would be dead code — FINDING 3).
+> `bottle.request.json` returns `None` (not raises) on a wrong/absent content-type; the handler's
+> `None`/non-dict guard covers that. The only guards the handler needs are: non-dict body,
+> non-string/empty `section`/`key`, and missing/empty `value`.
 
 **New `__handle_set_config` handler shape** (replacing `config.py:92-105`):
 ```python
 def __handle_set_config(self) -> HTTPResponse:
-    # No path params — all fields from JSON body (D-01/D-03)
-    try:
-        body = bottle.request.json
-    except (ValueError, json.JSONDecodeError):
-        return HTTPResponse(body="Invalid request body", status=400)
+    # No path params — all fields from JSON body (D-01/D-03).
+    # NOTE: no try/except around bottle.request.json — bottle 400s invalid JSON
+    # (with application/json) before this handler runs (FINDING 3 / RESEARCH §RQ-1).
+    body = bottle.request.json
 
     if not body or not isinstance(body, dict):
         return HTTPResponse(body="Invalid request body", status=400)
@@ -104,7 +101,10 @@ def __handle_set_config(self) -> HTTPResponse:
     key = body.get("key")
     value = body.get("value")
 
-    if not section or not key:
+    # FINDING 1: reject non-string / empty section|key BEFORE any config lookup.
+    # A truthy non-string (list/dict/number) would reach has_section/getattr/
+    # has_property and raise TypeError → uncaught 500/DoS. isinstance guard first.
+    if not isinstance(section, str) or not section or not isinstance(key, str) or not key:
         return HTTPResponse(body="Invalid request body", status=400)
 
     # D-06: missing-or-empty value is 400 (was 404 route-miss under GET regex)
@@ -196,7 +196,7 @@ def test_set_empty_value(self):
     self.assertEqual(400, resp.status_int)
 ```
 
-**New tests to add** (D-07 malformed body, D-02 route removal — currently zero coverage):
+**New tests to add** (D-07 malformed body, D-02 route removal, FINDING 1 type-confusion — currently zero coverage):
 ```python
 def test_set_malformed_body_wrong_content_type(self):
     # D-07: wrong content-type → bottle.request.json returns None → 400
@@ -204,6 +204,17 @@ def test_set_malformed_body_wrong_content_type(self):
         "/server/config/set",
         params="not-json",
         content_type="text/plain",
+        expect_errors=True
+    )
+    self.assertEqual(400, resp.status_int)
+
+def test_set_invalid_json_correct_content_type(self):
+    # D-07 / FINDING 3: malformed JSON WITH application/json → bottle's own
+    # HTTPError(400) fires before the handler. Assert the 400 contract holds.
+    resp = self.test_app.post(
+        "/server/config/set",
+        params='{bad json',
+        content_type="application/json",
         expect_errors=True
     )
     self.assertEqual(400, resp.status_int)
@@ -217,13 +228,48 @@ def test_set_missing_required_field(self):
     )
     self.assertEqual(400, resp.status_int)
 
-def test_get_old_path_returns_404_or_405(self):
-    # D-02: old GET route is removed; bare GET to the POST-only path returns 405
+def test_set_non_string_section(self):
+    # FINDING 1: non-string section must be 400, NEVER 500 (no TypeError/DoS)
+    resp = self.test_app.post_json(
+        "/server/config/set",
+        {"section": ["general"], "key": "debug", "value": "True"},
+        expect_errors=True
+    )
+    self.assertEqual(400, resp.status_int)
+    self.assertNotEqual(500, resp.status_int)
+
+def test_set_non_string_key(self):
+    # FINDING 1: non-string key must be 400, NEVER 500 (no TypeError/DoS)
+    resp = self.test_app.post_json(
+        "/server/config/set",
+        {"section": "general", "key": {"x": 1}, "value": "True"},
+        expect_errors=True
+    )
+    self.assertEqual(400, resp.status_int)
+    self.assertNotEqual(500, resp.status_int)
+
+def test_old_value_bearing_path_returns_404(self):
+    # D-02 / FINDING 2: the OLD value-bearing path is unregistered → GET returns
+    # exactly 404. (405 here would mean a value-bearing route shape still exists
+    # under another method — the CFG-02 failure mode. Assert 404 strictly.)
     resp = self.test_app.get(
         "/server/config/set/general/debug/True",
         expect_errors=True
     )
-    self.assertIn(resp.status_int, (404, 405))
+    self.assertEqual(404, resp.status_int)
+    # And POST to the value-bearing path is NOT the new contract (must not 200)
+    resp_post = self.test_app.post_json(
+        "/server/config/set/general/debug/True",
+        {"value": "True"},
+        expect_errors=True
+    )
+    self.assertNotEqual(200, resp_post.status_int)
+
+def test_bare_path_get_returns_405(self):
+    # D-02 / FINDING 2: the NEW bare path is POST-only → GET returns exactly 405
+    # (NOT 404 — a 404 would mean the POST route is missing entirely).
+    resp = self.test_app.get("/server/config/set", expect_errors=True)
+    self.assertEqual(405, resp.status_int)
 ```
 
 ---

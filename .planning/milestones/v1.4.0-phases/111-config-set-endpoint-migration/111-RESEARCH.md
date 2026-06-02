@@ -443,7 +443,9 @@ the redaction tests are untouched. [VERIFIED: config.py:87-90]
 - Body is `None` / wrong content-type → 400
 - Body is a non-dict JSON value (e.g., JSON array `[]`) → 400
 - Body missing required field (`section`, `key`, or `value`) → 400
-- Legacy GET path returns 404/405 after removal → 404 or 405
+- Non-string `section`/`key` (array/object/number) → 400, never 500 (FINDING 1)
+- Invalid JSON with `application/json` → 400 via bottle's HTTPError (FINDING 3)
+- Legacy route removal (FINDING 2 — split, not "either"): OLD value-bearing GET path `/server/config/set/general/debug/True` → **404**; NEW bare GET `/server/config/set` → **405**
 
 These new tests add lines that did not exist before — they can only raise coverage. The planner should
 confirm `fail_under ≥ 88` holds by ensuring every new handler line is covered.
@@ -561,7 +563,10 @@ def __handle_set_config(self) -> HTTPResponse:
     key = body.get("key")
     value = body.get("value")
 
-    if not section or not key:
+    # FINDING 1: reject non-string/empty section|key BEFORE any config lookup —
+    # a truthy non-string would reach has_section/getattr/has_property (str-expecting)
+    # and raise TypeError → uncaught 500/DoS.
+    if not isinstance(section, str) or not section or not isinstance(key, str) or not key:
         return HTTPResponse(body="Invalid request body", status=400)
 
     # value="" is the D-06 case — treat as 400
@@ -623,8 +628,8 @@ def test_set_empty_value(self):
     )
     self.assertEqual(400, resp.status_int)
 
-def test_set_malformed_body(self):
-    # D-07: no body / wrong content-type
+def test_set_malformed_body_wrong_content_type(self):
+    # D-07: wrong content-type → bottle.request.json returns None → 400
     resp = self.test_app.post(
         "/server/config/set",
         params="not-json",
@@ -633,13 +638,40 @@ def test_set_malformed_body(self):
     )
     self.assertEqual(400, resp.status_int)
 
-def test_get_old_path_returns_404(self):
-    # D-02: old GET path no longer exists
+def test_set_invalid_json_correct_content_type(self):
+    # D-07 / FINDING 3: malformed JSON WITH application/json → bottle's own
+    # HTTPError(400) fires before the handler. No handler code services this path.
+    resp = self.test_app.post(
+        "/server/config/set",
+        params='{bad json',
+        content_type="application/json",
+        expect_errors=True
+    )
+    self.assertEqual(400, resp.status_int)
+
+def test_set_non_string_section(self):
+    # FINDING 1: non-string section → 400, NEVER 500 (no TypeError/DoS)
+    resp = self.test_app.post_json(
+        "/server/config/set",
+        {"section": ["general"], "key": "debug", "value": "True"},
+        expect_errors=True
+    )
+    self.assertEqual(400, resp.status_int)
+    self.assertNotEqual(500, resp.status_int)
+
+def test_old_value_bearing_path_returns_404(self):
+    # D-02 / FINDING 2: the OLD value-bearing path is unregistered → GET = exactly 404.
+    # (405 would mean a value-bearing route shape survived under another method.)
     resp = self.test_app.get(
         "/server/config/set/general/debug/True",
         expect_errors=True
     )
-    self.assertIn(resp.status_int, (404, 405))
+    self.assertEqual(404, resp.status_int)
+
+def test_bare_path_get_returns_405(self):
+    # D-02 / FINDING 2: the NEW bare path is POST-only → GET = exactly 405 (not 404).
+    resp = self.test_app.get("/server/config/set", expect_errors=True)
+    self.assertEqual(405, resp.status_int)
 ```
 
 ### Pattern 3: Unit test (handler called directly, bottle.request mocked)
