@@ -371,28 +371,28 @@ class Seedsyncarr:
     @staticmethod
     def _emit_startup_warnings(logger: logging.Logger, config: Config) -> None:
         """Emit security warnings for insecure configuration states."""
-        if not config.general.webhook_secret:
+        if not config.general.webhook_secret and not config.general.webhook_require_secret:
             logger.warning(
-                "Security: webhook_secret is not configured. "
+                "[SECURITY] webhook_secret is not configured. "
                 "Webhook endpoints will accept requests from any caller."
             )
         if config.general.webhook_require_secret and not config.general.webhook_secret:
             logger.warning(
-                "Security: webhook_require_secret is True but webhook_secret is not set. "
+                "[SECURITY] webhook_require_secret is True but webhook_secret is not set. "
                 "All webhook requests will be rejected with 503 until a secret is configured."
             )
         if not config.general.api_token:
             logger.warning(
-                "Security: No API token configured. "
+                "[SECURITY] No API token configured. "
                 "All API requests will be accepted without authentication."
             )
             logger.warning(
-                "Security: Application is bound to 0.0.0.0 without an API token. "
+                "[SECURITY] Application is bound to 0.0.0.0 without an API token. "
                 "Any host on the network can access the API."
             )
         else:
             logger.info(
-                "Security: API token configured — "
+                "[SECURITY] API token configured — "
                 "all /server/* endpoints require Bearer authentication."
             )
 
