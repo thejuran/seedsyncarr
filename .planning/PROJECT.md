@@ -10,6 +10,8 @@ Reliable file sync from seedbox to local with automated media library integratio
 
 ## Previous State
 
+**v1.3.0 (2026-06-02)** — Test & Quality, Security, Deps & Backend Architecture Refactor. A 4-slice program (phases 97-109) shipped under one tag: (1) closed 8 test-coverage gaps and ratcheted CI coverage floors; (2) fixed 7 known bugs + security items — opt-in webhook fail-closed + rate-limiting, CR/LF log-injection sanitization, config-response normalization, auto-delete Timer shutdown guard, Angular ConfirmModal innerHTML→Renderer2 XSS fix, SSE same-tick subscription leak fix; (3) removed 3 end-of-life Angular deps (jQuery 4, Font Awesome 4.7, css-element-queries), migrated all icons to Phosphor, excluded mock fixtures from the production bundle; (4) behavior-preserving backend refactors — MP-logger spawn-safety, declarative Config secret discovery, web-handler dispatch dedup, and decomposition of the 1150-line Controller god-class into three cohesive collaborators (command_processor, auto_delete_manager, model_pipeline). Full suite green throughout; live pre-release walkthrough passed all flows.
+
 **v1.2.0 (2026-04-28)** — Test & Quality Hardening. Fixed 68 test/quality/security items across 10 phases: 19 Python test defects (false coverage, resource leaks, race conditions), 7 Angular test issues (subscription leaks, fakeAsync, optional chaining), 9 E2E test + 5 infrastructure fixes, CI & Docker security hardening (least-privilege, SHA-pinned actions, SSH key-only auth, non-root sshd), 6 test coverage gaps filled (SSE, Logs/Settings E2E, webhook, DeleteRemoteProcess, ActiveScanner), rate limiting on all mutable endpoints, 628 Semgrep false positives eliminated.
 
 **v1.1.2 (2026-04-24)** — Test Suite Audit. Audited all three test layers for stale/redundant tests inherited from original SeedSync. Zero stale tests found across all layers (72 Python files, 40 Angular specs, 7 E2E specs). HttpClientTestingModule migrated to provideHttpClient() in 6 spec files. Coverage baselines documented: Python 85.05%, Angular Statements 83.34%/Branches 69.01%/Functions 79.73%/Lines 84.21%. CI fully green (1262 Python, 599 Angular, 37 E2E on amd64+arm64).
@@ -430,4 +432,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-01 after starting v1.3.0 slice 4 of 4: Backend Architecture Refactor + Test Infra (final slice)*
+*Last updated: 2026-06-02 after shipping v1.3.0 (all 4 slices, phases 97-109)*

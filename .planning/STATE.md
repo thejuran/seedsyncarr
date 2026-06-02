@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.3.0-s4
 milestone_name: Backend Architecture Refactor + Test Infra (v1.3.0 slice 4 of 4)
-status: executing
-stopped_at: Phase 109 context gathered
-last_updated: "2026-06-02T02:44:52.717Z"
-last_activity: 2026-06-02 -- Phase 109 execution started
+status: Awaiting next milestone
+stopped_at: v1.3.0 milestone shipped (all 4 slices complete, tagged v1.3.0)
+last_updated: "2026-06-02T15:32:46.935Z"
+last_activity: 2026-06-02 — Milestone v1.3.0 completed and archived
 ---
 
 # Project State
@@ -19,11 +19,10 @@ See: .planning/PROJECT.md (updated 2026-06-01)
 
 ## Current Position
 
-Phase: 109 (Controller Decomposition) — EXECUTING
-Plan: 3 of 3
-Next phase: 109 (Controller Decomposition) — ARCH-01
-Status: Executing Phase 109
-Last activity: 2026-06-02 -- Phase 109 execution started
+Phase: Milestone v1.3.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-02 — Milestone v1.3.0 completed and archived
 
 ## Accumulated Context
 
@@ -91,4 +90,4 @@ Next action: Discuss/plan Phase 109 with `/gsd:discuss-phase 109` (or `/gsd:plan
 
 ## Operator Next Steps
 
-- Phase 109 (Controller Decomposition, ARCH-01) is the final phase of slice 4 — it cuts the v1.3.0 tag on completion.
+- Start the next milestone with /gsd-new-milestone

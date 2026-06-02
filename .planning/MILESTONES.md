@@ -1,5 +1,20 @@
 # Project Milestones: SeedSync
 
+## v1.3.0 Test & Quality, Security, Deps & Backend Architecture Refactor (Shipped: 2026-06-02)
+
+**Phases completed:** 13 phases (97-109) across 4 slices. Tag `v1.3.0` (first release since v1.2.5).
+
+**Key accomplishments:**
+
+- Slice 1 (97-100): closed 8 test-coverage gaps; ratcheted CI coverage floors (Python fail_under → 88, Karma global thresholds set).
+- Slice 2 (101-103): opt-in webhook fail-closed + rate-limiting, CR/LF log-injection sanitization, config-response normalization, auto-delete Timer shutdown guard, ConfirmModal innerHTML→Renderer2 XSS fix, SSE same-tick subscription leak fix.
+- Slice 3 (104-106): removed jQuery 4, Font Awesome 4.7, css-element-queries; migrated all icons to Phosphor; excluded mock fixtures from the production bundle.
+- Slice 4 (107-109): MP-logger spawn-safety (INFRA-01), declarative Config secret discovery (ARCH-02), web-handler dispatch dedup (ARCH-03), Controller god-class decomposed 1150→757 lines into three collaborators (ARCH-01) — all behavior-preserving.
+
+Audit passed (4/4 slice-4 reqs, integration intact). Batched pre-release walkthrough passed all 11 flows on the NAS build. Full Python suite green; ruff clean; Angular 611 green.
+
+---
+
 ## v1.3.0 Slice 2 — Known Bugs + Security (Completed: 2026-06-01)
 
 **Phases completed:** 3 phases (101-103), 9 plans

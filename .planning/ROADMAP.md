@@ -34,7 +34,7 @@
 - ✅ v1.3.0 — Slice 1 of 4: Test Coverage Gaps - Phases 97-100 (shipped 2026-05-31)
 - ✅ v1.3.0 — Slice 2 of 4: Known Bugs + Security - Phases 101-103 (shipped 2026-06-01; no tag until slice 4)
 - ✅ v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code - Phases 104-106 (shipped 2026-06-01; no tag until slice 4)
-- 🔄 v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra - Phases 107-109 (IN FLIGHT — final slice, cuts v1.3.0 tag on completion)
+- ✅ v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra - Phases 107-109 (shipped 2026-06-02; v1.3.0 tag cut)
 
 ## Phases
 
@@ -341,7 +341,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 </details>
 
-🔄 v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra (Phases 107-109) — IN FLIGHT
+✅ v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra (Phases 107-109) — SHIPPED 2026-06-02
 
 **Milestone Goal:** Close the four backend architecture and test-infra items promoted from the CONCERNS.md Architecture/Maintainability and Tech Debt sections — fix the MP-logger spawn-context bug that blocks `spawn`-mode analog tests on macOS, make `Config` secret-field discovery declarative via `PROP(secret=True)`, deduplicate the five per-action bulk-handler scaffolds into a shared helper, and decompose the 1115-line `Controller` god-class into cohesive single-responsibility collaborators. All ARCH items are behavior-preserving; the existing test suite is the regression net throughout. This is the **final** slice of the 4-slice v1.3.0 program — the single `v1.3.0` tag is cut when this slice completes, preceded by the batched pre-release walkthrough.
 
