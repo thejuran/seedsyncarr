@@ -53,7 +53,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | ARCH-01 | Phase 109 | Complete |
 | ARCH-02 | Phase 108 | Complete |
 | ARCH-03 | Phase 108 | Complete |
-| INFRA-01 | Phase 107 | Pending |
+| INFRA-01 | Phase 107 | Complete |
 
 **Coverage:**
 - v1 requirements: 4 total
