@@ -770,7 +770,7 @@ const res = await page.request.post('/server/config/set', {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Angular `config.service.spec.ts` body assertion granularity**
    - What we know: `httpMock.expectOne(url)` matches by URL string; for POST it matches the POST to `/server/config/set`.
@@ -783,6 +783,11 @@ const res = await page.request.post('/server/config/set', {
    - Recommendation: Since `setRateLimit` is the only consumer of `CONFIG_SET`, inline the call directly in `setRateLimit` and delete the `CONFIG_SET` constant — simpler than restructuring `expectOk`.
 
 ---
+
+**Resolutions (locked during Phase 111 planning revision):**
+
+- **Q1 (spec body-assertion granularity):** RESOLVED — use URL-only `expectOne('/server/config/set')` matching per the existing spec style for the bulk of migrated tests, PLUS at least one mandatory body-shape assertion (`expect(req.request.body).toEqual({section, key, value})`) on a migrated test to pin the `{section, key, value}` contract. See Plan 02 Task 3 acceptance criteria (the body-shape assertion is required, not optional).
+- **Q2 (`seed-state.ts` CONFIG_SET helper refactor shape):** RESOLVED — inline `page.request.post` directly in `setRateLimit`; the `CONFIG_SET` constant is deleted (single consumer, so restructuring `expectOk` is unwarranted). See Plan 03 Task 2.
 
 ## Environment Availability
 
