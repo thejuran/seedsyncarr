@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.4.0
 milestone_name: Launch-Hardening for Public Release
 status: planning
-last_updated: "2026-06-02T16:37:04.569Z"
+last_updated: "2026-06-02T17:10:00.000Z"
 last_activity: 2026-06-02
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-01)
+See: .planning/PROJECT.md (updated 2026-06-02)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 109 — Controller Decomposition
+**Current focus:** v1.4.0 roadmap created — Phase 110 (Hostile-Reader Discovery Pass) is the next phase to plan
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Not started (roadmap just created)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-02 — Milestone v1.4.0 started
+Status: Roadmap created — awaiting Phase 110 planning
+Last activity: 2026-06-02 — Milestone v1.4.0 roadmap appended (Phases 110-113); all 18 requirements mapped
 
 ## Accumulated Context
 
@@ -35,17 +35,22 @@ Last activity: 2026-06-02 — Milestone v1.4.0 started
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
-Roadmap shape (slice 4): 3 phases derived from the 4 v1 requirements (INFRA-01, ARCH-01/02/03).
+Roadmap shape (v1.4.0): 4 phases derived from the 18 v1.4.0 requirements (SCAN-01/02, CFG-01..04, GUARD-01..06, LAUNCH-01..06). Two largely-disjoint tracks (code + presentation) plus one cross-cutting change.
 
-- Phase 107 isolates INFRA-01 (MP-logger spawn safety) — a targeted production fix to `multiprocessing_logger.py` that is independent of all ARCH items; sequenced first as the smallest, cleanest warmup.
-- Phase 108 clusters ARCH-02 (Config declarative secret-field discovery) and ARCH-03 (bulk-handler dispatch dedup) — both are localized, behavior-preserving refactors with no dependency on each other or on the Controller decomposition; they share the "small scoped refactor" character.
-- Phase 109 isolates ARCH-01 (Controller god-class decomposition) — the heaviest, riskiest item; sequenced last so the full suite is green and INFRA-01 + ARCH-02/03 are verified before entering the largest change.
+- **Phase 110 (Hostile-Reader Discovery Pass — SCAN-01/02)** runs first and **gates the fix scope**. It produces a triaged, severity-ranked findings artifact; each finding marked fold-into-fix-phase (with target) or parked (with rationale). Has a findings checkpoint (autonomous:false appropriate); no production code lands here. Folded-in findings inform Phases 111-112 before they are planned in detail.
+- **Phase 111 (Config-Set Endpoint Migration — CFG-01..04)** is the one breaking HTTP-contract change: `/server/config/set` GET→POST hard cutover (JSON body), legacy GET path fully removed. Spans backend (`web/handler/config.py`), Angular (`services/settings/config.service.ts`), and E2E (`src/e2e/tests/settings.page.ts`, `src/docker/test/e2e/configure/setup_seedsyncarr.sh`). On-disk config format is unchanged (CFG-04). Isolated so it can be walked through carefully.
+- **Phase 112 (Defensive Guards & Code Hardening — GUARD-01..06)** clusters the independent small fixes: non-loopback-without-token + webhook-without-secret startup warnings, logged delete-path failures (replace `ignore_errors=True`), `.gitignore` for run artifacts, legacy `~/.seedsync` fallback warning, and the AppProcess spawn-context fix. GUARD-04 has a concrete bar: `test_app_process.py::test_process_with_long_running_thread_terminates_properly` must go green with no test deleted/skipped, by creating AppProcess's `Queue()`/`Event()` from a spawn-compatible context (same fix pattern as the shipped INFRA-01 MP-logger fix). Independent of Phase 111.
+- **Phase 113 (Presentation & Launch Readiness — LAUNCH-01..06)** is the presentation track, sequenced last (independent of code phases; reflects the hardened code from 111-112 so README/SECURITY.md claims are accurate). Cynical-reader teardown + codex pass → README / SECURITY.md / community-health / release-notes. LAUNCH-03 screenshots are captured at the milestone-end walkthrough against the NAS-deployed branch build, NOT during phase execution. Repo-metadata application (part of LAUNCH-06) + the actual git push/publish are manual maintainer actions outside phase execution.
 
-Phase 106 complete (2026-06-01): DEPS-02 verified — mock-fixture bundle hygiene done, slice 3 (Phases 104-106) all complete.
+**Dependency edges:** 110 → 111, 110 → 112 (both fix phases gated on findings dispositions; 111 and 112 are mutually independent), 112 → 113 (presentation sequenced last).
+
+**CI gates every code phase (110-112) must hold:** Python `fail_under` ≥ 88; Angular Karma `check.global` floors stmts/branches/fns/lines 83/68/79/83; full suite green on amd64 + arm64. No release/tag/version work inside any phase.
+
+**Branch-isolated workflow:** branch `launch-hardening`; NAS walkthrough on the branch; merge + single `v1.4.0` tag only after CI green + maintainer sign-off — a milestone-end orchestrator/maintainer action, NOT a roadmap phase.
 
 ### Pending Todos
 
-None. INFRA-01 is now in scope (Phase 107).
+None. GUARD-04 (AppProcess spawn fix) is now in scope (Phase 112) — clears the Tech Debt item below.
 
 ### Blockers/Concerns
 
@@ -61,13 +66,17 @@ None.
 
 | Category | Item | Status |
 |----------|------|--------|
-| todo | webob-cgi-upstream-unblock | testing (upstream — blocked on webob 2.0) |
-| todo | migrate-config-set-to-post-body | security (API contract change — separate milestone) |
+| todo | webob-cgi-upstream-unblock | testing (upstream — blocked on webob 2.0; DEFER-WEBOB) |
+| todo | shutdown-readiness-event | robustness (DEFER-SHUTDOWN — invisible to launch reader; deferred v1.4.0) |
+| todo | streamqueue-atomic-drop-oldest | robustness (DEFER-STREAMQUEUE — latent, well-mitigated; deferred v1.4.0) |
+| todo | test-hardening-backlog A-01..A-06 | test-infra (DEFER-TESTHARDEN — invisible to launch reader; deferred v1.4.0) |
+
+> Note: `migrate-config-set-to-post-body` (previously deferred) is now IN SCOPE as Phase 111 (CFG-01..04). Removed from deferred list.
 
 ## Tech Debt
 
 - Bootstrap 5.3 still uses @import internally (blocked until Bootstrap 6)
-- `AppProcess` spawn-unpicklable (surfaced Phase 107, 2026-06-01): `AppProcess.__init__` creates `self.__exception_queue = Queue()` + `self._terminate = Event()` from the default (fork) multiprocessing context. Under `spawn`, `AppProcess.start()` pickles the whole instance and raises `TypeError: cannot pickle '_thread.lock' object` on its OWN fields — same bug class as INFRA-01 but in `AppProcess`, out of Phase 107's MP-logger-only scope. Pre-existing failure: `test_app_process.py::test_process_with_long_running_thread_terminates_properly` (fails at base commit too). Fix = migrate those two fields to a spawn-compatible context. Candidate for a future phase. See `.planning/milestones/v1.3.0-phases/107-mp-logger-spawn-safety/deferred-items.md`.
+- ~~`AppProcess` spawn-unpicklable~~ — now IN SCOPE as GUARD-04 (Phase 112). `AppProcess.__init__` creates `self.__exception_queue = Queue()` + `self._terminate = Event()` from the default (fork) context; under `spawn`, `AppProcess.start()` pickles the instance and raises `TypeError: cannot pickle '_thread.lock' object`. Fix = migrate those two fields to a spawn-compatible context (same pattern as the shipped INFRA-01 MP-logger fix). Pre-existing failing test: `test_app_process.py::test_process_with_long_running_thread_terminates_properly`. See `.planning/milestones/v1.3.0-phases/107-mp-logger-spawn-safety/deferred-items.md`.
 
 ## Milestones Shipped
 
@@ -86,13 +95,16 @@ None.
 | v1.3.0 Slice 1 (Test Coverage Gaps) | Phases 97-100 | 2026-05-28 to 2026-05-31 |
 | v1.3.0 Slice 2 (Known Bugs + Security) | Phases 101-103 | 2026-05-31 to 2026-06-01 |
 | v1.3.0 Slice 3 (Frontend Deps + Dead Code) | Phases 104-106 | 2026-06-01 |
+| v1.3.0 Slice 4 (Backend Arch Refactor + Test Infra) | Phases 107-109 | 2026-06-01 to 2026-06-02 (v1.3.0 tag cut) |
 
 ## Session Continuity
 
-Last session: 2026-06-02T02:44:52.713Z
-Stopped at: Phase 109 context gathered
-Next action: Discuss/plan Phase 109 with `/gsd:discuss-phase 109` (or `/gsd:plan-phase 109`)
+Last session: 2026-06-02T17:10:00.000Z
+Stopped at: v1.4.0 roadmap created — Phases 110-113 appended to ROADMAP.md, REQUIREMENTS.md traceability filled (18/18 mapped)
+Next action: Plan Phase 110 (Hostile-Reader Discovery Pass) with `/gsd:plan-phase 110` (or discuss first with `/gsd:discuss-phase 110`)
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Cut branch `launch-hardening` from `main` (v1.3.0) before starting Phase 110 code work.
+- Plan and execute Phase 110 (SCAN) first — its findings dispositions gate the detailed planning of Phases 111-112.
+- Run phases one-at-a-time per the orchestrator run cadence; stop between for review.

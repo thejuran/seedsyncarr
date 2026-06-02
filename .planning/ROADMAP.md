@@ -35,6 +35,7 @@
 - ✅ v1.3.0 — Slice 2 of 4: Known Bugs + Security - Phases 101-103 (shipped 2026-06-01; no tag until slice 4)
 - ✅ v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code - Phases 104-106 (shipped 2026-06-01; no tag until slice 4)
 - ✅ v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra - Phases 107-109 (shipped 2026-06-02; v1.3.0 tag cut)
+- 🚧 v1.4.0 — Launch-Hardening for Public Release - Phases 110-113 (in progress; branch `launch-hardening`, single `v1.4.0` tag cut at milestone end)
 
 ## Phases
 
@@ -351,6 +352,22 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 - [x] **Phase 108: Config + Handler Refactors** - Push `secret=True` into each `PROP` declaration so encrypt/decrypt/redact loops discover secrets dynamically (ARCH-02); extract a shared `_dispatch_command(...)` helper from the five duplicate per-action handlers (ARCH-03) (completed 2026-06-01)
 - [x] **Phase 109: Controller Decomposition** - Decompose the `Controller` god-class into cohesive collaborators with single responsibilities; public surface and all caller contracts are preserved; existing test suite stays green throughout (ARCH-01) (completed 2026-06-02)
 
+<details open>
+<summary>🚧 v1.4.0 — Launch-Hardening for Public Release (Phases 110-113) — IN PROGRESS</summary>
+
+**Milestone Goal:** Make SeedSyncarr's public-facing surface — both the code a skeptical engineer reads and the presentation a visitor sees — bulletproof enough to withstand a technical Reddit (r/selfhosted) launch. The work is two largely-disjoint tracks plus one cross-cutting change: a bounded hostile-reader discovery pass that gates fix scope (SCAN), the `/server/config/set` GET→POST hard cutover (CFG — the one breaking HTTP-contract change, credentials no longer in URLs/logs), a defensive-guards/code-hardening cluster (GUARD — unsafe-default warnings, logged delete failures, the AppProcess spawn fix, repo hygiene), and a presentation/launch-readiness rebuild (LAUNCH — cynical-reader teardown + codex pass driving README/SECURITY.md/community-health/release-notes, screenshots at the walkthrough, repo-metadata drafted for manual application). Code substance is already strong (post-v1.3.0 audit found zero active functional bugs); the launch risk is presentation underselling real quality plus a few specific items a hostile reader would find.
+
+**GSD internal label:** `v1.4.0`. Source: `.planning/codebase/CONCERNS.md` (Tech Debt + Security Considerations + Test Coverage Gaps) + the approved design spec + `.planning/REQUIREMENTS.md`.
+
+**CI gates every code phase (110-112) must hold:** Python `fail_under` ≥ 88; Angular Karma `check.global` floors stmts/branches/fns/lines 83/68/79/83; full suite green on amd64 + arm64. **No release/tag/version work happens inside any phase** — the single `v1.4.0` tag is a milestone-end orchestrator/maintainer action on branch `launch-hardening` after the NAS walkthrough, CI green, and maintainer sign-off.
+
+- [ ] **Phase 110: Hostile-Reader Discovery Pass** - Bounded "what would a skeptical r/selfhosted engineer flag" audit producing a triaged, severity-ranked findings artifact; each finding marked fold-into-fix-phase (with target) or parked (with rationale); gates fix scope for phases 111-112 (SCAN-01, SCAN-02)
+- [ ] **Phase 111: Config-Set Endpoint Migration** - The one breaking change: `/server/config/set` GET→POST hard cutover (JSON body), legacy GET path fully removed, Angular `ConfigService` + E2E setup/page-objects updated, on-disk config format unchanged (CFG-01, CFG-02, CFG-03, CFG-04)
+- [ ] **Phase 112: Defensive Guards & Code Hardening** - Unsafe-default startup warnings (non-loopback bind w/o api_token; webhook w/o secret), logged delete-path failures (replace `ignore_errors=True`), AppProcess spawn-context fix (failing test goes green), `.gitignore` for run artifacts, legacy `~/.seedsync` fallback warning (GUARD-01..06)
+- [ ] **Phase 113: Presentation & Launch Readiness** - Cynical-reader teardown + codex adversarial pass driving a README / SECURITY.md / community-health / release-notes rebuild; Playwright screenshots captured at the milestone-end walkthrough; repo-metadata text drafted for manual maintainer application (LAUNCH-01..06)
+
+</details>
+
 ## Phase Details
 
 ### Phase 101: Webhook + Log-Injection Security Cluster
@@ -519,6 +536,72 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 - [x] 109-02-PLAN.md — ARCH-01: extract `auto_delete_manager.py` (BFS pack-guard + coverage logic → `run_bfs_and_coverage`); `__schedule_auto_delete` + `__execute_auto_delete` stay on Controller as the lock harness, WR-02 ordering preserved verbatim (wave 2, depends_on 109-01, autonomous)
 - [x] 109-03-PLAN.md — ARCH-01: extract `model_pipeline.py` (scan→build→diff→apply stages → `ModelPipeline.update_model`); `__update_model` thins to a delegate, accessors + `_should_update_capacity` + `_update_controller_status` + `__check_webhook_imports` stay on Controller; coordinator thinned toward ~350 lines (wave 3, depends_on 109-02, autonomous)
 
+### Phase 110: Hostile-Reader Discovery Pass
+
+**Goal**: A maintainer has a triaged, severity-ranked findings artifact that captures what a skeptical r/selfhosted engineer reviewing the public repo would flag — produced by a bounded discovery pass over the entry points, the project's existing tooling under launch framing, and the highest-traffic source files — with every finding explicitly marked "fold into a v1.4.0 fix phase" (with target phase) or "parked" (with one-line rationale). This phase **gates the fix scope** for Phases 111-112: it runs first so any genuinely high-visibility findings inform those phases before they are planned in detail.
+**Depends on**: Phase 109 (v1.3.0 shipped — clean main, branch `launch-hardening` cut from it)
+**Requirements**: SCAN-01, SCAN-02
+**Success Criteria** (what must be TRUE):
+
+  1. A written findings artifact exists that lists, organized by severity, what a skeptical engineer reviewing the public repo would flag — produced by reading the entry points (`seedsyncarr.py`, the web app, the Angular shell), running the project's existing tooling under launch framing (ruff whole-tree, Semgrep/Shield, dependency audit), and skimming the highest-traffic source files (SCAN-01).
+  2. Each finding in the artifact carries an explicit disposition: either "fold into a v1.4.0 fix phase" naming the target phase (111 CFG or 112 GUARD), or "parked" with a one-line rationale — so scope decisions are traceable rather than implicit (SCAN-02).
+  3. The pass is bounded — it does not turn into an open-ended refactor hunt; findings that are real but low-visibility for a launch reader are parked with rationale (e.g. the already-deferred shutdown-readiness Event, StreamQueue non-atomic drop), consistent with the milestone's explicit Out-of-Scope and Future-Requirements decisions (SCAN-02, D-3).
+  4. The artifact's fold-in list is reconciled against the already-scoped GUARD/CFG requirements: any high-visibility finding not already covered by a v1.4.0 requirement is surfaced to the maintainer as a scope decision (add to a fix phase, or park) before Phases 111-112 are planned (SCAN-02).
+
+**Plans**: TBD
+
+> **Gating note:** This phase has a findings checkpoint (autonomous:false is appropriate) — the maintainer reviews the triaged artifact and confirms the fold-in vs parked dispositions before Phases 111-112 are planned in detail. No production code changes land in this phase; it produces the discovery artifact only.
+
+### Phase 111: Config-Set Endpoint Migration
+
+**Goal**: The `/server/config/set` endpoint is migrated from the credential-leaking `GET /server/config/set/{section}/{key}/{value}` path-segment form to a `POST` with a JSON body (`{section, key, value}`) — a **hard cutover** (the GET path is fully removed, not deprecated-but-live) — so credential values no longer travel in URLs, server access logs, browser history, or reverse-proxy logs. The change spans the backend handler, the Angular `ConfigService`, and the E2E setup script + page objects. This is the one breaking HTTP-contract change in v1.4.0; the on-disk persisted config format is unchanged.
+**Depends on**: Phase 110 (findings dispositions confirmed — any config-surface finding folded in here is known before planning)
+**Requirements**: CFG-01, CFG-02, CFG-03, CFG-04
+**Success Criteria** (what must be TRUE):
+
+  1. A client sets a config value by sending a `POST` to `/server/config/set` with a JSON body (`{section, key, value}`); credential values no longer appear as URL path segments anywhere — confirmed by inspecting server access logs, and by the absence of value-bearing path segments in the route (CFG-01).
+  2. The legacy `GET /server/config/set/{section}/{key}/{value}` route no longer exists — a request to it returns a not-found / method-not-allowed response; the credential-leaking path is fully removed, not deprecated-but-live (CFG-02).
+  3. The Settings page saves configuration successfully end-to-end against the new POST endpoint — the Angular `ConfigService` (`src/angular/src/app/services/settings/config.service.ts`) and the E2E setup script (`src/docker/test/e2e/configure/setup_seedsyncarr.sh`) + page objects (`src/e2e/tests/settings.page.ts`) all use POST, and a saved setting round-trips and persists across a reload (CFG-03).
+  4. Existing on-disk config files (plaintext and Fernet-encrypted) load unchanged after the migration — there is no config-format change and no user migration step for saved settings; the migration is purely the HTTP transport (CFG-04).
+  5. **Cross-cutting (COMPAT + CI):** the POST endpoint reuses the existing config/set rate-limit (60/60s) and any existing auth/redaction behavior; CI is green on amd64 + arm64 (Python + Angular + E2E — the E2E setup must complete against the new endpoint); Python `fail_under` ≥ 88 holds or rises; Karma `check.global` floors 83/68/79/83 hold or rise. No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+**UI hint**: yes
+
+### Phase 112: Defensive Guards & Code Hardening
+
+**Goal**: The remaining "a hostile reader will notice this" code items are closed — the app stops being *quietly* unsafe (loud startup warnings for insecure-by-silence defaults), a silently-swallowed local-delete failure now leaves a log signal, the currently-failing `AppProcess` spawn-context test goes green via a production fix, and two cheap repo-hygiene tells are fixed. All default *behavior* stays backward-compatible — these guards add visibility and a test fix, not breaking changes. Any high-visibility finding folded in from Phase 110 that fits this cluster lands here.
+**Depends on**: Phase 110 (findings dispositions confirmed); independent of Phase 111
+**Requirements**: GUARD-01, GUARD-02, GUARD-03, GUARD-04, GUARD-05, GUARD-06
+**Success Criteria** (what must be TRUE):
+
+  1. When the server binds to a non-loopback interface with no `api_token` configured, the operator sees a prominent startup warning that API endpoints are unauthenticated; and when the webhook endpoint is reachable with no `webhook_secret` set and `webhook_require_secret` off, the operator sees a prominent startup warning that webhooks are unauthenticated — in both cases the default behavior is unchanged, the unsafe posture is simply no longer silent (GUARD-01, GUARD-02).
+  2. When a local delete (`shutil.rmtree`) partially fails, the failure is logged with context rather than silently swallowed — `ignore_errors=True` is replaced with explicit error handling so a failed delete leaves an observable signal in the logs; the delete-path tests assert the logged-failure signal (GUARD-03).
+  3. The full Python test suite passes under both `fork` and `spawn` start methods — the previously-failing `test_app_process.py::test_process_with_long_running_thread_terminates_properly` now passes with **no test deleted or skipped**, because `AppProcess` creates its `Queue()`/`Event()` from a spawn-compatible multiprocessing context (same fix pattern as the shipped INFRA-01 MP-logger fix) (GUARD-04).
+  4. Tooling/run artifacts (`.orchestrator.json`, `.playwright-mcp/`) are git-ignored so a repo browser never sees stray local artifacts and they cannot be accidentally committed — `git check-ignore` returns success for both (GUARD-05).
+  5. When startup falls back to the legacy `~/.seedsync` config directory because the configured `--config_dir` is absent, the operator sees a loud one-time warning (or the fallback is gated behind an explicit opt-in) rather than silently loading a pre-fork config (GUARD-06).
+  6. **Cross-cutting (COMPAT + CI):** no default-behavior change beyond added warnings/logging and the test fix; existing config files and on-disk persist formats load unchanged. CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises (GUARD-04 brings a previously-failing test green; coverage holds or increases); no test deleted or skipped. No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+### Phase 113: Presentation & Launch Readiness
+
+**Goal**: The project's public-facing surface is rebuilt so its genuine quality is evident in 30 seconds to a skeptical r/selfhosted visitor — a cynical-reader teardown plus a codex adversarial pass produce the hostile critique first, then a README / SECURITY.md / community-health / release-notes rewrite addresses it. Playwright screenshots are captured at the milestone-end walkthrough against the NAS-deployed branch build (not during phase execution), and copy-paste-ready repo-metadata text is drafted for the maintainer to apply manually. This track is independent of the code phases (110-112) and is sequenced last for a clean single-threaded execution order.
+**Depends on**: Phase 112 (sequenced last; presentation reflects the hardened code from 111-112, so the README/SECURITY.md claims are accurate to the shipped state)
+**Requirements**: LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04, LAUNCH-05, LAUNCH-06
+**Success Criteria** (what must be TRUE):
+
+  1. A maintainer can read a written "cynical r/selfhosted reader" teardown of the current presentation (README, positioning, first impression), and a codex adversarial pass over the drafted README/docs flags technical-claims accuracy, broken/incomplete install steps, and unsupported assertions — both critiques captured **before** the rewrite is finalized (LAUNCH-01).
+  2. A visitor reading the README understands what SeedSyncarr is within seconds — a clear one-line description, an above-the-fold screenshot, an honest feature list, accurate install/quickstart instructions, the security posture stated plainly as a selling point, and a short note on the relationship to the original SeedSync fork (LAUNCH-02).
+  3. The repo includes a `SECURITY.md` with a vulnerability-reporting policy and a short honest threat-model note (what is protected and what the opt-in security knobs are for), plus accurate community-health files — `CONTRIBUTING.md`, issue templates, a PR template, and a correct `LICENSE` — so their absence does not read as "not a serious project" (LAUNCH-04, LAUNCH-05).
+  4. A clean v1.4.0 release-notes entry exists so the releases page is presentable, and copy-paste-ready GitHub repo-metadata text (About description, topics/tags, homepage link) is drafted for the maintainer to apply manually (LAUNCH-06).
+  5. **Walkthrough-deferred (LAUNCH-03):** the README/docs screenshots showing the redesigned UI are captured via Playwright **at the milestone-end walkthrough against the NAS-deployed branch build** — not during phase execution — and any staged state is flagged so nothing misrepresents real behavior. **Manual maintainer actions outside phase execution:** applying the drafted repo-metadata (part of LAUNCH-06) and the actual git push / publish are done by the maintainer, not inside this phase.
+
+**Plans**: TBD
+
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -551,7 +634,11 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 | 107. MP-Logger Spawn Safety (Slice 4) | v1.3.0-s4 | 1/1 | Complete   | 2026-06-01 |
 | 108. Config + Handler Refactors (Slice 4) | v1.3.0-s4 | 2/2 | Complete   | 2026-06-01 |
 | 109. Controller Decomposition (Slice 4) | v1.3.0-s4 | 3/3 | Complete   | 2026-06-02 |
+| 110. Hostile-Reader Discovery Pass | v1.4.0 | 0/TBD | Not started | - |
+| 111. Config-Set Endpoint Migration | v1.4.0 | 0/TBD | Not started | - |
+| 112. Defensive Guards & Code Hardening | v1.4.0 | 0/TBD | Not started | - |
+| 113. Presentation & Launch Readiness | v1.4.0 | 0/TBD | Not started | - |
 
 ---
 
-*Last updated: 2026-06-01 — Phase 109 planned: 3 plans, 3 sequential waves (109-01 command_processor, 109-02 auto_delete_manager, 109-03 model_pipeline) — all touch controller.py so wave-sequential per D-06; behavior-preserving ARCH-01 refactor, existing suite is the regression net.*
+*Last updated: 2026-06-02 — Milestone v1.4.0 (Launch-Hardening for Public Release) roadmap appended: Phases 110-113 derived from the 18 v1.4.0 requirements (SCAN-01/02, CFG-01..04, GUARD-01..06, LAUNCH-01..06). Two disjoint tracks (code + presentation) plus the cross-cutting config-set GET→POST cutover. Phase 110 (SCAN) gates fix scope and runs first; 111 (CFG) is the one breaking change; 112 (GUARD) clusters the defensive fixes incl. the AppProcess spawn fix; 113 (LAUNCH) is the presentation rebuild, sequenced last. Branch `launch-hardening`; single `v1.4.0` tag is a milestone-end maintainer action after the NAS walkthrough + CI green + sign-off.*

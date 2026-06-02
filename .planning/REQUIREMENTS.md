@@ -79,34 +79,34 @@ Explicitly excluded for v1.4.0. Documented to prevent scope creep.
 
 ## Traceability
 
-Which phases cover which requirements. Populated during roadmap creation.
+Which phases cover which requirements. Populated during roadmap creation (2026-06-02).
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCAN-01 | TBD | Pending |
-| SCAN-02 | TBD | Pending |
-| CFG-01 | TBD | Pending |
-| CFG-02 | TBD | Pending |
-| CFG-03 | TBD | Pending |
-| CFG-04 | TBD | Pending |
-| GUARD-01 | TBD | Pending |
-| GUARD-02 | TBD | Pending |
-| GUARD-03 | TBD | Pending |
-| GUARD-04 | TBD | Pending |
-| GUARD-05 | TBD | Pending |
-| GUARD-06 | TBD | Pending |
-| LAUNCH-01 | TBD | Pending |
-| LAUNCH-02 | TBD | Pending |
-| LAUNCH-03 | TBD | Pending |
-| LAUNCH-04 | TBD | Pending |
-| LAUNCH-05 | TBD | Pending |
-| LAUNCH-06 | TBD | Pending |
+| SCAN-01 | Phase 110 | Pending |
+| SCAN-02 | Phase 110 | Pending |
+| CFG-01 | Phase 111 | Pending |
+| CFG-02 | Phase 111 | Pending |
+| CFG-03 | Phase 111 | Pending |
+| CFG-04 | Phase 111 | Pending |
+| GUARD-01 | Phase 112 | Pending |
+| GUARD-02 | Phase 112 | Pending |
+| GUARD-03 | Phase 112 | Pending |
+| GUARD-04 | Phase 112 | Pending |
+| GUARD-05 | Phase 112 | Pending |
+| GUARD-06 | Phase 112 | Pending |
+| LAUNCH-01 | Phase 113 | Pending |
+| LAUNCH-02 | Phase 113 | Pending |
+| LAUNCH-03 | Phase 113 | Pending |
+| LAUNCH-04 | Phase 113 | Pending |
+| LAUNCH-05 | Phase 113 | Pending |
+| LAUNCH-06 | Phase 113 | Pending |
 
 **Coverage:**
 - v1.4.0 requirements: 18 total
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 18 ⚠️ (resolved when roadmapper runs)
+- Mapped to phases: 18 (Phase 110: SCAN-01/02; Phase 111: CFG-01..04; Phase 112: GUARD-01..06; Phase 113: LAUNCH-01..06)
+- Unmapped: 0 ✓ (100% coverage — no orphaned requirements, no duplicates)
 
 ---
 *Requirements defined: 2026-06-02*
-*Last updated: 2026-06-02 after defining milestone v1.4.0 requirements*
+*Last updated: 2026-06-02 after roadmap creation — all 18 v1.4.0 requirements mapped to Phases 110-113.*
