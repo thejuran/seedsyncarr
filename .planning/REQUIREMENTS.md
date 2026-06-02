@@ -15,8 +15,8 @@ A bounded "what would a skeptical engineer on Reddit find" discovery pass. Gates
 Only genuinely high-visibility findings fold into later phases; everything else is parked with
 written rationale (D-3).
 
-- [ ] **SCAN-01**: A maintainer can read a triaged findings artifact that lists, by severity, what a skeptical engineer reviewing the public repo would flag — produced by reading the entry points, running the project's existing tooling (ruff whole-tree, Semgrep/Shield, dependency audit) under launch framing, and skimming the highest-traffic source files.
-- [ ] **SCAN-02**: Each finding in the artifact is marked either "fold into a v1.4.0 fix phase" (with the target phase) or "parked" (with a one-line rationale), so scope decisions are explicit and traceable rather than implicit.
+- [x] **SCAN-01**: A maintainer can read a triaged findings artifact that lists, by severity, what a skeptical engineer reviewing the public repo would flag — produced by reading the entry points, running the project's existing tooling (ruff whole-tree, Semgrep/Shield, dependency audit) under launch framing, and skimming the highest-traffic source files.
+- [x] **SCAN-02**: Each finding in the artifact is marked either "fold into a v1.4.0 fix phase" (with the target phase) or "parked" (with a one-line rationale), so scope decisions are explicit and traceable rather than implicit.
 
 ### Config-Set Endpoint Migration (CFG)
 
@@ -83,8 +83,8 @@ Which phases cover which requirements. Populated during roadmap creation (2026-0
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCAN-01 | Phase 110 | Pending |
-| SCAN-02 | Phase 110 | Pending |
+| SCAN-01 | Phase 110 | Complete |
+| SCAN-02 | Phase 110 | Complete |
 | CFG-01 | Phase 111 | Pending |
 | CFG-02 | Phase 111 | Pending |
 | CFG-03 | Phase 111 | Pending |

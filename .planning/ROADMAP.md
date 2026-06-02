@@ -360,7 +360,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 **CI gates every code phase (110-112) must hold:** Python `fail_under` ≥ 88; Angular Karma `check.global` floors stmts/branches/fns/lines 83/68/79/83; full suite green on amd64 + arm64. **No release/tag/version work happens inside any phase** — the single `v1.4.0` tag is a milestone-end orchestrator/maintainer action on branch `launch-hardening` after the NAS walkthrough, CI green, and maintainer sign-off.
 
-- [ ] **Phase 110: Hostile-Reader Discovery Pass** - Bounded "what would a skeptical r/selfhosted engineer flag" audit producing a triaged, severity-ranked findings artifact; each finding marked fold-into-fix-phase (with target) or parked (with rationale); gates fix scope for phases 111-112 (SCAN-01, SCAN-02)
+- [x] **Phase 110: Hostile-Reader Discovery Pass** - Bounded "what would a skeptical r/selfhosted engineer flag" audit producing a triaged, severity-ranked findings artifact; each finding marked fold-into-fix-phase (with target) or parked (with rationale); gates fix scope for phases 111-112 (SCAN-01, SCAN-02) (completed 2026-06-02)
 - [ ] **Phase 111: Config-Set Endpoint Migration** - The one breaking change: `/server/config/set` GET→POST hard cutover (JSON body), legacy GET path fully removed, Angular `ConfigService` + E2E setup/page-objects updated, on-disk config format unchanged (CFG-01, CFG-02, CFG-03, CFG-04)
 - [ ] **Phase 112: Defensive Guards & Code Hardening** - Unsafe-default startup warnings (non-loopback bind w/o api_token; webhook w/o secret), logged delete-path failures (replace `ignore_errors=True`), AppProcess spawn-context fix (failing test goes green), `.gitignore` for run artifacts, legacy `~/.seedsync` fallback warning (GUARD-01..06)
 - [ ] **Phase 113: Presentation & Launch Readiness** - Cynical-reader teardown + codex adversarial pass driving a README / SECURITY.md / community-health / release-notes rebuild; Playwright screenshots captured at the milestone-end walkthrough; repo-metadata text drafted for manual maintainer application (LAUNCH-01..06)
@@ -546,7 +546,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   4. The artifact's fold-in list is reconciled against the already-scoped GUARD/CFG requirements: any high-visibility finding not already covered by a v1.4.0 requirement is surfaced to the maintainer as a scope decision (add to a fix phase, or park) before Phases 111-112 are planned (SCAN-02).
 
 **Plans**: 1 plan (1 wave)
-- [ ] 110-01-PLAN.md — SCAN-01 + SCAN-02: run the read-only audit tool suite (ruff whole-tree, Semgrep/Shield + gitleaks, pip-audit, npm audit) + the AppProcess red test, read entry points/high-traffic files/README under launch framing, confirm the six pre-named fix items, and synthesize `110-FINDINGS.md` (severity rollup + per-finding FOLD/PARK disposition); maintainer findings checkpoint (autonomous:false)
+- [x] 110-01-PLAN.md — SCAN-01 + SCAN-02: run the read-only audit tool suite (ruff whole-tree, Semgrep/Shield + gitleaks, pip-audit, npm audit) + the AppProcess red test, read entry points/high-traffic files/README under launch framing, confirm the six pre-named fix items, and synthesize `110-FINDINGS.md` (severity rollup + per-finding FOLD/PARK disposition); maintainer findings checkpoint (autonomous:false)
 
 > **Gating note:** This phase has a findings checkpoint (autonomous:false is appropriate) — the maintainer reviews the triaged artifact and confirms the fold-in vs parked dispositions before Phases 111-112 are planned in detail. No production code changes land in this phase; it produces the discovery artifact only.
 
@@ -632,7 +632,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 | 107. MP-Logger Spawn Safety (Slice 4) | v1.3.0-s4 | 1/1 | Complete   | 2026-06-01 |
 | 108. Config + Handler Refactors (Slice 4) | v1.3.0-s4 | 2/2 | Complete   | 2026-06-01 |
 | 109. Controller Decomposition (Slice 4) | v1.3.0-s4 | 3/3 | Complete   | 2026-06-02 |
-| 110. Hostile-Reader Discovery Pass | v1.4.0 | 0/TBD | Not started | - |
+| 110. Hostile-Reader Discovery Pass | v1.4.0 | 1/1 | Complete   | 2026-06-02 |
 | 111. Config-Set Endpoint Migration | v1.4.0 | 0/TBD | Not started | - |
 | 112. Defensive Guards & Code Hardening | v1.4.0 | 0/TBD | Not started | - |
 | 113. Presentation & Launch Readiness | v1.4.0 | 0/TBD | Not started | - |

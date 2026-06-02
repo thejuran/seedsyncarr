@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.4.0
 milestone_name: Launch-Hardening for Public Release
-status: planning
-stopped_at: Phase 110 context gathered
-last_updated: "2026-06-02T18:17:04.904Z"
-last_activity: 2026-06-02 — Milestone v1.4.0 roadmap appended (Phases 110-113); all 18 requirements mapped
+status: executing
+stopped_at: "Phase 110 Plan 01 — checkpoint Task 3 reached; awaiting maintainer review of 110-FINDINGS.md dispositions"
+last_updated: "2026-06-02T20:15:00.000Z"
+last_activity: 2026-06-02 -- Phase 110 Plan 01 tasks 1+2 complete; 110-FINDINGS.md written (d235a42); checkpoint at Task 3
 ---
 
 # Project State
@@ -15,14 +15,14 @@ last_activity: 2026-06-02 — Milestone v1.4.0 roadmap appended (Phases 110-113)
 See: .planning/PROJECT.md (updated 2026-06-02)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** v1.4.0 roadmap created — Phase 110 (Hostile-Reader Discovery Pass) is the next phase to plan
+**Current focus:** Phase 110 — hostile-reader-discovery-pass
 
 ## Current Position
 
-Phase: Not started (roadmap just created)
-Plan: —
-Status: Roadmap created — awaiting Phase 110 planning
-Last activity: 2026-06-02 — Milestone v1.4.0 roadmap appended (Phases 110-113); all 18 requirements mapped
+Phase: 110 (hostile-reader-discovery-pass) — EXECUTING
+Plan: 1 of 1
+Status: Executing Phase 110
+Last activity: 2026-06-02 -- Phase 110 execution started
 
 ## Accumulated Context
 
@@ -42,6 +42,13 @@ Roadmap shape (v1.4.0): 4 phases derived from the 18 v1.4.0 requirements (SCAN-0
 **CI gates every code phase (110-112) must hold:** Python `fail_under` ≥ 88; Angular Karma `check.global` floors stmts/branches/fns/lines 83/68/79/83; full suite green on amd64 + arm64. No release/tag/version work inside any phase.
 
 **Branch-isolated workflow:** branch `launch-hardening`; NAS walkthrough on the branch; merge + single `v1.4.0` tag only after CI green + maintainer sign-off — a milestone-end orchestrator/maintainer action, NOT a roadmap phase.
+
+### Phase 110 Decisions (2026-06-02)
+
+- **GUARD-02 warning-correctness gap confirmed:** `empty webhook_secret + require_secret=True` fires first startup warning saying "accept any caller" while the handler actually returns 503 (fail-closed). Phase 112 must fix warning text accuracy, not just prominence.
+- **pip CVEs PARK grounded in image inspection:** Shipped runtime image uses `pip 24.0` (`python:3.11-slim` base), NOT the flagged `pip 26.0.1` (local dev venv). CVE range is `>= 26.0.x < 26.1` — pip 24.0 is NOT affected. PARK is evidence-based.
+- **npm CVEs PARK grounded in Dockerfile evidence:** `Dockerfile:123` copies only `/build/dist/browser` into runtime. `node_modules/` devDeps (`karma`, `eslint`, `ws`, `brace-expansion`) are build-stage-only. PARK is evidence-based.
+- **GUARD-01/02 characterized as confirm-the-gap:** Both warnings already exist in `seedsyncarr.py:374-393` with tests. Phase 112 gap is prominence + GUARD-02 correctness, not build-from-scratch.
 
 ### Pending Todos
 
@@ -94,7 +101,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-02T17:23:04.169Z
+Last session: 2026-06-02T19:54:10.330Z
 Stopped at: Phase 110 context gathered
 Next action: Plan Phase 110 (Hostile-Reader Discovery Pass) with `/gsd:plan-phase 110` (or discuss first with `/gsd:discuss-phase 110`)
 
