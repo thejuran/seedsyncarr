@@ -2,6 +2,7 @@
 created: 2026-04-24T00:00:00Z
 title: Migrate /server/config/set from GET-path to POST-body
 area: security
+resolves_phase: 111
 files:
   - src/python/web/handler/config.py
   - src/angular/src/app/services/settings/config.service.ts
