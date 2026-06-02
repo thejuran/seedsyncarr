@@ -548,13 +548,12 @@ stay. Only `unquote` needs removal.)
 ### Pattern 1: Backend POST handler (mirroring webhook.py)
 
 ```python
-# Source: src/python/web/handler/webhook.py:128-138 (in-repo precedent)
-# and bottle venv inspection for request.json behavior
+# Source: bottle venv inspection for request.json behavior (RESEARCH §RQ-1)
+# FINDING 3: NO try/except around bottle.request.json — bottle 400s invalid JSON
+# (with application/json) BEFORE this handler runs, so an except clause is dead code.
+# webhook.py keeps a belt-and-suspenders wrapper for historical reasons; do NOT copy it here.
 def __handle_set_config(self) -> HTTPResponse:
-    try:
-        body = bottle.request.json
-    except (ValueError, json.JSONDecodeError):
-        return HTTPResponse(body="Invalid request body", status=400)
+    body = bottle.request.json   # None on wrong/absent content-type (not a raise)
 
     if not body or not isinstance(body, dict):
         return HTTPResponse(body="Invalid request body", status=400)

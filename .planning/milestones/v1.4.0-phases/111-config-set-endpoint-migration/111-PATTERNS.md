@@ -696,19 +696,17 @@ if (!restoreResp.ok()) throw new Error(`rate_limit restore failed: ${restoreResp
 
 ## Shared Patterns
 
-### POST body guard (belt-and-suspenders)
-**Source:** `src/python/web/handler/webhook.py:128-135`
+### POST body guard (config-set — canonical Phase 111 shape)
+**Source:** `src/python/web/handler/webhook.py:128-135` (historical analog — see the NON-COPYABLE note below)
 **Apply to:** `config.py` `__handle_set_config`
-```python
-try:
-    body = request.json
-except (ValueError, json.JSONDecodeError):
-    return HTTPResponse(status=400, body="Invalid JSON")
 
-if not body:
-    return HTTPResponse(status=400, body="Empty body")
+For Phase 111 the **only** accepted handler shape is a direct read with NO `try/except` around `bottle.request.json` (FINDING 3):
+```python
+body = bottle.request.json   # None on wrong/absent content-type; bottle 400s invalid JSON before we run
+if not body or not isinstance(body, dict):
+    return HTTPResponse(status=400, body="Invalid request body")
 ```
-Note: bottle raises `HTTPError(400)` on invalid JSON before calling the handler, so the `try/except` is belt-and-suspenders. The `if not body:` guard is essential for the wrong-content-type case where `request.json` returns `None` silently.
+**NON-COPYABLE for Phase 111:** webhook.py wraps `request.json` in `try/except (ValueError, json.JSONDecodeError)`. Do **not** copy that wrapper here — bottle raises `HTTPError(400, 'Invalid JSON')` for invalid JSON *before* the handler runs, so the `except` clause is **dead code** for that path (RESEARCH §RQ-1 case 3). The `if not body or not isinstance(body, dict)` guard is the essential and sufficient guard — it covers the wrong-content-type case where `request.json` returns `None` silently, and the non-object-body case. The `isinstance(section, str)`/`isinstance(key, str)` guards (shown in the handler shape above) then run before any config lookup.
 
 ### Webtest `post_json` helper
 **Source:** `src/python/tests/integration/test_web/test_handler/test_webhook.py:29`
