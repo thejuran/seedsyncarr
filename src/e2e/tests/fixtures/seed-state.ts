@@ -21,11 +21,6 @@ const ENDPOINT = {
     deleteRemote: (n: string) => `/server/command/delete_remote/${encodeURIComponent(n)}`,
 };
 
-// Config set endpoint — used to throttle lftp downloads so the stop command
-// can catch a file in QUEUED/DOWNLOADING state (rate_limit in bytes/sec).
-const CONFIG_SET = (section: string, key: string, value: string) =>
-    `/server/config/set/${section}/${key}/${encodeURIComponent(value)}`;
-
 // Display labels rendered by transfer-row.component.ts:49-58. Seed helpers
 // poll for these strings in td.cell-status .status-badge — never raw enum names.
 const LABEL = {
@@ -69,7 +64,12 @@ async function waitForBadge(page: Page, name: string, label: string, timeout = 3
 }
 
 async function setRateLimit(page: Page, bytesPerSec: string): Promise<void> {
-    await expectOk(page, CONFIG_SET('lftp', 'rate_limit', bytesPerSec), 'GET');
+    const res = await page.request.post('/server/config/set', {
+        data: { section: 'lftp', key: 'rate_limit', value: bytesPerSec }
+    });
+    if (!res.ok()) {
+        throw new Error(`setRateLimit failed: ${res.status()} ${await res.text()}`);
+    }
 }
 
 export async function queueFile(page: Page, name: string): Promise<void> {

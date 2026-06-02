@@ -12,8 +12,9 @@ export class SettingsPage extends App {
     }
 
     async enableSonarr(): Promise<void> {
-        const response = await this.page.request.get(
-            '/server/config/set/sonarr/enabled/true'
+        const response = await this.page.request.post(
+            '/server/config/set',
+            { data: { section: 'sonarr', key: 'enabled', value: 'true' } }
         );
         if (!response.ok()) {
             throw new Error(`enableSonarr failed: ${response.status()} ${response.statusText()}`);
@@ -21,20 +22,20 @@ export class SettingsPage extends App {
     }
 
     async setSonarrUrl(url: string): Promise<void> {
-        const response = await this.page.request.get(
-            `/server/config/set/sonarr/sonarr_url/${encodeURIComponent(url)}`
+        const response = await this.page.request.post(
+            '/server/config/set',
+            { data: { section: 'sonarr', key: 'sonarr_url', value: url } }
         );
         if (!response.ok()) {
             throw new Error(`setSonarrUrl failed: ${response.status()} ${response.statusText()}`);
         }
     }
 
-    // NOTE: the key value appears as a plain path segment in server access logs
-    // because the backend config/set endpoint is GET-only. Always pass obviously-synthetic
-    // strings (e.g. 'test-FAKE-not-real-0000') — never realistic-looking credentials.
+    // Values now travel in the POST body — no encoding needed (D-04).
     async setSonarrApiKey(key: string): Promise<void> {
-        const response = await this.page.request.get(
-            `/server/config/set/sonarr/sonarr_api_key/${encodeURIComponent(key)}`
+        const response = await this.page.request.post(
+            '/server/config/set',
+            { data: { section: 'sonarr', key: 'sonarr_api_key', value: key } }
         );
         if (!response.ok()) {
             throw new Error(`setSonarrApiKey failed: ${response.status()} ${response.statusText()}`);
@@ -56,8 +57,9 @@ export class SettingsPage extends App {
     }
 
     async disableSonarr(): Promise<void> {
-        const response = await this.page.request.get(
-            '/server/config/set/sonarr/enabled/false'
+        const response = await this.page.request.post(
+            '/server/config/set',
+            { data: { section: 'sonarr', key: 'enabled', value: 'false' } }
         );
         if (!response.ok()) {
             throw new Error(`disableSonarr failed: ${response.status()} ${response.statusText()}`);
@@ -67,8 +69,9 @@ export class SettingsPage extends App {
     // --- Config API methods (API-set pattern per D-11) ---
 
     async setRemoteAddress(address: string): Promise<void> {
-        const response = await this.page.request.get(
-            `/server/config/set/lftp/remote_address/${encodeURIComponent(address)}`
+        const response = await this.page.request.post(
+            '/server/config/set',
+            { data: { section: 'lftp', key: 'remote_address', value: address } }
         );
         if (!response.ok()) {
             throw new Error(`setRemoteAddress failed: ${response.status()} ${response.statusText()}`);
@@ -76,8 +79,9 @@ export class SettingsPage extends App {
     }
 
     async setUseSshKey(enabled: boolean): Promise<void> {
-        const response = await this.page.request.get(
-            `/server/config/set/lftp/use_ssh_key/${encodeURIComponent(String(enabled))}`
+        const response = await this.page.request.post(
+            '/server/config/set',
+            { data: { section: 'lftp', key: 'use_ssh_key', value: String(enabled) } }
         );
         if (!response.ok()) {
             throw new Error(`setUseSshKey failed: ${response.status()} ${response.statusText()}`);
@@ -85,8 +89,9 @@ export class SettingsPage extends App {
     }
 
     async setRemoteScanInterval(ms: string): Promise<void> {
-        const response = await this.page.request.get(
-            `/server/config/set/controller/interval_ms_remote_scan/${encodeURIComponent(ms)}`
+        const response = await this.page.request.post(
+            '/server/config/set',
+            { data: { section: 'controller', key: 'interval_ms_remote_scan', value: String(ms) } }
         );
         if (!response.ok()) {
             throw new Error(`setRemoteScanInterval failed: ${response.status()} ${response.statusText()}`);
