@@ -352,8 +352,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 - [x] **Phase 108: Config + Handler Refactors** - Push `secret=True` into each `PROP` declaration so encrypt/decrypt/redact loops discover secrets dynamically (ARCH-02); extract a shared `_dispatch_command(...)` helper from the five duplicate per-action handlers (ARCH-03) (completed 2026-06-01)
 - [x] **Phase 109: Controller Decomposition** - Decompose the `Controller` god-class into cohesive collaborators with single responsibilities; public surface and all caller contracts are preserved; existing test suite stays green throughout (ARCH-01) (completed 2026-06-02)
 
-<details open>
-<summary>🚧 v1.4.0 — Launch-Hardening for Public Release (Phases 110-113) — IN PROGRESS</summary>
+🚧 v1.4.0 — Launch-Hardening for Public Release (Phases 110-113) — IN PROGRESS
 
 **Milestone Goal:** Make SeedSyncarr's public-facing surface — both the code a skeptical engineer reads and the presentation a visitor sees — bulletproof enough to withstand a technical Reddit (r/selfhosted) launch. The work is two largely-disjoint tracks plus one cross-cutting change: a bounded hostile-reader discovery pass that gates fix scope (SCAN), the `/server/config/set` GET→POST hard cutover (CFG — the one breaking HTTP-contract change, credentials no longer in URLs/logs), a defensive-guards/code-hardening cluster (GUARD — unsafe-default warnings, logged delete failures, the AppProcess spawn fix, repo hygiene), and a presentation/launch-readiness rebuild (LAUNCH — cynical-reader teardown + codex pass driving README/SECURITY.md/community-health/release-notes, screenshots at the walkthrough, repo-metadata drafted for manual application). Code substance is already strong (post-v1.3.0 audit found zero active functional bugs); the launch risk is presentation underselling real quality plus a few specific items a hostile reader would find.
 
@@ -365,8 +364,6 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 - [ ] **Phase 111: Config-Set Endpoint Migration** - The one breaking change: `/server/config/set` GET→POST hard cutover (JSON body), legacy GET path fully removed, Angular `ConfigService` + E2E setup/page-objects updated, on-disk config format unchanged (CFG-01, CFG-02, CFG-03, CFG-04)
 - [ ] **Phase 112: Defensive Guards & Code Hardening** - Unsafe-default startup warnings (non-loopback bind w/o api_token; webhook w/o secret), logged delete-path failures (replace `ignore_errors=True`), AppProcess spawn-context fix (failing test goes green), `.gitignore` for run artifacts, legacy `~/.seedsync` fallback warning (GUARD-01..06)
 - [ ] **Phase 113: Presentation & Launch Readiness** - Cynical-reader teardown + codex adversarial pass driving a README / SECURITY.md / community-health / release-notes rebuild; Playwright screenshots captured at the milestone-end walkthrough; repo-metadata text drafted for manual maintainer application (LAUNCH-01..06)
-
-</details>
 
 ## Phase Details
 
