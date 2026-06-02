@@ -37,7 +37,7 @@ class Seedsyncarr:
 
     def __init__(self):
         # Parse the args
-        args = self._parse_args(sys.argv[1:])
+        args, legacy_fallback_warning = self._parse_args(sys.argv[1:])
 
         # Create/load config
         config = None
@@ -79,6 +79,8 @@ class Seedsyncarr:
                                                 debug=is_debug,
                                                 logdir=args.logdir)
         logger.info("Debug mode is {}.".format("enabled" if is_debug else "disabled"))
+        if legacy_fallback_warning:
+            logger.warning(legacy_fallback_warning)
 
         # Create status
         status = Status()
@@ -262,16 +264,17 @@ class Seedsyncarr:
 
         args = parser.parse_args(args)
 
+        legacy_fallback_warning: str | None = None
         if not os.path.exists(args.config_dir):
             legacy_dir = os.path.expanduser("~/.seedsync")
             if os.path.exists(legacy_dir):
-                logging.warning(
-                    "Config directory %s not found; falling back to legacy %s",
-                    args.config_dir, legacy_dir
+                legacy_fallback_warning = (
+                    "Config directory %s not found; falling back to legacy %s"
+                    % (args.config_dir, legacy_dir)
                 )
                 args.config_dir = legacy_dir
 
-        return args
+        return args, legacy_fallback_warning
 
     @staticmethod
     def _create_logger(name: str, debug: bool, logdir: Optional[str]) -> logging.Logger:
@@ -371,28 +374,28 @@ class Seedsyncarr:
     @staticmethod
     def _emit_startup_warnings(logger: logging.Logger, config: Config) -> None:
         """Emit security warnings for insecure configuration states."""
-        if not config.general.webhook_secret:
+        if not config.general.webhook_secret and not config.general.webhook_require_secret:
             logger.warning(
-                "Security: webhook_secret is not configured. "
+                "[SECURITY] webhook_secret is not configured. "
                 "Webhook endpoints will accept requests from any caller."
             )
         if config.general.webhook_require_secret and not config.general.webhook_secret:
             logger.warning(
-                "Security: webhook_require_secret is True but webhook_secret is not set. "
+                "[SECURITY] webhook_require_secret is True but webhook_secret is not set. "
                 "All webhook requests will be rejected with 503 until a secret is configured."
             )
         if not config.general.api_token:
             logger.warning(
-                "Security: No API token configured. "
+                "[SECURITY] No API token configured. "
                 "All API requests will be accepted without authentication."
             )
             logger.warning(
-                "Security: Application is bound to 0.0.0.0 without an API token. "
+                "[SECURITY] Application is bound to 0.0.0.0 without an API token. "
                 "Any host on the network can access the API."
             )
         else:
             logger.info(
-                "Security: API token configured — "
+                "[SECURITY] API token configured — "
                 "all /server/* endpoints require Bearer authentication."
             )
 
