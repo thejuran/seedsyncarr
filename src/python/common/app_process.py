@@ -133,6 +133,8 @@ class AppProcess(Process):
         stripped = [k for k, v in state.items() if isinstance(v, threading.Thread)]
         for k in stripped:
             state.pop(k)
+        if stripped:
+            self.logger.debug("Stripped non-picklable Thread attribute(s) for spawn: %s", stripped)
         return state
 
     def __setstate__(self, state: dict) -> None:
@@ -143,6 +145,10 @@ class AppProcess(Process):
     def run_init(self):
         """
         Called once before the run loop
+
+        Re-create any threading.Thread objects here — Threads set in __init__
+        are NOT transferred to the child under the spawn start method
+        (see __getstate__).
         """
         pass
 
