@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.4.0
 milestone_name: — Launch-Hardening for Public Release - Phases 110-113 (in progress; branch `launch-hardening`, single `v1.4.0` tag cut at milestone end)
 status: completed
-stopped_at: Phase 112 complete — GUARD-01..06 defensive hardening shipped; verification 6/6 passed; containerized CI suite green (1362 passed, coverage ≥88); turingmind deep review pending
-last_updated: "2026-06-02T23:03:13.530Z"
+stopped_at: "Phase 112 complete — GUARD-01..06 shipped; verification 6/6; containerized CI green (1362 passed, cov≥88); deep review clean (0 C/W; 2 findings fixed: arch-002 Medium, py-001 Low)"
+last_updated: "2026-06-02T23:11:46.461Z"
 last_activity: 2026-06-02 -- Phase 112 marked complete
 ---
 
@@ -101,8 +101,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-02T23:03:13.527Z
-Stopped at: Phase 112 complete — GUARD-01..06 defensive hardening shipped; verification 6/6 passed; containerized CI suite green (1362 passed, coverage ≥88); turingmind deep review pending
+Last session: 2026-06-02T23:11:46.457Z
+Stopped at: Phase 112 complete — GUARD-01..06 shipped; verification 6/6; containerized CI green (1362 passed, cov≥88); deep review clean (0 C/W; 2 findings fixed: arch-002 Medium, py-001 Low)
 Next action: Plan Phase 110 (Hostile-Reader Discovery Pass) with `/gsd:plan-phase 110` (or discuss first with `/gsd:discuss-phase 110`)
 
 ## Operator Next Steps
