@@ -53,12 +53,13 @@ class ModelPipeline:
     def update_model(self) -> Tuple[
         Optional[ScannerResult],
         Optional[ScannerResult],
+        Optional[List[LftpJobStatus]],
         Optional[ExtractStatusResult],
     ]:
         """
         Run collect->feed->build pipeline stages that live in this collaborator.
 
-        Returns (latest_remote_scan, latest_local_scan, latest_extract_statuses)
+        Returns (latest_remote_scan, latest_local_scan, lftp_statuses, latest_extract_statuses)
         so the coordinator can pass them to the retained stages
         (_update_active_file_tracking, _update_controller_status) without calling
         back into ModelPipeline.
@@ -81,7 +82,7 @@ class ModelPipeline:
         )
         self.build_and_apply_model(latest_remote_scan)
 
-        return latest_remote_scan, latest_local_scan, latest_extract_statuses
+        return latest_remote_scan, latest_local_scan, lftp_statuses, latest_extract_statuses
 
     # =========================================================================
     # Collection stage methods
