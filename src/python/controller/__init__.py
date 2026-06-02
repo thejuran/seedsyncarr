@@ -1,5 +1,6 @@
 from .controller import Controller as Controller
 from .command_processor import CommandProcessor as CommandProcessor
+from .auto_delete_manager import AutoDeleteManager as AutoDeleteManager
 from .controller_job import ControllerJob as ControllerJob
 from .controller_persist import ControllerPersist as ControllerPersist
 from .model_builder import ModelBuilder as ModelBuilder
