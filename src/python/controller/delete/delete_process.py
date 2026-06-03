@@ -3,7 +3,7 @@ import shlex
 import shutil
 from typing import Optional
 
-from common import AppOneShotProcess
+from common import AppOneShotProcess, sanitize_log_value
 from ssh import Sshcp, SshcpError
 
 class DeleteLocalProcess(AppOneShotProcess):
@@ -21,7 +21,13 @@ class DeleteLocalProcess(AppOneShotProcess):
             if os.path.isfile(file_path):
                 os.remove(file_path)
             else:
-                shutil.rmtree(file_path, ignore_errors=True)
+                try:
+                    shutil.rmtree(file_path)
+                except OSError:
+                    self.logger.exception(
+                        "Failed to delete local directory: %s",
+                        sanitize_log_value(self.__file_name)
+                    )
 
 class DeleteRemoteProcess(AppOneShotProcess):
     def __init__(self,

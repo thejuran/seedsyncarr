@@ -4,6 +4,30 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.0] - 2026-06-02
+
+A launch-hardening release that closes the remaining public-facing rough edges and rebuilds the project's documentation surface. The one breaking change is the config-set endpoint moving from a GET path to a POST body so credentials no longer travel in URLs or server logs; on-disk config files (including encrypted ones) load unchanged with no migration step.
+
+### Changed
+
+- **Breaking:** Configuration values are now set via `POST /server/config/set` with a JSON body (`{section, key, value}`); the legacy `GET /server/config/set/{section}/{key}/{value}` path has been removed so credential values no longer appear as URL path segments in access logs, browser history, or reverse-proxy logs. The Angular settings page and the end-to-end setup use the new endpoint; saved settings round-trip unchanged.
+
+### Added
+
+- A prominent startup warning when the server binds to a non-loopback interface with no `api_token` configured, so an unauthenticated posture is no longer silent (default behavior unchanged).
+- A prominent startup warning when the webhook endpoint is reachable with no `webhook_secret` set and `webhook_require_secret` off (default behavior unchanged).
+- A one-time warning when startup falls back to the legacy `~/.seedsync` configuration directory because the configured directory is absent.
+
+### Fixed
+
+- Failures during local file deletion are now logged with context instead of being silently swallowed, so a failed cleanup leaves an observable signal in the logs.
+- Background process startup now strips non-picklable thread objects from the subprocess state during serialization (via `__getstate__`), so `AppProcess` subclasses pickle cleanly and the full test suite passes under both `fork` and `spawn` start methods.
+
+### Documentation
+
+- Rebuilt the README, `SECURITY.md`, and community-health files (`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`) and added a v1.4.0 release entry, following a cynical-reader teardown and an adversarial content pass over the drafts.
+- Renamed `LICENSE.txt` to `LICENSE` so the repository license is detected correctly, and added run/tooling artifacts to `.gitignore`.
+
 ## [1.3.0] - 2026-06-02
 
 A reliability and quality release delivered across four work streams (test coverage, known bugs + security, dependency cleanup, and a behavior-preserving backend refactor). No configuration changes or migrations are required; existing config files (including encrypted ones) load unchanged.
@@ -165,6 +189,8 @@ A reliability and quality release delivered across four work streams (test cover
 - API token authentication (Bearer tokens)
 - Security hardening: HMAC webhooks, CSP, DNS rebinding prevention, credential redaction
 
+[1.4.0]: https://github.com/thejuran/seedsyncarr/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/thejuran/seedsyncarr/compare/v1.2.5...v1.3.0
 [1.2.3]: https://github.com/thejuran/seedsyncarr/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/thejuran/seedsyncarr/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/thejuran/seedsyncarr/compare/v1.2.0...v1.2.1

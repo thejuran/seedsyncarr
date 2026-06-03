@@ -15,8 +15,8 @@ A bounded "what would a skeptical engineer on Reddit find" discovery pass. Gates
 Only genuinely high-visibility findings fold into later phases; everything else is parked with
 written rationale (D-3).
 
-- [ ] **SCAN-01**: A maintainer can read a triaged findings artifact that lists, by severity, what a skeptical engineer reviewing the public repo would flag — produced by reading the entry points, running the project's existing tooling (ruff whole-tree, Semgrep/Shield, dependency audit) under launch framing, and skimming the highest-traffic source files.
-- [ ] **SCAN-02**: Each finding in the artifact is marked either "fold into a v1.4.0 fix phase" (with the target phase) or "parked" (with a one-line rationale), so scope decisions are explicit and traceable rather than implicit.
+- [x] **SCAN-01**: A maintainer can read a triaged findings artifact that lists, by severity, what a skeptical engineer reviewing the public repo would flag — produced by reading the entry points, running the project's existing tooling (ruff whole-tree, Semgrep/Shield, dependency audit) under launch framing, and skimming the highest-traffic source files.
+- [x] **SCAN-02**: Each finding in the artifact is marked either "fold into a v1.4.0 fix phase" (with the target phase) or "parked" (with a one-line rationale), so scope decisions are explicit and traceable rather than implicit.
 
 ### Config-Set Endpoint Migration (CFG)
 
@@ -83,24 +83,24 @@ Which phases cover which requirements. Populated during roadmap creation (2026-0
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCAN-01 | Phase 110 | Pending |
-| SCAN-02 | Phase 110 | Pending |
-| CFG-01 | Phase 111 | Pending |
-| CFG-02 | Phase 111 | Pending |
-| CFG-03 | Phase 111 | Pending |
-| CFG-04 | Phase 111 | Pending |
-| GUARD-01 | Phase 112 | Pending |
-| GUARD-02 | Phase 112 | Pending |
-| GUARD-03 | Phase 112 | Pending |
-| GUARD-04 | Phase 112 | Pending |
-| GUARD-05 | Phase 112 | Pending |
-| GUARD-06 | Phase 112 | Pending |
-| LAUNCH-01 | Phase 113 | Pending |
-| LAUNCH-02 | Phase 113 | Pending |
-| LAUNCH-03 | Phase 113 | Pending |
-| LAUNCH-04 | Phase 113 | Pending |
-| LAUNCH-05 | Phase 113 | Pending |
-| LAUNCH-06 | Phase 113 | Pending |
+| SCAN-01 | Phase 110 | Complete |
+| SCAN-02 | Phase 110 | Complete |
+| CFG-01 | Phase 111 | Complete |
+| CFG-02 | Phase 111 | Complete |
+| CFG-03 | Phase 111 | Complete (live E2E confirmation at walkthrough) |
+| CFG-04 | Phase 111 | Complete |
+| GUARD-01 | Phase 112 | Complete |
+| GUARD-02 | Phase 112 | Complete |
+| GUARD-03 | Phase 112 | Complete |
+| GUARD-04 | Phase 112 | Complete |
+| GUARD-05 | Phase 112 | Complete |
+| GUARD-06 | Phase 112 | Complete |
+| LAUNCH-01 | Phase 113 | Complete |
+| LAUNCH-02 | Phase 113 | Complete |
+| LAUNCH-03 | Phase 113 | Complete (docs wired; real screenshots captured at walkthrough) |
+| LAUNCH-04 | Phase 113 | Complete |
+| LAUNCH-05 | Phase 113 | Complete |
+| LAUNCH-06 | Phase 113 | Complete (repo-metadata applied manually post-tag) |
 
 **Coverage:**
 - v1.4.0 requirements: 18 total

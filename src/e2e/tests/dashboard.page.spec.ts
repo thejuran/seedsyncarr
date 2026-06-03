@@ -274,7 +274,9 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
         //
         // The throttle is always restored in the finally block so Actions 3-5 and
         // subsequent tests run at full speed.
-        const throttleResp = await page.request.get('/server/config/set/lftp/rate_limit/100');
+        const throttleResp = await page.request.post('/server/config/set', {
+            data: { section: 'lftp', key: 'rate_limit', value: '100' }
+        });
         if (!throttleResp.ok()) throw new Error(`rate_limit set failed: ${throttleResp.status()}`);
         try {
             // Action 1: Queue testing.gif (now throttled — stays Syncing indefinitely).
@@ -305,7 +307,9 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
         } finally {
             // Always restore unlimited speed so Actions 3-5 and subsequent tests are not
             // affected by the throttle even if the try block throws.
-            const restoreResp = await page.request.get('/server/config/set/lftp/rate_limit/0');
+            const restoreResp = await page.request.post('/server/config/set', {
+                data: { section: 'lftp', key: 'rate_limit', value: '0' }
+            });
             if (!restoreResp.ok()) throw new Error(`rate_limit restore failed: ${restoreResp.status()}`);
         }
 

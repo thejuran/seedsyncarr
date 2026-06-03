@@ -14,8 +14,9 @@ Open a [feature request](https://github.com/thejuran/seedsyncarr/issues/new?temp
 
 ### Prerequisites
 
-- Python 3.11+ (CI runs 3.12)
+- Python 3.11 or 3.12 (CI runs 3.12)
 - Node.js 22+
+- [Poetry](https://python-poetry.org/) for Python dependency management
 - Docker (for running the full stack and E2E tests)
 
 ### Getting Started
@@ -23,20 +24,27 @@ Open a [feature request](https://github.com/thejuran/seedsyncarr/issues/new?temp
 1. Fork and clone the repository
 2. Install Python dependencies: `cd src/python && poetry install`
 3. Install Angular dependencies: `cd src/angular && npm install`
-4. Run Python tests: `make run-tests-python`
-5. Run Angular tests: `make run-tests-angular`
+4. Run Python unit tests: `make run-tests-python`
+5. Run Angular unit tests: `make run-tests-angular`
 
-### Code Style
+### Code Quality Checks
 
-- **Python**: Formatted with [ruff](https://docs.astral.sh/ruff/). Run `ruff check src/python` and `ruff format src/python`.
-- **Angular/TypeScript**: Linted with ESLint. Run `npm run lint` in `src/angular`.
+- **Python lint**: `ruff check src/python`
+- **Python format check**: `ruff format --check src/python`
+- **Angular lint**: `cd src/angular && npm run lint`
+- **E2E tests** (requires Docker): `make run-tests-e2e`
 
 ## Pull Requests
 
 1. Branch off `main`
 2. Keep PRs focused — one feature or fix per PR
-3. Ensure all tests pass before submitting
-4. Describe what changed and why in the PR description
+3. Ensure all tests pass: `make run-tests-python` and `make run-tests-angular`
+4. Run `ruff check src/python`, `ruff format --check src/python`, and `cd src/angular && npm run lint` before submitting
+5. Describe what changed and why in the PR description
+
+## Code of Conduct
+
+This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). By participating, you agree to uphold it.
 
 ## Security
 

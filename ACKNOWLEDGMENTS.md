@@ -31,4 +31,4 @@ Key technologies:
 
 ## License
 
-SeedSyncarr is licensed under the Apache License 2.0. See the [LICENSE](LICENSE.txt) file for details.
+SeedSyncarr is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.

@@ -177,7 +177,7 @@ describe("Testing config service", () => {
         httpMock.expectOne("/server/config/get").flush("{}");
     }));
 
-    it("should send a GET on a set config option", () => {
+    it("should send a POST on a set config option", () => {
         // first connect
         httpMock.expectOne("/server/config/get").flush("{}");
 
@@ -189,43 +189,45 @@ describe("Testing config service", () => {
            }
         });
 
-        // set request
-        httpMock.expectOne("/server/config/set/general/debug/true").flush("{}");
+        // set request — POST with JSON body, value NOT in URL (CFG-01 / D-04)
+        const req = httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set");
+        expect(req.request.body).toEqual({section: "general", key: "debug", value: "true"});
+        req.flush("{}");
 
         expect(configSubscriberIndex).toBe(1);
     });
 
-    it("should send correct GET requests on setting config options", () => {
+    it("should send correct POST requests on setting config options", () => {
         // first connect
         httpMock.expectOne("/server/config/get").flush("{}");
 
-        // boolean
+        // boolean — value in body, never in URL (D-04)
         configService.set("general", "debug", true).subscribe(DoNothing);
-        httpMock.expectOne("/server/config/set/general/debug/true").flush("{}");
+        httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set").flush("{}");
         configService.set("general", "debug", false).subscribe(DoNothing);
-        httpMock.expectOne("/server/config/set/general/debug/false").flush("{}");
+        httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set").flush("{}");
 
         // integer
         configService.set("general", "debug", 0).subscribe(DoNothing);
-        httpMock.expectOne("/server/config/set/general/debug/0").flush("{}");
+        httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set").flush("{}");
         configService.set("general", "debug", 1000).subscribe(DoNothing);
-        httpMock.expectOne("/server/config/set/general/debug/1000").flush("{}");
+        httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set").flush("{}");
         configService.set("general", "debug", -1000).subscribe(DoNothing);
-        httpMock.expectOne("/server/config/set/general/debug/-1000").flush("{}");
+        httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set").flush("{}");
 
-        // string
+        // string — raw values, no encodeURIComponent (D-04)
         configService.set("general", "debug", "test").subscribe(DoNothing);
-        httpMock.expectOne("/server/config/set/general/debug/test").flush("{}");
+        httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set").flush("{}");
         configService.set("general", "debug", "test space").subscribe(DoNothing);
-        httpMock.expectOne("/server/config/set/general/debug/test%2520space").flush("{}");
+        httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set").flush("{}");
         configService.set("general", "debug", "test/slash").subscribe(DoNothing);
-        httpMock.expectOne("/server/config/set/general/debug/test%252Fslash").flush("{}");
+        httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set").flush("{}");
         configService.set("general", "debug", "test\"doublequote").subscribe(
             DoNothing
         );
-        httpMock.expectOne("/server/config/set/general/debug/test%2522doublequote").flush("{}");
+        httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set").flush("{}");
         configService.set("general", "debug", "/test/leadingslash").subscribe(DoNothing);
-        httpMock.expectOne("/server/config/set/general/debug/%252Ftest%252Fleadingslash").flush("{}");
+        httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set").flush("{}");
     });
 
     it("should return error on setting non-existing section", () => {
@@ -295,8 +297,8 @@ describe("Testing config service", () => {
         // issue the set
         configService.set("general", "debug", true).subscribe(DoNothing);
 
-        // set request
-        httpMock.expectOne("/server/config/set/general/debug/true").flush("");
+        // set request — POST with JSON body
+        httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set").flush("");
 
         expect(configSubscriberIndex).toBe(2);
     });
@@ -319,8 +321,8 @@ describe("Testing config service", () => {
         // issue the set
         configService.set("general", "debug", true).subscribe(DoNothing);
 
-        // set request
-        httpMock.expectOne("/server/config/set/general/debug/true").flush(
+        // set request fails — POST to bare URL
+        httpMock.expectOne(r => r.method === "POST" && r.url === "/server/config/set").flush(
             "Not found",
             {status: 404, statusText: "Bad Request"}
         );
