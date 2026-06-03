@@ -15,7 +15,7 @@
 [![CI](https://github.com/thejuran/seedsyncarr/actions/workflows/ci.yml/badge.svg)](https://github.com/thejuran/seedsyncarr/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/thejuran/seedsyncarr)](https://github.com/thejuran/seedsyncarr/releases)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue)](https://github.com/thejuran/seedsyncarr/pkgs/container/seedsyncarr)
-[![License](https://img.shields.io/github/license/thejuran/seedsyncarr)](LICENSE.txt)
+[![License](https://img.shields.io/github/license/thejuran/seedsyncarr)](LICENSE)
 
 ## Quick Start
 
@@ -115,7 +115,7 @@ See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 
 ## License
 
-Apache License 2.0 — see [LICENSE.txt](LICENSE.txt).
+Apache License 2.0 — see [LICENSE](LICENSE).
 
 ## Usage Examples
 
