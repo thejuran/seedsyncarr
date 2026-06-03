@@ -304,8 +304,11 @@ export class ViewFileService implements OnDestroy {
         if (remoteSize == null) {
             remoteSize = 0;
         }
+        // Clamp at 100: extracted files have a local size larger than the
+        // remote archive (unpacked > compressed), which would otherwise render
+        // a >100% progress value (e.g. "199%").
         const percentDownloaded: number = remoteSize > 0
-            ? Math.trunc(100.0 * localSize / remoteSize)
+            ? Math.min(100, Math.trunc(100.0 * localSize / remoteSize))
             : 100;
 
         // Translate the status

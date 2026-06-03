@@ -241,7 +241,10 @@ describe("Testing view file service", () => {
             [5, 10, 50],
             [10, 10, 100],
             [null as unknown as number, 10, 0],
-            [10, null as unknown as number, 100]
+            [10, null as unknown as number, 100],
+            // Extracted files: local (unpacked) > remote (archive) clamps at 100, not 199%
+            [20, 10, 100],
+            [100, 50, 100]
         ];
 
         let count = -1;
