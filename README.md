@@ -106,23 +106,10 @@ Key configuration areas in **Settings**:
 
 ## Screenshots
 
-<!-- Real screenshots are captured at the milestone-end walkthrough against the deployed
-     branch build (LAUNCH-03 / D-05/D-06/D-07): real NAS state, no mock data, with any
-     secrets/tokens/IPs scrubbed. The three canonical filenames below are referenced so the
-     captured images drop in without further edits. -->
-
-**Dashboard** — live transfers, progress, and controls (shown above).
-
-**Settings** — remote server, local path, and Sonarr/Radarr configuration:
+The dashboard — live transfers, sync progress, storage stats, and controls:
 
 <p align="center">
-  <img src="doc/images/screenshot-settings.png" alt="SeedSyncarr Settings page" width="800" />
-</p>
-
-**Logs** — real-time activity and transfer log:
-
-<p align="center">
-  <img src="doc/images/screenshot-logs.png" alt="SeedSyncarr Logs view" width="800" />
+  <img src="doc/images/screenshot-dashboard.png" alt="SeedSyncarr Dashboard" width="800" />
 </p>
 
 ## Related Projects
