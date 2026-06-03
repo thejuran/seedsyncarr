@@ -363,7 +363,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 - [x] **Phase 110: Hostile-Reader Discovery Pass** - Bounded "what would a skeptical r/selfhosted engineer flag" audit producing a triaged, severity-ranked findings artifact; each finding marked fold-into-fix-phase (with target) or parked (with rationale); gates fix scope for phases 111-112 (SCAN-01, SCAN-02) (completed 2026-06-02)
 - [x] **Phase 111: Config-Set Endpoint Migration** - The one breaking change: `/server/config/set` GET→POST hard cutover (JSON body), legacy GET path fully removed, Angular `ConfigService` + E2E setup/page-objects updated, on-disk config format unchanged (CFG-01, CFG-02, CFG-03, CFG-04) (completed 2026-06-02)
 - [x] **Phase 112: Defensive Guards & Code Hardening** - Unsafe-default startup warnings (non-loopback bind w/o api_token; webhook w/o secret), logged delete-path failures (replace `ignore_errors=True`), AppProcess spawn-context fix (failing test goes green), `.gitignore` for run artifacts, legacy `~/.seedsync` fallback warning (GUARD-01..06) — 3 plans (1 wave) (completed 2026-06-02)
-- [ ] **Phase 113: Presentation & Launch Readiness** - Cynical-reader teardown + codex adversarial pass driving a README / SECURITY.md / community-health / release-notes rebuild; Playwright screenshots captured at the milestone-end walkthrough; repo-metadata text drafted for manual maintainer application (LAUNCH-01..06) — 4 plans (3 waves)
+- [x] **Phase 113: Presentation & Launch Readiness** - Cynical-reader teardown + codex adversarial pass driving a README / SECURITY.md / community-health / release-notes rebuild; Playwright screenshots captured at the milestone-end walkthrough; repo-metadata text drafted for manual maintainer application (LAUNCH-01..06) — 4 plans (3 waves) (completed 2026-06-03)
 
 ## Phase Details
 
@@ -608,7 +608,7 @@ Plans:
 - [x] 113-01-PLAN.md — First-draft README/SECURITY/CONTRIBUTING/CoC/CHANGELOG (claim-accurate to shipped code) + mechanical LICENSE.txt→LICENSE rename + README badge/link fix (wave 1)
 - [x] 113-02-PLAN.md — Cynical-reader teardown artifact (113-TEARDOWN.md) of the current presentation (wave 1, parallel)
 - [x] 113-03-PLAN.md — Codex adversarial content pass over the drafts (113-CODEX-PASS.md) (wave 2, depends on 113-01)
-- [ ] 113-04-PLAN.md — Finalize docs addressing both critiques + wire 3 canonical screenshot refs (capture deferred to walkthrough) + repo-metadata draft (113-REPO-METADATA.md) (wave 3, depends on 113-01/02/03)
+- [x] 113-04-PLAN.md — Finalize docs addressing both critiques + wire 3 canonical screenshot refs (capture deferred to walkthrough) + repo-metadata draft (113-REPO-METADATA.md) (wave 3, depends on 113-01/02/03)
 
 **UI hint**: yes
 
@@ -647,7 +647,7 @@ Plans:
 | 110. Hostile-Reader Discovery Pass | v1.4.0 | 1/1 | Complete   | 2026-06-02 |
 | 111. Config-Set Endpoint Migration | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
 | 112. Defensive Guards & Code Hardening | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
-| 113. Presentation & Launch Readiness | v1.4.0 | 3/4 | In Progress|  |
+| 113. Presentation & Launch Readiness | v1.4.0 | 4/4 | Complete   | 2026-06-03 |
 
 ---
 
