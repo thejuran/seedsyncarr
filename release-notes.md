@@ -1,24 +1,24 @@
-A reliability and quality release. Most of this work happens under the hood — the goal was to make SeedSyncarr more dependable, more secure, and easier to maintain going forward, without changing how you use it day to day.
+A hardening and polish release. The focus this time was closing the one place credentials could leak, making a few unsafe defaults visible instead of silent, and tightening up the documentation.
 
-No configuration changes or migrations are required. Existing config files (including encrypted ones) load unchanged.
+Existing config files (including encrypted ones) load unchanged, with no migration step.
 
-### Security & Bug Fixes
+### What changed for you
 
-- **Webhook hardening** — You can now opt in to have the Sonarr/Radarr webhook reject unauthenticated calls when no secret is configured, instead of accepting them. The webhook is also rate-limited, and the config screen no longer hints at whether a secret is set. (Default behavior is unchanged, so existing setups keep working.)
-- **Safer file names in logs and the UI** — Crafted file names can no longer forge log entries or inject markup into the confirmation dialogs. The delete/confirm pop-ups now render file names as plain text.
-- **Steadier live updates** — Fixed a case where the dashboard's live activity feed could leak or duplicate connections during a reconnect. The feed stays clean over long sessions.
-- **More reliable auto-delete** — Hardened the post-import auto-delete so a deletion can't run against files that are still being torn down during shutdown.
+- **Credentials no longer travel in URLs** — Saving a setting now sends the value in a request body instead of the URL path. Previously, config values (including secrets) could show up in server access logs, browser history, and reverse-proxy logs. This is the one behavior change: the Settings page and setup tooling use the new path automatically, and your saved settings round-trip exactly as before.
 
-### Interface & Performance
+### Safer defaults, no longer silent
 
-- **Lighter, faster frontend** — Removed three end-of-life libraries (jQuery, Font Awesome 4.7, and css-element-queries) and switched all icons to Phosphor. The app ships less code and every icon renders crisply, with no change to how anything looks or works.
-- **Smaller production build** — Development-only sample data is now fully excluded from the production bundle.
+- **Startup warnings for unsafe setups** — If the server is reachable on a non-loopback address with no API token set, or the webhook is reachable with no secret, you now get a clear warning at startup. Defaults are unchanged — the app just stops being quietly unsafe.
+- **Visible delete failures** — If a local cleanup fails, it's now logged with context instead of being silently swallowed, so a failed delete leaves a trace you can find.
+- **Loud legacy-config warning** — If startup falls back to the old `~/.seedsync` directory because the configured one is missing, you get a one-time heads-up instead of silently loading a pre-fork config.
 
-### Under the Hood
+### Under the hood
 
-- **More dependable background logging** — Fixed a logging issue that could fail on macOS-style process startup, improving reliability across platforms.
-- **Cleaner, more maintainable backend** — Refactored several large internal components (config handling, request dispatch, and the core controller) into smaller, focused pieces. Behavior is identical — this makes future features and fixes faster and safer to ship.
-- **Stronger test coverage** — Closed test-coverage gaps and raised the project's minimum coverage bar, so regressions are caught earlier.
+- **Reliable process startup** — Background process startup now serializes cleanly, so the full test suite passes under both process start methods (`fork` and `spawn`).
+- **Progress display fix** — Extracted files no longer show a progress bar above 100%.
 
+### Presentation
 
-**Full changelog:** https://github.com/thejuran/seedsyncarr/blob/v{{VERSION}}/CHANGELOG.md
+- Rebuilt the README, `SECURITY.md`, and the community-health files (`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`), and the repository license is now detected correctly. The security posture is stated plainly so you can see what's protected by default and what the opt-in knobs are for.
+
+**Full changelog:** https://github.com/thejuran/seedsyncarr/blob/v1.4.0/CHANGELOG.md

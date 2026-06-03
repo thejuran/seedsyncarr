@@ -4,9 +4,9 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [1.4.0] - 2026-06-02
+## [1.4.0] - 2026-06-03
 
-A launch-hardening release that closes the remaining public-facing rough edges and rebuilds the project's documentation surface. The one breaking change is the config-set endpoint moving from a GET path to a POST body so credentials no longer travel in URLs or server logs; on-disk config files (including encrypted ones) load unchanged with no migration step.
+A hardening and documentation release that closes the remaining public-facing rough edges and rebuilds the project's documentation surface. The one breaking change is the config-set endpoint moving from a GET path to a POST body so credentials no longer travel in URLs or server logs; on-disk config files (including encrypted ones) load unchanged with no migration step.
 
 ### Changed
 
