@@ -21,4 +21,4 @@ Existing config files (including encrypted ones) load unchanged, with no migrati
 
 - Rebuilt the README, `SECURITY.md`, and the community-health files (`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`), and the repository license is now detected correctly. The security posture is stated plainly so you can see what's protected by default and what the opt-in knobs are for.
 
-**Full changelog:** https://github.com/thejuran/seedsyncarr/blob/v1.4.0/CHANGELOG.md
+**Full changelog:** https://github.com/thejuran/seedsyncarr/blob/v{{VERSION}}/CHANGELOG.md
