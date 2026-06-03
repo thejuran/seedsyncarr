@@ -21,7 +21,7 @@ A launch-hardening release that closes the remaining public-facing rough edges a
 ### Fixed
 
 - Failures during local file deletion are now logged with context instead of being silently swallowed, so a failed cleanup leaves an observable signal in the logs.
-- Background process startup now creates its queue and event from a spawn-compatible multiprocessing context, so the full test suite passes under both `fork` and `spawn` start methods.
+- Background process startup now strips non-picklable thread objects from the subprocess state during serialization (via `__getstate__`), so `AppProcess` subclasses pickle cleanly and the full test suite passes under both `fork` and `spawn` start methods.
 
 ### Documentation
 

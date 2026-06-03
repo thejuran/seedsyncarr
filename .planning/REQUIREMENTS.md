@@ -85,22 +85,22 @@ Which phases cover which requirements. Populated during roadmap creation (2026-0
 |-------------|-------|--------|
 | SCAN-01 | Phase 110 | Complete |
 | SCAN-02 | Phase 110 | Complete |
-| CFG-01 | Phase 111 | Pending |
-| CFG-02 | Phase 111 | Pending |
-| CFG-03 | Phase 111 | Pending |
-| CFG-04 | Phase 111 | Pending |
-| GUARD-01 | Phase 112 | Pending |
-| GUARD-02 | Phase 112 | Pending |
-| GUARD-03 | Phase 112 | Pending |
-| GUARD-04 | Phase 112 | Pending |
-| GUARD-05 | Phase 112 | Pending |
-| GUARD-06 | Phase 112 | Pending |
-| LAUNCH-01 | Phase 113 | Pending |
-| LAUNCH-02 | Phase 113 | Pending |
-| LAUNCH-03 | Phase 113 | Pending |
-| LAUNCH-04 | Phase 113 | Pending |
-| LAUNCH-05 | Phase 113 | Pending |
-| LAUNCH-06 | Phase 113 | Pending |
+| CFG-01 | Phase 111 | Complete |
+| CFG-02 | Phase 111 | Complete |
+| CFG-03 | Phase 111 | Complete (live E2E confirmation at walkthrough) |
+| CFG-04 | Phase 111 | Complete |
+| GUARD-01 | Phase 112 | Complete |
+| GUARD-02 | Phase 112 | Complete |
+| GUARD-03 | Phase 112 | Complete |
+| GUARD-04 | Phase 112 | Complete |
+| GUARD-05 | Phase 112 | Complete |
+| GUARD-06 | Phase 112 | Complete |
+| LAUNCH-01 | Phase 113 | Complete |
+| LAUNCH-02 | Phase 113 | Complete |
+| LAUNCH-03 | Phase 113 | Complete (docs wired; real screenshots captured at walkthrough) |
+| LAUNCH-04 | Phase 113 | Complete |
+| LAUNCH-05 | Phase 113 | Complete |
+| LAUNCH-06 | Phase 113 | Complete (repo-metadata applied manually post-tag) |
 
 **Coverage:**
 - v1.4.0 requirements: 18 total
