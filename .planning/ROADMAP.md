@@ -607,7 +607,7 @@ Plans:
 **Plans**: 4 plans (3 waves)
 - [x] 113-01-PLAN.md — First-draft README/SECURITY/CONTRIBUTING/CoC/CHANGELOG (claim-accurate to shipped code) + mechanical LICENSE.txt→LICENSE rename + README badge/link fix (wave 1)
 - [x] 113-02-PLAN.md — Cynical-reader teardown artifact (113-TEARDOWN.md) of the current presentation (wave 1, parallel)
-- [ ] 113-03-PLAN.md — Codex adversarial content pass over the drafts (113-CODEX-PASS.md) (wave 2, depends on 113-01)
+- [x] 113-03-PLAN.md — Codex adversarial content pass over the drafts (113-CODEX-PASS.md) (wave 2, depends on 113-01)
 - [ ] 113-04-PLAN.md — Finalize docs addressing both critiques + wire 3 canonical screenshot refs (capture deferred to walkthrough) + repo-metadata draft (113-REPO-METADATA.md) (wave 3, depends on 113-01/02/03)
 
 **UI hint**: yes
@@ -647,7 +647,7 @@ Plans:
 | 110. Hostile-Reader Discovery Pass | v1.4.0 | 1/1 | Complete   | 2026-06-02 |
 | 111. Config-Set Endpoint Migration | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
 | 112. Defensive Guards & Code Hardening | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
-| 113. Presentation & Launch Readiness | v1.4.0 | 2/4 | In Progress|  |
+| 113. Presentation & Launch Readiness | v1.4.0 | 3/4 | In Progress|  |
 
 ---
 
