@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.4.0
 milestone_name: — Launch-Hardening for Public Release - Phases 110-113 (in progress; branch `launch-hardening`, single `v1.4.0` tag cut at milestone end)
-status: executing
+status: Awaiting next milestone
 stopped_at: Phase 113 context gathered
-last_updated: "2026-06-03T00:31:49.663Z"
-last_activity: 2026-06-03 -- Phase 113 execution started
+last_updated: "2026-06-03T21:44:28.105Z"
+last_activity: 2026-06-03 — Milestone v1.4.0 completed and archived
 ---
 
 # Project State
@@ -19,10 +19,10 @@ See: .planning/PROJECT.md (updated 2026-06-02)
 
 ## Current Position
 
-Phase: 113 (presentation-launch-readiness) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 113
-Last activity: 2026-06-03 -- Phase 113 execution started
+Phase: Milestone v1.4.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-03 — Milestone v1.4.0 completed and archived
 
 ## Accumulated Context
 
@@ -71,9 +71,10 @@ None.
 | todo | webob-cgi-upstream-unblock | testing (upstream — blocked on webob 2.0; DEFER-WEBOB) |
 | todo | shutdown-readiness-event | robustness (DEFER-SHUTDOWN — invisible to launch reader; deferred v1.4.0) |
 | todo | streamqueue-atomic-drop-oldest | robustness (DEFER-STREAMQUEUE — latent, well-mitigated; deferred v1.4.0) |
-| todo | test-hardening-backlog A-01..A-06 | test-infra (DEFER-TESTHARDEN — invisible to launch reader; deferred v1.4.0) |
+| todo | test-hardening-backlog A-01..A-06 | test-infra (DEFER-TESTHARDEN — deferred v1.4.0) |
+| quick_task | 260528-khw-triage-and-merge-dependabot-prs | housekeeping (prior session, SUMMARY missing; acknowledged + deferred at v1.4.0 close) |
 
-> Note: `migrate-config-set-to-post-body` (previously deferred) is now IN SCOPE as Phase 111 (CFG-01..04). Removed from deferred list.
+> Acknowledged + deferred at v1.4.0 milestone close (2026-06-03): webob-cgi-upstream-unblock (still blocked on upstream webob 2.0) and the 260528-khw dependabot quick-task (prior-session housekeeping). `migrate-config-set-to-post-body` SHIPPED as Phase 111 (CFG-01..04) this milestone — its todo moved to `todos/completed/`.
 
 ## Tech Debt
 
@@ -107,6 +108,4 @@ Next action: Plan Phase 110 (Hostile-Reader Discovery Pass) with `/gsd:plan-phas
 
 ## Operator Next Steps
 
-- Cut branch `launch-hardening` from `main` (v1.3.0) before starting Phase 110 code work.
-- Plan and execute Phase 110 (SCAN) first — its findings dispositions gate the detailed planning of Phases 111-112.
-- Run phases one-at-a-time per the orchestrator run cadence; stop between for review.
+- Start the next milestone with /gsd-new-milestone

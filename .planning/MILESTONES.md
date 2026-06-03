@@ -1,5 +1,25 @@
 # Project Milestones: SeedSync
 
+## v1.4.0 Launch-Hardening for Public Release (Shipped: 2026-06-03)
+
+**Phases completed:** 4 phases (110-113), 11 plans. Single `v1.4.0` tag (first release since v1.3.0).
+
+**Delivered:** Closed the remaining public-facing rough edges and one credential-leak surface. The single breaking change is the `/server/config/set` GET→POST cutover (credentials no longer travel in URLs/logs); on-disk config (incl. Fernet-encrypted) loads unchanged. Plus a cluster of "no longer silent" safety-default warnings, a logged-delete-failure fix, the AppProcess spawn-pickling fix, and a full documentation rebuild. Milestone audit passed (18/18 requirements, 14/14 cross-phase integration); turingmind deep-review clean (0 critical/warning); NAS walkthrough confirmed the config-set backend live and surfaced + fixed a pre-existing dashboard progress glitch.
+
+**Key accomplishments:**
+
+- **Phase 110 (Hostile-Reader Discovery Pass — SCAN-01/02):** bounded "skeptical r/selfhosted reader" audit → triaged `110-FINDINGS.md` (9 findings, each fold/park); tools ran clean (ruff/Semgrep/gitleaks 0). Gated fix scope for 111-113.
+- **Phase 111 (Config-Set Endpoint Migration — CFG-01..04):** `/server/config/set` GET→POST hard cutover with JSON body; legacy GET path removed (404); Angular `ConfigService`/`rest.service` + E2E setup/page-objects updated; on-disk config format unchanged. Confirmed live on the NAS build (POST validates, legacy GET 404).
+- **Phase 112 (Defensive Guards & Code Hardening — GUARD-01..06):** non-loopback-without-`api_token` and webhook-without-secret startup warnings; logged delete-path failures (replaced `ignore_errors=True`); AppProcess spawn-pickling fix via `__getstate__` thread-stripping (failing test now green under fork+spawn); `.gitignore` for run artifacts; loud legacy `~/.seedsync` fallback warning.
+- **Phase 113 (Presentation & Launch Readiness — LAUNCH-01..06):** cynical-reader teardown + codex adversarial content pass → README rewrite (owned-axis one-liner: Sonarr-driven + HMAC-verified safe auto-delete; honest fork note; security posture as a selling point), `SECURITY.md` posture section, `CODE_OF_CONDUCT.md` added, `CONTRIBUTING.md` freshened, `LICENSE.txt`→`LICENSE` rename (GitHub now detects it), `[1.4.0]` CHANGELOG + release notes, repo-metadata draft.
+- **Walkthrough fix:** clamped transfer progress at 100% for extracted files (pre-existing `view-file.service.ts` bug surfaced live, fixed + verified). Real dashboard screenshot captured against the NAS build.
+
+**Known deferred items at close:** 2 (webob-cgi-upstream-unblock — blocked on upstream; 260528-khw dependabot quick-task — prior-session housekeeping). See STATE.md Deferred Items.
+
+**Post-tag maintainer follow-ups:** apply `113-REPO-METADATA.md` (GitHub About/topics/homepage) via the web UI; optional deferred runtime install checks (live `pip install` / `docker pull`).
+
+---
+
 ## v1.3.0 Test & Quality, Security, Deps & Backend Architecture Refactor (Shipped: 2026-06-02)
 
 **Phases completed:** 13 phases (97-109) across 4 slices. Tag `v1.3.0` (first release since v1.2.5).
