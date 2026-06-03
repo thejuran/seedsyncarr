@@ -32,7 +32,7 @@ services:
     ports:
       - "8800:8800"
     volumes:
-      - ~/.seedsyncarr:/root/.seedsyncarr
+      - ~/.seedsyncarr:/config
       - /path/to/downloads:/downloads
 ```
 
@@ -50,7 +50,7 @@ services:
 
 ## How It Works
 
-SeedSyncarr runs on your local server and connects to your remote seedbox over SSH. The LFTP sync engine continuously transfers new files to your local machine. When a transfer completes, SeedSyncarr can automatically extract archives and notify Sonarr or Radarr via webhooks to trigger media library imports.
+SeedSyncarr runs on your local server and connects to your remote seedbox over SSH. The LFTP sync engine continuously transfers new files to your local machine, and can automatically extract archives once a transfer completes. Sonarr and Radarr then import the synced files and call SeedSyncarr's inbound webhook endpoint on import — SeedSyncarr uses that confirmation to safely reclaim the local copy, so it never deletes a file that didn't make it into your library.
 
 You don't need to install anything on the remote server — just SSH credentials.
 
@@ -65,7 +65,7 @@ docker run -d \
   --name seedsyncarr \
   --restart unless-stopped \
   -p 8800:8800 \
-  -v ~/.seedsyncarr:/root/.seedsyncarr \
+  -v ~/.seedsyncarr:/config \
   -v /path/to/downloads:/downloads \
   ghcr.io/thejuran/seedsyncarr:latest
 ```
@@ -75,8 +75,12 @@ docker run -d \
 Install system dependencies first, then install via pip:
 
 ```bash
-# System dependencies (Debian/Ubuntu)
+# Runtime tools (Debian/Ubuntu)
 sudo apt install lftp openssh-client p7zip-full unrar bzip2
+
+# Build dependencies for the cryptography wheel (needed on systems
+# without a prebuilt wheel for your Python version)
+sudo apt install build-essential libssl-dev libffi-dev
 
 # Install SeedSyncarr
 pip install seedsyncarr
@@ -102,10 +106,23 @@ Key configuration areas in **Settings**:
 
 ## Screenshots
 
-<!-- Screenshots are captured at walkthrough against the deployed branch build (LAUNCH-03 / D-05).
-     Screenshot src paths will be updated at that time. -->
+<!-- Real screenshots are captured at the milestone-end walkthrough against the deployed
+     branch build (LAUNCH-03 / D-05/D-06/D-07): real NAS state, no mock data, with any
+     secrets/tokens/IPs scrubbed. The three canonical filenames below are referenced so the
+     captured images drop in without further edits. -->
+
+**Dashboard** — live transfers, progress, and controls (shown above).
+
+**Settings** — remote server, local path, and Sonarr/Radarr configuration:
+
 <p align="center">
-  <img src="doc/images/screenshot-dashboard.png" alt="SeedSyncarr Dashboard" width="800" />
+  <img src="doc/images/screenshot-settings.png" alt="SeedSyncarr Settings page" width="800" />
+</p>
+
+**Logs** — real-time activity and transfer log:
+
+<p align="center">
+  <img src="doc/images/screenshot-logs.png" alt="SeedSyncarr Logs view" width="800" />
 </p>
 
 ## Related Projects
@@ -139,19 +156,21 @@ Movies/*
 Any new file on the remote server whose path matches a pattern is queued for sync without
 manual intervention. Files that do not match are left on the remote server untouched.
 
-**Trigger a Sonarr import after a completed download**
+**Confirm a Sonarr import before cleaning up**
 
-In Settings, enable Sonarr and enter your Sonarr URL and API key. SeedSyncarr displays a
-webhook URL in the form:
+In Settings, enable Sonarr and enter your Sonarr URL and API key. SeedSyncarr exposes an
+inbound webhook endpoint at:
 
 ```
 http://<seedsyncarr-address>:8800/server/webhook/sonarr
 ```
 
 Add this URL as a webhook in Sonarr (Settings > Connect > Webhook) with the "On Import"
-event selected. When SeedSyncarr finishes transferring a file that Sonarr is tracking,
-Sonarr receives the webhook and imports the episode into your library automatically.
-The same pattern applies to Radarr using the `/server/webhook/radarr` endpoint.
+event selected. Sonarr then calls this endpoint after it imports an episode into your
+library, and SeedSyncarr treats that incoming call as confirmation the file made it in —
+the signal it uses to safely reclaim the local copy. The webhook is HMAC-verified when a
+secret is configured. The same pattern applies to Radarr using the
+`/server/webhook/radarr` endpoint.
 
 **Automatically clean up after import**
 

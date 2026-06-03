@@ -14,7 +14,7 @@ Open a [feature request](https://github.com/thejuran/seedsyncarr/issues/new?temp
 
 ### Prerequisites
 
-- Python 3.11+ (CI runs 3.12)
+- Python 3.11 or 3.12 (CI runs 3.12)
 - Node.js 22+
 - [Poetry](https://python-poetry.org/) for Python dependency management
 - Docker (for running the full stack and E2E tests)
