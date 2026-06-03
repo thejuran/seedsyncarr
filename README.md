@@ -10,12 +10,16 @@
   <img src="doc/images/screenshot-dashboard.png" alt="SeedSyncarr Dashboard" width="800" />
 </p>
 
-> Sync files from your seedbox to your local media server — fast, automated, and integrated with Sonarr and Radarr.
+> A Sonarr-driven seedbox sync tool where an HMAC-verified import webhook drives safe auto-delete — so you never delete a file that didn't make it into your library.
 
 [![CI](https://github.com/thejuran/seedsyncarr/actions/workflows/ci.yml/badge.svg)](https://github.com/thejuran/seedsyncarr/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/thejuran/seedsyncarr)](https://github.com/thejuran/seedsyncarr/releases)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue)](https://github.com/thejuran/seedsyncarr/pkgs/container/seedsyncarr)
 [![License](https://img.shields.io/github/license/thejuran/seedsyncarr)](LICENSE)
+
+## About This Fork
+
+SeedSyncarr is a fork of [SeedSync](https://github.com/ipsingh06/seedsync) (ipsingh06). Like other active forks, it modernizes the original; SeedSyncarr's focus is a Sonarr-driven workflow where an HMAC-verified import webhook drives safe auto-delete — so you never delete a file that didn't reach your library. SeedSyncarr is Sonarr/Radarr-driven, so it receives import webhooks from those services rather than pushing notifications outbound.
 
 ## Quick Start
 
@@ -38,10 +42,11 @@ services:
 - **Web UI** — monitor and control all transfers from a clean, responsive dashboard
 - **Auto-extraction** — automatically extract archives after sync completes
 - **AutoQueue** — pattern-based file selection syncs only the files you want
-- **Sonarr and Radarr integration** — webhook-driven import notifications for seamless media library updates
+- **Sonarr and Radarr integration** — HMAC-verified import webhooks drive safe auto-delete; once your media library confirms the import, SeedSyncarr removes the local copy
 - **Local and remote file management** — browse, delete, and manage files on both ends from the UI
 - **Docker packaging** — available as Docker images for amd64 and arm64
 - **Dark mode** — full dark theme with earthy palette designed for always-on displays
+- **Security by default** — Fernet-encrypted secrets at rest, HMAC-verified import webhooks, opt-in Bearer auth, an IP-resolution guard on Sonarr/Radarr connection URLs, CSP headers, and rate-limited webhook/config/test-connection/bulk/status endpoints. See [SECURITY.md](SECURITY.md) for the full posture.
 
 ## How It Works
 
@@ -97,6 +102,8 @@ Key configuration areas in **Settings**:
 
 ## Screenshots
 
+<!-- Screenshots are captured at walkthrough against the deployed branch build (LAUNCH-03 / D-05).
+     Screenshot src paths will be updated at that time. -->
 <p align="center">
   <img src="doc/images/screenshot-dashboard.png" alt="SeedSyncarr Dashboard" width="800" />
 </p>
@@ -111,7 +118,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+See [SECURITY.md](SECURITY.md) for reporting vulnerabilities and the full security posture.
 
 ## License
 
