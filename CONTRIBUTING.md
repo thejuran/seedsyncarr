@@ -39,8 +39,12 @@ Open a [feature request](https://github.com/thejuran/seedsyncarr/issues/new?temp
 1. Branch off `main`
 2. Keep PRs focused — one feature or fix per PR
 3. Ensure all tests pass: `make run-tests-python` and `make run-tests-angular`
-4. Run `ruff check src/python` and `cd src/angular && npm run lint` before submitting
+4. Run `ruff check src/python`, `ruff format --check src/python`, and `cd src/angular && npm run lint` before submitting
 5. Describe what changed and why in the PR description
+
+## Code of Conduct
+
+This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). By participating, you agree to uphold it.
 
 ## Security
 
