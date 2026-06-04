@@ -22,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-06-02)
 Phase: Milestone v1.4.0 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-06-04 — Completed quick task 260604-g9c: merged webob+ruff Dependabot PRs (security alert resolved); Angular v22 PR #50 fix pushed (istanbul) but blocked on new TS migration errors
+Last activity: 2026-06-04 — Completed quick task 260604-gmy: fixed Angular v22 strict-template TS errors and merged Dependabot PR #50 (Angular v21→v22). All Dependabot PRs cleared, 0 open security alerts.
 
 ## Accumulated Context
 
@@ -63,7 +63,8 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260528-khw | triage and merge dependabot PRs, resolve open security alert | 2026-05-28 | 22616f9 | [260528-khw-triage-and-merge-dependabot-prs-resolve-](./quick/260528-khw-triage-and-merge-dependabot-prs-resolve-/) |
-| 260604-g9c | Handle open Dependabot PRs and alerts: merge webob+ruff (security alert resolved), Angular v22 PR #50 blocked on new TS migration errors | 2026-06-04 | 957a896 | [260604-g9c-handle-open-dependabot-prs-and-alerts-me](./quick/260604-g9c-handle-open-dependabot-prs-and-alerts-me/) |
+| 260604-g9c | Handle open Dependabot PRs and alerts: merge webob+ruff (security alert resolved); Angular v22 PR #50 istanbul fix pushed (TS migration completed in 260604-gmy) | 2026-06-04 | 957a896 | [260604-g9c-handle-open-dependabot-prs-and-alerts-me](./quick/260604-g9c-handle-open-dependabot-prs-and-alerts-me/) |
+| 260604-gmy | Fix Angular v22 strict-template TS errors (TS2532/TS2339/TS2345/TS2322) and merge Dependabot PR #50 — all Dependabot PRs now cleared, 0 open alerts | 2026-06-04 | ac087a5 | [260604-gmy-fix-angular-v22-typescript-template-type](./quick/260604-gmy-fix-angular-v22-typescript-template-type/) |
 
 ## Deferred Items
 
