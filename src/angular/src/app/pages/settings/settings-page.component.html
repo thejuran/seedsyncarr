@@ -11,7 +11,7 @@
             [type]="option.type"
             [label]="option.label"
             [description]="option.description"
-            [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+            [value]="getConfigValue(config | async, option.valuePath[0], option.valuePath[1])"
             (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
           </app-option>
         </div>
@@ -39,7 +39,7 @@
                 [type]="option.type"
                 [label]="option.label"
                 [description]="option.description"
-                [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                [value]="getConfigValue(config | async, option.valuePath[0], option.valuePath[1])"
                 (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
               </app-option>
             </div>
@@ -66,37 +66,37 @@
         <div class="settings-card-body settings-card-body--grid-2col">
           <!-- Server Address — full width -->
           <div class="grid-span-2">
-            <app-option [type]="OptionType.Text" [label]="'Server Address'" [value]="(config | async)?.get('lftp')?.get('remote_address')" (changeEvent)="onSetConfig('lftp', 'remote_address', $event)"></app-option>
+            <app-option [type]="OptionType.Text" [label]="'Server Address'" [value]="getConfigValue(config | async, 'lftp', 'remote_address')" (changeEvent)="onSetConfig('lftp', 'remote_address', $event)"></app-option>
           </div>
           <!-- Username -->
           <div>
-            <app-option [type]="OptionType.Text" [label]="'Server User'" [value]="(config | async)?.get('lftp')?.get('remote_username')" (changeEvent)="onSetConfig('lftp', 'remote_username', $event)"></app-option>
+            <app-option [type]="OptionType.Text" [label]="'Server User'" [value]="getConfigValue(config | async, 'lftp', 'remote_username')" (changeEvent)="onSetConfig('lftp', 'remote_username', $event)"></app-option>
           </div>
           <!-- Password -->
           <div>
-            <app-option [type]="OptionType.Password" [label]="'Server Password'" [value]="(config | async)?.get('lftp')?.get('remote_password')" (changeEvent)="onSetConfig('lftp', 'remote_password', $event)"></app-option>
+            <app-option [type]="OptionType.Password" [label]="'Server Password'" [value]="getConfigValue(config | async, 'lftp', 'remote_password')" (changeEvent)="onSetConfig('lftp', 'remote_password', $event)"></app-option>
           </div>
           <!-- SSH Key Auth — compact toggle, full width -->
           <div class="grid-span-2">
-            <app-option [type]="OptionType.Checkbox" [label]="'Use password-less key-based authentication'" [compact]="true" [value]="(config | async)?.get('lftp')?.get('use_ssh_key')" (changeEvent)="onSetConfig('lftp', 'use_ssh_key', $event)"></app-option>
+            <app-option [type]="OptionType.Checkbox" [label]="'Use password-less key-based authentication'" [compact]="true" [value]="getConfigValue(config | async, 'lftp', 'use_ssh_key')" (changeEvent)="onSetConfig('lftp', 'use_ssh_key', $event)"></app-option>
           </div>
           <!-- Remote Port -->
           <div>
-            <app-option [type]="OptionType.Text" [label]="'Remote SSH Port'" [value]="(config | async)?.get('lftp')?.get('remote_port')" (changeEvent)="onSetConfig('lftp', 'remote_port', $event)"></app-option>
+            <app-option [type]="OptionType.Text" [label]="'Remote SSH Port'" [value]="getConfigValue(config | async, 'lftp', 'remote_port')" (changeEvent)="onSetConfig('lftp', 'remote_port', $event)"></app-option>
           </div>
           <!-- empty cell to maintain grid -->
           <div></div>
           <!-- Server Directory — full width -->
           <div class="grid-span-2">
-            <app-option [type]="OptionType.Text" [label]="'Server Directory'" [description]="'Path to your files on the remote server'" [icon]="'ph-folder-open'" [value]="(config | async)?.get('lftp')?.get('remote_path')" (changeEvent)="onSetConfig('lftp', 'remote_path', $event)"></app-option>
+            <app-option [type]="OptionType.Text" [label]="'Server Directory'" [description]="'Path to your files on the remote server'" [icon]="'ph-folder-open'" [value]="getConfigValue(config | async, 'lftp', 'remote_path')" (changeEvent)="onSetConfig('lftp', 'remote_path', $event)"></app-option>
           </div>
           <!-- Local Directory — full width -->
           <div class="grid-span-2">
-            <app-option [type]="OptionType.Text" [label]="'Local Directory'" [description]="'Downloaded files are placed here'" [icon]="'ph-hard-drive'" [value]="(config | async)?.get('lftp')?.get('local_path')" (changeEvent)="onSetConfig('lftp', 'local_path', $event)"></app-option>
+            <app-option [type]="OptionType.Text" [label]="'Local Directory'" [description]="'Downloaded files are placed here'" [icon]="'ph-hard-drive'" [value]="getConfigValue(config | async, 'lftp', 'local_path')" (changeEvent)="onSetConfig('lftp', 'local_path', $event)"></app-option>
           </div>
           <!-- Server Script Path — full width -->
           <div class="grid-span-2">
-            <app-option [type]="OptionType.Text" [label]="'Server Script Path'" [description]="'Where to install scanner script on remote server'" [icon]="'ph-file-code'" [value]="(config | async)?.get('lftp')?.get('remote_path_to_scan_script')" (changeEvent)="onSetConfig('lftp', 'remote_path_to_scan_script', $event)"></app-option>
+            <app-option [type]="OptionType.Text" [label]="'Server Script Path'" [description]="'Where to install scanner script on remote server'" [icon]="'ph-file-code'" [value]="getConfigValue(config | async, 'lftp', 'remote_path_to_scan_script')" (changeEvent)="onSetConfig('lftp', 'remote_path_to_scan_script', $event)"></app-option>
           </div>
         </div>
       </div>
@@ -114,12 +114,12 @@
                   [type]="option.type"
                   [label]="option.label"
                   [description]="option.description"
-                  [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                  [value]="getConfigValue(config | async, option.valuePath[0], option.valuePath[1])"
                   (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
                 </app-option>
               </div>
               <div class="option-hint-label">
-                {{formatMs((config | async)?.get(option.valuePath[0])?.get(option.valuePath[1]))}}
+                {{formatMs(getConfigValue(config | async, option.valuePath[0], option.valuePath[1]))}}
               </div>
             </div>
           }
@@ -150,7 +150,7 @@
                   [label]="option.label"
                   [description]="option.description"
                   [compact]="true"
-                  [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                  [value]="getConfigValue(config | async, option.valuePath[0], option.valuePath[1])"
                   (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
                 </app-option>
               </div>
@@ -160,7 +160,7 @@
                   [type]="option.type"
                   [label]="option.label"
                   [description]="option.description"
-                  [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                  [value]="getConfigValue(config | async, option.valuePath[0], option.valuePath[1])"
                   (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
                 </app-option>
               </div>
@@ -177,7 +177,7 @@
           </div>
           <label class="header-toggle">
             <input type="checkbox" class="toggle-input"
-              [ngModel]="(config | async)?.get('autoqueue')?.get('enabled')"
+              [ngModel]="getConfigValue(config | async, 'autoqueue', 'enabled')"
               (ngModelChange)="onSetConfig('autoqueue', 'enabled', $event)" />
             <div class="toggle-track"></div>
           </label>
@@ -192,7 +192,7 @@
                     [label]="option.label"
                     [description]="option.description"
                     [compact]="true"
-                    [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                    [value]="getConfigValue(config | async, option.valuePath[0], option.valuePath[1])"
                     (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
                   </app-option>
                 </div>
@@ -252,19 +252,19 @@
             </div>
             <label class="header-toggle header-toggle--compact">
               <input type="checkbox" class="toggle-input"
-                [ngModel]="(config | async)?.get('sonarr')?.get('enabled')"
+                [ngModel]="getConfigValue(config | async, 'sonarr', 'enabled')"
                 (ngModelChange)="onSetConfig('sonarr', 'enabled', $event)" />
               <div class="toggle-track"></div>
             </label>
           </div>
           <div class="settings-card-body">
-            <fieldset [attr.disabled]="!(config | async)?.get('sonarr')?.get('enabled') ? '' : null">
+            <fieldset [attr.disabled]="!getConfigValue(config | async, 'sonarr', 'enabled') ? '' : null">
               <div>
                 <app-option
                   [type]="OptionType.Text"
                   [label]="'Sonarr URL'"
                   [description]="'e.g. http://localhost:8989'"
-                  [value]="(config | async)?.get('sonarr')?.get('sonarr_url')"
+                  [value]="getConfigValue(config | async, 'sonarr', 'sonarr_url')"
                   (changeEvent)="onSetConfig('sonarr', 'sonarr_url', $event)">
                 </app-option>
               </div>
@@ -273,7 +273,7 @@
                   [type]="OptionType.Password"
                   [label]="'Sonarr API Key'"
                   [description]="'Found in Sonarr under Settings \u2192 General \u2192 API Key'"
-                  [value]="(config | async)?.get('sonarr')?.get('sonarr_api_key')"
+                  [value]="getConfigValue(config | async, 'sonarr', 'sonarr_api_key')"
                   (changeEvent)="onSetConfig('sonarr', 'sonarr_api_key', $event)">
                 </app-option>
               </div>
@@ -301,7 +301,7 @@
                 <div class="webhook-url-copy">
                   <input #sonarrWebhookInput type="text" readonly
                     class="form-control form-control-sm webhook-url-input"
-                    [value]="'http://<seedsyncarr-address>:' + ((config | async)?.get('web')?.get('port')) + '/server/webhook/sonarr'" />
+                    [value]="'http://<seedsyncarr-address>:' + getConfigValue(config | async, 'web', 'port') + '/server/webhook/sonarr'" />
                   <button class="btn btn-sm btn-secondary webhook-copy-btn" type="button"
                     (click)="onCopyWebhookFromInput(sonarrWebhookInput, 'sonarr')"
                     [title]="sonarrWebhookCopied ? 'Copied!' : 'Copy URL'">
@@ -321,19 +321,19 @@
             </div>
             <label class="header-toggle header-toggle--compact">
               <input type="checkbox" class="toggle-input"
-                [ngModel]="(config | async)?.get('radarr')?.get('enabled')"
+                [ngModel]="getConfigValue(config | async, 'radarr', 'enabled')"
                 (ngModelChange)="onSetConfig('radarr', 'enabled', $event)" />
               <div class="toggle-track"></div>
             </label>
           </div>
           <div class="settings-card-body">
-            <fieldset [attr.disabled]="!(config | async)?.get('radarr')?.get('enabled') ? '' : null">
+            <fieldset [attr.disabled]="!getConfigValue(config | async, 'radarr', 'enabled') ? '' : null">
               <div>
                 <app-option
                   [type]="OptionType.Text"
                   [label]="'Radarr URL'"
                   [description]="'e.g. http://localhost:7878'"
-                  [value]="(config | async)?.get('radarr')?.get('radarr_url')"
+                  [value]="getConfigValue(config | async, 'radarr', 'radarr_url')"
                   (changeEvent)="onSetConfig('radarr', 'radarr_url', $event)">
                 </app-option>
               </div>
@@ -342,7 +342,7 @@
                   [type]="OptionType.Password"
                   [label]="'Radarr API Key'"
                   [description]="'Found in Radarr under Settings \u2192 General \u2192 API Key'"
-                  [value]="(config | async)?.get('radarr')?.get('radarr_api_key')"
+                  [value]="getConfigValue(config | async, 'radarr', 'radarr_api_key')"
                   (changeEvent)="onSetConfig('radarr', 'radarr_api_key', $event)">
                 </app-option>
               </div>
@@ -370,7 +370,7 @@
                 <div class="webhook-url-copy">
                   <input #radarrWebhookInput type="text" readonly
                     class="form-control form-control-sm webhook-url-input"
-                    [value]="'http://<seedsyncarr-address>:' + ((config | async)?.get('web')?.get('port')) + '/server/webhook/radarr'" />
+                    [value]="'http://<seedsyncarr-address>:' + getConfigValue(config | async, 'web', 'port') + '/server/webhook/radarr'" />
                   <button class="btn btn-sm btn-secondary webhook-copy-btn" type="button"
                     (click)="onCopyWebhookFromInput(radarrWebhookInput, 'radarr')"
                     [title]="radarrWebhookCopied ? 'Copied!' : 'Copy URL'">
@@ -391,14 +391,14 @@
           </div>
           <label class="header-toggle header-toggle--compact">
             <input type="checkbox" class="toggle-input"
-              [ngModel]="(config | async)?.get('autodelete')?.get('enabled')"
+              [ngModel]="getConfigValue(config | async, 'autodelete', 'enabled')"
               (ngModelChange)="onSetConfig('autodelete', 'enabled', $event)" />
             <div class="toggle-track"></div>
           </label>
         </div>
         <div class="settings-card-body"
-          [class.settings-card-body--disabled]="!(config | async)?.get('autodelete')?.get('enabled')"
-          [attr.inert]="!(config | async)?.get('autodelete')?.get('enabled') ? '' : null">
+          [class.settings-card-body--disabled]="!getConfigValue(config | async, 'autodelete', 'enabled')"
+          [attr.inert]="!getConfigValue(config | async, 'autodelete', 'enabled') ? '' : null">
           @for (option of OPTIONS_CONTEXT_AUTODELETE.options; track option.label; let i = $index) {
             @if (i > 0) {
               <div>
@@ -406,7 +406,7 @@
                   [type]="option.type"
                   [label]="option.label"
                   [description]="option.description"
-                  [value]="(config | async)?.get(option.valuePath[0])?.get(option.valuePath[1])"
+                  [value]="getConfigValue(config | async, option.valuePath[0], option.valuePath[1])"
                   (changeEvent)="onSetConfig(option.valuePath[0], option.valuePath[1], $event)">
                 </app-option>
               </div>

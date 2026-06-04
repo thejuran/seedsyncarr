@@ -2,7 +2,7 @@
 <div class="bell-wrapper">
   <button class="bell-btn" aria-label="Notifications" (click)="toggleBell()">
     <i class="ph ph-bell"></i>
-    @if (notifs?.size > 0) {
+    @if ((notifs?.size ?? 0) > 0) {
       <span class="bell-badge-dot"></span>
     }
   </button>

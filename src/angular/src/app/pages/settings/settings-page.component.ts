@@ -8,7 +8,7 @@ import {LoggerService} from "../../services/utils/logger.service";
 
 import {OptionComponent, OptionType} from "./option.component";
 import {ConfigService} from "../../services/settings/config.service";
-import {Config} from "../../services/settings/config";
+import {Config, IConfig} from "../../services/settings/config";
 import {Notification} from "../../services/utils/notification";
 import {Localization} from "../../common/localization";
 import {NotificationService} from "../../services/utils/notification.service";
@@ -141,7 +141,7 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
         this.destroy$.complete();
     }
 
-    onSetConfig(section: string, option: string, value: string | number | boolean): void {
+    onSetConfig(section: keyof IConfig, option: string, value: string | number | boolean): void {
         this.hasPendingChanges = true;
         this._cdr.markForCheck();
 
@@ -260,6 +260,36 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
                 }
             }
         });
+    }
+
+    /**
+     * Read a nested config value from an Immutable Record section.
+     *
+     * Config stores each top-level section (lftp, sonarr, etc.) as an Immutable
+     * Record at runtime, even though the TypeScript declarations type them as plain
+     * interfaces (ILftp, ISonarr, ...).  Angular v22's stricter template checker
+     * therefore rejects chained `.get(section)?.get(option)` in templates because
+     * the inferred type of `.get(section)` is the plain interface, which has no
+     * `.get()` method.
+     *
+     * This accessor isolates the one unavoidable cast to a single, commented place
+     * in the .ts file so templates stay cast-free and strictTemplates remains enabled.
+     * The cast is safe: the Config constructor always wraps each section in its
+     * corresponding Record (e.g. `lftp: LftpRecord(props.lftp)`), so calling `.get()`
+     * on the section value at runtime is always valid.
+     */
+    getConfigValue(config: Config | null, section: keyof IConfig, option: string): string | number | boolean {
+        if (config == null) { return ""; }
+        // Config sections are typed as plain interfaces but are Immutable Records at
+        // runtime (see comment above). Cast to any only here so templates need no casts.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sectionRecord = config.get(section) as any;
+        if (sectionRecord == null || typeof sectionRecord.get !== "function") { return ""; }
+        const value: unknown = sectionRecord.get(option);
+        if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+            return value;
+        }
+        return "";
     }
 
     formatMs(val: unknown): string {
