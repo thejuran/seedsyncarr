@@ -42,6 +42,7 @@
     "@typescript-eslint/parser": "^8.60.1",
     "eslint": "^10.4.1",
     "globals": "^17.6.0",
+    "istanbul-lib-instrument": "^6.0.3",
     "jasmine-core": "^6.2.0",
     "jasmine-spec-reporter": "~7.0.0",
     "karma": "^6.4.4",
