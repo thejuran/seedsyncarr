@@ -22,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-06-02)
 Phase: Milestone v1.4.0 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-06-03 — Milestone v1.4.0 completed and archived
+Last activity: 2026-06-04 — Completed quick task 260604-g9c: merged webob+ruff Dependabot PRs (security alert resolved); Angular v22 PR #50 fix pushed (istanbul) but blocked on new TS migration errors
 
 ## Accumulated Context
 
@@ -63,6 +63,7 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260528-khw | triage and merge dependabot PRs, resolve open security alert | 2026-05-28 | 22616f9 | [260528-khw-triage-and-merge-dependabot-prs-resolve-](./quick/260528-khw-triage-and-merge-dependabot-prs-resolve-/) |
+| 260604-g9c | Handle open Dependabot PRs and alerts: merge webob+ruff (security alert resolved), Angular v22 PR #50 blocked on new TS migration errors | 2026-06-04 | 957a896 | [260604-g9c-handle-open-dependabot-prs-and-alerts-me](./quick/260604-g9c-handle-open-dependabot-prs-and-alerts-me/) |
 
 ## Deferred Items
 
