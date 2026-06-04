@@ -1,9 +1,10 @@
 import {OptionType} from "./option.component";
+import {IConfig} from "../../services/settings/config";
 
 export interface IOption {
     type: OptionType;
     label: string;
-    valuePath: [string, string];
+    valuePath: [keyof IConfig, string];
     description: string | null;
 }
 export interface IOptionsContext {
