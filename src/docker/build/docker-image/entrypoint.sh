@@ -55,6 +55,28 @@ chown_target() {
 chown_target /config
 chown_target /downloads
 
+# --- SSH home for the remapped user ----------------------------------------
+# Outbound SSH/SCP/SFTP (remote scan + LFTP) runs through the libnss-wrapper
+# `run_as_user` shim, which hardcodes HOME=/home/seedsync and tries to mkdir it.
+# After remapping to an arbitrary PUID, /home is root-owned and not writable by
+# that uid, so the mkdir fails, ssh cannot write known_hosts, and host-key
+# verification fails — silently breaking the remote scan (model stays empty).
+# Pre-create the shim's HOME (and the user's passwd HOME) owned by PUID:PGID and
+# seed an ssh config that auto-accepts new host keys (rejects changed ones),
+# mirroring the build-time /root/.ssh/config which the non-root user can't read.
+SHIM_HOME=/home/seedsync
+USER_HOME="$(getent passwd "${PUID}" | cut -d: -f6)"
+for h in "${SHIM_HOME}" "${USER_HOME}"; do
+    [ -n "${h}" ] || continue
+    mkdir -p "${h}/.ssh"
+    if [ ! -f "${h}/.ssh/config" ]; then
+        echo "StrictHostKeyChecking accept-new" > "${h}/.ssh/config"
+    fi
+    chmod 700 "${h}/.ssh"
+    chmod 600 "${h}/.ssh/config"
+    chown -R "${PUID}:${PGID}" "${h}"
+done
+
 # --- First-run config setup (runs at runtime, after /config is mounted) ----
 # setup_default_config.sh is idempotent for an existing settings.cfg: the
 # default-generation step is guarded with `|| true` and the replace step is a
