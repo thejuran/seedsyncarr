@@ -64,17 +64,28 @@ chown_target /downloads
 # Pre-create the shim's HOME (and the user's passwd HOME) owned by PUID:PGID and
 # seed an ssh config that auto-accepts new host keys (rejects changed ones),
 # mirroring the build-time /root/.ssh/config which the non-root user can't read.
+#
+# Resilience notes (must not hard-fail under `set -e`):
+#  - A read-only bind mount may live inside the home (e2e mounts an SSH key at
+#    /home/seedsync/.ssh/id_ed25519, read-only) — a recursive chown over it
+#    fails on that inode. chown the dir top-level only, ignoring per-file errors;
+#    a mounted key is already owned correctly by whoever mounted it.
+#  - The ssh config may itself be a read-only mount — only seed/chmod it when we
+#    actually own and can write it.
 SHIM_HOME=/home/seedsync
-USER_HOME="$(getent passwd "${PUID}" | cut -d: -f6)"
+USER_HOME="$(getent passwd "${PUID}" | cut -d: -f6 || true)"
 for h in "${SHIM_HOME}" "${USER_HOME}"; do
     [ -n "${h}" ] || continue
-    mkdir -p "${h}/.ssh"
-    if [ ! -f "${h}/.ssh/config" ]; then
-        echo "StrictHostKeyChecking accept-new" > "${h}/.ssh/config"
+    mkdir -p "${h}/.ssh" 2>/dev/null || true
+    if [ ! -e "${h}/.ssh/config" ]; then
+        echo "StrictHostKeyChecking accept-new" > "${h}/.ssh/config" 2>/dev/null || true
     fi
-    chmod 700 "${h}/.ssh"
-    chmod 600 "${h}/.ssh/config"
-    chown -R "${PUID}:${PGID}" "${h}"
+    chmod 700 "${h}/.ssh" 2>/dev/null || true
+    chmod 600 "${h}/.ssh/config" 2>/dev/null || true
+    # Own the home + .ssh dir for the runtime user; tolerate read-only mounts
+    # inside (e.g. an injected SSH key) instead of aborting startup.
+    chown "${PUID}:${PGID}" "${h}" "${h}/.ssh" 2>/dev/null || true
+    chown "${PUID}:${PGID}" "${h}/.ssh/config" 2>/dev/null || true
 done
 
 # --- First-run config setup (runs at runtime, after /config is mounted) ----
