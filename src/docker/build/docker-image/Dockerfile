@@ -88,6 +88,7 @@ RUN sed -i 's/Components: main/Components: main contrib non-free non-free-firmwa
         unrar \
         bzip2 \
         curl \
+        gosu \
         libnss-wrapper \
         libxml2-dev libxslt-dev libffi-dev \
     && apt-get clean
@@ -137,7 +138,9 @@ COPY src/docker/build/docker-image/scp /usr/local/sbin
 RUN chmod a+x /usr/local/sbin/scp
 
 
-# Create non-root user and directories under that user
+# Create non-root user and directories.
+# The uid/gid here are only DEFAULTS — the runtime entrypoint remaps the
+# seedsyncarr user to PUID/PGID supplied at container start (see entrypoint.sh).
 RUN groupadd -g 1000 seedsyncarr && \
     useradd -r -u 1000 -g seedsyncarr seedsyncarr
 RUN mkdir /config && \
@@ -145,11 +148,18 @@ RUN mkdir /config && \
     chown seedsyncarr:seedsyncarr /config && \
     chown seedsyncarr:seedsyncarr /downloads
 
-# Switch to non-root user
-USER seedsyncarr
+# Runtime entrypoint: remaps user to PUID/PGID, fixes ownership, drops to
+# the unprivileged user via gosu, then runs config setup + the app.
+# NOTE: the container starts as root so the entrypoint can remap/chown; it
+# never runs the application as root — gosu drops privileges before exec.
+COPY src/docker/build/docker-image/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod a+x /usr/local/bin/entrypoint.sh
 
-# First time config setup and replacement
-RUN /scripts/setup_default_config.sh
+# config setup now runs at RUNTIME (inside entrypoint), after /config is
+# mounted — running it at build time only populated a layer that the runtime
+# bind-mount shadows.
+
+ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]
 
 # Must run app inside shell
 # Otherwise the container crashes as soon as a child process exits

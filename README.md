@@ -29,12 +29,22 @@ services:
     image: ghcr.io/thejuran/seedsyncarr:latest
     container_name: seedsyncarr
     restart: unless-stopped
+    environment:
+      - PUID=1000   # uid that owns your /config and /downloads host paths
+      - PGID=1000   # gid that owns your /config and /downloads host paths
     ports:
       - "8800:8800"
     volumes:
       - ~/.seedsyncarr:/config
       - /path/to/downloads:/downloads
 ```
+
+> **Set `PUID`/`PGID` to the owner of your mounted paths.** SeedSyncarr writes
+> downloads to `/downloads`, so the container user must own (or be able to write)
+> the host directory behind it. Find the right values on the host with `id`
+> (e.g. `id $USER`). If `PUID`/`PGID` are omitted, the container defaults to
+> `1000:1000`. A mismatch here is the most common cause of "files show as active
+> but never download" — the container can't write the destination.
 
 ## Features
 
@@ -65,10 +75,17 @@ docker run -d \
   --name seedsyncarr \
   --restart unless-stopped \
   -p 8800:8800 \
+  -e PUID=1000 \
+  -e PGID=1000 \
   -v ~/.seedsyncarr:/config \
   -v /path/to/downloads:/downloads \
   ghcr.io/thejuran/seedsyncarr:latest
 ```
+
+Set `PUID`/`PGID` to the uid/gid that owns the host paths mounted at `/config`
+and `/downloads` (run `id` on the host to find them; defaults to `1000:1000`).
+The container remaps its user to these at start and fixes ownership of the
+mount roots, so it can write your downloads.
 
 ### pip
 
