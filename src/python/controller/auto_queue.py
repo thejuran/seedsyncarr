@@ -186,11 +186,13 @@ class AutoQueue:
         if not self.__enabled:
             return
 
-        # DEBUG: Log new/modified file counts entering process
+        # Log new/modified file counts entering process (debug-level: fires every
+        # ~0.5s while downloads progress, since in-flight files emit file_updated
+        # events on each scan — keep at debug to avoid steady INFO log spam)
         new_count = len(self.__model_listener.new_files)
         modified_count = len(self.__model_listener.modified_files)
         if new_count > 0 or modified_count > 0:
-            self.logger.info(
+            self.logger.debug(
                 "Process cycle: {} new files, {} modified files".format(
                     new_count, modified_count
                 )
