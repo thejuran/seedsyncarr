@@ -1,112 +1,119 @@
 # Technology Stack
 
-**Analysis Date:** 2026-06-02
+**Analysis Date:** 2026-06-09
 
 ## Languages
 
 **Primary:**
-- Python `>=3.11,<3.13` - Backend daemon, controller, web server, LFTP/SSH orchestration. All source under `src/python/`.
-- TypeScript `~6.0.3` - Angular SPA frontend. All source under `src/angular/src/`.
+- Python >=3.11,<3.13 - Backend daemon: controller, LFTP wrapper, SSH, web API (`src/python/`)
+- TypeScript ~6.0.3 - Angular frontend (`src/angular/src/`) and Playwright E2E tests (`src/e2e/tests/`)
 
 **Secondary:**
-- Bash - Docker entrypoints and helper scripts (`src/docker/**/*.sh`, `src/docker/wait-for-it.sh`).
-- SCSS/Sass `^1.100.0` - Angular component and global styles (`src/angular/src/styles.scss`).
-- JavaScript (ESM) - Release-metadata tooling (`scripts/*.mjs`, root `package.json`).
+- Bash - Docker entrypoint and build scripts (`src/docker/build/docker-image/entrypoint.sh`, `Makefile` targets)
+- JavaScript (Node ESM) - Release metadata verifier (`scripts/verify-release-metadata.mjs`)
+- SCSS - Angular styles (`src/angular/src/styles.scss`)
 
 ## Runtime
 
 **Environment:**
-- Python 3.11 (production runtime container is `python:3.11-slim`; PyInstaller scanfs binary built on `python:3.11-slim-bullseye` for GLIBC 2.31 compat — see `src/docker/build/docker-image/Dockerfile`).
-- Node.js 22 (Angular build + CI; `node:22-slim` build stage).
-- Browser runtime for the Angular SPA (served as static HTML from the Python container on port 8800).
+- Python 3.11 in production (Docker base `python:3.11-slim`, Debian 12 Bookworm — `src/docker/build/docker-image/Dockerfile`)
+- Python 3.12 used in CI for lint and PyPI build (`.github/workflows/ci.yml`)
+- Node.js 22 for Angular build/test and release scripts (Docker stage `node:22-slim`; CI `setup-node` with `node-version: "22"`)
+- Docker container is the deployment unit; app served on port 8800
 
-**Package Managers:**
-- Python: Poetry (`src/python/poetry.lock`) — production install via `poetry install --only main`. `pyproject.toml` carries both a PEP 621 `[project]` table (hatchling build backend) and a `[tool.poetry]` table.
-- Angular: npm (`src/angular/package-lock.json`).
-- Root tooling: npm (`package-lock.json`) for release-metadata verifier scripts only.
-- E2E: npm (`src/e2e/package-lock.json`).
-- Lockfiles: present for all four manifests.
+**Package Manager:**
+- Python: Poetry (Docker/dev install path) + Hatchling build backend (PyPI publish) — dual config in `src/python/pyproject.toml`
+- Lockfile: `src/python/poetry.lock` present
+- Node: npm
+- Lockfiles: `src/angular/package-lock.json`, `src/e2e/package-lock.json`, root `package-lock.json` all present
 
 ## Frameworks
 
-**Backend Core:**
-- Bottle `>=0.13.4` - WSGI web framework; `WebApp` subclasses `bottle.Bottle` in `src/python/web/web_app.py`.
-- Paste `>=3.10.1` - WSGI server / multithreaded HTTP serving for Bottle.
-
-**Frontend Core:**
-- Angular `^21.2.14` - SPA framework (`@angular/core`, `@angular/common`, `@angular/router`, `@angular/forms`, `@angular/animations`, `@angular/cdk`, `@angular/platform-browser`).
-- RxJS `^7.5.0` - Reactive streams for services and SSE handling.
-- zone.js `^0.16.2` - Angular change detection.
+**Core:**
+- Bottle >=0.13.4 - WSGI web framework for the REST/SSE API (`src/python/web/web_app.py`)
+- Paste >=3.10.1 - Threaded WSGI HTTP server hosting Bottle (`src/python/web/web_app_job.py` uses `paste.httpserver` + `TransLogger`)
+- Angular ^22.0.0 - SPA frontend (`src/angular/`), built with `@angular/build:application` (esbuild) per `src/angular/angular.json`
+- RxJS ^7.5.0, Immutable.js ^5.1.6, Bootstrap ^5.3.3, @phosphor-icons/web ^2.1.2 - frontend runtime libraries
 
 **Testing:**
-- pytest `>=9.0.3` with `pytest-timeout` `>=2.3.1` and `pytest-cov` `>=7.0.0` - Python unit + integration tests (`src/python/tests/`). `webtest` `>=3.0.7` and `testfixtures` `>=11.0.0` for web handler / fixture tests.
-- Karma `^6.4.4` + Jasmine `^6.2.0` - Angular unit tests (`karma.conf.js`, `src/angular/src/app/tests/`).
-- Playwright `^1.60.0` (`@playwright/test`) - E2E tests, two suites: `src/e2e/` (primary) and `src/angular/playwright.config.ts`.
-- Node built-in test runner (`node --test`) - Release-metadata verifier tests (`scripts/verify-release-metadata.test.mjs`).
+- pytest >=9.0.3 with pytest-timeout, pytest-cov - Python tests (`src/python/tests/`); coverage `fail_under = 88` (branch coverage) in `src/python/pyproject.toml`
+- testfixtures, WebTest - Python test helpers (WSGI endpoint testing)
+- Jasmine ^6.2.0 + Karma ^6.4.4 - Angular unit tests (`src/angular/karma.conf.js`)
+- Playwright ^1.60.0 - E2E tests against the Docker image (`src/e2e/`, `src/angular/playwright.config.ts`, `src/e2e/playwright.config.ts`)
+- node:test - Release metadata verifier tests (`scripts/verify-release-metadata.test.mjs`)
 
 **Build/Dev:**
-- Angular CLI / `@angular/build` `^21.2.12` - esbuild-based application builder (`ng build --configuration=production`).
-- PyInstaller `>=6.0.0` - Freezes `scan_fs.py` into the `scanfs` binary shipped on the remote server (`src/pyinstaller_hooks/hook-patoolib.py`).
-- ruff `>=0.4.0` - Python linter (`ruff check src/python/`; ruff cache `src/python/.ruff_cache/0.15.9`).
-- ESLint `^10.4.0` + `typescript-eslint` `^8.60.0` - Angular linting (`src/angular/eslint.config.js`).
-- mkdocs `>=1.6.1` + mkdocs-material `>=9.7.1` - Documentation site (`src/python/mkdocs.yml`, `src/python/site/`).
-- Make - Top-level build/test orchestration (`Makefile`: `docker-image`, `run-tests-python`, `run-tests-angular`, `run-tests-e2e`).
+- Make - Top-level orchestration (`Makefile`: `docker-image`, `run-tests-python`, `run-tests-angular`, `run-tests-e2e`, `docker-image-release`)
+- Docker Buildx multi-stage builds, multi-arch (amd64 + arm64 via QEMU) - `src/docker/build/docker-image/Dockerfile`
+- PyInstaller >=6.0.0 - Builds the standalone `scanfs` remote-scan binary from `src/python/scan_fs.py` (hooks in `src/python/pyinstaller_hooks/`)
+- Ruff >=0.4.0 - Python linting (CI runs `ruff check src/python/`)
+- ESLint ^10 + typescript-eslint ^8 - Angular linting (`src/angular/eslint.config.js`, `npm run lint` with `--max-warnings 0`)
+- Sass ^1.100.0 (Dart Sass) - style compilation
+- MkDocs >=1.6.1 + mkdocs-material - documentation site (`src/python/mkdocs.yml`, content in `src/python/docs/`)
 
 ## Key Dependencies
 
-**Critical:**
-- pexpect `>=4.9.0` - Drives the external `lftp` and `ssh`/`scp` CLIs via spawned pseudo-terminals (`src/python/lftp/lftp.py`, `src/python/ssh/sshcp.py`). Core to the sync engine.
-- patool `>=4.0.3` - Archive extraction (rar/zip/etc.) in the extract controller (`src/python/controller/extract/`). Custom PyInstaller hook at `src/pyinstaller_hooks/hook-patoolib.py`.
-- cryptography `>=44.0.0,<47` - Fernet symmetric encryption of secret config fields (`src/python/common/encryption.py`).
-- requests `>=2.33.0` - Outbound HTTP to Sonarr/Radarr `/api/v3/system/status` for connection testing (`src/python/web/handler/config.py`).
-- immutable `^5.1.5` (frontend) - Immutable.js data structures for model/file state in Angular services.
+**Critical (Python runtime):**
+- `pexpect` >=4.9.0 - Drives the `lftp` and `ssh`/`scp` subprocesses interactively (`src/python/lftp/lftp.py`, `src/python/ssh/sshcp.py`)
+- `cryptography` >=44.0.0,<47 - Fernet encryption of config secrets at rest (`src/python/common/encryption.py`; keyfile `secrets.key` in config dir)
+- `requests` >=2.33.0 - Outbound Sonarr/Radarr connection tests (`src/python/web/handler/config.py`)
+- `patool` >=4.0.3 - Archive extraction dispatcher (7z/unrar/bzip2 installed in Docker image)
+- `tblib` >=3.2.2 - Traceback pickling across multiprocessing boundaries
+- `pytz` >=2025.2 - Timezone handling
 
-**Infrastructure:**
-- pytz `>=2025.2` - Timezone handling.
-- tblib `>=3.2.2` - Traceback serialization across process boundaries (multiprocessing logger).
-- bootstrap `^5.3.3` + `@popperjs/core` `^2.11.8` - Frontend CSS framework and positioning.
-- `@phosphor-icons/web` `^2.1.2` - Icon set.
-- compare-versions `^6.1.1` - Frontend version comparison (update checks / about page).
+**Critical (frontend):**
+- `immutable` ^5.1.6 - Immutable model/view state records
+- `compare-versions` ^6.1.1 - New-release comparison in `src/angular/src/app/services/utils/version-check.service.ts`
+- `zone.js` ^0.16.2 - Angular change detection
 
-**External CLI tools (not pip/npm — installed in runtime container):**
-- `lftp` - File mirroring engine (apt-installed in `seedsyncarr_run_python_env` stage).
-- `openssh-client` (`ssh`/`scp`) - Remote scan-script invocation and key auth.
+**Infrastructure (system binaries inside Docker image):**
+- `lftp` - Core transfer engine (the product's whole purpose)
+- `openssh-client` - Remote scan transport (`scp`/`ssh` shims in `/usr/local/sbin`)
+- `gosu` - Privilege drop in entrypoint after PUID/PGID remap
+- `libnss-wrapper` - Run-as-arbitrary-uid SSH fix (`src/docker/build/docker-image/run_as_user`)
+- `p7zip`, `p7zip-full`, `unrar`, `bzip2` - Extraction backends for patool
+
+**Security overrides (npm `overrides` blocks):**
+- `src/angular/package.json`: `ip-address`, `undici`, `lodash`, `vite`, `hono`, `@hono/node-server`
+- Root `package.json`: `basic-ftp` ^5.3.0
 
 ## Configuration
 
-**Application config:**
-- INI-format `settings.cfg` in the config directory, parsed by `configparser` via `Config` (`src/python/common/config.py`). Sections: `General`, `Lftp`, `Controller`, `Web`, `AutoQueue`, `Sonarr`, `Radarr`, `AutoDelete`, `Encryption`.
-- Secret fields (`webhook_secret`, `api_token`, `lftp.remote_password`, `sonarr.sonarr_api_key`, `radarr.radarr_api_key`) are Fernet-encrypted at rest when `[Encryption] enabled = true`. Key stored in `secrets.key` (0600, atomic create) alongside the config.
-- Persisted state files in the config dir: `controller.persist`, `autoqueue.persist` (custom `Persist` serialization; corrupt files auto-backed-up to `*.bak`).
-- CLI args (`src/python/seedsyncarr.py`): `-c/--config_dir` (required), `--logdir`, `-d/--debug`, `--exit`, `--html`, `--scanfs`. Legacy fallback to `~/.seedsync` if config dir missing.
+**Environment:**
+- App config is file-based, not env-based: `settings.cfg` in the config dir (default `/config` in Docker), loaded by `src/python/common/config.py` via `src/python/common/persist.py`
+- Config sections: General, Lftp, Controller, Web, AutoQueue, Sonarr, Radarr, AutoDelete (`src/python/common/config.py` `Config` class)
+- Secret-marked config fields (webhook_secret, api_token, remote_password, sonarr_api_key, radarr_api_key) encrypted at rest with Fernet; key auto-generated at `<config>/secrets.key` with 0600 perms (`src/python/common/encryption.py`)
+- Persisted state files: `autoqueue.persist`, `controller.persist` (`src/python/seedsyncarr.py`)
+- Docker env vars: `PUID`, `PGID` (user remap), `ENTRYPOINT_CHOWN_RECURSIVE` (deep chown opt-in) — `src/docker/build/docker-image/entrypoint.sh`
+- CLI args: `-c <config_dir>`, `--html <path>`, `--scanfs <path>` (`src/python/seedsyncarr.py`)
 
-**Frontend environment:**
-- Angular environment files: `src/angular/src/environments/environment.ts`, `environment.prod.ts`, `environment.test.ts`.
-- API calls and SSE use same-origin relative paths (`/server/...`); no separate API base URL is configured (`src/angular/src/app/services/base/stream-service.registry.ts`).
-
-**Build config:**
-- `src/python/pyproject.toml` - Python deps, pytest options (`timeout=60`, `cache_dir=/tmp/.pytest_cache`), coverage gate (`fail_under = 88`, branch coverage).
-- `src/angular/angular.json`, `src/angular/tsconfig.json` - Angular build/TS config.
-- `src/angular/eslint.config.js`, `src/angular/karma.conf.js`, `src/angular/playwright.config.ts` - Lint/test config.
-- `src/docker/build/docker-image/Dockerfile` - Multi-stage build (Angular → scanfs PyInstaller → Python runtime).
-
-**Secrets / env (existence only — contents never read):**
-- `.gitleaks.toml` - Secret-scan config at repo root.
-- AIDesigner skill references `AIDESIGNER_API_KEY` / `AIDESIGNER_MCP_ACCESS_TOKEN` env vars for the design tooling MCP server (not part of the app runtime).
-- No `.env` file present in the repo.
+**Build:**
+- `src/python/pyproject.toml` - Python deps, pytest, coverage, hatch/poetry config
+- `src/angular/angular.json` - Angular application builder config
+- `src/angular/tsconfig.json`, `src/e2e/tsconfig.json` - TypeScript configs
+- `src/angular/eslint.config.js` - flat ESLint config
+- `src/angular/karma.conf.js` - Karma config
+- `src/angular/playwright.config.ts`, `src/e2e/playwright.config.ts` - Playwright configs
+- `Makefile` - build/test entry points; Docker test images under `src/docker/test/`
+- `src/python/mkdocs.yml` - docs site config
 
 ## Platform Requirements
 
 **Development:**
-- Docker + Docker Buildx (all test targets run inside containers via `make`; `src/docker/test/`).
-- Make, Node 22, Python 3.11–3.12, Poetry for local non-containerized work.
-- QEMU for multi-arch builds (amd64 + arm64); note: local NAS deploy build env is blocked on QEMU per project memory.
+- Docker + Buildx (Python tests run inside Docker via `make run-tests-python`)
+- Node 22 + npm for Angular work
+- Python 3.11/3.12 + Poetry for local Python work
 
 **Production:**
-- Single Docker image (published to `ghcr.io/<repo>`), `EXPOSE 8800`, runs `python /app/python/seedsyncarr.py` as entrypoint.
-- Requires a reachable remote seedbox over SSH/SFTP (port 22 default) with the `scanfs` binary deployable there.
-- Linux host assumed (POSIX file-permission semantics relied upon for `secrets.key`).
+- Docker (Linux, amd64 or arm64). Image published to `ghcr.io/thejuran/seedsyncarr` (`:latest`, `:dev`, `:vX.Y.Z`)
+- Also published to PyPI as `seedsyncarr` (console script `seedsyncarr`) via CI on version tags
+- Container mounts: `/config` (settings + state), `/downloads` (synced files); exposes port 8800
+- Remote side requires SSH access; `scanfs` PyInstaller binary built against GLIBC 2.31 (Debian bullseye) for older remote-host compatibility
+
+## Project Skills
+
+- `.claude/skills/aidesigner-frontend/SKILL.md` (mirrored at `.agents/skills/aidesigner-frontend/`) - AIDesigner design-to-frontend workflow skill. Mandates porting AIDesigner HTML artifacts into the repo's real Angular primitives/tokens rather than shipping raw HTML; root devDependency `puppeteer` ^25.1.0 supports its clone-QA screenshot loop.
 
 ---
 
-*Stack analysis: 2026-06-02*
+*Stack analysis: 2026-06-09*

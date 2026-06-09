@@ -1,199 +1,204 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-06-02
+**Analysis Date:** 2026-06-09
 
 ## Directory Layout
 
 ```
 seedsyncarr/
 ├── src/
-│   ├── python/                  # Python backend daemon (the application core)
-│   │   ├── seedsyncarr.py       # Daemon entry point (main(), Seedsyncarr service class)
-│   │   ├── scan_fs.py           # Standalone remote-scan executable (run over SSH)
-│   │   ├── common/              # Cross-cutting: context, config, status, logging, persist, encryption
-│   │   ├── controller/          # Coordinator + collaborator managers (post-Phase-109 decomposition)
-│   │   │   ├── controller.py    # Thin coordinator: command queue, model+lock, auto-delete timers
-│   │   │   ├── model_pipeline.py     # scan→build→diff→apply pipeline collaborator
-│   │   │   ├── model_builder.py      # Reconcile scan/LFTP/extract → ModelFile tree
-│   │   │   ├── command_processor.py  # Execute QUEUE/STOP/EXTRACT/DELETE actions
-│   │   │   ├── auto_delete_manager.py # BFS pack-guard + coverage for safe auto-delete
-│   │   │   ├── scan_manager.py       # Owns scanner processes
-│   │   │   ├── lftp_manager.py       # LFTP queue/stop/status wrapper
-│   │   │   ├── file_operation_manager.py # Spawn/track delete + extract processes
-│   │   │   ├── webhook_manager.py    # Sonarr/Radarr import matching
-│   │   │   ├── auto_queue.py         # Pattern-based auto-queue
-│   │   │   ├── memory_monitor.py     # Bounded-collection stats logging
-│   │   │   ├── controller_job.py     # Thread wrapper calling process() each tick
-│   │   │   ├── controller_persist.py # On-disk controller state
-│   │   │   ├── scan/                 # Remote/local/active scanner processes
-│   │   │   ├── extract/              # Archive extraction process + dispatch
-│   │   │   └── delete/               # Delete subprocess
-│   │   ├── model/               # Domain model: Model, ModelFile, ModelDiff
-│   │   ├── lftp/                # LFTP CLI wrapper + job-status parser
-│   │   ├── ssh/                 # SCP/SFTP helper (sshcp.py)
-│   │   ├── system/             # Local filesystem scanning (SystemScanner, SystemFile)
-│   │   ├── web/                # Bottle web app: handlers, serializers, auth, rate limit
-│   │   │   ├── web_app.py            # WebApp (Bottle subclass), IHandler/IStreamHandler
-│   │   │   ├── web_app_builder.py    # Assembles handlers + stream handlers
-│   │   │   ├── web_app_job.py        # Thread wrapper for the server
-│   │   │   ├── handler/              # Per-feature REST + SSE handlers
-│   │   │   ├── serialize/            # JSON serializers for model/status/config/etc.
-│   │   │   └── rate_limit.py
-│   │   ├── tests/             # pytest suite (unittests/ + integration/)
-│   │   └── docs/
-│   ├── angular/                # Angular SPA frontend
-│   │   └── src/app/
-│   │       ├── pages/               # Route components (files/settings/logs/about/main)
-│   │       ├── services/            # Feature + util + stream services
-│   │       ├── common/              # Pipes, directives, scss partials, helpers
-│   │       └── tests/               # Frontend mocks + fixtures
-│   ├── e2e/                    # Playwright end-to-end tests (top-level)
-│   ├── docker/                # Dockerfiles + build/stage/test image contexts
-│   └── pyinstaller_hooks/     # PyInstaller hooks (frozen-package build)
-├── scripts/                   # Release-metadata verification (Node .mjs)
-├── docs/  doc/                # Project + image/brand docs
-├── reports/                   # Generated reports
-├── Makefile                   # Build/test/lint orchestration
-├── package.json               # Root (release-metadata scripts, puppeteer dev dep)
-└── .planning/                 # GSD planning, milestones, codebase maps
+│   ├── python/                 # Backend daemon (flat package layout, PYTHONPATH root)
+│   │   ├── seedsyncarr.py      # Service entry point (main())
+│   │   ├── scan_fs.py          # Standalone scanner CLI (frozen to `scanfs` binary)
+│   │   ├── common/             # Config, Context, Persist, Job, AppProcess, encryption, status
+│   │   ├── model/              # Model, ModelFile, ModelDiff (+ listener interfaces)
+│   │   ├── system/             # SystemFile, SystemScanner (filesystem tree scan)
+│   │   ├── lftp/               # lftp driver + job status parser
+│   │   ├── ssh/                # Sshcp (ssh/scp wrapper)
+│   │   ├── controller/         # Business logic: managers, pipeline, autoqueue, webhooks
+│   │   │   ├── scan/           # Scanner processes (local/remote/active)
+│   │   │   ├── extract/        # Archive extraction (dispatch + process)
+│   │   │   └── delete/         # Delete process
+│   │   ├── web/                # Bottle web app
+│   │   │   ├── handler/        # Route handlers (one IHandler per API surface)
+│   │   │   └── serialize/      # SSE/JSON serializers
+│   │   ├── tests/
+│   │   │   ├── unittests/      # Mirrors package layout (test_common/, test_controller/, …)
+│   │   │   ├── integration/    # test_controller/, test_lftp/, test_web/
+│   │   │   └── helpers/
+│   │   ├── site/               # Project documentation site content
+│   │   └── pyproject.toml      # Poetry project (+ poetry.lock)
+│   ├── angular/                # Frontend SPA
+│   │   ├── src/
+│   │   │   ├── main.ts         # bootstrapApplication entry
+│   │   │   ├── app/
+│   │   │   │   ├── app.config.ts   # Providers, interceptors, APP_INITIALIZERs
+│   │   │   │   ├── routes.ts       # ROUTE_INFOS + ROUTES (dashboard/settings/logs/about)
+│   │   │   │   ├── pages/          # Page + child components (files, settings, logs, about, main)
+│   │   │   │   ├── services/       # State/IO services by domain
+│   │   │   │   ├── common/         # Pipes, directives, SCSS partials, constants
+│   │   │   │   └── tests/          # fixtures/, mocks/, unittests/
+│   │   │   └── environments/
+│   │   └── package.json
+│   ├── e2e/                    # Playwright E2E suite (own package.json)
+│   │   ├── playwright.config.ts
+│   │   ├── urls.ts
+│   │   └── tests/              # *.page.ts page objects + *.spec.ts specs + fixtures/
+│   ├── docker/
+│   │   ├── build/docker-image/ # Dockerfile, entrypoint.sh, run_as_user, ssh/scp shims
+│   │   ├── stage/              # Staging compose files
+│   │   └── test/               # Docker-based test harness
+│   └── pyinstaller_hooks/      # hook-patoolib.py
+├── scripts/                    # verify-release-metadata.mjs (+ its test)
+├── .github/workflows/ci.yml    # CI: node tests, python tests (docker), angular tests, ruff lint
+├── Makefile                    # Docker image build, tests, coverage targets
+├── doc/                        # Images, brand assets
+├── docs/                       # superpowers/ plans and specs
+├── .planning/                  # GSD planning state (milestones, phases, debug, codebase)
+├── .claude/ & .agents/         # Skills (aidesigner-frontend), agents, commands
+└── reports/                    # Generated comparison/analysis reports
 ```
 
 ## Directory Purposes
 
-**`src/python/` — backend daemon:**
-- Purpose: The entire server-side application; runs as the `seedsyncarr` daemon.
-- Contains: entry point, controller coordination layer, domain model, infrastructure adapters, web layer, tests.
-- Key files: `seedsyncarr.py`, `controller/controller.py`, `web/web_app.py`.
+**`src/python/` (backend root):**
+- Purpose: All backend code; this directory is the import root (`from common import ...`)
+- Contains: flat top-level packages, two entry scripts, Poetry config
+- Key files: `seedsyncarr.py`, `scan_fs.py`, `pyproject.toml`
 
-**`src/python/controller/` — coordination layer (decomposed):**
-- Purpose: Orchestrate the sync lifecycle. `Controller` is a thin coordinator; logic lives in collaborator managers.
-- Contains: coordinator + managers + `scan/`, `extract/`, `delete/` sub-packages.
-- Key files: `controller.py` (coordinator), `model_pipeline.py`, `command_processor.py`, `auto_delete_manager.py`.
+**`src/python/common/`:**
+- Purpose: Shared infrastructure used by every layer
+- Key files: `config.py` (661 lines — Config sections incl. sonarr/radarr/autodelete/encryption), `context.py`, `persist.py`, `job.py`, `app_process.py`, `encryption.py`, `status.py`, `bounded_ordered_set.py`, `multiprocessing_logger.py`
 
-**`src/python/common/` — cross-cutting:**
-- Purpose: Shared infrastructure used by every layer.
-- Contains: `context.py`, `config.py`, `status.py`, `persist.py`, `encryption.py`, `error.py`, `app_process.py`, `bounded_ordered_set.py`, `multiprocessing_logger.py`, `localization.py`, `constants.py`, `types.py`.
-- Key files: `context.py`, `config.py`, `app_process.py`.
+**`src/python/controller/`:**
+- Purpose: Business logic; `controller.py` (757 lines) is the composition root
+- Contains: one manager per concern (`scan_manager.py`, `lftp_manager.py`, `file_operation_manager.py`, `auto_delete_manager.py`, `webhook_manager.py`, `memory_monitor.py`), pipeline (`model_pipeline.py`, `model_builder.py`), command execution (`command_processor.py`), persistence (`controller_persist.py`), thread wrapper (`controller_job.py`)
+- Sub-packages hold process-isolated work: `scan/` (`scanner_process.py`, `local_scanner.py`, `remote_scanner.py`, `active_scanner.py`), `extract/` (`dispatch.py`, `extract.py`, `extract_process.py`), `delete/` (`delete_process.py`)
 
-**`src/python/web/` — HTTP boundary:**
-- Purpose: REST + SSE API, static HTML serving, auth, rate limiting.
-- Contains: `web_app.py`, `web_app_builder.py`, `handler/` (one file per feature), `serialize/` (one serializer per resource), `rate_limit.py`.
-- Key files: `web_app_builder.py`, `handler/controller.py`, `handler/webhook.py`.
+**`src/python/web/`:**
+- Purpose: HTTP/SSE interface
+- Key files: `web_app.py` (Bottle app, auth, SSE loop, default routes), `web_app_builder.py` (registers all handlers — add new handlers here), `web_app_job.py`, `rate_limit.py`, `utils.py`
+- `handler/`: `controller.py` (`/server/command/*`), `config.py` (`/server/config/*`), `auto_queue.py` (`/server/autoqueue/*`), `server.py` (`/server/command/restart`), `status.py` (`/server/status`), `webhook.py` (`/server/webhook/{sonarr,radarr}`), `stream_*.py` (SSE providers)
+- `serialize/`: `serialize_model.py`, `serialize_status.py`, `serialize_config.py`, `serialize_auto_queue.py`, `serialize_log_record.py`, base `serialize.py`
 
-**`src/python/model/` — domain model:**
-- Purpose: Canonical file-state tree + diffing + listener events.
-- Key files: `model.py`, `file.py`, `diff.py`.
+**`src/angular/src/app/pages/`:**
+- Purpose: Standalone components grouped by page
+- Contains: `main/` (app shell, header, notification bell), `files/` (dashboard: files-page, transfer-table, transfer-row, stats-strip, bulk-actions-bar, dashboard-log-pane), `settings/` (settings-page, option component, `options-list.ts`), `logs/`, `about/`
+- Each component: `.ts` + `.html` + `.scss` triplet (some with co-located `.spec.ts`)
 
-**`src/angular/src/app/` — SPA:**
-- Purpose: Browser UI.
-- Contains: `pages/` (standalone route components, each with `.ts`/`.html`/`.scss`/`.spec.ts`), `services/` (grouped by domain: `files/`, `server/`, `settings/`, `logs/`, `autoqueue/`, `utils/`, `base/`), `common/` (pipes, directives, styles).
-- Key files: `app.config.ts`, `routes.ts`, `pages/main/app.component.ts`.
+**`src/angular/src/app/services/`:**
+- Purpose: All state and IO, grouped by domain
+- Contains: `base/` (SSE plumbing: `stream-service.registry.ts`, `base-stream.service.ts`, `base-web.service.ts`), `files/` (model-file, view-file store + filter/sort/options/selection, `bulk-action-dispatcher.service.ts`, `dashboard-stats.service.ts`), `server/` (`server-command.service.ts`, `bulk-command.service.ts`, `server-status.service.ts`), `settings/` (`config.service.ts`, `config.ts`), `logs/`, `autoqueue/`, `utils/` (`rest.service.ts`, `auth.interceptor.ts`, `notification.service.ts`, `toast.service.ts`, `local-storage.service.ts`, `logger.service.ts`, `confirm-modal.service.ts`, `connected.service.ts`, `dom.service.ts`, `version-check.service.ts`)
 
-**`src/python/tests/` — backend tests:**
-- Purpose: pytest suite.
-- Contains: `unittests/` (mirrors source tree) and `integration/` (`test_controller/`, `test_lftp/`, `test_web/`), plus `conftest.py`, `helpers/`, `utils.py`.
+**`src/e2e/`:**
+- Purpose: Playwright E2E tests, independent npm package
+- Key files: `playwright.config.ts`, `tests/dashboard.page.ts` + `tests/dashboard.page.spec.ts` (page-object pattern per page), `tests/fixtures/seed-state.ts`, `tests/helpers.ts`, `tests/csp-canary.spec.ts`
+
+**`src/docker/build/docker-image/`:**
+- Purpose: Multi-stage image build — Angular build (node:22-slim) + scanfs PyInstaller build + python:3.11-slim runtime
+- Key files: `Dockerfile`, `entrypoint.sh` (PUID/PGID), `run_as_user`, `ssh`/`scp` shims, `setup_default_config.sh`
 
 ## Key File Locations
 
 **Entry Points:**
-- `src/python/seedsyncarr.py`: Daemon `main()` + `Seedsyncarr` service class.
-- `src/python/scan_fs.py`: Standalone remote scanner executable.
-- `src/python/web/web_app_job.py`: Web server thread.
-- `src/python/controller/controller_job.py`: Controller thread.
-- `src/angular/src/main.ts`: Frontend bootstrap.
+- `src/python/seedsyncarr.py`: backend daemon `main()`
+- `src/python/scan_fs.py`: standalone scanner CLI
+- `src/angular/src/main.ts`: SPA bootstrap
+- `src/docker/build/docker-image/entrypoint.sh`: container start
 
 **Configuration:**
-- `src/python/common/config.py`: Config schema + (de)serialization.
-- `src/python/common/constants.py`: App-wide constants/intervals.
-- `src/angular/src/app/app.config.ts`: Angular providers/DI.
-- `src/angular/src/app/routes.ts`: Frontend routes.
-- `src/angular/angular.json`, `angular/package.json`, `angular/tsconfig.json`: Build config.
-- `Makefile`, root `package.json`: Top-level build/test orchestration.
+- `src/python/pyproject.toml` + `poetry.lock`: Python deps (Poetry)
+- `src/angular/package.json`, `src/angular/src/tsconfig.app.json`, `tsconfig.spec.json`: frontend build/test
+- `src/e2e/playwright.config.ts`: E2E runner
+- `Makefile`: docker-image build, test targets, `coverage-python`
+- `.github/workflows/ci.yml`: CI jobs (release-metadata tests, Python unit tests in Docker, Angular unit tests, `ruff check src/python/`)
+- Runtime config lives outside the repo: `settings.cfg`, `controller.persist`, `autoqueue.persist`, `secrets.key` in the `--config_dir`
 
 **Core Logic:**
-- `src/python/controller/controller.py`: Coordinator.
-- `src/python/controller/model_pipeline.py`: Model-update pipeline.
-- `src/python/controller/model_builder.py`: Model reconciliation.
-- `src/python/model/model.py`: Domain model.
+- `src/python/controller/controller.py`: orchestration hub
+- `src/python/controller/model_pipeline.py` + `model_builder.py`: model update pipeline
+- `src/python/web/web_app_builder.py`: route/handler wiring
+- `src/angular/src/app/services/files/view-file.service.ts`: frontend file store
 
 **Testing:**
-- `src/python/tests/`: Backend pytest (unit + integration).
-- `src/angular/src/app/**/*.spec.ts`: Frontend Karma/Jasmine specs (co-located).
-- `src/e2e/tests/`: Playwright E2E.
+- `src/python/tests/unittests/`: mirrors package layout (`test_controller/`, `test_web/`, `test_common/`, `test_lftp/`, `test_model/`, `test_ssh/`, `test_system/`, `test_seedsyncarr.py`)
+- `src/python/tests/integration/`: `test_controller/`, `test_lftp/`, `test_web/`
+- `src/angular/src/app/tests/`: `unittests/` (by area: common/pages/services), `fixtures/` (`mock-model-files.ts`), `mocks/` (mock services incl. `mock-stream-service.registry.ts`, `mock-event-source.ts`)
+- `src/e2e/tests/`: Playwright specs + page objects
+- `scripts/verify-release-metadata.test.mjs`: node test for release tooling
 
 ## Naming Conventions
 
-**Backend (Python) files:**
-- `snake_case.py` modules: `model_pipeline.py`, `auto_delete_manager.py`.
-- Manager collaborators end in `_manager.py`; process classes in `_process.py`; persisted state in `_persist.py`; thread wrappers in `_job.py`.
-- One primary class per module, `PascalCase` class names (`ModelPipeline`, `CommandProcessor`).
-- Tests mirror source: `test_<module>.py` under `tests/unittests/test_<package>/`.
-
-**Frontend (Angular) files:**
-- Components: `<name>.component.ts` + `.html` + `.scss` + `.spec.ts` (co-located quad).
-- Services: `<name>.service.ts`; plain models: `<name>.ts`; pipes: `<name>.pipe.ts`; directives: `<name>.directive.ts`.
-- `PascalCase` classes (`FilesPageComponent`, `ModelFileService`); `kebab-case` filenames.
+**Files:**
+- Python: `snake_case.py`; one main class per file named after it (`scan_manager.py` → `ScanManager`); processes end `_process.py`; managers end `_manager.py`; persist classes end `_persist.py`
+- Python tests: `test_<module>.py` inside `test_<package>/` directories mirroring source
+- Angular: `kebab-case` with role suffixes — `*.component.ts/html/scss`, `*.service.ts`, `*.pipe.ts`, `*.directive.ts`, `*.interceptor.ts`; plain domain models have no suffix (`view-file.ts`, `model-file.ts`, `config.ts`)
+- E2E: `<page>.page.ts` (page object) + `<page>.page.spec.ts` (spec)
+- Web handlers: noun of the API surface (`webhook.py`, `config.py`); SSE handlers prefixed `stream_`
+- Serializers prefixed `serialize_`
 
 **Directories:**
-- Python: `snake_case`, grouped by responsibility (`controller/scan/`, `web/handler/`).
-- Angular: `kebab-case`, grouped by feature/domain under `pages/` and `services/`.
+- Python packages: short lowercase nouns (`common`, `model`, `lftp`, `ssh`, `web`, `controller`)
+- Angular: `pages/<page-name>/`, `services/<domain>/`
 
 ## Where to Add New Code
 
-**New backend controller behavior (e.g., a new background activity):**
-- Implement as a new collaborator manager in `src/python/controller/<name>_manager.py`.
-- Construct it once in `Controller.__init__` (`src/python/controller/controller.py`) and inject instances — do NOT construct managers inside other collaborators (preserves test `mock.patch` binding).
-- Export it from `src/python/controller/__init__.py`.
-- Tests: `src/python/tests/unittests/test_controller/test_<name>_manager.py`.
+**New backend API endpoint:**
+- Handler: new or existing `IHandler` in `src/python/web/handler/` with `add_routes()` using `web_app.add_handler/add_post_handler/add_delete_handler`
+- Wire it in `src/python/web/web_app_builder.py` (constructor + `build()`)
+- Serializer (if streaming/JSON payload): `src/python/web/serialize/serialize_<thing>.py`
+- Remember auth: `/server/*` paths are Bearer-protected unless added to exemptions in `src/python/web/web_app.py`
+- Tests: `src/python/tests/unittests/test_web/`, integration in `src/python/tests/integration/test_web/`
 
-**New REST/SSE endpoint:**
-- Add or extend a handler in `src/python/web/handler/<feature>.py` (implement `IHandler.add_routes` or `IStreamHandler`).
-- Register it in `src/python/web/web_app_builder.py` (`__init__` + `build()`).
-- Add a serializer in `src/python/web/serialize/serialize_<resource>.py` if returning a new resource shape.
-- Tests: `src/python/tests/unittests/test_web/test_handler/` and `tests/integration/test_web/`.
+**New controller behavior/manager:**
+- Implementation: `src/python/controller/<name>_manager.py`; construct it in `Controller.__init__` and inject into collaborators (do not construct inside `ModelPipeline` etc.)
+- Long-running/blocking work: subclass `AppProcess` in a sub-package (`scan/`, `extract/`, `delete/` pattern)
+- Tests: `src/python/tests/unittests/test_controller/test_<name>.py`
 
-**New domain model field/behavior:**
-- Modify `src/python/model/file.py` / `model.py`; remember `ModelFile` is frozen after insertion (build-new + diff, never mutate in place).
-- Update `ModelBuilder` (`controller/model_builder.py`) and the matching serializer in `web/serialize/`.
+**New config option:**
+- Add to the relevant section class in `src/python/common/config.py`; set defaults in `Seedsyncarr._create_default_config` (`src/python/seedsyncarr.py:306`); expose via `src/python/web/handler/config.py` + `serialize_config.py`; surface in UI via `src/angular/src/app/services/settings/config.ts` and `src/angular/src/app/pages/settings/options-list.ts`
 
 **New frontend page:**
-- Component quad under `src/angular/src/app/pages/<name>/<name>-page.component.{ts,html,scss,spec.ts}`.
-- Register route in `src/angular/src/app/routes.ts` (both `ROUTE_INFOS` for nav and `ROUTES`).
+- Component triplet in `src/angular/src/app/pages/<page>/`
+- Register in `src/angular/src/app/routes.ts` (both `ROUTE_INFOS` and `ROUTES`)
+- Add matching backend SPA route in `WebApp.add_default_routes` (`src/python/web/web_app.py:174-182`)
 
 **New frontend service:**
-- `src/angular/src/app/services/<domain>/<name>.service.ts`; for SSE-backed services extend the base in `services/base/`.
-- Provide it in `src/angular/src/app/app.config.ts`.
+- `src/angular/src/app/services/<domain>/<name>.service.ts`; provide in `src/angular/src/app/app.config.ts`
+- SSE consumers: extend `BaseStreamService` and register through `StreamServiceRegistry` (`src/angular/src/app/services/base/`)
+- Tests: `src/angular/src/app/tests/unittests/services/`; shared mocks in `src/angular/src/app/tests/mocks/`
 
-**Shared utilities:**
-- Backend cross-cutting helpers: `src/python/common/` (export via `common/__init__.py`).
-- Frontend pipes/directives/helpers: `src/angular/src/app/common/`.
+**New E2E test:**
+- Page object `src/e2e/tests/<page>.page.ts` + spec `<page>.page.spec.ts`; seed data via `src/e2e/tests/fixtures/seed-state.ts`
+
+**Utilities:**
+- Backend shared helpers: `src/python/common/`
+- Frontend shared pipes/directives/constants: `src/angular/src/app/common/`
 
 ## Special Directories
 
-**`src/angular/dist/` and `src/angular/.angular/`:**
-- Purpose: Angular build output / build cache.
-- Generated: Yes. Committed: No (gitignored).
-
 **`.planning/`:**
-- Purpose: GSD planning artifacts, milestones, and these codebase maps.
-- Generated: Partially (codebase maps generated). Committed: Yes.
+- Purpose: GSD planning state (milestones, phases, debug notes, codebase maps)
+- Generated: By GSD commands — Committed: Yes
 
-**`src/docker/build/`, `src/docker/stage/`, `src/docker/test/`:**
-- Purpose: Image build contexts for build/stage/test variants.
-- Generated: No (source). Committed: Yes.
+**`src/angular/dist/`, `src/angular/.angular/`, `src/angular/node_modules/`, `src/e2e/node_modules/`, `src/e2e/playwright-report/`, `src/e2e/test-results/`:**
+- Purpose: Build output, caches, deps — Generated: Yes — Committed: No
 
-**`src/pyinstaller_hooks/`:**
-- Purpose: PyInstaller hooks for the frozen single-binary package (`hook-patoolib.py`).
-- Committed: Yes.
+**`src/python/htmlcov/`, `.pytest_cache/`, `.ruff_cache/`, `__pycache__/`:**
+- Purpose: Python coverage/test/lint caches — Generated: Yes — Committed: No
 
-**`shield-claude-skill/`, `.aidesigner/`, `.turingmind/`, `.bg-shell/`:**
-- Purpose: Tooling/skill subprojects and agent state (not part of the shipped app).
-- Committed: Mixed (`shield-claude-skill/` is a nested git repo; agent-state dirs largely gitignored).
+**`src/python/site/`:**
+- Purpose: Documentation site content (install, configuration, arr-setup, faq) — Generated: No — Committed: Yes
 
-**`node_modules/` (root, `src/angular/`, `src/e2e/`):**
-- Purpose: npm dependencies.
-- Generated: Yes. Committed: No.
+**`.claude/skills/aidesigner-frontend/`, `.agents/skills/aidesigner-frontend/`:**
+- Purpose: AIDesigner frontend skill (design-artifact → repo-native porting rules) — Committed: Yes
+
+**`.aidesigner/runs/`, `.turingmind/`, `.playwright-mcp/`, `.bg-shell/`:**
+- Purpose: Tool-generated artifacts (design runs, review state, browser sessions) — Generated: Yes
+
+**`shield-claude-skill/`:**
+- Purpose: Embedded separate project (own `.git`) — not part of the SeedSyncarr application
 
 ---
 
-*Structure analysis: 2026-06-02*
+*Structure analysis: 2026-06-09*

@@ -1,275 +1,253 @@
-<!-- refreshed: 2026-06-02 -->
+<!-- refreshed: 2026-06-09 -->
 # Architecture
 
-**Analysis Date:** 2026-06-02
+**Analysis Date:** 2026-06-09
 
 ## System Overview
 
-SeedSyncarr is a self-hosted file-syncing daemon (an LFTP-driven download manager
-with Sonarr/Radarr webhook integration). It is a **two-part application**: a
-multi-threaded/multi-process **Python backend** (`src/python/`) that drives LFTP,
-scanning, extraction, and auto-delete, and a standalone **Angular SPA frontend**
-(`src/angular/`) served as static HTML by the backend's embedded Bottle web server.
-The two halves communicate over a REST + Server-Sent-Events (SSE) HTTP API.
-
 ```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│                       Angular SPA  (browser)                              │
-│  Pages: dashboard / settings / logs / about                              │
-│  `src/angular/src/app/pages/*`   Services: `src/angular/src/app/services/*`│
-└──────────────┬──────────────────────────────────────┬─────────────────────┘
-       REST (GET/POST)                         SSE streams (model/status/log)
-               │                                        │
-               ▼                                        ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                  Web Layer — Bottle app (single process, threaded)        │
-│  `src/python/web/web_app.py`  built by `web/web_app_builder.py`           │
-│  Handlers: `web/handler/*`     Serializers: `web/serialize/*`             │
-└──────────────┬────────────────────────────────────────────────────────────┘
-               │ Controller.Command queue  +  IModelListener registration
-               ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│        Controller (coordinator)  `src/python/controller/controller.py`    │
-│  Owns: command queue · Model + model_lock · auto-delete timers · persist  │
-│  Delegates to collaborators (post-decomposition, Phase 109):              │
-│   ├─ ModelPipeline        `controller/model_pipeline.py`  (scan→build→diff)│
-│   ├─ CommandProcessor     `controller/command_processor.py` (QUEUE/STOP…) │
-│   ├─ AutoDeleteManager    `controller/auto_delete_manager.py` (BFS+cover)  │
-│   ├─ ScanManager          `controller/scan_manager.py`                    │
-│   ├─ LftpManager          `controller/lftp_manager.py`                    │
-│   ├─ FileOperationManager `controller/file_operation_manager.py`          │
-│   ├─ WebhookManager       `controller/webhook_manager.py`                 │
-│   ├─ ModelBuilder         `controller/model_builder.py`                   │
-│   └─ MemoryMonitor        `controller/memory_monitor.py`                  │
-└──────┬───────────────┬──────────────────┬───────────────┬─────────────────┘
-       │               │                  │               │
-       ▼               ▼                  ▼               ▼
-┌────────────┐  ┌──────────────┐  ┌───────────────┐  ┌────────────────────┐
-│ LFTP child │  │ Scanner      │  │ Extract       │  │ Persist (on disk)  │
-│ process    │  │ processes    │  │ process       │  │ controller.persist │
-│ `lftp/`    │  │ `controller/ │  │ `controller/  │  │ autoqueue.persist  │
-│            │  │  scan/`      │  │  extract/`    │  │ settings.cfg       │
-└────────────┘  └──────────────┘  └───────────────┘  └────────────────────┘
-        Remote NAS  ◀── SSH/SFTP ──▶  Local filesystem
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Angular SPA (browser)                         │
+├──────────────────────┬──────────────────────┬───────────────────────┤
+│   Page Components    │   Domain Services    │   Stream Dispatch     │
+│ `src/angular/src/app │ `src/angular/src/app │ `src/angular/src/app/ │
+│  /pages/`            │  /services/`         │  services/base/`      │
+└──────────┬───────────┴──────────┬───────────┴──────────┬────────────┘
+           │  REST (Bearer token) │                      │ SSE /server/stream
+           ▼                      ▼                      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│              Bottle Web Layer (WebAppJob thread)                     │
+│  `src/python/web/` — WebApp + IHandler routes + IStreamHandler SSE   │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ Controller.Command queue / shared Model
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│            Controller (ControllerJob thread)                         │
+│  `src/python/controller/` — managers, model pipeline, auto queue,    │
+│  webhook import matching, auto-delete                                │
+└───────┬──────────────────┬──────────────────┬───────────────────────┘
+        │ multiprocessing  │ subprocess       │ Queue (web→controller)
+        ▼                  ▼                  ▼
+┌───────────────┐  ┌───────────────┐  ┌──────────────────────────────┐
+│ ScannerProcess│  │ lftp / sshcp  │  │ WebhookManager               │
+│ `controller/  │  │ `src/python/  │  │ `controller/                 │
+│  scan/`       │  │  lftp/`,`ssh/`│  │  webhook_manager.py`         │
+└───────┬───────┘  └───────┬───────┘  └──────────────────────────────┘
+        │ SSH + scanfs     │ SFTP mirror
+        ▼                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│       Remote seedbox (scanfs binary pushed over SSH) + local disk    │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Component Responsibilities
 
 | Component | Responsibility | File |
 |-----------|----------------|------|
-| `Seedsyncarr` (entry) | Parse args, load config/persists, wire objects, run main thread loop, handle signals/restart | `src/python/seedsyncarr.py` |
-| `Controller` | Top-level coordinator: owns command queue, `Model`, `model_lock`, auto-delete timers; orchestrates collaborators | `src/python/controller/controller.py` |
-| `ControllerJob` | Thread wrapper that calls `controller.process()` + `auto_queue.process()` each tick | `src/python/controller/controller_job.py` |
-| `ModelPipeline` | collect → feed → build → diff → apply model-update pipeline | `src/python/controller/model_pipeline.py` |
-| `ModelBuilder` | Reconcile scan/LFTP/extract results into `ModelFile` tree | `src/python/controller/model_builder.py` |
-| `CommandProcessor` | Execute QUEUE/STOP/EXTRACT/DELETE_LOCAL/DELETE_REMOTE actions | `src/python/controller/command_processor.py` |
-| `AutoDeleteManager` | BFS over pack children + coverage guard for safe auto-delete | `src/python/controller/auto_delete_manager.py` |
-| `ScanManager` | Owns remote/local/active scanner processes; forced-scan callbacks | `src/python/controller/scan_manager.py` |
-| `LftpManager` | Wraps LFTP, queue/stop, job status polling | `src/python/controller/lftp_manager.py` |
-| `FileOperationManager` | Spawn/track delete + extract child processes | `src/python/controller/file_operation_manager.py` |
-| `WebhookManager` | Process Sonarr/Radarr import events into name→root matches | `src/python/controller/webhook_manager.py` |
-| `AutoQueue` | Pattern-based auto-queue of newly discovered files | `src/python/controller/auto_queue.py` |
-| `MemoryMonitor` | Periodic stats logging for bounded collections / leak detection | `src/python/controller/memory_monitor.py` |
-| `WebApp` / `WebAppBuilder` | Bottle app, route registration, SSE streaming, auth | `src/python/web/web_app.py`, `web/web_app_builder.py` |
-| `Model` | Authoritative in-memory file-state tree + listener fan-out | `src/python/model/model.py` |
-| `Context` | App-wide config/logger/status/args container | `src/python/common/context.py` |
-| Angular `AppComponent` | SPA shell, header, routing outlet | `src/angular/src/app/pages/main/app.component.ts` |
-| Angular stream services | Consume SSE, maintain reactive client model | `src/angular/src/app/services/files/`, `services/base/` |
+| `Seedsyncarr` | Service bootstrap, config/persist loading, main-thread supervision loop, restart/exit handling | `src/python/seedsyncarr.py` |
+| `Controller` | Top-level orchestration: command queue, model ownership, manager coordination | `src/python/controller/controller.py` |
+| `ModelPipeline` | scan→build→diff→apply model update pipeline | `src/python/controller/model_pipeline.py` |
+| `ModelBuilder` | Combines scan results + lftp status + extract status into ModelFiles | `src/python/controller/model_builder.py` |
+| `ScanManager` | Owns local/remote/active `ScannerProcess` instances | `src/python/controller/scan_manager.py` |
+| `LftpManager` | Wraps the `Lftp` client used for downloads | `src/python/controller/lftp_manager.py` |
+| `FileOperationManager` | Extract and delete operations (dispatch to processes) | `src/python/controller/file_operation_manager.py` |
+| `CommandProcessor` | Executes queued `Controller.Command` actions | `src/python/controller/command_processor.py` |
+| `AutoQueue` | Auto-queues newly discovered remote files (pattern support) | `src/python/controller/auto_queue.py` |
+| `WebhookManager` | Thread-safe queue bridging webhook POSTs (web thread) to import matching (controller thread) | `src/python/controller/webhook_manager.py` |
+| `AutoDeleteManager` | Schedules safe-delete of imported files after delay (dry-run support) | `src/python/controller/auto_delete_manager.py` |
+| `MemoryMonitor` | Tracks process memory usage | `src/python/controller/memory_monitor.py` |
+| `Model` / `ModelFile` / `ModelDiff` | In-memory file-state store with listener pattern and diffing | `src/python/model/model.py`, `src/python/model/file.py`, `src/python/model/diff.py` |
+| `Lftp` / `LftpJobStatusParser` | lftp process driver and status-output parser | `src/python/lftp/lftp.py`, `src/python/lftp/job_status_parser.py` |
+| `Sshcp` | SSH/SCP wrapper used by remote scanner | `src/python/ssh/sshcp.py` |
+| `SystemScanner` | Filesystem tree scanner (shared by local scan and `scan_fs.py`) | `src/python/system/scanner.py` |
+| `WebApp` / `WebAppBuilder` | Bottle app, route registration, Bearer auth, SSE multiplexing | `src/python/web/web_app.py`, `src/python/web/web_app_builder.py` |
+| Handlers | One `IHandler` per API surface (controller, config, autoqueue, server, status, webhook) | `src/python/web/handler/` |
+| Serializers | Convert model/config/status/log to SSE/JSON payloads | `src/python/web/serialize/` |
+| `StreamDispatchService` | Single SSE connection, dispatches events to registered Angular stream services | `src/angular/src/app/services/base/stream-service.registry.ts` |
+| `ViewFileService` | Frontend store: transforms `ModelFile` → sorted/filtered `ViewFile` list | `src/angular/src/app/services/files/view-file.service.ts` |
+| `scan_fs.py` | Standalone scanner CLI, frozen with PyInstaller and pushed to the remote host | `src/python/scan_fs.py` |
 
 ## Pattern Overview
 
-**Overall:** Layered, event-driven coordinator with process isolation for heavy/blocking work.
+**Overall:** Threaded daemon with a central in-memory Model (observer pattern), process-isolated scanners, and a Bottle REST + SSE web layer serving an Angular SPA. Frontend mirrors the backend model via an SSE-driven observable-store pattern.
 
 **Key Characteristics:**
-- **Single-coordinator, many-collaborators** — `Controller` is a thin coordinator that holds shared state (model, locks, queues) and delegates logic to injected collaborator objects (post-Phase-109 decomposition).
-- **Dependency injection by construction** — `Controller.__init__` constructs all managers, then passes the *same instances* into `CommandProcessor`, `AutoDeleteManager`, and `ModelPipeline`. Collaborators construct no managers themselves (preserves `mock.patch` targets bound to `controller.controller`).
-- **Process isolation for blocking work** — scanning, LFTP transfer, and archive extraction each run in separate OS processes (`AppProcess`/`AppOneShotProcess`); the coordinator stays responsive on its own thread.
-- **Builder pattern for the web app** — `WebAppBuilder.build()` assembles handlers + stream handlers onto a `WebApp`.
-- **Server-Sent Events for push** — the SPA receives model/status/log updates via long-lived SSE streams rather than polling.
-- **Frozen immutable model files** — `ModelFile` is frozen after insertion, so reads can return direct references without deep-copying (reduces memory churn on API requests).
+- Single source of truth: the `Model` in `src/python/model/model.py`, guarded by one `threading.Lock` owned by `Controller`
+- Listener/observer pattern everywhere: `IModelListener` (backend), `IStreamService` (frontend), `ExtractListener`
+- Command pattern for UI actions: `Controller.Command` with `ICallback` success/failure callbacks executed in the controller thread
+- Heavy work isolated in `multiprocessing` processes (`AppProcess` base, `src/python/common/app_process.py`) with exception propagation via `ExceptionWrapper`
+- Collaborator injection: `Controller.__init__` constructs all managers and passes them into `ModelPipeline` (do NOT construct managers inside collaborators)
 
 ## Layers
 
-**Frontend (Angular SPA):**
-- Purpose: User-facing dashboard, settings, logs, about.
-- Location: `src/angular/src/app/`
-- Contains: standalone components (`pages/`), services (`services/`), pipes/directives (`common/`).
-- Depends on: backend REST + SSE API only.
-- Used by: end users via browser.
-
-**Web Layer (Bottle):**
-- Purpose: HTTP boundary — REST endpoints, SSE streams, static HTML serving, Bearer/HMAC auth, rate limiting.
-- Location: `src/python/web/`
-- Contains: `WebApp` (Bottle subclass), per-feature handlers (`web/handler/`), serializers (`web/serialize/`), `rate_limit.py`.
-- Depends on: `Controller` (commands + model listeners), `Context.status`, `Config`.
-- Used by: Angular SPA, Sonarr/Radarr webhooks.
-
-**Controller Layer (coordination + domain logic):**
-- Purpose: Orchestrate the sync lifecycle and own shared mutable state.
-- Location: `src/python/controller/`
-- Contains: `Controller` coordinator + collaborator managers + `scan/` and `extract/` sub-packages.
-- Depends on: `model`, `lftp`, `system`, `ssh`, `common`.
-- Used by: `ControllerJob` thread, `AutoQueue`, web handlers.
-
-**Domain Model:**
-- Purpose: Canonical file-state representation and diffing.
-- Location: `src/python/model/`
-- Contains: `Model`, `ModelFile`, `ModelDiff`/`ModelDiffUtil`.
-- Depends on: `common`.
-- Used by: `Controller`, `ModelPipeline`, `ModelBuilder`, web serializers.
-
-**Infrastructure / Adapters:**
-- Purpose: External-system integration.
-- Location: `src/python/lftp/` (LFTP CLI wrapper + status parser), `src/python/ssh/` (SCP/SFTP), `src/python/system/` (local filesystem scanning), `src/python/scan_fs.py` (standalone remote scan executable).
-- Depends on: `common`, external binaries (`lftp`, `ssh`).
-- Used by: managers in the controller layer.
-
-**Common / Cross-cutting:**
-- Purpose: Config, status, context, logging, persistence, encryption, errors, bounded collections.
+**Common layer:**
+- Purpose: Shared infrastructure — config, context, persistence, status, jobs, processes, encryption, logging
 - Location: `src/python/common/`
-- Used by: every layer.
+- Contains: `Config` (INI-backed with encrypted secret fields), `Context` (DI container: logger, config, args, status), `Persist` base class, `Job` (thread base), `AppProcess` (process base), `MultiprocessingLogger`, `BoundedOrderedSet`
+- Depends on: stdlib only (plus `tblib`)
+- Used by: every other Python package
+
+**Domain layer (model/system/lftp/ssh):**
+- Purpose: Pure domain types and external-tool drivers
+- Location: `src/python/model/`, `src/python/system/`, `src/python/lftp/`, `src/python/ssh/`
+- Contains: `Model`/`ModelFile`/`ModelDiff`, `SystemFile`/`SystemScanner`, `Lftp` + status parser, `Sshcp`
+- Depends on: `common`
+- Used by: `controller`, `web`, `scan_fs.py`
+
+**Controller layer:**
+- Purpose: Business logic and orchestration; owns the model and all background work
+- Location: `src/python/controller/` (sub-packages `scan/`, `extract/`, `delete/`)
+- Depends on: `common`, `model`, `lftp`, `ssh`, `system`
+- Used by: `web` (via `Controller` public API), entry point
+
+**Web layer:**
+- Purpose: HTTP/SSE interface; no business logic — translates requests to `Controller.Command`s and model state to serialized streams
+- Location: `src/python/web/` (`handler/` routes, `serialize/` payload builders)
+- Depends on: `common`, `controller`, `model`
+- Used by: entry point (via `WebAppBuilder`)
+
+**Frontend layer:**
+- Purpose: Angular SPA (standalone components, no NgModules)
+- Location: `src/angular/src/app/` — `pages/` (components), `services/` (state + IO), `common/` (pipes, directives, constants)
+- Depends on: backend REST + SSE API only
 
 ## Data Flow
 
-### Primary Request Path — user queues a download
+### Primary Sync Flow (remote file → local disk)
 
-1. SPA issues `POST /server/command/queue/<filename>` → `RestService` (`src/angular/src/app/services/utils/rest.service.ts`).
-2. `ControllerHandler` receives the route, builds a `WebResponseActionCallback`, and enqueues a `Controller.Command` (`src/python/web/handler/controller.py`).
-3. `Controller.queue_command()` puts the command on `__command_queue` (`controller.py:349`).
-4. On the next tick, `ControllerJob.execute()` calls `Controller.process()` (`controller_job.py:24`).
-5. `Controller.__process_commands()` pops the command, resolves the `ModelFile` under `__model_lock`, then delegates to `CommandProcessor.handle(file, command)` outside the lock (`controller.py:719`).
-6. `CommandProcessor` invokes `LftpManager.queue()` (subprocess work) and reports success/failure back through the callback.
+1. `RemoteScannerProcess` copies the frozen `scanfs` binary to the seedbox over SSH and runs it (`src/python/controller/scan/remote_scanner.py`, `src/python/ssh/sshcp.py`)
+2. `ScanManager` collects `ScannerResult`s from process queues (`src/python/controller/scan_manager.py`)
+3. `ModelPipeline.build_and_apply_model` merges remote scan + local scan + lftp status + extract results via `ModelBuilder`, diffs against current `Model`, applies diff under `model_lock` (`src/python/controller/model_pipeline.py`)
+4. `Model` notifies `IModelListener`s (`src/python/model/model.py`)
+5. `AutoQueue` (a model listener) queues new remote files for download (`src/python/controller/auto_queue.py`)
+6. `CommandProcessor` executes QUEUE → `LftpManager` starts an lftp mirror job (`src/python/controller/lftp_manager.py`, `src/python/lftp/lftp.py`)
+7. `ActiveScannerProcess` + lftp status feed download progress back into the model each controller cycle (`src/python/controller/scan/active_scanner.py`, `Controller.process()` at `src/python/controller/controller.py:236`)
 
-### Model-update pipeline (every controller tick)
+### Webhook Import → Safe-Delete Flow (the *arr differentiator)
 
-1. `Controller.process()` → `__update_model()` (`controller.py:495`).
-2. `ModelPipeline.update_model()` runs collect → feed → build (`model_pipeline.py`):
-   - collect scan results, LFTP statuses, extract results,
-   - feed them to `ModelBuilder`,
-   - build a new model, diff against current, apply diffs under `model_lock`.
-3. `Controller` retains two coordinator-only stages: `_update_active_file_tracking()` (owns `__active_downloading_file_names`) and `_update_controller_status()` (capacity write gating).
-4. Applied diffs fire `IModelListener` events; SSE stream handlers push them to connected browsers (`web/handler/stream_model.py`).
+1. Sonarr/Radarr POST to `/server/webhook/sonarr` or `/server/webhook/radarr` — HMAC-verified, rate-limited 60/60s (`src/python/web/handler/webhook.py:40-41`)
+2. `WebhookManager.enqueue_import()` puts `(source, file_name)` on a thread-safe `Queue` from the web thread (`src/python/controller/webhook_manager.py`)
+3. Controller thread calls `WebhookManager.process()` each cycle with a lowercased name→root lookup; matches child or root file names case-insensitively (`__check_webhook_imports` at `src/python/controller/controller.py:512`)
+4. Matched files get import status set and `AutoDeleteManager` schedules deletion after `config.autodelete.delay_seconds` (`__schedule_auto_delete` at `src/python/controller/controller.py:590`, `src/python/controller/auto_delete_manager.py`)
+5. Delete executes via `FileOperationManager`/`DeleteProcess` (`src/python/controller/delete/delete_process.py`)
 
-### Webhook import + auto-delete flow
+### UI Command Flow
 
-1. Sonarr/Radarr `POST /server/webhook/<...>` → `WebhookHandler` (HMAC-verified) → `WebhookManager` queue.
-2. `Controller.__check_webhook_imports()` builds a name→root BFS lookup under `__model_lock`, processes the queue, records imports in persist (`controller.py:512`).
-3. If `config.autodelete.enabled`, `__schedule_auto_delete()` arms a daemon `threading.Timer` per root (`controller.py:590`).
-4. On fire, `__execute_auto_delete()` re-checks shutdown/config/state, calls `AutoDeleteManager.run_bfs_and_coverage()` (pack guard + coverage), then `FileOperationManager.delete_local()` outside the model lock (`controller.py:607`).
+1. Angular `ServerCommandService` POSTs e.g. `/server/command/queue/<file_name>` (`src/angular/src/app/services/server/server-command.service.ts`)
+2. `authInterceptor` attaches Bearer token (`src/angular/src/app/services/utils/auth.interceptor.ts`)
+3. `ControllerHandler` wraps it in a `Controller.Command` with an HTTP callback and queues it (`src/python/web/handler/controller.py:66-71`)
+4. Controller thread `__process_commands()` executes and fires `on_success`/`on_failure(error, error_code)` (`src/python/controller/controller.py:719`)
+
+### SSE Push Flow (backend → frontend)
+
+1. `WebApp.__web_stream` serves `GET /server/stream`, polling registered `IStreamHandler`s every 100 ms, heartbeat ping every 15 s (`src/python/web/web_app.py`)
+2. Stream handlers serialize model diffs, status, and log records (`src/python/web/handler/stream_model.py`, `stream_status.py`, `stream_log.py`, `stream_heartbeat.py`; serializers in `src/python/web/serialize/`)
+3. Frontend `StreamDispatchService` holds the single `EventSource`, reconnects on 30 s idle (2x the 15 s server heartbeat), dispatches events by name to `IStreamService` implementations via `StreamServiceRegistry` (`src/angular/src/app/services/base/stream-service.registry.ts`)
+4. `ModelFileService` → `ViewFileService` (sort/filter/select) → page components render (`src/angular/src/app/services/files/`)
 
 **State Management:**
-- Authoritative state lives in the in-memory `Model` (guarded by `Controller.__model_lock`) plus on-disk persists (`controller.persist`, `autoqueue.persist`) and `settings.cfg`.
-- `Context.status` holds live status surfaced over SSE.
-- Frontend mirrors model/status reactively from SSE streams.
+- Backend: `Model` (in-memory) + `Persist` files written periodically by the main thread (`persist()` at `src/python/seedsyncarr.py:226`); `ControllerPersist` uses `BoundedOrderedSet` with `max_tracked_files` cap (`src/python/controller/controller_persist.py`, `src/python/common/bounded_ordered_set.py`)
+- Frontend: observable-store services with RxJS `BehaviorSubject` + Immutable.js collections; UI options persisted via `LocalStorageService` (keys in `src/angular/src/app/common/storage-keys.ts`)
 
 ## Key Abstractions
 
-**Command (`Controller.Command`):**
-- Purpose: Client-requested action (QUEUE/STOP/EXTRACT/DELETE_LOCAL/DELETE_REMOTE) with success/failure callbacks executed on the controller thread.
-- Examples: `src/python/controller/controller.py:35`, `src/python/web/handler/controller.py`.
+**`Job` (thread) and `AppProcess` (process):**
+- Purpose: Uniform lifecycle (start/terminate/join) with cross-thread/process exception propagation
+- Examples: `ControllerJob` (`src/python/controller/controller_job.py`), `WebAppJob` (`src/python/web/web_app_job.py`), `ScannerProcess` (`src/python/controller/scan/scanner_process.py`)
+- Pattern: subclass, implement run loop; owner calls `propagate_exception()` each main-loop tick
 
-**IModelListener / Model events:**
-- Purpose: Push file_added/removed/updated events to subscribers (SSE handlers).
-- Examples: `src/python/model/model.py:15`, `src/python/web/handler/stream_model.py`.
+**`IHandler` / `IStreamHandler`:**
+- Purpose: Pluggable web routes and SSE data providers
+- Examples: all files in `src/python/web/handler/`
+- Pattern: `IHandler.add_routes(web_app)` registers via `web_app.add_handler/add_post_handler/add_delete_handler`; `IStreamHandler.register(web_app, **kwargs)` for streams; wired together in `WebAppBuilder.build()` (`src/python/web/web_app_builder.py`)
 
-**AppProcess / AppOneShotProcess:**
-- Purpose: Base classes for cross-process work with multiprocessing logging, exception propagation, and safe terminate.
-- Examples: `src/python/common/app_process.py:29`, used by `scan/scanner_process.py`, `extract/extract_process.py`.
+**`Persist`:**
+- Purpose: File-backed state with corruption backup-and-reset (`Seedsyncarr._load_persist` at `src/python/seedsyncarr.py:446`)
+- Examples: `ControllerPersist`, `AutoQueuePersist` (`src/python/controller/auto_queue.py`), `Config` (`src/python/common/config.py`)
 
-**Persist / Serializable:**
-- Purpose: Versioned JSON persistence with corruption-backup fallback.
-- Examples: `src/python/common/persist.py`, `controller/controller_persist.py`, `controller/auto_queue.py`.
+**`Context`:**
+- Purpose: Dependency container (logger, web_access_logger, config, args, status) passed into every component; `create_child_context(name)` namespaces loggers
+- Examples: `src/python/common/context.py`
 
-**BoundedOrderedSet:**
-- Purpose: Memory-bounded tracking of downloaded/extracted/stopped/imported file names with eviction stats.
-- Examples: `src/python/common/bounded_ordered_set.py`, registered in `MemoryMonitor`.
+**`IStreamService` + `BaseStreamService` (frontend):**
+- Purpose: Services consuming named SSE events from the single multiplexed stream
+- Examples: `ModelFileService`, `ServerStatusService`, `LogService`, `ConnectedService`
+- Pattern: register event names, implement `onEvent/onConnected/onDisconnected`; obtain via `StreamServiceRegistry`, never instantiate directly (`src/angular/src/app/services/base/base-stream.service.ts`)
 
-**IHandler / IStreamHandler:**
-- Purpose: Web handler contracts — REST handlers add routes; stream handlers feed SSE.
-- Examples: `src/python/web/web_app.py:14`.
-
-**Stream services (frontend):**
-- Purpose: Base classes mapping SSE events to reactive Angular state.
-- Examples: `src/angular/src/app/services/base/base-stream.service.ts`, `services/base/stream-service.registry.ts`.
+**`ModelFile` → `ViewFile` (frontend view-model split):**
+- Purpose: `ModelFile` mirrors backend state; `ViewFile` adds UI state (selection, display status)
+- Examples: `src/angular/src/app/services/files/model-file.ts`, `view-file.ts`, transformation in `view-file.service.ts`
 
 ## Entry Points
 
-**Backend daemon:**
-- Location: `src/python/seedsyncarr.py` (`main()` / `Seedsyncarr.run()`).
-- Triggers: `seedsyncarr` console command / container start.
-- Responsibilities: arg parsing, config + persist loading, object wiring, child-thread (`ControllerJob`, `WebAppJob`) lifecycle, restart/exit loop.
+**`src/python/seedsyncarr.py` — `main()`:**
+- Triggers: `python seedsyncarr.py -c <config_dir> --html <path> --scanfs <path>`; Docker entrypoint runs this; PyInstaller-frozen builds default `--html`/`--scanfs` from `sys._MEIPASS`
+- Responsibilities: config/persist load with backup-on-corruption, logger setup, startup security warnings, secret re-encryption, builds `WebhookManager` → `Controller` → `AutoQueue` → `WebApp`, starts `ControllerJob` + `WebAppJob`, supervises restart/exit loop (`ServiceExit`/`ServiceRestart`)
 
-**Standalone remote scanner:**
-- Location: `src/python/scan_fs.py`.
-- Triggers: invoked over SSH on the remote host (and packaged as `scanfs` executable).
-- Responsibilities: walk a directory tree and emit JSON file listing for the remote scanner.
+**`src/python/scan_fs.py`:**
+- Triggers: built as standalone `scanfs` binary (PyInstaller, `src/docker/build/docker-image/Dockerfile:57-60`); run locally and pushed to remote host for remote scans
+- Responsibilities: scan a directory tree with `SystemScanner`, emit `SystemFile` list to stdout
 
-**Web app (in-process):**
-- Location: `src/python/web/web_app_job.py` → `WebAppJob`.
-- Triggers: started by `Seedsyncarr.run()` as a child thread.
-- Responsibilities: run the Bottle/Paste multi-threaded server.
+**`src/angular/src/main.ts`:**
+- Triggers: browser load of `index.html` (served by `WebApp.__index` with meta-tag injection; SPA routes `/dashboard`, `/settings`, `/logs`, `/about` all serve index — `src/python/web/web_app.py:174-182`)
+- Responsibilities: `bootstrapApplication(AppComponent, appConfig)`; providers and `APP_INITIALIZER`s in `src/angular/src/app/app.config.ts`
 
-**Frontend bootstrap:**
-- Location: `src/angular/src/main.ts` → `bootstrapApplication(AppComponent, appConfig)`.
-- Triggers: browser load of served `index.html`.
-- Responsibilities: provide router (`app/routes.ts`), HTTP client + `authInterceptor`, and all singleton services (`app/app.config.ts`).
+**`src/docker/build/docker-image/entrypoint.sh`:**
+- Triggers: container start
+- Responsibilities: PUID/PGID remap, SSH home setup, default config (`setup_default_config.sh`), launches the Python service
 
 ## Architectural Constraints
 
-- **Threading model:** The controller and web server run as threads in a single process. Heavy/blocking work (scanning, LFTP transfer, extraction, deletion) is pushed into separate OS processes via `AppProcess`/`AppOneShotProcess`. Scanner processes never touch the in-memory `Model`, which is why a `threading.Lock` (not a multiprocessing lock) is sufficient for `__model_lock`.
-- **Shared lock identity:** `Controller.__model_lock` is passed by reference into `ModelPipeline` and stored as `self._model_lock` (single underscore) to preserve object identity. Do not copy or re-create this lock — collaborators must operate on the *same* lock instance.
-- **Lock ordering (deadlock avoidance):** When both are taken, the order is `__model_lock` → `__auto_delete_lock`. `exit()` takes **only** `__auto_delete_lock` (never `__model_lock`), so there is no circular wait. The auto-delete callback releases `__model_lock` before re-acquiring `__auto_delete_lock` for its final commit.
-- **Shutdown signaling:** `Controller.__shutdown_event` is set under `__auto_delete_lock` inside `exit()` so it is strictly ordered against the auto-delete timer callback's lock-serialized final-commit step. Do not reuse `__started` for this — it flips too late.
-- **DI binding for tests:** Managers are constructed only in `Controller.__init__`. Collaborators receive instances; they must not import-and-construct managers themselves, or `mock.patch("controller.controller.X")` in the test suite will stop intercepting.
-- **Forwarding wrappers:** Many `Controller._collect_*` / `_feed_*` / `_apply_*` methods are thin forwarders to `ModelPipeline` kept on `Controller` because the test suite pins those names (e.g. `c._set_import_status = MagicMock()`). Keep the wrappers when moving logic.
-- **Frozen model files:** `ModelFile` instances are immutable after being added to `Model`; reads return shared references. Never mutate a model file after insertion — build a new one and apply a diff.
-- **Auth exemptions:** SSE (`/server/stream`), health (`/server/status`), and webhook prefixes (`/server/webhook/`) are exempt from Bearer auth by design (`web/web_app.py:59`). EventSource cannot send custom headers; webhooks use HMAC instead.
+- **Threading:** Main thread supervises; `ControllerJob` and `WebAppJob` are threads (bottle+paste is multi-threaded). Scanners, extract, and delete run as separate `multiprocessing` processes and NEVER touch the `Model` — they communicate via queues. A plain `threading.Lock` therefore suffices for the model (`src/python/controller/controller.py:95-101`).
+- **Single model lock:** `ModelPipeline` stores Controller's lock as `self._model_lock` with a single underscore specifically to preserve object identity (no name mangling; documented as D-03/Pitfall 3 in `src/python/controller/model_pipeline.py`). Never create a second lock for the model.
+- **Web→controller handoff:** The web layer must not mutate the model. UI actions go through `Controller.queue_command()`; webhook imports through `WebhookManager.enqueue_import()`. Both are thread-safe queues drained in the controller thread.
+- **Global state:** `Seedsyncarr.logger` (class attribute set at startup); `Config.set_keyfile_path()` class-level keyfile for secret encryption. Python imports use a flat layout rooted at `src/python` (`from common import ...`), so PYTHONPATH/cwd must include `src/python`.
+- **Auth model:** All `/server/*` routes require Bearer token when `general.api_token` is set, EXCEPT `/server/stream` (EventSource cannot send headers), `/server/status` (health check), and `/server/webhook/*` (HMAC instead) — `WebApp._AUTH_EXEMPT_PATHS` / `_AUTH_EXEMPT_PREFIXES` (`src/python/web/web_app.py:58-64`).
+- **Bottle quirk:** `WebApp` must use `object.__setattr__` for instance flags because Bottle intercepts `__setattr__` (`src/python/web/web_app.py`).
 
 ## Anti-Patterns
 
-### Holding the model lock across blocking subprocess calls
+### Constructing managers inside collaborators
 
-**What happens:** Code resolves a `ModelFile` under `__model_lock`, then performs a subprocess-spawning operation (`delete_local`, LFTP queue) while still holding the lock.
-**Why it's wrong:** Blocking subprocess calls under the lock starve all model updates running on the controller thread, freezing the UI.
-**Do this instead:** Capture the (frozen) `ModelFile` reference under the lock, release the lock, then perform the subprocess work. See `Controller.__execute_auto_delete` (`controller.py:713`) and `Controller.__process_commands` (`controller.py:737`).
+**What happens:** A collaborator (e.g., a new pipeline/manager class) instantiates `ScanManager`, `LftpManager`, etc. itself.
+**Why it's wrong:** Breaks `mock.patch` binding in tests and duplicates lifecycle ownership — `Controller.__init__` is the single composition root (documented as D-05 in `src/python/controller/model_pipeline.py`).
+**Do this instead:** Construct all managers in `Controller.__init__` and inject instances, as `ModelPipeline.__init__` does.
 
-### Constructing managers inside a collaborator
+### Touching the Model from a process or without the lock
 
-**What happens:** A collaborator (`ModelPipeline`, `CommandProcessor`, `AutoDeleteManager`) instantiates its own `LftpManager`/`ScanManager`/etc.
-**Why it's wrong:** It breaks the single-instance invariant and unbinds `mock.patch("controller.controller.*")` targets, silently disabling test interception; it can also create duplicate child processes.
-**Do this instead:** Construct all managers once in `Controller.__init__` and inject the instances (`controller.py:187-221`).
+**What happens:** Code in `controller/scan/`, `controller/extract/`, or `controller/delete/` reads/writes `Model`, or controller code accesses the model without `model_lock`.
+**Why it's wrong:** Scanner/extract/delete code runs in separate OS processes (stale copies); in-thread access without the lock races with the web layer's `get_model_files_and_add_listener` (`src/python/controller/controller.py:333`).
+**Do this instead:** Processes return results via queues; controller-thread code acquires the lock; web code uses `Controller`'s public API.
 
-### Re-creating or copying the model lock
+### Instantiating frontend stream services directly
 
-**What happens:** A collaborator stores a copy of the lock or creates a new `Lock()`.
-**Why it's wrong:** Two different lock objects provide no mutual exclusion; concurrent model mutation races.
-**Do this instead:** Pass and store the same lock object (`model_lock` → `self._model_lock`, `model_pipeline.py:42`).
+**What happens:** A component or test news up `ModelFileService`/`ServerStatusService` outside the registry.
+**Why it's wrong:** They only receive data when registered with `StreamDispatchService`'s single multiplexed `EventSource`; direct instances silently never connect (documented in `src/angular/src/app/services/base/base-stream.service.ts`).
+**Do this instead:** Provide via `StreamServiceRegistryProvider` in `app.config.ts`; in tests use `MockStreamServiceRegistry` (`src/angular/src/app/tests/mocks/mock-stream-service.registry.ts`).
 
-### Polling instead of streaming on the frontend
+### Logging webhook-supplied values raw
 
-**What happens:** A component calls REST on an interval to refresh model/status.
-**Why it's wrong:** The backend already pushes via SSE; polling adds latency and load and bypasses the reactive stream services.
-**Do this instead:** Subscribe to the relevant stream service (`services/base/base-stream.service.ts`, `services/files/model-file.service.ts`).
+**What happens:** Logging `file_name` or other request fields directly.
+**Why it's wrong:** Log injection (CWE-117) — webhook bodies are attacker-controllable.
+**Do this instead:** Wrap with `sanitize_log_value()` from `common`, as in `src/python/controller/webhook_manager.py:36-38`.
 
 ## Error Handling
 
-**Strategy:** Typed exception hierarchy rooted at `common.AppError`; cross-process exceptions are pickled and re-raised on the owner thread.
+**Strategy:** Exceptions derive from `AppError` (`src/python/common/error.py`); child threads/processes capture and re-raise into the owner via `propagate_exception()`. Controller failures degrade gracefully (server marked down with error message) instead of killing the web app (`src/python/seedsyncarr.py:181-190`).
 
 **Patterns:**
-- Domain errors subclass `AppError` (`ControllerError`, `ModelError`, `ScannerError`, `ExtractError`, `PersistError`, `ConfigError`, `EncryptionError`).
-- Child-process exceptions are wrapped (`ExceptionWrapper`, `tblib`) and propagated via `propagate_exception()` / `raise_pending_error()` calls in `Controller.__propagate_exceptions()` (`controller.py:750`).
-- The main thread loop catches controller `AppError`, surfaces it to `status.server.error_msg`, and keeps the web server alive (`seedsyncarr.py:180`).
-- `ServiceExit` / `ServiceRestart` flow up to `main()` to drive graceful shutdown vs. restart.
-- Corrupt persist/config files are backed up (`*.N.bak`) and replaced with defaults rather than crashing (`seedsyncarr.py:_load_persist`).
+- `ServiceExit` / `ServiceRestart` sentinel exceptions drive the supervision loop in `main()` (`src/python/seedsyncarr.py:507-523`)
+- Corrupted config/persist files are backed up (`*.N.bak`) and replaced with defaults, never fatal (`Seedsyncarr.__backup_file`)
+- `Controller.Command.ICallback.on_failure(error, error_code)` maps domain failures to HTTP status codes (400/404/409/500)
+- `ScannerError(recoverable=True)` lets scan failures retry without crashing the controller (`src/python/controller/scan/scanner_process.py`)
+- Cross-process tracebacks preserved with `tblib` + `ExceptionWrapper` (`src/python/common/app_process.py`)
 
 ## Cross-Cutting Concerns
 
-**Logging:** Python `logging` with a shared root logger from `Context`; child loggers via `logger.getChild(...)`. Cross-process logging routed through `MultiprocessingLogger` (`common/multiprocessing_logger.py`). All user/remote-sourced values are passed through `sanitize_log_value()` before logging to prevent log injection (CWE-117). Web access has a separate logger.
-
-**Validation:** Config validation in `common/config.py`; incomplete-config detection blocks controller startup. Webhook payloads HMAC-verified; command filenames URL-decoded and existence-checked against the model.
-
-**Authentication:** Optional Bearer token on `/server/*` endpoints (`web/web_app.py`), with explicit exempt paths/prefixes; webhooks authenticated by HMAC secret; rate limiting via `web/rate_limit.py`. Secrets encrypted at rest via `common/encryption.py` (Fernet-style keyfile `secrets.key`).
+**Logging:** Hierarchical loggers via `Context.create_child_context` / `logger.getChild`; separate main and web-access logs; rotating file handlers (`src/python/seedsyncarr.py:280`); `MultiprocessingLogger` bridges process logs (`src/python/common/multiprocessing_logger.py`). Frontend: `LoggerService` with environment-configured level.
+**Validation:** Config typed/validated in `Config` (`src/python/common/config.py`); incomplete config (`<replace me>` dummy values) blocks controller start but keeps the web UI up for setup (`src/python/seedsyncarr.py:154-161`).
+**Authentication:** Bearer token middleware in `WebApp` with exempt paths; HMAC verification + 60/60s rate limit for webhooks (`src/python/web/handler/webhook.py`, `src/python/web/rate_limit.py`); secrets optionally encrypted at rest with `secrets.key` (`src/python/common/encryption.py`); startup re-encryption and decrypt-failure warnings (`src/python/seedsyncarr.py:402-443`).
 
 ---
 
-*Architecture analysis: 2026-06-02*
+*Architecture analysis: 2026-06-09*

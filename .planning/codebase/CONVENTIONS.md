@@ -1,202 +1,125 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-06-02
+**Analysis Date:** 2026-06-09
 
-This is a polyglot repo with two production languages plus a separate E2E layer. Conventions differ per language — follow the conventions of the directory you are editing.
-
-| Layer | Language | Location | Lint/Style gate |
-|-------|----------|----------|-----------------|
-| Backend | Python 3.11–3.12 | `src/python/` | `ruff check src/python/` |
-| Frontend | TypeScript / Angular 21 | `src/angular/` | `eslint "src/**/*.ts" --max-warnings 0` |
-| E2E | TypeScript / Playwright | `src/e2e/` | not linted (excluded by Angular eslint `ignores`) |
-
----
+This is a polyglot codebase: Python backend (`src/python/`), Angular frontend (`src/angular/`), Playwright e2e suite (`src/e2e/`). Conventions differ per language — follow the section matching the code you are touching.
 
 ## Naming Patterns
 
-### Python (`src/python/`)
-
 **Files:**
-- `snake_case.py` for modules: `auto_queue_manager.py`, `model_builder.py`, `scan_manager.py`
-- Test files prefixed `test_`: `test_auto_queue.py`, `test_controller.py`
+- Python: `snake_case.py` modules (`auto_queue.py`, `webhook_manager.py`, `rate_limit.py`). Packages have curated `__init__.py` re-exports.
+- Angular: kebab-case with role suffix — `transfer-row.component.ts`, `rest.service.ts`, `file-size.pipe.ts`, `click-stop-propagation.directive.ts`, `auth.interceptor.ts`. Templates/styles co-located (`*.component.html`, `*.component.scss`).
+- E2E: page objects as `<name>.page.ts`, specs as `<name>.page.spec.ts` or `<name>.spec.ts` in `src/e2e/tests/`.
 
-**Classes:**
-- `PascalCase`: `AutoQueuePattern`, `AutoQueuePersist`, `Controller`, `WebApp`
-- Interface/listener classes use an `I` prefix: `IHandler`, `IModelListener`, `IAutoQueuePersistListener`, `IStatusListener`
-- Custom exceptions inherit `AppError` and use `Error` suffix: `ConfigError`, `PersistError`, `DecryptionError`, `ServiceExit`, `ServiceRestart` (see `src/python/common/error.py`)
-
-**Functions / methods:**
-- `snake_case`: `add_pattern`, `sanitize_log_value`, `create_mock_context`
-- Private methods use name-mangling double-underscore prefix: `__handle_get_autoqueue`, `__handle_add_autoqueue` (see `src/python/web/handler/auto_queue.py`)
-- "Private but subclass-visible" attributes use single underscore: `self._logger`
-
-**Variables / constants:**
-- `snake_case` for locals, `UPPER_SNAKE` for module constants
-- Type aliases are `PascalCase`: `InnerConfigType`, `OuterConfigType` (`src/python/common/config.py`)
-
-### TypeScript (`src/angular/`)
-
-**Files:**
-- `kebab-case` with role suffix: `rest.service.ts`, `view-file.service.ts`, `logger.service.ts`, `eta.pipe.ts`, `click-stop-propagation.directive.ts`, `auth.interceptor.ts`
-- Components: `*.component.ts` / `*.component.html` / `*.component.scss`
-- Tests mirror source name with `.spec.ts` suffix: `rest.service.spec.ts`
-
-**Classes / interfaces:**
-- `PascalCase`: `RestService`, `WebReaction`, `LoggerService`, `AutoQueuePattern`
-- Enums nested in a `namespace` matching the class: `LoggerService.Level` (`src/angular/src/app/services/utils/logger.service.ts`)
-
-**Functions / methods:**
-- `camelCase`: `sendRequest`, `handleSuccess`, `buildViewFromModelFiles`
+**Functions:**
+- Python: `snake_case` (`add_pattern`, `sanitize_log_value`). Type hints on public signatures (`def from_str(cls, content: str) -> "AutoQueuePattern":`).
+- TypeScript: `camelCase` (`sendRequest`, `getRowCheckbox`, `waitForAtLeastFileCount`). Component event handlers prefixed `on` (`onCheckboxClick`).
 
 **Variables:**
-- `camelCase` for locals/fields, `UPPER_SNAKE` for module constants and fixtures: `MOCK_MODEL_FILES`, `SCREENSHOT_MODEL_FILES`
-- Private instance fields use a leading underscore: `_logger`, `_http`, `_viewFileService` (constructor-injected via `private _logger: LoggerService`)
+- Python: `snake_case` locals; class-level constants are double-underscore-mangled UPPER keys (`__KEY_PATTERN = "pattern"`); private instance attributes use double-underscore name mangling (`self.__patterns`, `self.__listeners_lock`) — see `src/python/controller/auto_queue.py`.
+- TypeScript: `camelCase`; constructor-injected services use `_` prefix in older code (`private _logger`, `private _http` in `src/angular/src/app/services/utils/rest.service.ts`); class-level lookup tables are `private static readonly` UPPER_SNAKE `Record`s (`BADGE_LABELS` in `transfer-row.component.ts`). Module constants in e2e specs are UPPER_SNAKE (`TEST_FILE`, `STOPPED_SEED_RATE_LIMIT`).
 
-### E2E (`src/e2e/`)
-
-- Page objects: `*.page.ts` (`dashboard.page.ts`, `settings.page.ts`); specs: `*.page.spec.ts` or `*.spec.ts`
-- Fixtures in `src/e2e/tests/fixtures/` (`seed-state.ts`, `csp-listener.ts`)
-- Module-scope constants `UPPER_SNAKE`: `TEST_FILE`, `STOPPED_SEED_RATE_LIMIT`
-
----
+**Types:**
+- Python: `PascalCase` classes. Listener/interface abstractions are ABCs prefixed `I` (`IModelListener`, `IStatusListener`, `IAutoQueuePersistListener`). Custom errors end in `Error` (`AppError`, `ConfigError`, `PersistError` in `src/python/common/error.py`, `src/python/common/persist.py`).
+- TypeScript: `PascalCase` classes/interfaces, no `I` prefix (`FileInfo`, `WebReaction`, `ViewFile`). Enums nested in namespaces (`ViewFile.Status`).
 
 ## Code Style
 
-### Python
-
 **Formatting:**
-- 4-space indentation, no enforced line length (ruff defaults — there is **no** `[tool.ruff]` section in `src/python/pyproject.toml`, so the ruff default rule set `E`/`F` applies)
-- String formatting uses `.format()` consistently, **not** f-strings: `"Bad config: {}.{} is empty".format(cls.__name__, name)` (`src/python/common/config.py`). Match this style in `common/`, `web/`, `controller/`.
+- Python: `ruff format` — verify with `ruff format --check src/python` (per `CONTRIBUTING.md`). 4-space indent.
+- TypeScript (app): 4-space indent, double quotes, semicolons required, max line 140 — enforced by ESLint, not Prettier (no Prettier config exists).
+- TypeScript (e2e + Playwright configs): single quotes, 4-space indent. The `src/angular/e2e/` and `src/e2e/` trees are excluded from ESLint (`ignores: ["e2e/"]`).
 
 **Linting:**
-- `ruff check src/python/` runs as a dedicated CI gate (`.github/workflows/ci.yml` job `lint-python`, Python 3.12), **separate** from the pytest gate. A change that passes tests can still fail CI on ruff — run ruff over the whole `src/python/` tree (not just changed files) before declaring a Python phase done.
-- Local: `ruff` is pinned in the dev extras (`ruff>=0.4.0`).
-
-### TypeScript (Angular)
-
-**Formatting:**
-- 4-space indentation, double quotes (`"@typescript-eslint/quotes": double`, template literals allowed)
-- Semicolons required (`semi: always`)
-- `max-len` 140 chars
-- `eol-last`, `no-trailing-spaces` enforced
-
-**Linting (`src/angular/eslint.config.js`, flat config):**
-- `eqeqeq: ["error", "always", { "null": "ignore" }]` — use `===`, but `== null` is permitted for null/undefined checks
-- `no-var`, `prefer-const`, `curly` (always brace blocks), `radix`, `no-eval`, `no-bitwise`
-- `no-console: ["error", { allow: ["warn", "error", "debug"] }]` — never use bare `console.log`; route logging through `LoggerService` or use `console.warn/error/debug`
-- `@typescript-eslint/no-explicit-any: warn` and `explicit-function-return-type: warn` — annotate return types; avoid `any`
-- `@typescript-eslint/no-unused-vars: ["error", { argsIgnorePattern: "^_" }]` — prefix intentionally unused args with `_`
-- `@typescript-eslint/no-non-null-assertion: off` — the `!` assertion is *allowed* by lint, but per repo null-safety guidance prefer a guard or narrowing before asserting
-- Lint runs with `--max-warnings 0`: warnings fail CI. Treat `any`/missing-return-type warnings as errors.
-
----
+- Python: `ruff check src/python/` (CI gate `lint-python` in `.github/workflows/ci.yml:73-90`). No `[tool.ruff]` section exists in `src/python/pyproject.toml` — ruff runs with default rules. Run it on the whole `src/python/` tree, not just changed files.
+- Angular: ESLint flat config at `src/angular/eslint.config.js`; run `cd src/angular && npm run lint` — note `--max-warnings 0`, so warnings fail CI. Key rules:
+  - `quotes: double` (template literals allowed), `semi: always`, `max-len: 140`
+  - `eqeqeq: always` with `null: ignore` (`== null` checks permitted)
+  - `no-console` except `warn`/`error`/`debug` — use `LoggerService` (`src/angular/src/app/services/utils/logger.service.ts`) instead
+  - `curly: error`, `prefer-const`, `no-var`
+  - `@typescript-eslint/explicit-function-return-type: warn`, `no-explicit-any: warn` (both fail the build via max-warnings 0)
+  - `no-unused-vars` with `argsIgnorePattern: "^_"` — prefix intentionally unused params with `_`
+  - `no-non-null-assertion` is OFF; `@Input({ required: true }) file!: ViewFile;` is an accepted pattern
+- TypeScript strict mode is on (`src/angular/tsconfig.json`: `"strict": true`, `fullTemplateTypeCheck`, `strictInjectionParameters`).
 
 ## Import Organization
 
-### Python
+**Order (Python):**
+1. Standard library (`import json`, `import threading`)
+2. Third-party (`import pytest`, `from unittest.mock import MagicMock`)
+3. First-party packages (`from common import overrides, Constants, Context`)
+4. Relative within package (`from .controller import Controller`)
 
-Imports are grouped stdlib → third-party → first-party, blank-line separated:
-```python
-import configparser
-import os
-from typing import Dict, Optional
+Packages re-export their public API in `__init__.py` using explicit `from .x import X as X` form (see `src/python/common/__init__.py`). Import from the package (`from common import Config`), not the submodule.
 
-from .encryption import load_or_create_key, is_ciphertext
-from .error import AppError
-```
-First-party packages are imported by their package facade, **not** deep module paths. `src/python/common/__init__.py` re-exports every public symbol with explicit `as` aliasing (`from .types import overrides as overrides`), so consumers write `from common import overrides, Config, PersistError`. Add new public symbols to the package `__init__.py` re-export list when introducing them.
+**Order (TypeScript):**
+1. `@angular/*` core imports
+2. `rxjs` / third-party
+3. Local relative imports (services, then components/pipes)
 
-### TypeScript
-
-- **No path aliases** — the project uses relative imports exclusively (confirmed: `main.ts` uses `./environments/environment`, `app.config.ts` uses `../environments/environment`). Compute relative depth from the editing file's own location.
-- Order: Angular/third-party first, then local, blank-line separated:
-```typescript
-import {Injectable} from "@angular/core";
-import {HttpClient, HttpErrorResponse} from "@angular/common/http";
-import {Observable, of} from "rxjs";
-
-import {LoggerService} from "./logger.service";
-```
-- Brace imports have **no inner spaces**: `import {Injectable}` not `import { Injectable }` (Angular layer). Note the E2E layer (`src/e2e/`) uses spaced braces `import { test, expect }` — match the local file's surrounding style.
-
----
+**Path Aliases:**
+- None. All TypeScript imports are relative (`../../../../services/utils/rest.service` from deep test paths). Python uses `pythonpath = ["."]` rooted at `src/python/` (set in `pyproject.toml [tool.pytest.ini_options]`).
 
 ## Error Handling
 
-### Python
+**Python:**
+- Custom exception hierarchy in `src/python/common/error.py`: `AppError`, `ServiceExit`, `ServiceRestart`; domain errors `ConfigError`, `PersistError`, `EncryptionError`/`DecryptionError`. Raise specific errors, catch specific errors.
+- Validate inputs and raise `ValueError` with a message (`raise ValueError("Cannot add blank pattern")` in `controller/auto_queue.py`).
+- Web layer returns HTTP status codes (e.g., 429 from `web/rate_limit.py`) rather than leaking exceptions to clients.
 
-- All domain exceptions derive from `AppError` (`src/python/common/error.py`). Add new error types as `AppError` subclasses, never bare `Exception`.
-- Catch **specific** exceptions, never bare `except:`. Example in `web/handler/auto_queue.py`:
-  ```python
-  try:
-      self.__auto_queue_persist.add_pattern(aqp)
-      return HTTPResponse(body="Added auto-queue pattern '{}'.".format(pattern))
-  except ValueError as e:
-      return HTTPResponse(body=str(e), status=400)
-  ```
-- Web handlers translate errors into `bottle.HTTPResponse` with explicit status codes (`409`, `400`, `404`) — business logic raises, the handler layer maps to HTTP. Keep this separation: do not return raw HTTP objects from `controller/` or `model/`.
-- Log sanitization is mandatory before interpolating untrusted strings (filenames, patterns) into log lines: use `sanitize_log_value()` from `common` (`src/python/common/types.py`) to neutralize CR/LF and control chars (CWE-117).
-
-### TypeScript
-
-- HTTP errors are normalized into a `WebReaction(success, data, errorMessage)` value object inside `RestService` rather than thrown — callers branch on `reaction.success` (`src/angular/src/app/services/utils/rest.service.ts`). Follow this pattern for new REST calls instead of letting `HttpErrorResponse` propagate.
-- RxJS error flows use `catchError` returning `of(...)` so streams stay alive.
-- Never expose raw error objects/stack traces to the UI; map to a user-facing message.
-
----
+**TypeScript:**
+- Services wrap HTTP outcomes into result objects rather than throwing: `WebReaction {success, data, errorMessage}` via `catchError` in `src/angular/src/app/services/utils/rest.service.ts`. Follow this pattern for new backend calls — subscribe handlers branch on `reaction.success`.
+- E2E helpers throw `Error` with full context (`Seed call ${method} ${url} failed: ${status} ${body}` in `src/e2e/tests/fixtures/seed-state.ts`).
 
 ## Logging
 
-### Python
+**Framework:**
+- Python: stdlib `logging`, passed down via `Context` (`context.logger`); multiprocess-safe via `src/python/common/multiprocessing_logger.py`.
+- Angular: `LoggerService` (`src/angular/src/app/services/utils/logger.service.ts`); direct `console.log` is lint-blocked.
 
-- Standard library `logging`, obtained per-class: `logging.getLogger(ClassName.__name__)`. A multiprocessing-safe wrapper exists (`common/multiprocessing_logger.py`, `MultiprocessingLogger`).
-- Always sanitize untrusted values before logging (`sanitize_log_value`). There is dedicated test coverage for this (`tests/unittests/test_lftp/test_lftp_log_sanitization.py`) — do not regress it.
-
-### TypeScript
-
-- Inject `LoggerService` (`src/angular/src/app/services/utils/logger.service.ts`); call `this._logger.debug(...)` / `.info` / `.warn` / `.error`. Levels are gated by `LoggerService.Level` and configured via `environment.logger.level` (DEBUG in dev, WARN in prod).
-- Do not call `console.log` directly (eslint `no-console` forbids it; only `warn`/`error`/`debug` are allowed and those should still prefer the service).
-
----
+**Patterns:**
+- ALWAYS sanitize untrusted values (filenames, remote paths) before logging with `sanitize_log_value` from `common/types.py` — this is a CWE-117 log-injection guard covering CR/LF, C0 controls, and DEL. Tests exist at `tests/unittests/test_lftp/test_lftp_log_sanitization.py`.
+- Angular debug logging uses printf-style args: `this._logger.debug("%s http response: %s", url, data)`.
 
 ## Comments
 
-**When to comment:**
-- Comments explain *why*, not *what* — heavily used for non-obvious decisions, cross-arch concerns, and security rationale. Examples: the `shareReplay(1)` rationale in `rest.service.ts`, the locale-determinism note in `playwright.config.ts`, the CWE-117 docstring in `types.py`.
-- Phase/decision provenance is frequently referenced inline (e.g. `// FIX-01 anchor`, `# Reviewer feedback reversed Phase 79 D-02`). When touching such code, preserve the provenance comment.
+**When to Comment:**
+- Explain WHY, often with traceability references to planning artifacts and review decisions (e.g., `pyproject.toml` cache_dir comment referencing "Phase 79 D-02"; e2e specs referencing "E2EFIX-07", "RESEARCH Pitfall 2"). This codebase heavily cross-references GSD phase decisions in comments — preserve that habit.
+- Document thread-safety contracts in class docstrings ("Thread-safety: Listener operations are protected by __listeners_lock. The copy-under-lock pattern is used..." in `controller/auto_queue.py`).
 
-**Docstrings (Python):**
-- Triple-quoted docstrings on public functions/classes, often including `Args:` / `Returns:` sections (`src/python/tests/helpers/__init__.py`, `common/types.py`). Add type-hinted signatures plus a docstring for new public functions.
+**Docstrings/JSDoc:**
+- Python: triple-quoted docstrings on classes and non-trivial functions. Two styles coexist — Sphinx `:param x:` (older code, `tests/utils.py`) and Google-style `Args:/Returns:` (newer code, `common/types.py`, `tests/helpers/__init__.py`). Prefer Google-style for new code.
+- TypeScript: JSDoc on public service methods with `@param {type}` and `@returns` (see `rest.service.ts`).
 
-**JSDoc (TypeScript):**
-- `/** ... */` blocks on public services/methods with `@param` / `@returns` (`rest.service.ts`). Not universally enforced, but match the file you are in.
+## Function Design
+
+**Size:** Small, single-purpose methods. Components keep logic in getters/computed signals; lookup data lives in `static readonly` Records, not switch statements.
+
+**Parameters:**
+- Python: keyword arguments at call sites for clarity (`AutoQueuePattern(pattern="file.one")`).
+- TypeScript: optional params via `?` with `??` fallback (`post(url: string, body?: object)` sends `body ?? null`).
+
+**Return Values:**
+- Python: explicit return type hints; `@property` for read access to private state, returning defensive copies (`return set(self.__patterns)`).
+- Angular services: return `Observable<WebReaction>` with `shareReplay(1)` to dedupe HTTP requests.
+
+## Module Design
+
+**Exports:**
+- Python: package `__init__.py` is the public API surface (`from .types import overrides as overrides`). Don't reach into another package's submodules.
+- Angular: standalone components with explicit `imports: [...]` arrays and `ChangeDetectionStrategy.OnPush` (`transfer-row.component.ts`). DI via constructor injection in services and via `inject()` in newer component code — both patterns are present; match the file you're editing.
+
+**Barrel Files:**
+- Python: yes (`__init__.py` re-exports per package: `common`, `controller`, `model`, `lftp`, `ssh`, `system`, `web`).
+- Angular: no barrel files; import directly from the file.
+
+**Layering (Python):**
+- `web/handler/*` — HTTP endpoints only (Bottle); `controller/*` — business logic; `common/*` — shared infrastructure (config, persistence, logging, encryption); `lftp/`, `ssh/`, `system/` — external process integration; `model/` — domain model with listener interfaces. Keep HTTP concerns out of `controller/`.
+
+**Interface/listener pattern (Python):**
+- Define an ABC named `IXxxListener` with `@abstractmethod`s; implementers mark methods with `@overrides(IXxxListener)` (decorator in `common/types.py` asserts the override is valid). Notify listeners using copy-under-lock.
 
 ---
 
-## Function & Module Design
+*Convention analysis: 2026-06-09*
 
-### Python
-
-- **Type hints** on public signatures (`def sanitize_log_value(value: str) -> str:`). Avoid `Any` when a concrete type is known.
-- Interface conformance is checked at decoration time with the custom `@overrides(InterfaceClass)` decorator (`common/types.py`) — apply `@overrides(IHandler)` etc. when implementing an interface method so a typo'd override fails fast.
-- Dependency injection by constructor: handlers/managers receive their collaborators (`def __init__(self, auto_queue_persist: AutoQueuePersist)`), they do not reach for globals.
-- Keep HTTP/bottle concerns in `web/`, orchestration in `controller/`, data in `model/`, shared primitives in `common/`. Do not mix layers.
-
-### TypeScript
-
-- Services are `@Injectable()` classes with constructor DI (`constructor(private _logger: LoggerService, private _http: HttpClient)`).
-- Value objects use `readonly` fields set in the constructor (`WebReaction`).
-- Prefer returning small factory closures for handler logic (`handleSuccess(url)` returns a mapper) rather than inline arrow functions in render paths.
-- Immutable data uses the `immutable` library (`Immutable.Map<string, ModelFile>`).
-
----
-
-## Module Exports
-
-**Python:** Each package's `__init__.py` is a curated facade with explicit `X as X` re-exports (`common/__init__.py`). New public symbols must be added there to be importable as `from common import X`.
-
-**TypeScript:** No barrel files — each symbol is imported from its own relative module path. Keep one primary export per file matching the filename role.
-
----
-
-*Convention analysis: 2026-06-02*

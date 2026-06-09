@@ -1,149 +1,124 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-06-02
+**Analysis Date:** 2026-06-09
 
-This repo has **three** distinct test layers, each with its own runner, location, and CI job. Match the layer you are working in.
+## Test Framework
 
-| Layer | Framework | Location | Count | CI job |
-|-------|-----------|----------|-------|--------|
-| Python unit + integration | pytest (+ unittest.TestCase) | `src/python/tests/` | ~77 `test_*.py` files | `unittests-python` |
-| Python lint | ruff | `src/python/` | n/a | `lint-python` (separate gate) |
-| Angular unit | Karma + Jasmine | `src/angular/src/app/tests/` | ~40 `*.spec.ts` files | `unittests-angular` |
-| Angular lint | eslint | `src/angular/` | n/a | `lint-angular` |
-| End-to-end | Playwright | `src/e2e/tests/` | ~10 `*.spec.ts` files | `e2etests-docker-image` (amd64 + arm64) |
-| Release-metadata | `node --test` | `scripts/` | 1 | `unittests-release-metadata` |
+The repo has four distinct test suites. All CI suites run inside Docker containers (see Run Commands).
 
-All test/lint jobs are defined in `.github/workflows/ci.yml`. `build-docker-image` depends on all unit-test + lint jobs; `e2etests-docker-image` gates image publish.
+**Python (backend):**
+- Runner: pytest >=9.0.3 with pytest-timeout (>=2.3.1) and pytest-cov (>=7.0.0)
+- Config: `src/python/pyproject.toml` (`[tool.pytest.ini_options]`)
+  - Global per-test timeout: 60s (`timeout = 60`, `timeout_func_only = false`)
+  - `pythonpath = ["."]`, `cache_dir = "/tmp/.pytest_cache"` (keeps cache out of the read-only `/src` bind mount)
+- Style: predominantly `unittest.TestCase` classes executed by pytest; `unittest.mock` for mocking; pytest fixtures available via `src/python/tests/conftest.py` for newer tests
+- Extra dev deps: `testfixtures` (TempDirectory), `webtest` (WSGI TestApp for Bottle)
 
----
+**Angular (frontend unit):**
+- Runner: Karma 6.4 + Jasmine (jasmine-core ^6.2.0, karma-jasmine ~5.1.0)
+- Config: `src/angular/karma.conf.js`
+  - Jasmine: `random: false` (deterministic order), `timeoutInterval: 10000`
+  - Browsers: `ChromeHeadless` custom launcher with `--no-sandbox --disable-dev-shm-usage`
+  - Reporters: `spec`, `kjhtml`; coverage via karma-coverage
+- Test entry: `src/angular/src/test.ts` (configured in `angular.json` test target, which file-replaces `environment.ts` → `environment.test.ts`)
 
-## Python Tests (pytest)
+**E2E (full stack):**
+- Runner: Playwright (`@playwright/test` ^1.48.0)
+- Config: `src/e2e/playwright.config.ts`
+  - Sequential: `fullyParallel: false`, `workers: 1` (stateful backend)
+  - `locale: 'en-US'` pinned (prevents amd64/arm64 sort divergence)
+  - Chromium only; `retries: 2` in CI; `trace: 'on-first-retry'`, `screenshot: 'only-on-failure'`
+  - `baseURL` from `APP_BASE_URL` env (default `http://myapp:8800`)
+  - Timeouts: 30s test, expect 10s (CI) / 5s (local)
 
-### Framework
+**Release metadata (scripts):**
+- Node built-in test runner: `node --test scripts/verify-release-metadata.test.mjs`
+- Script: `npm run test:release-metadata` (root `package.json`)
 
-- **Runner:** pytest `^9.0.3` with `pytest-timeout` and `pytest-cov` (dev extras in `src/python/pyproject.toml`)
-- **Config:** `[tool.pytest.ini_options]` in `src/python/pyproject.toml` — `pythonpath = ["."]`, per-test `timeout = 60`, `cache_dir = "/tmp/.pytest_cache"` (kept off the host-mounted read-only `/src` volume)
-- **Assertion styles coexist:** both classic `unittest.TestCase` (`self.assertEqual`) and plain `pytest` function-style tests. New tests may use either; the fixture layer supports both.
-
-### Run Commands
-
+**Run Commands:**
 ```bash
-make run-tests-python        # Build devenv image + run pytest in docker compose (canonical / CI path)
-make coverage-python         # cd src/python && poetry run pytest --cov --cov-report=term-missing --cov-report=html
-ruff check src/python/       # Separate lint gate — run this too before calling a Python phase done
+make run-tests-python        # Python tests in Docker (pytest -v -p no:cacheprovider)
+make run-tests-angular       # Angular tests in Docker (ng test --browsers ChromeHeadless --watch=false --code-coverage)
+make run-tests-e2e           # Playwright e2e via src/docker/test/e2e/run_make_target.sh
+make coverage-python         # Local: poetry run pytest --cov --cov-report=term-missing --cov-report=html
+npm run test:release-metadata  # Root: node --test for release metadata verifier
 ```
-The containerized command is `pytest -v -p no:cacheprovider` (`src/docker/test/python/Dockerfile` CMD). Tests run against a bind-mounted **read-only** `/src` volume.
 
-### Test File Organization
+CI (`.github/workflows/ci.yml`) runs: `unittests-release-metadata`, `unittests-python` (via `make run-tests-python`), `unittests-angular`, `lint-python` (`ruff check src/python/` as a SEPARATE gate from pytest), `lint-angular`, and `e2etests-docker-image` (amd64 always; arm64 added on main/tag pushes).
 
-Tests live in a **separate tree** mirroring the source package layout, split by kind:
+## Test File Organization
+
+**Python** — separate tree mirroring source packages:
 ```
 src/python/tests/
-├── conftest.py              # shared pytest fixtures
-├── utils.py                 # shared test utilities
-├── helpers/                 # importable setup helpers (callable from TestCase.setUp too)
-│   ├── __init__.py          # create_test_logger, create_mock_context, ...
-│   └── wsgi_stream.py
+├── conftest.py              # pytest fixtures: test_logger, mock_context, mock_context_with_real_config
+├── helpers/__init__.py      # create_test_logger, create_mock_context, create_mock_context_with_real_config
+├── utils.py                 # TestUtils (e.g., chmod_from_to)
 ├── unittests/
-│   ├── test_controller/     # mirrors src/python/controller/
-│   ├── test_model/          # mirrors src/python/model/
-│   ├── test_web/            # mirrors src/python/web/
+│   ├── test_common/         # mirrors src/python/common/
+│   ├── test_controller/     # mirrors controller/ (has base.py shared base class)
 │   ├── test_lftp/
-│   └── test_ssh/
+│   ├── test_model/
+│   ├── test_ssh/
+│   ├── test_system/
+│   ├── test_web/            # incl. test_web/test_handler/
+│   └── test_seedsyncarr.py
 └── integration/
-    ├── test_controller/
-    ├── test_lftp/
-    └── test_web/test_handler/   # one file per web handler
+    ├── test_controller/     # incl. test_extract/
+    ├── test_lftp/           # real lftp protocol tests
+    └── test_web/            # webtest-based full web app tests
 ```
-- **Naming:** files `test_*.py`; `unittest.TestCase` subclasses named `TestX`; methods `test_*` (`tests/unittests/test_controller/test_auto_queue.py`).
-- **Unit vs integration:** `tests/unittests/` mock collaborators; `tests/integration/` exercise real lftp/web/controller wiring.
+Naming: `test_<module>.py`, classes `Test<ClassName>`, methods `test_<behavior>`.
 
-### Test Structure (TestCase style)
+**Angular** — separate tree under `src/angular/src/app/tests/`, mirroring `services/` and `pages/`:
+```
+src/angular/src/app/tests/
+├── unittests/
+│   ├── common/              # e.g., is-selected.pipe.spec.ts
+│   ├── pages/               # files/, logs/, main/ component specs
+│   └── services/            # base/, files/, logs/, server/, settings/, utils/, autoqueue/
+├── mocks/                   # mock-rest.service.ts, mock-model-file.service.ts, mock-event-source.ts, ...
+└── fixtures/                # mock-model-files.ts (+ .prod.ts stub swapped in by prod fileReplacements in angular.json)
+```
+Naming: `<name>.spec.ts` matching the source file name.
 
+**E2E** — page-object model in `src/e2e/tests/`:
+```
+src/e2e/tests/
+├── app.ts                   # App base page object (shared nav helpers)
+├── dashboard.page.ts        # Page objects: <area>.page.ts
+├── dashboard.page.spec.ts   # Specs: <area>.page.spec.ts (plus csp-canary.spec.ts, settings-*.spec.ts)
+├── helpers.ts               # escapeRegex etc.
+└── fixtures/
+    ├── seed-state.ts        # typed seed API hitting backend command endpoints
+    └── csp-listener.ts      # extended `test` fixture (import { test, expect } from './fixtures/csp-listener')
+```
+URL paths centralized in `src/e2e/urls.ts` (`Paths.DASHBOARD` etc.).
+
+## Test Structure
+
+**Python — dominant unittest.TestCase style** (from `src/python/tests/unittests/test_controller/test_webhook_manager.py`):
 ```python
-import unittest
-from unittest.mock import MagicMock, ANY
+class TestWebhookManager(unittest.TestCase):
+    def setUp(self):
+        self.mock_context = MagicMock()
+        self.mock_context.logger = MagicMock()
+        self.manager = WebhookManager(context=self.mock_context)
 
-from common import overrides, PersistError, Config
-from controller import AutoQueue, AutoQueuePattern, IAutoQueuePersistListener
-
-class TestAutoQueuePattern(unittest.TestCase):
-    def test_pattern(self):
-        aqp = AutoQueuePattern(pattern="file.one")
-        self.assertEqual(aqp.pattern, "file.one")
-```
-- Interface stubs in tests implement the real interface and use `@overrides(IInterface)` to guarantee signature conformance (`TestAutoQueuePersistListener` in `test_auto_queue.py`).
-
-### Fixtures & Mocking (Python)
-
-The fixture system is dual-mode by design (documented in `src/python/tests/conftest.py` and `tests/helpers/__init__.py`):
-
-- **pytest fixtures** (`conftest.py`): `test_logger`, `mock_context`, `mock_context_with_real_config`. Requested by name as test-function arguments. The `test_logger` fixture handles handler teardown.
-- **Importable helpers** (`tests/helpers/__init__.py`): `create_test_logger`, `create_mock_context`, `create_mock_context_with_real_config`. These back the fixtures **and** can be called directly from `unittest.TestCase.setUp()` (solving conftest fixtures being unreachable by TestCase tests). Prefer these helpers over hand-rolling a `MagicMock` context.
-
-```python
-# pytest style
-def test_ssh_key_mode(mock_context):
-    mock_context.config.lftp.use_ssh_key = True
-    ...
-
-# TestCase style
-def setUp(self):
-    self.context = create_mock_context()
+    def test_enqueue_and_process_matching_file(self):
+        self.manager.enqueue_import("Sonarr", "File.A")
+        result = self.manager.process(self.name_to_root)
+        self.assertEqual([("File.A", "File.A")], result)
 ```
 
-- **Mocking:** stdlib `unittest.mock` (`MagicMock`, `ANY`). `create_mock_context()` returns a `MagicMock` pre-populated with the full `config.lftp` / `config.controller` / `config.general` attribute tree, overridable per test. Use `create_mock_context_with_real_config()` when a real `Config` object's validation/serialization behavior is needed instead of MagicMock attribute access.
-- Other dev test deps: `testfixtures`, `webtest` (WSGI), `pexpect`-based integration for lftp.
+**Python — pytest fixture style for new tests** (`src/python/tests/conftest.py`):
+- `test_logger` — configured stdout logger, auto-cleaned in fixture teardown
+- `mock_context` — MagicMock context with all lftp/controller/general config attrs pre-populated (see `tests/helpers/__init__.py:create_mock_context` for the full default set)
+- `mock_context_with_real_config` — MagicMock context with a REAL `common.Config` object (use when validation/serialization behavior matters)
 
-### Coverage (Python)
+These helpers are ALSO directly callable from `unittest.TestCase.setUp()` (that is their stated purpose — conftest fixtures are unreachable from unittest style, so import from `tests.helpers`). Note: many older tests still hand-build the mock context inline in `setUp()` (e.g., `test_scan_manager.py`); prefer the helpers for new code.
 
-- Enforced by `[tool.coverage.report] fail_under = 88`, `branch = true` (`src/python/pyproject.toml`). `tests/*` and `docs/*` omitted; excludes `pragma: no cover`, `if __name__ == "__main__"`, `pass`.
-- HTML report → `src/python/htmlcov/` via `make coverage-python`.
-
----
-
-## Angular Tests (Karma + Jasmine)
-
-### Framework
-
-- **Runner:** Karma `^6.4.4` with `@angular-devkit/build-angular`, browser Chrome / ChromeHeadlessCI (`src/angular/karma.conf.js`)
-- **Assertion/spec:** Jasmine `^6.2.0` (`describe` / `it` / `expect`), `@types/jasmine`
-- Async tests use Angular's `fakeAsync` + `TestBed`; `jasmine.timeoutInterval = 10000`, `random: false` (deterministic order)
-
-### Run Commands
-
-```bash
-make run-tests-angular           # Build env image + run Karma in docker compose (CI path)
-cd src/angular && npm test        # ng test (local watch)
-cd src/angular && npm run lint     # eslint --max-warnings 0 (separate gate)
-```
-
-### Test File Organization
-
-Specs are **NOT** co-located with source. They live in a dedicated mirror tree:
-```
-src/angular/src/app/
-├── services/...                       # production code
-├── pages/...                          # a few component specs co-locate (e.g. settings/*.spec.ts)
-└── tests/
-    ├── mocks/                         # reusable mock services
-    │   ├── mock-rest.service.ts
-    │   ├── mock-view-file.service.ts
-    │   ├── mock-stream-service.registry.ts
-    │   └── mock-event-source.ts
-    ├── fixtures/                      # static datasets
-    │   ├── mock-model-files.ts        # populated fixture (dev/test)
-    │   └── mock-model-files.prod.ts   # empty stub, swapped in via angular.json fileReplacements (prod)
-    └── unittests/
-        ├── services/...               # mirrors app/services/ layout
-        ├── pages/...
-        └── common/
-```
-- **Naming:** `<source-name>.spec.ts` (`rest.service.spec.ts` ↔ `rest.service.ts`).
-- **Mock-fixture hygiene (Phase 106, v1.3.0):** mock fixtures were relocated out of `services/` into `app/tests/fixtures/`, and a prod stub is swapped at build time via `angular.json` `fileReplacements` (parallel to the existing `environment.ts → environment.prod.ts` swap). Mock model data is gated by `environment.useMockModel` (true in dev, false in prod), consumed only by `view-file.service.ts`. When adding test data, place it under `app/tests/fixtures/`, not under `services/`. See `.planning/milestones/v1.3.0-phases/106-mock-fixture-bundle-hygiene/106-PATTERNS.md`.
-
-### Test Structure (Jasmine + TestBed)
-
+**Angular — TestBed + describe/beforeEach** (from `tests/unittests/services/utils/rest.service.spec.ts`):
 ```typescript
 describe("Testing rest service", () => {
     let restService: RestService;
@@ -162,80 +137,149 @@ describe("Testing rest service", () => {
         restService = TestBed.inject(RestService);
     });
 
-    it("should create an instance", () => {
-        expect(restService).toBeDefined();
+    it("should send http GET on sendRequest", fakeAsync(() => {
+        let subscriberIndex = 0;
+        restService.sendRequest("/server/request").subscribe({
+            next: reaction => {
+                subscriberIndex++;
+                expect(reaction.success).toBe(true);
+            }
+        });
+        httpMock.expectOne("/server/request").flush("success");
+        expect(subscriberIndex).toBe(1);
+        httpMock.verify();
+    }));
+});
+```
+Patterns: subscriber-count assertion (`subscriberIndex`) to prove the observable emitted; always `httpMock.verify()` at test end.
+
+**E2E — page-object + golden data** (from `src/e2e/tests/dashboard.page.spec.ts`):
+```typescript
+import { test, expect } from './fixtures/csp-listener';   // NOT from @playwright/test directly
+
+test.describe('Testing dashboard page', () => {
+    let dashboardPage: DashboardPage;
+
+    test.beforeEach(async ({ page }) => {
+        dashboardPage = new DashboardPage(page);
+        await dashboardPage.navigateTo();
+    });
+
+    test('should have a list of files', async () => {
+        const golden: FileInfo[] = [ { name: 'clients.jpg', status: '', size: '40 KB' }, /* ... */ ];
+        await dashboardPage.waitForAtLeastFileCount(golden.length);
+        const files = await dashboardPage.getFiles();
+        // Compare order-independent — display order depends on locale sort
     });
 });
 ```
-(Source: `src/angular/src/app/tests/unittests/services/utils/rest.service.spec.ts`)
+E2E conventions:
+- Page objects extend `App` (`src/e2e/tests/app.ts`); `navigateTo()` waits for container visibility BEFORE row visibility (distinguishes "page not loaded" from "no data")
+- Locators anchored with `^...$` regex via `escapeRegex` (`src/e2e/tests/helpers.ts`) to avoid prefix collisions (joke vs joke.png)
+- Seed state via backend API in `test.beforeAll` using `src/e2e/tests/fixtures/seed-state.ts` (`seedMultiple`, `seedStatus`); targets `'DOWNLOADED' | 'STOPPED' | 'DELETED'`; polls for DISPLAY labels in the badge (Synced/Failed/Deleted), never raw enum names; URL `sub=` params use enum values (`downloading`, `stopped`), not display labels
+- Unicode file names in fixtures ('áßç déÀ.mp4', 'üæÒ') — always `encodeURIComponent` file names in URLs
+- Extract button is disabled in e2e (no archive fixtures): assert `toBeDisabled()`, don't click
 
-### Mocking (Angular)
+## Mocking
 
-- **HTTP:** `provideHttpClientTesting()` + `HttpTestingController`. Set expectations with `httpMock.expectOne(url).flush(body[, {status, statusText}])` or `.error(new ErrorEvent(...))`, then assert and call `httpMock.verify()`.
-- **Async:** wrap the `it` body in `fakeAsync(() => { ... })`; subscribe and assert synchronously after `flush`.
-- **Service mocks:** reusable fakes in `src/angular/src/app/tests/mocks/` (e.g. `mock-rest.service.ts`, `mock-view-file.service.ts`) supplied via TestBed `providers`/`useClass`.
-- **What to mock:** HTTP, DOM/storage, stream registries, and cross-service collaborators. **What not to mock:** the service under test and pure value objects (`WebReaction`, pipes).
+**Python:** `unittest.mock` (MagicMock, patch, ANY)
+```python
+@patch('controller.scan_manager.ScannerProcess')
+@patch('controller.scan_manager.ActiveScanner')
+def test_init_creates_scanners_and_processes(self, mock_active_scanner, mock_scanner_process):
+    ...
+self.manager.logger.info.assert_called_with("Sonarr webhook import enqueued: 'File.A'")
+```
+- Mock the `context` object (config + logger) via `tests.helpers.create_mock_context()`
+- `@patch` at the import site of the module under test (`'controller.scan_manager.ScannerProcess'`)
+- Web handler tests use `webtest.TestApp` against the real Bottle app with mocked services (`tests/unittests/test_web/`, `tests/integration/test_web/test_web_app.py`)
 
-### Coverage (Angular)
+**Angular:** hand-written mock classes in `src/angular/src/app/tests/mocks/` (no auto-mocking library)
+```typescript
+// mocks/mock-model-file.service.ts
+export class MockModelFileService {
+    _files = new Subject<Immutable.Map<string, ModelFile>>();
+    get files(): Observable<Immutable.Map<string, ModelFile>> {
+        return this._files.asObservable();
+    }
+}
+```
+- Expose a `Subject` backing field (`_files`) so tests can push emissions
+- HTTP mocked with `provideHttpClientTesting()` + `HttpTestingController`
+- SSE mocked with `mocks/mock-event-source.ts`
+- Available mocks: rest, model-file, storage, stream-service-registry, view-file, view-file-options services
 
-Enforced in `src/angular/karma.conf.js` `coverageReporter.check.global`:
-- statements 83, branches 68, functions 79, lines 83. HTML report → `src/angular/coverage/`.
+**What to Mock:**
+- Python: process spawning (ScannerProcess, LFTP), SSH, the context/config/logger
+- Angular: all HTTP, EventSource/SSE streams, sibling services
 
----
+**What NOT to Mock:**
+- Python: `Config` behavior when validation matters (use `mock_context_with_real_config`); Bottle routing in handler tests (webtest hits the real app)
+- E2E: nothing — full Docker stack with a real lftp remote container
 
-## End-to-End Tests (Playwright)
+## Fixtures and Factories
 
-### Framework
+**Python:**
+- `src/python/tests/helpers/__init__.py` — context/logger factories (importable from both pytest and unittest styles)
+- `src/python/tests/helpers/wsgi_stream.py` — WSGI stream helper for SSE tests
+- `src/python/tests/utils.py` — `TestUtils.chmod_from_to` for permission tests
+- `src/python/tests/unittests/test_controller/base.py` — shared base for controller tests
+- `testfixtures.TempDirectory` used where real dirs are needed (e.g., `test_multiprocessing_logger.py`)
 
-- **Runner:** Playwright `@playwright/test` against a running Docker image (chromium, Desktop Chrome).
-- **Two configs:** `src/e2e/playwright.config.ts` (canonical, `baseURL` from `APP_BASE_URL` default `http://myapp:8800`) and `src/angular/playwright.config.ts`. Tests run from `src/e2e/`.
+**Angular:**
+- `src/angular/src/app/tests/fixtures/mock-model-files.ts` — dev fixture data; `mock-model-files.prod.ts` is an empty stub swapped in by prod `fileReplacements` in `src/angular/angular.json` so fixtures never ship
 
-### Run Commands
+**E2E:**
+- `src/e2e/tests/fixtures/seed-state.ts` — drives backend into known states via `/server/command/*` endpoints; applies a 100 B/s rate limit before STOPPED seeding so `stop` catches files mid-transfer
+- `src/e2e/tests/fixtures/csp-listener.ts` — extends Playwright `test` to fail on CSP violations
+- Remote file fixtures baked into the e2e remote Docker image (`make run-remote-server` for local dev)
 
-```bash
-make run-tests-e2e            # Full docker harness (CI path; amd64 + arm64 on main/tags)
-cd src/e2e && npm test         # playwright test
-cd src/e2e && npm run test:headed | test:debug
+## Coverage
+
+**Python** (`src/python/pyproject.toml` `[tool.coverage.*]`):
+- `fail_under = 88`, `branch = true`, `show_missing = true`
+- Omits `tests/*`, `docs/*`; excludes `pragma: no cover`, `__main__` blocks, bare `pass`
+- HTML output to `htmlcov/`
+- View: `make coverage-python` (runs `poetry run pytest --cov --cov-report=term-missing --cov-report=html` from `src/python/`)
+
+**Angular** (`src/angular/karma.conf.js` `coverageReporter.check.global`):
+- statements 83 / branches 68 / functions 79 / lines 83
+- Enforced in CI because the Docker test CMD passes `--code-coverage` (`src/docker/test/angular/Dockerfile`)
+- HTML output to `src/angular/coverage/`
+
+**E2E:** no coverage; HTML report to `src/e2e/playwright-report/` (`open: 'never'`).
+
+## Test Types
+
+**Unit Tests (Python):** `src/python/tests/unittests/` — per-class tests with mocked context; run with everything else by the Docker pytest invocation (no marker separation; the container CMD is plain `pytest -v -p no:cacheprovider` from `/src`).
+
+**Integration Tests (Python):** `src/python/tests/integration/` — real lftp protocol (`test_lftp/`), real extraction (`test_controller/test_extract/`), full web app via webtest (`test_web/`). The python test container includes a local sshd + test user so SSH-dependent tests run for real.
+
+**Unit Tests (Angular):** `src/angular/src/app/tests/unittests/` — services, components (pages/), pipes (common/).
+
+**E2E Tests:** `src/e2e/tests/*.spec.ts` — Playwright against the built Docker image plus an lftp remote container; run via `make run-tests-e2e` (orchestrated by `src/docker/test/e2e/run_make_target.sh`); CI runs amd64 always, arm64 on main/tags.
+
+**Script Tests:** `scripts/verify-release-metadata.test.mjs` — node built-in test runner.
+
+## Common Patterns
+
+**Async Testing (Angular):** `fakeAsync(() => { ... })` wrapper + `HttpTestingController.flush()`; count emissions with a local `subscriberIndex` variable and assert the count after flushing.
+
+**Async Testing (E2E):** prefer `page.waitForFunction` / `locator.waitFor({ state: 'visible' })` with explicit timeouts over fixed sleeps; e.g., `DashboardPage.waitForAtLeastFileCount` waits for row count AND non-empty cell text.
+
+**Error Testing (Python):** flush error responses through webtest and assert status; logger assertions via `self.manager.logger.info.assert_any_call(...)`.
+
+**Error Testing (Angular):** flush HTTP errors and assert the service-level reaction object:
+```typescript
+httpMock.expectOne("/server/request").flush("Not found", {status: 404, statusText: "Bad Request"});
+// then assert reaction.success === false and reaction.errorMessage
 ```
 
-### Config & Determinism
+**Timeout discipline (Python):** every test is bounded by the global 60s pytest-timeout; do not write tests that legitimately need longer — restructure instead.
 
-`src/e2e/playwright.config.ts`:
-- `fullyParallel: false`, `workers: 1`, retries `2` in CI / `0` local — **stateful sequential** tests.
-- `locale: 'en-US'` forced to prevent arm64/amd64 ICU sort divergence. Tests that assert file ordering sort order-independently (`dashboard.page.spec.ts` sorts both actual and golden before comparing) — preserve this; do not assert raw display order.
-- `trace: 'on-first-retry'`, `screenshot: 'only-on-failure'`; `timeout: 30000`, `expect.timeout` 10s CI / 5s local.
-
-### Structure
-
-- **Page Object Model:** `src/e2e/tests/*.page.ts` classes extend a base `App` (`dashboard.page.ts`, `settings.page.ts`); specs are `*.page.spec.ts` / `*.spec.ts`.
-- **Fixtures:** `src/e2e/tests/fixtures/` — `seed-state.ts` (typed backend seed helpers hitting real `/server/command/*` endpoints), `csp-listener.ts` (extends `test`/`expect` to fail on CSP violations). Import `test`/`expect` from the CSP fixture, not bare `@playwright/test`, when CSP enforcement matters.
-- **Shared helpers:** `src/e2e/tests/helpers.ts` (`escapeRegex`), `src/e2e/urls.ts` (`Paths`).
-
-### E2E Conventions (project memory — must follow)
-
-- URL `sub=` params use **enum values** (`downloading`, `stopped`), not display labels (`Syncing`, `Failed`). Status display labels (`Synced`, `Failed`, `Deleted`) are mapped in `seed-state.ts` and rendered by `transfer-row.component.ts`; seed helpers poll for the **display** string in the DOM but drive state via enum endpoints.
-- The bulk-bar **Extract** button is disabled in E2E (no archive fixtures): assert `toBeDisabled()`, do not click it.
-- E2E is **not** covered by the Angular eslint config (`eslint.config.js` ignores `e2e/`).
+**Build verification for Python phases:** run BOTH `pytest` and `ruff check src/python/` (whole tree) — CI gates them separately.
 
 ---
 
-## Release-Metadata Tests
+*Testing analysis: 2026-06-09*
 
-- `npm run test:release-metadata` → `node --test scripts/verify-release-metadata.test.mjs` (CI job `unittests-release-metadata`). Guards that `package.json` / `pyproject.toml` versions match the release tag.
-
----
-
-## Common Patterns Summary
-
-**Async testing:**
-- Python: stdlib mocks; per-test 60s timeout via `pytest-timeout`.
-- Angular: `fakeAsync(() => { ...; httpMock.expectOne(url).flush(...); expect(...); httpMock.verify(); })`.
-- E2E: `async ({ page }) => { await expect(locator).toBeVisible(); }` with explicit `waitFor`/`waitForFunction` over fixed sleeps.
-
-**Error testing:**
-- Python: assert the mapped HTTP status / raised `AppError` subclass.
-- Angular: flush an error response (`.flush("Not found", {status: 404})` or `.error(new ErrorEvent(...))`) and assert `reaction.success === false` plus `reaction.errorMessage`.
-
----
-
-*Testing analysis: 2026-06-02*

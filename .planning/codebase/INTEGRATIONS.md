@@ -1,114 +1,110 @@
 # External Integrations
 
-**Analysis Date:** 2026-06-02
+**Analysis Date:** 2026-06-09
 
 ## APIs & External Services
 
-**Media managers (*arr):**
-- Sonarr - TV import detection and connection health checks.
-  - SDK/Client: `requests` (`src/python/web/handler/config.py`).
-  - Endpoint called: `GET {sonarr_url}/api/v3/system/status` with 10s timeout, `allow_redirects=False`.
-  - Auth: `X-Api-Key` header; key from `config.sonarr.sonarr_api_key` (secret, encryptable at rest).
-  - Config: `[Sonarr] enabled / sonarr_url / sonarr_api_key` in `settings.cfg`.
-  - Test route: `POST /server/config/sonarr/test-connection` (rate-limited 5/60s).
-- Radarr - Movie import detection and connection health checks.
-  - Same client/endpoint shape as Sonarr (`_test_arr_connection` in `src/python/web/handler/config.py`).
-  - Auth: `X-Api-Key` header; key from `config.radarr.radarr_api_key` (secret).
-  - Config: `[Radarr] enabled / radarr_url / radarr_api_key`.
-  - Test route: `POST /server/config/radarr/test-connection` (rate-limited 5/60s).
-- SSRF protection: `ConfigHandler._validate_url()` rejects non-http(s) schemes and URLs resolving to private/loopback/reserved/link-local IPs before any outbound request. Known limitation documented in code: DNS-rebinding (TOCTOU) not mitigated (out of scope for a homelab tool).
+**Media managers (*arr ecosystem):**
+- Sonarr - Inbound webhook source + outbound connection test
+  - Inbound: `POST /server/webhook/sonarr` handled by `src/python/web/handler/webhook.py` (`WebhookHandler`)
+  - Outbound: `GET {sonarr_url}/api/v3/system/status` with `X-Api-Key` header for connection testing (`src/python/web/handler/config.py` `_test_arr_connection`, 10s timeout, redirects disabled, SSRF URL validation)
+  - Auth: `sonarr.sonarr_api_key` config field (secret, Fernet-encrypted at rest)
+- Radarr - Same pattern as Sonarr
+  - Inbound: `POST /server/webhook/radarr` (`src/python/web/handler/webhook.py`)
+  - Outbound: `GET {radarr_url}/api/v3/system/status` (`src/python/web/handler/config.py`)
+  - Auth: `radarr.radarr_api_key` config field (secret)
 
-**Remote seedbox (SSH/SFTP via CLI):**
-- `lftp` - Primary file mirroring engine, driven via `pexpect` (`src/python/lftp/lftp.py`). Uses SFTP transport, configurable parallelism, connection limits, rate limiting, and temp-file usage.
-- `ssh`/`scp` (`openssh-client`) - Deploys/invokes the remote `scanfs` script and transfers status (`src/python/ssh/sshcp.py`). Distinguishes transient (`Timed out`, `Connection refused`) vs permanent (`Incorrect password`, `Remote host key has changed`, `Bad hostname`) error classes for retry decisions.
-- Connection config: `[Lftp] remote_address / remote_port (default 22) / remote_username / remote_password (secret) / use_ssh_key / remote_path / local_path`.
+**Remote seedbox/server (core integration):**
+- SSH/SCP - Remote file scanning transport
+  - Client: `pexpect`-driven `ssh`/`scp` (`src/python/ssh/sshcp.py`, 180s timeout, transient vs permanent error classification)
+  - The `scanfs` PyInstaller binary (`src/python/scan_fs.py`) is copied to the remote host and executed over SSH to enumerate remote files
+  - Auth: password (`lftp.remote_password`, encrypted at rest) or SSH key (`lftp.use_ssh_key`); host keys `StrictHostKeyChecking accept-new` seeded by `src/docker/build/docker-image/entrypoint.sh` and Dockerfile
+- LFTP - File transfer engine
+  - Client: `pexpect` wrapper around system `lftp` binary (`src/python/lftp/lftp.py`, status parsing in `src/python/lftp/job_status_parser.py`)
+  - Config: `lftp.*` section in `settings.cfg` (remote_address, remote_port, parallelism/connection limits, rate_limit)
+
+**GitHub Releases API (frontend, client-side):**
+- `https://api.github.com/repos/thejuran/seedsyncarr/releases/latest` - New-version check from the browser (`src/angular/src/app/services/utils/version-check.service.ts`, compared with `compare-versions`)
+- Auth: none (public API)
 
 ## Data Storage
 
 **Databases:**
-- None. No SQL/NoSQL database, ORM, or DB client present.
+- None. No SQL/NoSQL database.
+- State persistence is flat-file under the config dir (default `/config`):
+  - `settings.cfg` - config (`src/python/common/config.py` via `src/python/common/persist.py`)
+  - `controller.persist` - downloaded/extracted file sets (`src/python/controller/controller_persist.py`)
+  - `autoqueue.persist` - auto-queue patterns (`src/python/controller/auto_queue.py`)
+  - `secrets.key` - Fernet key, 0600 perms (`src/python/common/encryption.py`)
 
 **File Storage:**
-- Local filesystem only. State persisted as flat files in the config directory:
-  - `settings.cfg` - INI config (`src/python/common/config.py`).
-  - `controller.persist`, `autoqueue.persist` - Custom-serialized app state (`src/python/common/persist.py`).
-  - `secrets.key` - Fernet encryption key (0600).
-  - Corrupt persist/config files are auto-backed-up to `*.N.bak`.
-- Downloaded files land in `config.lftp.local_path`; archives extracted to `config.controller.extract_path` (or local path) by `patool`.
+- Local filesystem only: `/downloads` (synced files) and optional extract path (`controller.extract_path`); remote filesystem reached via SSH/LFTP
 
 **Caching:**
-- None at the application layer. (pytest cache redirected to `/tmp/.pytest_cache`; Angular build cache under `src/angular/.angular/cache/`.)
+- None (in-process memory only; `src/python/controller/memory_monitor.py` watches process memory)
 
 ## Authentication & Identity
 
-**API auth (inbound):**
-- Custom Bearer-token scheme. All `/server/*` endpoints require `Authorization: Bearer <api_token>` when `config.general.api_token` is set; validated in the `before_request` hook of `src/python/web/web_app.py`.
-  - Exempt paths: `/server/stream` (SSE — EventSource cannot send headers), `/server/status` (health check).
-  - Exempt prefixes: `/server/webhook/` (uses HMAC instead).
-- Host-header validation against `config.general.allowed_hostname` in the same hook (anti-DNS-rebinding for the UI).
-- If no API token is configured, all requests are accepted — startup emits explicit security warnings (`Seedsyncarr._emit_startup_warnings` in `src/python/seedsyncarr.py`).
-
-**Webhook auth (inbound):**
-- HMAC-SHA256 over the raw request body, compared constant-time against the `X-Webhook-Signature` header (`WebhookHandler._verify_hmac` in `src/python/web/handler/webhook.py`).
-- Secret: `config.general.webhook_secret`. When empty, verification is skipped (backward compat). When `config.general.webhook_require_secret` is true but no secret is set, webhooks fail closed with HTTP 503.
-
-**Encryption at rest:**
-- Fernet (symmetric) encryption of secret config fields when `[Encryption] enabled = true` (`src/python/common/encryption.py`). Plaintext secrets are transparently re-encrypted in place on startup.
-
-**No third-party identity provider** (no OAuth/OIDC/SSO for the app itself).
+**Auth Provider:**
+- Custom, config-driven (no external IdP):
+  - Optional Bearer token on `/server/*` API routes: `general.api_token`, constant-time compare via `hmac.compare_digest` (`src/python/web/web_app.py`)
+  - Exempt paths: `/server/stream` (SSE cannot send headers), `/server/status` (health check), `/server/webhook/*` (HMAC instead) — listed in `src/python/web/web_app.py`
+  - Optional Host-header allowlist: `general.allowed_hostname` (DNS-rebinding defense, `src/python/web/web_app.py`)
+  - Webhook HMAC-SHA256: `general.webhook_secret` verified against `X-Webhook-Signature` header, constant-time compare (`src/python/web/handler/webhook.py` `_verify_hmac`); `general.webhook_require_secret` fail-closed mode returns 503 when on with no secret set
+  - Rate limiting: in-process token budget per route, e.g. 60 req/60s on webhooks and config set, 5 req/60s on *arr connection tests (`src/python/web/rate_limit.py`)
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None. No Sentry/Rollbar/Datadog integration.
+- None (no Sentry or similar)
 
 **Logs:**
-- Python `logging` with `RotatingFileHandler` (max size + backup count from `Constants`) when `--logdir` is set, else stdout (`Seedsyncarr._create_logger`). Separate main log and web-access log.
-- Log-injection (CWE-117) defense: webhook-supplied values sanitized via `sanitize_log_value` before logging (`src/python/controller/webhook_manager.py`).
-- Frontend log stream surfaced to the UI via SSE (`/server/stream`, `LogStreamHandler`).
-
-**Health/status:**
-- `GET /server/status` (auth-exempt) and SSE status stream (`StatusStreamHandler`, `HeartbeatStreamHandler` pinging every 15s).
+- Python `logging` with `RotatingFileHandler` to the config/log dir (`src/python/seedsyncarr.py`); multiprocessing-aware logger in `src/python/common/multiprocessing_logger.py`
+- HTTP access logs via Paste `TransLogger` (`src/python/web/web_app_job.py`)
+- Log streaming to the UI over SSE: `/server/stream` aggregate stream plus handlers in `src/python/web/handler/stream_log.py`, `stream_model.py`, `stream_status.py`, `stream_heartbeat.py`
+- Webhook-supplied values sanitized before logging (CWE-117 guard, `src/python/controller/webhook_manager.py`)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Self-hosted Docker container. Image published to GitHub Container Registry (`ghcr.io/<repo>`).
+- Self-hosted Docker (user's NAS or any Docker host). Image: `ghcr.io/thejuran/seedsyncarr`
+- Docs site on GitHub Pages (mkdocs-material build, deployed by `peaceiris/actions-gh-pages` in CI)
 
 **CI Pipeline:**
-- GitHub Actions, single workflow `.github/workflows/ci.yml`. Triggers: push to `main`, semver tags `v[0-9]+.[0-9]+.[0-9]+`, PRs to `main`, manual dispatch.
-- Jobs: release-metadata verifier tests (`npm run test:release-metadata`), Python unit tests (`make run-tests-python`), Angular unit tests (`make run-tests-angular`), Python lint (`ruff check src/python/`), Angular lint (`npm run lint`), Docker image build (`make docker-image`), and matrix E2E tests on the built image per arch (`make run-tests-e2e`).
-- Registry auth: `docker login ghcr.io` using `secrets.GITHUB_TOKEN`. Multi-arch via QEMU + Buildx.
-- Note: CI runs `ruff` as a separate gate from pytest — Python phases must pass whole-tree ruff.
+- GitHub Actions: `.github/workflows/ci.yml`
+  - Gates: Node release-metadata tests, Python unit tests (in Docker, with GHCR build cache), Angular unit tests, `ruff check src/python/` (separate lint gate), Angular ESLint
+  - Build: multi-arch Docker image via Buildx/QEMU, staged to `ghcr.io/<repo>` with run-number tags
+  - E2E: Playwright against the built image; amd64 on PRs, amd64+arm64 on main/tags (arm64 on `ubuntu-24.04-arm` runner)
+  - Publish on `v*` tags: GHCR `:vX.Y.Z` + `:latest`, GitHub Release (gh CLI + `release-notes.md`), PyPI (trusted publishing via `id-token: write`, `pypa/gh-action-pypi-publish`)
+  - Publish on main: GHCR `:dev` tag, docs to GitHub Pages
+  - Release metadata guard: `scripts/verify-release-metadata.mjs` checks version consistency against the tag
 
 ## Environment Configuration
 
-**Required app config (in `settings.cfg`, not env vars):**
-- `[Lftp]` remote connection: `remote_address`, `remote_port`, `remote_username`, `remote_password` (or `use_ssh_key`), `remote_path`, `local_path`.
-- `[Web] port` (default 8800).
-- Optional integrations: `[Sonarr]`, `[Radarr]`, `[AutoDelete]`, `[AutoQueue]`, `[Encryption]`.
-
-**CI/deploy env vars:**
-- `GITHUB_TOKEN`, `STAGING_REGISTRY`, `STAGING_VERSION` (GitHub Actions).
+**Required env vars:**
+- None required by the Python app itself (config is file-based in `/config/settings.cfg`)
+- Docker runtime (optional): `PUID`, `PGID` (default 1000/1000), `ENTRYPOINT_CHOWN_RECURSIVE` (`src/docker/build/docker-image/entrypoint.sh`)
+- CI: `GITHUB_TOKEN` (GHCR login, release creation); PyPI uses OIDC trusted publishing (no stored token)
 
 **Secrets location:**
-- App secrets live in `settings.cfg` (Fernet-encrypted when enabled, key in `secrets.key`).
-- No `.env` file in repo. `.gitleaks.toml` configures secret scanning.
-- AIDesigner design tooling (dev-only, not app runtime) references `AIDESIGNER_API_KEY` / `AIDESIGNER_MCP_ACCESS_TOKEN`; the `aidesigner` MCP server is configured in `.mcp.json` (http transport, OAuth-backed).
+- App secrets live in `/config/settings.cfg`, encrypted with the Fernet key at `/config/secrets.key` (`src/python/common/encryption.py`). Secret fields: `general.webhook_secret`, `general.api_token`, `lftp.remote_password`, `sonarr.sonarr_api_key`, `radarr.radarr_api_key` (marked `secret=True` in `src/python/common/config.py`)
+- No `.env` files in the repo
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- `POST /server/webhook/sonarr` - Sonarr import events; extracts file title, enqueues via `WebhookManager.enqueue_import` (`src/python/web/handler/webhook.py`).
-- `POST /server/webhook/radarr` - Radarr import events; same flow.
-- Both: HMAC-verified (when secret set), rate-limited 60/60s, 1 MB max body, JSON-parsed. Imported names matched case-insensitively against the SeedSyncarr model in the controller thread (`WebhookManager.process`).
+- `POST /server/webhook/sonarr` and `POST /server/webhook/radarr` (`src/python/web/handler/webhook.py`)
+  - Processes `eventType: Download` (import) events; responds 200 to `Test` events
+  - Title extraction fallback chain: `episodeFile.sourcePath`/`movieFile.sourcePath` basename → `release.releaseTitle` → `series.title`/`movie.title`
+  - Protections: 1 MB body cap (413), optional HMAC-SHA256 signature (401), fail-closed 503 mode, 60 req/60s rate limit (429)
+  - Downstream: `WebhookManager.enqueue_import` queues the title; controller thread matches it against the model and feeds the auto-delete lifecycle (`src/python/controller/webhook_manager.py`, `src/python/controller/auto_delete_manager.py` — pack-guard BFS + coverage checks, `dry_run` and `delay_seconds` config in `autodelete` section)
 
 **Outgoing:**
-- Only the Sonarr/Radarr `/api/v3/system/status` connection-test calls (no event push-out, no other outbound callbacks).
+- None. SeedSyncarr does not push webhooks; outbound HTTP is limited to the Sonarr/Radarr connection-test endpoint above.
 
-**Server-Sent Events (streaming, outbound to UI):**
-- `GET /server/stream` - Multiplexed SSE for model, status, log, and heartbeat streams (`src/python/web/web_app.py`, `src/python/web/handler/stream_*.py`). Consumed via `EventSource` in `src/angular/src/app/services/base/stream-service.registry.ts`.
+**Server-push to UI:**
+- SSE stream at `GET /server/stream` (model, status, log records, heartbeat) consumed by Angular `EventSource` services (`src/angular/src/app/services/base/stream-service.registry.ts`)
 
 ---
 
-*Integration audit: 2026-06-02*
+*Integration audit: 2026-06-09*
