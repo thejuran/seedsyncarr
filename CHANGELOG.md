@@ -4,6 +4,15 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.1] - 2026-06-15
+
+A security-maintenance release. No behavior changes — it pulls in upstream patches for two flagged frontend build/runtime dependencies. Existing config files load unchanged with no migration step.
+
+### Security
+
+- Updated `@angular/core` to 22.0.1, which patches a high-severity client-hydration issue (DOM clobbering and response-cache poisoning) in the Angular runtime (resolves Dependabot alert GHSA-rgjc-h3x7-9mwg).
+- Pinned `esbuild` to 0.28.1 to clear two flagged build-time advisories (Dependabot alerts #20 and #21).
+
 ## [1.4.0] - 2026-06-03
 
 A hardening and documentation release that closes the remaining public-facing rough edges and rebuilds the project's documentation surface. The one breaking change is the config-set endpoint moving from a GET path to a POST body so credentials no longer travel in URLs or server logs; on-disk config files (including encrypted ones) load unchanged with no migration step.
