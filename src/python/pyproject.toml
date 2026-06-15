@@ -16,7 +16,7 @@ dependencies = [
     "pytz>=2025.2",
     "requests>=2.33.0",
     "tblib>=3.2.2",
-    "cryptography>=44.0.0,<47",
+    "cryptography (>=48.0.1,<49)",
 ]
 
 [project.optional-dependencies]
@@ -54,7 +54,7 @@ pexpect = "^4.9.0"
 pytz = ">=2025.2,<2027.0"
 requests = "^2.33.0"
 tblib = "^3.2.2"
-cryptography = ">=44.0.0,<47"
+cryptography = ">=48.0.1,<49"
 
 [tool.poetry.group.dev.dependencies]
 mkdocs = "^1.6.1"

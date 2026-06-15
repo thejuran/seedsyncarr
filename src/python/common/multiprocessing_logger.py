@@ -21,7 +21,17 @@ class MultiprocessingLogger:
 
     def __init__(self, base_logger: logging.Logger):
         self.logger = base_logger.getChild("MPLogger")
-        self.__mp_context = multiprocessing.get_context("spawn")
+        # Prefer "fork" where available (Linux), otherwise fall back to the
+        # platform default ("spawn" on macOS/Windows). Forcing "spawn"
+        # everywhere made the Queue below launch the resource_tracker, which
+        # re-execs the interpreter and re-imports from the app directory; on the
+        # deployed Linux container filesystem that import hung indefinitely, so
+        # __init__ never returned and the server never started. fork needs no
+        # respawn and is correct on Linux; where fork is unavailable, spawn
+        # still works because the spawn-safe __getstate__/__setstate__ below
+        # keep this instance picklable for child processes.
+        start_method = "fork" if "fork" in multiprocessing.get_all_start_methods() else None
+        self.__mp_context = multiprocessing.get_context(start_method)
         self.__queue = self.__mp_context.Queue(-1)
         self.__logger_level = base_logger.getEffectiveLevel()
         self.__listener = threading.Thread(name="MPLoggerListener",
