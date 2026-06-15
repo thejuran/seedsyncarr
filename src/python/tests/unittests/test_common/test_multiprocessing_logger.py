@@ -253,6 +253,28 @@ class TestMultiprocessingLogger(unittest.TestCase):
         self.assertIsNone(mp_logger.propagate_exception())
 
     @pytest.mark.timeout(5)
+    def test_context_uses_fork_where_available(self):
+        # REGRESSION: forcing the "spawn" start method for the logger Queue made
+        # the runtime hang on the deployed Linux container. Constructing a
+        # spawn-context Queue launches the multiprocessing resource_tracker,
+        # which re-execs the interpreter and re-imports from the app directory;
+        # on the NAS's container filesystem that import blocked indefinitely, so
+        # MultiprocessingLogger.__init__ never returned and the server never
+        # started. Where "fork" is available (Linux), the context must NOT be
+        # spawn. On platforms without fork (macOS default / Windows) the default
+        # is spawn and that is correct, so this assertion only applies when fork
+        # is an available start method.
+        import multiprocessing
+        if "fork" not in multiprocessing.get_all_start_methods():
+            self.skipTest("fork start method unavailable on this platform")
+        mp_logger = MultiprocessingLogger(self.logger)
+        ctx = mp_logger._MultiprocessingLogger__mp_context
+        self.assertNotEqual(
+            ctx.get_start_method(), "spawn",
+            "logger Queue must not use the spawn start method where fork is available "
+            "(spawn hangs the resource_tracker on the deployed Linux container)")
+
+    @pytest.mark.timeout(5)
     def test_main_logger_receives_records(self):
         mp_logger = MultiprocessingLogger(self.logger)
         p_1 = mp_logger._MultiprocessingLogger__mp_context.Process(
