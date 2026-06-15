@@ -4,6 +4,32 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.2] - 2026-06-15
+
+A bug-fix and security-maintenance release. It fixes a startup hang that could
+leave the container unable to serve after a fresh deploy, and clears the
+remaining flagged dependency advisories. Existing config files load unchanged
+with no migration step.
+
+### Fixed
+
+- Fixed a startup hang on Linux deployments. The multiprocessing logger forced
+  the `spawn` start method, which launched a resource-tracker helper that
+  re-execs the interpreter; on some container filesystems that step blocked
+  indefinitely, so the web server never started and the container wedged during
+  config setup. The logger now uses `fork` where available (Linux), falling
+  back to the platform default elsewhere.
+
+### Security
+
+- Updated `cryptography` to 48.0.1, which ships patched OpenSSL in its wheels
+  (resolves two high-severity Dependabot alerts).
+- Updated `@angular/common` and `@angular/compiler` to 22.0.1, resolving
+  high-severity cache-poisoning and date-formatting denial-of-service issues and
+  a two-way-binding sanitization bypass.
+- Updated the `vite` and `@babel/core` build dependencies to patched versions,
+  clearing the remaining flagged build-time advisories.
+
 ## [1.4.1] - 2026-06-15
 
 A security-maintenance release. No behavior changes — it pulls in upstream patches for two flagged frontend build/runtime dependencies. Existing config files load unchanged with no migration step.
