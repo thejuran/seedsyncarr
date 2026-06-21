@@ -2,11 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.4.1
 milestone_name: Scanner Auto-Recovery
-status: roadmap_complete
-last_updated: "2026-06-21T22:15:00.000Z"
-last_activity: 2026-06-21
+status: planning
+stopped_at: Phase 114 context gathered
+last_updated: "2026-06-21T21:17:04.836Z"
+last_activity: 2026-06-21 — Milestone v1.4.1 roadmap created (single Phase 114)
 progress:
-  total_phases: 2
+  total_phases: 15
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -119,8 +120,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-21T21:30:00.000Z
-Stopped at: v1.4.1 roadmap — Phase 115 (Dependency & Security Maintenance) appended; milestone now 2 phases (114 + 115)
+Last session: 2026-06-21T21:17:04.831Z
+Stopped at: Phase 114 context gathered
 Next action: Plan Phase 114 (Scanner Auto-Recovery) with `/gsd:plan-phase 114` (or discuss first with `/gsd:discuss-phase 114`)
 
 ## Operator Next Steps
