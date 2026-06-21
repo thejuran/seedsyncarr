@@ -36,6 +36,7 @@
 - ✅ v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code - Phases 104-106 (shipped 2026-06-01; no tag until slice 4)
 - ✅ v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra - Phases 107-109 (shipped 2026-06-02; v1.3.0 tag cut)
 - ✅ v1.4.0 — Launch-Hardening for Public Release - Phases 110-113 (shipped 2026-06-03; merged to `main`, `v1.4.0` tag)
+- 🚧 v1.4.1 — Scanner Auto-Recovery - Phases 114-115 (in progress)
 
 ## Phases
 
@@ -365,6 +366,18 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 - [x] **Phase 112: Defensive Guards & Code Hardening** - Unsafe-default startup warnings (non-loopback bind w/o api_token; webhook w/o secret), logged delete-path failures (replace `ignore_errors=True`), AppProcess spawn-context fix (failing test goes green), `.gitignore` for run artifacts, legacy `~/.seedsync` fallback warning (GUARD-01..06) — 3 plans (1 wave) (completed 2026-06-02)
 - [x] **Phase 113: Presentation & Launch Readiness** - Cynical-reader teardown + codex adversarial pass driving a README / SECURITY.md / community-health / release-notes rebuild; Playwright screenshots captured at the milestone-end walkthrough; repo-metadata text drafted for manual maintainer application (LAUNCH-01..06) — 4 plans (3 waves) (completed 2026-06-03)
 
+🚧 v1.4.1 — Scanner Auto-Recovery (Phase 114) — IN PROGRESS
+
+**Milestone Goal:** The seedbox scanner survives transient DNS/network blips and recovers from controller death on its own, instead of silently freezing the file list for days until a manual container restart. Three cohesive behaviors on the same controller/scanner error-handling path: (1) reclassify transient name-resolution failures (`Could not resolve hostname` / `Name or service not known` / a momentary `Bad hostname`) as recoverable so the scanner retries with bounded backoff rather than dying; (2) a bounded-retry guard so a genuinely wrong / persistently-unresolvable hostname or bad credentials still stops and surfaces to the user after a capped number of attempts — no infinite-retry loop that masks a real config error; (3) a controller auto-restart safety net so a permanent-class controller death recovers via the existing `ServiceRestart` path instead of staying down (`server.up=False`) forever. This is a tightly-scoped regression fix that **wires together infrastructure already present in `src/python/`** — no new mechanisms are invented.
+
+**GSD internal label:** `v1.4.1`. Source: resolved debug session `seedbox-files-not-showing` (root-caused 2026-06-19; prior variant `hold-the-dream-not-syncing`) + `.planning/REQUIREMENTS.md`. Two phases: **Phase 114** is the scanner/controller code change (SCAN-01, SCAN-02, SCAN-03, RECOV-01) — one coherent change to the same code path, over-decomposition explicitly avoided. **Phase 115** is a disjoint dependency/security-maintenance track (DEPS-01, DEPS-02) — clearing the open Dependabot security alerts + merging the open Dependabot PRs, each gated on CI green. The two are separated because they have different verification (a code-path regression fix vs. CI-green-per-merge mechanical dependency maintenance with 0 open alerts after).
+
+**CI gate:** Python full suite green AND `ruff check src/python/` clean — note that CI runs ruff as a **separate gate from pytest**, so build-verify must run ruff whole-tree (not just the touched files), not only the test suite. No release/tag/version work happens inside the phase.
+
+- [ ] **Phase 114: Scanner Auto-Recovery** - Reclassify transient name-resolution failures as recoverable so the scanner retries with bounded backoff (SCAN-01, SCAN-02); surface the failure to the user unchanged once retries are exhausted so real config errors still stop (SCAN-03); auto-restart the controller via the existing `ServiceRestart` path after a permanent-class death, itself bounded so an unrecoverable condition doesn't become a restart loop (RECOV-01)
+- [ ] **Phase 115: Dependency & Security Maintenance** - Clear all 8 open Dependabot security alerts (3 HIGH: hono CORS-credentials reflection, piscina prototype-pollution→RCE, undici TLS-cert-validation bypass; 5 MEDIUM: 4× hono, 1× undici cross-user info disclosure) and merge all 7 open Dependabot dependency PRs (#60–#66), each gated on CI green (DEPS-01, DEPS-02)
+
+
 ## Phase Details
 
 ### Phase 101: Webhook + Log-Injection Security Cluster
@@ -612,6 +625,36 @@ Plans:
 
 **UI hint**: yes
 
+### Phase 114: Scanner Auto-Recovery
+
+**Goal**: The seedbox scanner self-heals across transient network/DNS blips and the controller recovers from a permanent-class death on its own — so the file list keeps updating without a manual container restart — while a genuinely wrong hostname or bad credentials still stops and surfaces to the user instead of being masked by an infinite retry loop. This is a single coherent change to the existing controller/scanner error-handling path, reusing infrastructure already present in `src/python/` (`sshcp.py` PERMANENT/TRANSIENT patterns + `_is_transient_ssh_error`; `remote_scanner.py` recoverable classification + `_is_permanent_ssh_error` + `first_run` strictness; `scanner_process.py` `ScannerError` recoverable flag; `scan_manager.py` `propagate_exceptions` / `_check_process_health` / `ScannerProcessDiedError`; `seedsyncarr.py` `run()` `AppError` catch gated on `args.exit`; `common/error.py` `ServiceRestart`) — no new mechanisms are invented.
+**Depends on**: Phase 113 (v1.4.0 shipped on `main`)
+**Requirements**: SCAN-01, SCAN-02, SCAN-03, RECOV-01
+**Success Criteria** (what must be TRUE):
+
+  1. After a transient remote name-resolution blip during a scan (an SSH error matching `Could not resolve hostname` / `Name or service not known`, or a momentary `Bad hostname`), the scanner recovers and resumes updating the file list **without a manual restart** — the failure is classified as recoverable and the scan is retried rather than terminating the scanner (SCAN-01).
+  2. Recoverable scan failures are retried with **bounded backoff** — a capped number of attempts, never an infinite loop — so a flapping name-resolution condition cannot spin forever (SCAN-02).
+  3. A genuinely wrong / persistently-unresolvable hostname or bad credentials still **surfaces an error to the user after the bounded retries are exhausted, exactly as today** (the controller reports the failure / `server.up=False` with the error message) — the retry path never silently masks a permanent configuration error (SCAN-03).
+  4. When the controller dies from a permanent-class error, it **auto-restarts via the existing `ServiceRestart` recovery path** instead of staying down (`server.up=False`) indefinitely; recovery is itself bounded so a genuinely unrecoverable condition does not become a restart loop (RECOV-01).
+  5. **Cross-cutting (regression + CI):** existing scanner/controller behavior for the already-correctly-classified permanent and transient cases is preserved (no functional regression); the full Python suite is green **and** `ruff check src/python/` is clean — note CI runs ruff as a **separate gate from pytest**, so verification must run ruff whole-tree, not only the touched files. No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+### Phase 115: Dependency & Security Maintenance
+
+**Goal**: Every open Dependabot security alert is cleared and every open Dependabot dependency PR is merged, each merge gated on a green CI run — so the public repo shows zero open security alerts and a clean dependency state. This is mechanical dependency/security maintenance kept disjoint from the Phase 114 code change: as of 2026-06-21 the open surface is **8 security alerts** (3 HIGH: `hono` CORS-credentials reflection → patched 4.12.25, `piscina` prototype-pollution→RCE → patched 5.2.0, `undici` TLS-cert-validation bypass → patched 7.28.0; 5 MEDIUM: 4× `hono`, 1× `undici` cross-user info disclosure) and **7 Dependabot PRs** (#60 pyinstaller, #61 ruff, #62 testfixtures, #63 pytest — Python dev-deps; #64 npm_and_yarn group of 18 updates incl. `piscina`; #65 hono; #66 undici — JS), where the open PRs collectively remediate all 8 alerts. Decision: merge **all 7** PRs for a full cleanup. No release/tag/version work happens in-phase — the single `v1.4.1` tag is a milestone-end action.
+**Depends on**: Phase 114 (same milestone; sequenced after the code change so the dependency churn lands on a green, post-fix tree). Independent of Phase 114's code path — disjoint files (manifests/lockfiles vs. `src/python/` scanner/controller).
+**Requirements**: DEPS-01, DEPS-02
+**Success Criteria** (what must be TRUE):
+
+  1. After the upgrades, all **8** Dependabot security alerts show closed/resolved — `0 open` alerts on the repo (the 3 HIGH `hono`/`piscina`/`undici` and the 5 MEDIUM `hono`/`undici` items are all remediated to their patched versions) (DEPS-01).
+  2. All **7** open Dependabot PRs (#60–#66) are merged, and each is merged **only after its own CI run is green** — no PR is merged on a red or pending CI (DEPS-02).
+  3. The 18-update npm group PR (#64) is merged **without regressing the Angular build or the Karma/Playwright E2E gates** — `ng build` succeeds and the Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) and the Playwright suite hold on amd64 + arm64 (DEPS-02).
+  4. After the Python dev-dep bumps (#60–#63), the Python suite is green **and** `ruff check src/python/` is clean — note `ruff` itself bumps in #61 and CI runs `ruff` as a **separate gate from pytest**, so verification must run ruff whole-tree, not only pytest, with the new ruff version (DEPS-02).
+  5. **Cross-cutting (scope guard):** no release/tag/version work happens inside this phase — bumping the app version and cutting the single `v1.4.1` tag are milestone-end actions, not part of this dependency-maintenance phase (DEPS-01, DEPS-02).
+
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -648,7 +691,9 @@ Plans:
 | 111. Config-Set Endpoint Migration | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
 | 112. Defensive Guards & Code Hardening | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
 | 113. Presentation & Launch Readiness | v1.4.0 | 4/4 | Complete   | 2026-06-03 |
+| 114. Scanner Auto-Recovery | v1.4.1 | 0/? | Not started | - |
+| 115. Dependency & Security Maintenance | v1.4.1 | 0/? | Not started | - |
 
 ---
 
-*Last updated: 2026-06-02 — Milestone v1.4.0 (Launch-Hardening for Public Release) roadmap appended: Phases 110-113 derived from the 18 v1.4.0 requirements (SCAN-01/02, CFG-01..04, GUARD-01..06, LAUNCH-01..06). Two disjoint tracks (code + presentation) plus the cross-cutting config-set GET→POST cutover. Phase 110 (SCAN) gates fix scope and runs first; 111 (CFG) is the one breaking change; 112 (GUARD) clusters the defensive fixes incl. the AppProcess spawn fix; 113 (LAUNCH) is the presentation rebuild, sequenced last. Branch `launch-hardening`; single `v1.4.0` tag is a milestone-end maintainer action after the NAS walkthrough + CI green + sign-off.*
+*Last updated: 2026-06-21 — Milestone v1.4.1 (Scanner Auto-Recovery) now has **2 phases**. Phase 114 (Scanner Auto-Recovery, SCAN-01/02/03 + RECOV-01) is the scanner/controller code change — one coherent change to the same error-handling path, reusing existing `src/python/` infrastructure (sshcp/remote_scanner/scanner_process/scan_manager/seedsyncarr/common.error); CI: Python suite green AND `ruff check src/python/` clean (ruff is a separate gate from pytest). Phase 115 (Dependency & Security Maintenance, DEPS-01/02) appended as a disjoint maintenance track — clear all 8 open Dependabot security alerts (3 HIGH hono/piscina/undici, 5 MEDIUM hono/undici) and merge all 7 open Dependabot PRs (#60–#66, incl. the 18-update npm group), each gated on CI green; separated from Phase 114 because verification differs (a code-path regression fix vs. CI-green-per-merge mechanical dependency maintenance with 0 open alerts after). No release/tag/version work in either phase — the single `v1.4.1` tag is a milestone-end action. 100% requirement coverage (6/6 mapped).*

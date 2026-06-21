@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.4.1
 milestone_name: Scanner Auto-Recovery
-status: planning
-last_updated: "2026-06-21T20:57:47.883Z"
+status: roadmap_complete
+last_updated: "2026-06-21T22:15:00.000Z"
 last_activity: 2026-06-21
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-02)
+See: .planning/PROJECT.md (updated 2026-06-21)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 113 — presentation-launch-readiness
+**Current focus:** Phase 114 — Scanner Auto-Recovery (roadmap complete, ready to plan)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 114 — Scanner Auto-Recovery (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-21 — Milestone v1.4.1 started
+Status: Roadmap complete — ready to plan Phase 114
+Last activity: 2026-06-21 — Milestone v1.4.1 roadmap created (single Phase 114)
 
 ## Accumulated Context
 
@@ -35,29 +35,39 @@ Last activity: 2026-06-21 — Milestone v1.4.1 started
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
-Roadmap shape (v1.4.0): 4 phases derived from the 18 v1.4.0 requirements (SCAN-01/02, CFG-01..04, GUARD-01..06, LAUNCH-01..06). Two largely-disjoint tracks (code + presentation) plus one cross-cutting change.
+Roadmap shape (v1.4.1): **two phases**. Phase 114 (Scanner Auto-Recovery), derived from the 4 scanner/controller requirements (SCAN-01, SCAN-02, SCAN-03, RECOV-01) — one coherent change to the same controller/scanner error-handling path (transient-error reclassification + bounded retry + surface-on-exhaustion + controller auto-restart); over-decomposition explicitly avoided, a tightly-scoped regression fix. Phase 115 (Dependency & Security Maintenance), derived from DEPS-01/DEPS-02 — a disjoint dependency/security-maintenance track (clear the 8 open Dependabot security alerts + merge the 7 open Dependabot PRs, each gated on CI green). The two are separate phases because their verification differs: a code-path regression fix (114) vs. CI-green-per-merge mechanical dependency maintenance with 0 open alerts after (115). **Current position is unchanged — Phase 114 is still the next phase to plan;** Phase 115 was appended after 114, not inserted before it.
 
-- **Phase 110 (Hostile-Reader Discovery Pass — SCAN-01/02)** runs first and **gates the fix scope**. It produces a triaged, severity-ranked findings artifact; each finding marked fold-into-fix-phase (with target) or parked (with rationale). Has a findings checkpoint (autonomous:false appropriate); no production code lands here. Folded-in findings inform Phases 111-112 before they are planned in detail.
-- **Phase 111 (Config-Set Endpoint Migration — CFG-01..04)** is the one breaking HTTP-contract change: `/server/config/set` GET→POST hard cutover (JSON body), legacy GET path fully removed. Spans backend (`web/handler/config.py`), Angular (`services/settings/config.service.ts`), and E2E (`src/e2e/tests/settings.page.ts`, `src/docker/test/e2e/configure/setup_seedsyncarr.sh`). On-disk config format is unchanged (CFG-04). Isolated so it can be walked through carefully.
-- **Phase 112 (Defensive Guards & Code Hardening — GUARD-01..06)** clusters the independent small fixes: non-loopback-without-token + webhook-without-secret startup warnings, logged delete-path failures (replace `ignore_errors=True`), `.gitignore` for run artifacts, legacy `~/.seedsync` fallback warning, and the AppProcess spawn-context fix. GUARD-04 has a concrete bar: `test_app_process.py::test_process_with_long_running_thread_terminates_properly` must go green with no test deleted/skipped, by creating AppProcess's `Queue()`/`Event()` from a spawn-compatible context (same fix pattern as the shipped INFRA-01 MP-logger fix). Independent of Phase 111.
-- **Phase 113 (Presentation & Launch Readiness — LAUNCH-01..06)** is the presentation track, sequenced last (independent of code phases; reflects the hardened code from 111-112 so README/SECURITY.md claims are accurate). Cynical-reader teardown + codex pass → README / SECURITY.md / community-health / release-notes. LAUNCH-03 screenshots are captured at the milestone-end walkthrough against the NAS-deployed branch build, NOT during phase execution. Repo-metadata application (part of LAUNCH-06) + the actual git push/publish are manual maintainer actions outside phase execution.
+- **Phase 114 (Scanner Auto-Recovery — SCAN-01/02/03, RECOV-01)** wires together infrastructure that **already exists** in `src/python/` — no new mechanisms:
+  - `sshcp.py` — `PERMANENT_ERROR_PATTERNS`, `TRANSIENT_ERROR_PATTERNS`, `_is_transient_ssh_error`
+  - `remote_scanner.py` — `scan()` recoverable classification, `_is_permanent_ssh_error`, `first_run` strictness
+  - `scanner_process.py` — `ScannerError` recoverable flag
+  - `scan_manager.py` — `propagate_exceptions` / `_check_process_health` / `ScannerProcessDiedError`
+  - `seedsyncarr.py` `run()` `AppError` catch (~lines 182-190), gated on `args.exit`
+  - `common/error.py` — `ServiceRestart` (~lines 14-18)
+- **SCAN-01** (reclassify transient name-resolution failures: `Could not resolve hostname` / `Name or service not known` / momentary `Bad hostname` → recoverable so the scan retries instead of dying) and **SCAN-02** (bounded backoff — capped attempts, never infinite) are the recovery half.
+- **SCAN-03** (retries exhausted → surface to the user exactly as today: controller reports failure / `server.up=False` with the error message) is the safety half — the retry path must never silently mask a real permanent config error.
+- **RECOV-01** (permanent-class controller death → auto-restart via the existing `ServiceRestart` path instead of staying down; recovery itself bounded so an unrecoverable condition doesn't become a restart loop) is the controller-level safety net.
 
-**Dependency edges:** 110 → 111, 110 → 112 (both fix phases gated on findings dispositions; 111 and 112 are mutually independent), 112 → 113 (presentation sequenced last).
+- **Phase 115 (Dependency & Security Maintenance — DEPS-01, DEPS-02)** is the dependency/security-maintenance track, disjoint from Phase 114's code path (manifests/lockfiles vs. `src/python/`):
+  - **DEPS-01** — clear all **8** open Dependabot security alerts: 3 HIGH (`hono` CORS-credentials reflection → 4.12.25, `piscina` prototype-pollution→RCE → 5.2.0, `undici` TLS-cert-validation bypass → 7.28.0) + 5 MEDIUM (4× `hono`, 1× `undici` cross-user info disclosure). All are remediated by the open PRs.
+  - **DEPS-02** — merge all **7** open Dependabot PRs, each gated on CI green: #60 pyinstaller, #61 ruff, #62 testfixtures, #63 pytest (Python dev-deps); #64 npm_and_yarn group (18 updates, incl. `piscina`); #65 hono; #66 undici (JS). Decision (2026-06-21): merge **all 7** for a full cleanup.
+  - Watch-outs: #64 (18-update npm group) must not regress the Angular build or Karma/Playwright gates; #61 bumps `ruff` itself and CI runs `ruff check src/python/` as a **separate gate from pytest**, so verify ruff whole-tree with the new version. No release/tag/version work in-phase.
 
-**CI gates every code phase (110-112) must hold:** Python `fail_under` ≥ 88; Angular Karma `check.global` floors stmts/branches/fns/lines 83/68/79/83; full suite green on amd64 + arm64. No release/tag/version work inside any phase.
+**Root cause (incident 2026-06-19, debug session `seedbox-files-not-showing`; prior variant `hold-the-dream-not-syncing`):** A transient DNS failure resolving `moon.usbx.me` raised `SshcpError('Bad hostname')`, classified as permanent/non-recoverable; it propagated to `seedsyncarr.py run()` (caught as `AppError` with `args.exit=False`), marking the controller down **without** restarting it. The web server stayed up so the UI looked fine, but the file list was frozen ~2 days until a manual container restart.
 
-**Branch-isolated workflow:** branch `launch-hardening`; NAS walkthrough on the branch; merge + single `v1.4.0` tag only after CI green + maintainer sign-off — a milestone-end orchestrator/maintainer action, NOT a roadmap phase.
+**CI gate:** Python full suite green AND `ruff check src/python/` clean. CI runs `ruff check src/python/` as a **separate gate from pytest** — build-verify must run ruff whole-tree (not just the touched files), not only the test suite. No release/tag/version work happens inside the phase.
+
+**Dependency edges:** Phase 114 depends on Phase 113 (v1.4.0 shipped on `main`). No intra-milestone edges (single phase).
 
 ### Phase 110 Decisions (2026-06-02)
 
-- **GUARD-02 warning-correctness gap confirmed:** `empty webhook_secret + require_secret=True` fires first startup warning saying "accept any caller" while the handler actually returns 503 (fail-closed). Phase 112 must fix warning text accuracy, not just prominence.
+- **GUARD-02 warning-correctness gap confirmed:** `empty webhook_secret + require_secret=True` fires first startup warning saying "accept any caller" while the handler actually returns 503 (fail-closed). Phase 112 fixed warning text accuracy (v1.4.0).
 - **pip CVEs PARK grounded in image inspection:** Shipped runtime image uses `pip 24.0` (`python:3.11-slim` base), NOT the flagged `pip 26.0.1` (local dev venv). CVE range is `>= 26.0.x < 26.1` — pip 24.0 is NOT affected. PARK is evidence-based.
 - **npm CVEs PARK grounded in Dockerfile evidence:** `Dockerfile:123` copies only `/build/dist/browser` into runtime. `node_modules/` devDeps (`karma`, `eslint`, `ws`, `brace-expansion`) are build-stage-only. PARK is evidence-based.
-- **GUARD-01/02 characterized as confirm-the-gap:** Both warnings already exist in `seedsyncarr.py:374-393` with tests. Phase 112 gap is prominence + GUARD-02 correctness, not build-from-scratch.
 
 ### Pending Todos
 
-None. GUARD-04 (AppProcess spawn fix) is now in scope (Phase 112) — clears the Tech Debt item below.
+None.
 
 ### Blockers/Concerns
 
@@ -81,12 +91,11 @@ None.
 | todo | test-hardening-backlog A-01..A-06 | test-infra (DEFER-TESTHARDEN — deferred v1.4.0) |
 | quick_task | 260528-khw-triage-and-merge-dependabot-prs | housekeeping (prior session, SUMMARY missing; acknowledged + deferred at v1.4.0 close) |
 
-> Acknowledged + deferred at v1.4.0 milestone close (2026-06-03): webob-cgi-upstream-unblock (still blocked on upstream webob 2.0) and the 260528-khw dependabot quick-task (prior-session housekeeping). `migrate-config-set-to-post-body` SHIPPED as Phase 111 (CFG-01..04) this milestone — its todo moved to `todos/completed/`.
+> Acknowledged + deferred at v1.4.0 milestone close (2026-06-03): webob-cgi-upstream-unblock (still blocked on upstream webob 2.0) and the 260528-khw dependabot quick-task (prior-session housekeeping).
 
 ## Tech Debt
 
 - Bootstrap 5.3 still uses @import internally (blocked until Bootstrap 6)
-- ~~`AppProcess` spawn-unpicklable~~ — now IN SCOPE as GUARD-04 (Phase 112). `AppProcess.__init__` creates `self.__exception_queue = Queue()` + `self._terminate = Event()` from the default (fork) context; under `spawn`, `AppProcess.start()` pickles the instance and raises `TypeError: cannot pickle '_thread.lock' object`. Fix = migrate those two fields to a spawn-compatible context (same pattern as the shipped INFRA-01 MP-logger fix). Pre-existing failing test: `test_app_process.py::test_process_with_long_running_thread_terminates_properly`. See `.planning/milestones/v1.3.0-phases/107-mp-logger-spawn-safety/deferred-items.md`.
 
 ## Milestones Shipped
 
@@ -106,13 +115,14 @@ None.
 | v1.3.0 Slice 2 (Known Bugs + Security) | Phases 101-103 | 2026-05-31 to 2026-06-01 |
 | v1.3.0 Slice 3 (Frontend Deps + Dead Code) | Phases 104-106 | 2026-06-01 |
 | v1.3.0 Slice 4 (Backend Arch Refactor + Test Infra) | Phases 107-109 | 2026-06-01 to 2026-06-02 (v1.3.0 tag cut) |
+| v1.4.0 Launch-Hardening for Public Release | Phases 110-113 | 2026-06-02 to 2026-06-03 (v1.4.0 tag cut) |
 
 ## Session Continuity
 
-Last session: 2026-06-02T23:33:58.017Z
-Stopped at: Phase 113 context gathered
-Next action: Plan Phase 110 (Hostile-Reader Discovery Pass) with `/gsd:plan-phase 110` (or discuss first with `/gsd:discuss-phase 110`)
+Last session: 2026-06-21T21:30:00.000Z
+Stopped at: v1.4.1 roadmap — Phase 115 (Dependency & Security Maintenance) appended; milestone now 2 phases (114 + 115)
+Next action: Plan Phase 114 (Scanner Auto-Recovery) with `/gsd:plan-phase 114` (or discuss first with `/gsd:discuss-phase 114`)
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan the milestone's single phase with `/gsd:plan-phase 114`
