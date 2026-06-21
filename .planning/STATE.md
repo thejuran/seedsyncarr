@@ -1,11 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4.0
-milestone_name: — Launch-Hardening for Public Release - Phases 110-113 (in progress; branch `launch-hardening`, single `v1.4.0` tag cut at milestone end)
-status: Awaiting next milestone
-stopped_at: Phase 113 context gathered
-last_updated: "2026-06-03T21:44:28.105Z"
-last_activity: 2026-06-03 — Milestone v1.4.0 completed and archived
+milestone: v1.4.1
+milestone_name: Scanner Auto-Recovery
+status: planning
+last_updated: "2026-06-21T20:57:47.883Z"
+last_activity: 2026-06-21
+progress:
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -19,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-02)
 
 ## Current Position
 
-Phase: Milestone v1.4.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-04 — Completed quick task 260604-gmy: fixed Angular v22 strict-template TS errors and merged Dependabot PR #50 (Angular v21→v22). All Dependabot PRs cleared, 0 open security alerts.
+Status: Defining requirements
+Last activity: 2026-06-21 — Milestone v1.4.1 started
 
 ## Accumulated Context
 

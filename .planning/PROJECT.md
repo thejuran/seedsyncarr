@@ -296,7 +296,18 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Targeted regression tests for 2 Low Angular gaps: SSE heartbeat-vs-timeout reconnection race (+ positive control); auth interceptor token-rotation via `_resetAuthInterceptorCache` seam — v1.3.0
 - ✓ CI coverage ratchet: Python `fail_under` 84→88 (container-inclusive 89.27%), net-new Karma `check.global` (83/68/79/83) + Angular Dockerfile `--code-coverage` so the gate bites; before/after recorded in ROADMAP + RETROSPECTIVE — v1.3.0
 
-## Current Milestone: v1.4.0 Launch-Hardening for Public Release
+## Current Milestone: v1.4.1 Scanner Auto-Recovery
+
+**Goal:** The seedbox scanner survives transient DNS/network blips and recovers from controller death on its own, instead of silently freezing the file list for days until a manual container restart.
+
+**Target features:**
+- Transient name-resolution failures (`Could not resolve hostname` / `Name or service not known` / a momentary `Bad hostname`) are reclassified as recoverable, so the scanner retries with backoff instead of dying.
+- Bounded-retry guard: a genuinely wrong/persistently-unresolvable hostname or bad credentials still stops and surfaces to the user after a capped number of retries — no infinite-retry masking of real config errors.
+- Controller auto-restart safety net: if the controller dies from a permanent-class error, it recovers via the existing `ServiceRestart` path instead of staying down (`server.up=False`) indefinitely.
+
+**Key context:** Second "scanner dies, no recovery" incident (root-caused 2026-06-19; see resolved debug session `seedbox-files-not-showing`; prior variant `hold-the-dream-not-syncing`). On 2026-06-19 a transient DNS failure resolving `moon.usbx.me` raised `SshcpError('Bad hostname')`, classified as permanent/non-recoverable; it propagated to `seedsyncarr.py run()` (caught as `AppError` with `args.exit=False`), marking the controller down without restarting it. Web server stayed up so the UI looked fine, but the file list was frozen ~2 days. The fix wires together infrastructure that **already exists** in `src/python/` (`sshcp.py` PERMANENT/TRANSIENT patterns + `_is_transient_ssh_error`; `remote_scanner.py` recoverable classification; `scanner_process.py` ScannerError; `scan_manager.py` health-check; `common/error.py` `ServiceRestart`) — no new mechanisms invented.
+
+## Previous Milestone: v1.4.0 Launch-Hardening for Public Release (Shipped 2026-06-03)
 
 **Goal:** Make SeedSyncarr's public-facing surface — both the code a skeptical engineer reads and the presentation a visitor sees — bulletproof enough to withstand a technical Reddit (r/selfhosted) launch.
 
@@ -324,9 +335,12 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-<!-- v1.4.0 — Launch-Hardening for Public Release. Two tracks (code + presentation) + one cross-cutting change. -->
+<!-- v1.4.1 — Scanner Auto-Recovery. One Python phase, regression fix reusing existing infrastructure. -->
 
-v1.4.0 hardens SeedSyncarr's public face for a Reddit launch. **Code track:** a bounded hostile-reader discovery pass, the `/server/config/set` GET→POST hard cutover (the one breaking change — credentials no longer travel in URLs/logs), unsafe-default startup warnings, delete-path hardening (logged errors instead of silent `ignore_errors=True`), the AppProcess spawn-context fix (failing `test_app_process.py` goes green), and two cheap launch-visible items (`.gitignore` for `.orchestrator.json`/`.playwright-mcp/`; loud warning on the legacy `~/.seedsync` fallback). **Presentation track:** a cynical-reader teardown + codex adversarial pass driving a README/SECURITY.md/community-health/release-notes rebuild, Playwright screenshots captured at walkthrough, and repo-metadata text drafted for manual application. Branch-isolated; merge + tag `v1.4.0` only after CI green + maintainer sign-off. See `.planning/REQUIREMENTS.md`.
+v1.4.1 makes the seedbox scanner self-heal instead of silently freezing the file list for days. Three behaviors: (1) reclassify transient name-resolution failures (`Could not resolve hostname` / `Name or service not known` / a momentary `Bad hostname`) as recoverable so the scanner retries with backoff rather than dying; (2) a bounded-retry guard so a genuinely wrong/persistently-unresolvable hostname or bad credentials still stops and surfaces to the user after a capped number of retries — never an infinite-retry loop that masks real config errors; (3) a controller auto-restart safety net so a permanent-class controller death recovers via the existing `ServiceRestart` path instead of staying down (`server.up=False`) forever. Reuses infrastructure already present in `src/python/` — no new mechanisms. See `.planning/REQUIREMENTS.md`.
+
+<!-- v1.4.0 (shipped 2026-06-03) — Launch-Hardening for Public Release. Code + presentation tracks + the config-set GET→POST cutover. -->
+v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-reader discovery pass, the `/server/config/set` GET→POST hard cutover (credentials no longer in URLs/logs), unsafe-default startup warnings, delete-path hardening, the AppProcess spawn-context fix, `.gitignore`/`~/.seedsync`-fallback items, and a README/SECURITY.md/community-health/release-notes presentation rebuild. Tagged `v1.4.0`.
 
 ### Out of Scope
 
@@ -450,4 +464,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-02 after starting milestone v1.4.0 (Launch-Hardening for Public Release)*
+*Last updated: 2026-06-21 after starting milestone v1.4.1 (Scanner Auto-Recovery)*
