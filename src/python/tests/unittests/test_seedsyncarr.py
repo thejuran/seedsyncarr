@@ -6,7 +6,7 @@ import unittest
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-from common import Config
+from common import AppError, Config, ServiceRestart
 from common.encryption import is_ciphertext
 from seedsyncarr import Seedsyncarr
 
@@ -591,3 +591,157 @@ class TestSeedsyncarrAutoRestart(unittest.TestCase):
         # A UI restart (auto=False) leaves the counter unchanged.
         self.assertEqual(
             self.CAP, _next_consecutive(self.CAP, auto=False, reset=False))
+
+
+def _apply_apperror_catch(context, exc, consecutive_restarts, run_start,
+                          restart_cap, restart_reset_secs, now):
+    """Faithful reproduction of run()'s AppError-catch decision logic.
+
+    Mirrors the wired branch in Seedsyncarr.run() so the restart-vs-surface
+    decision can be unit-tested without spinning the full thread loop:
+      - args.exit True            → re-raise (unchanged arm)
+      - should_restart True       → raise ServiceRestart(auto=True, reset=...)
+      - budget exhausted          → set server.up=False + error_msg (today's surface)
+    """
+    if context.args.exit:
+        raise exc
+    should_restart, reset_applied = Seedsyncarr._should_auto_restart(
+        consecutive_restarts, restart_cap, run_start, restart_reset_secs, now)
+    if should_restart:
+        raise ServiceRestart(auto=True, reset=reset_applied)
+    context.status.server.up = False
+    context.status.server.error_msg = str(exc)
+
+
+class TestServiceRestartFlags(unittest.TestCase):
+    """ServiceRestart constructor-compatibility tests (codex HIGH regression
+    net): the positional message must be preserved and the auto/reset flags
+    must be keyword-only with False defaults.
+    """
+
+    def test_service_restart_flags_positional_message_preserved(self):
+        e = ServiceRestart("restart requested")
+        self.assertEqual("restart requested", str(e))
+        self.assertFalse(e.auto)
+        self.assertFalse(e.reset)
+
+    def test_service_restart_flags_bare_constructor_defaults(self):
+        e = ServiceRestart()
+        self.assertEqual("", str(e))
+        self.assertIs(e.auto, False)
+        self.assertIs(e.reset, False)
+
+    def test_service_restart_flags_keyword_flags_set(self):
+        e = ServiceRestart(auto=True, reset=True)
+        self.assertIs(e.auto, True)
+        self.assertIs(e.reset, True)
+        # No positional message → empty message.
+        self.assertEqual("", str(e))
+
+    def test_restart_message_with_flags_preserves_both(self):
+        # A positional message AND keyword flags can coexist; the message can
+        # never be misread as the auto flag because the flags are keyword-only.
+        e = ServiceRestart("restart requested", auto=True, reset=False)
+        self.assertEqual("restart requested", str(e))
+        self.assertIs(e.auto, True)
+        self.assertIs(e.reset, False)
+
+
+class TestSeedsyncarrAutoRestartWiring(unittest.TestCase):
+    """Wiring tests for the run() AppError-catch + main() bookkeeping
+    integration (RECOV-01). The catch-block decision is exercised via a
+    faithful seam (_apply_apperror_catch) so no full thread loop is spun.
+    """
+
+    CAP = 3
+    RESET_SECS = 300
+
+    def _context(self, exit_flag=False):
+        ctx = MagicMock()
+        ctx.args.exit = exit_flag
+        return ctx
+
+    def test_restart_within_cap_raises_service_restart_auto_true_reset_false(self):
+        # Budget remains, run too young → auto restart, no reset.
+        now = datetime(2026, 6, 21, 12, 0, 0)
+        ctx = self._context()
+        with self.assertRaises(ServiceRestart) as cm:
+            _apply_apperror_catch(
+                ctx, AppError("boom"),
+                consecutive_restarts=0, run_start=now,
+                restart_cap=self.CAP, restart_reset_secs=self.RESET_SECS,
+                now=now)
+        self.assertIs(cm.exception.auto, True)
+        self.assertIs(cm.exception.reset, False)
+        # Server surface NOT marked down while restarting (no assignment ran).
+        self.assertNotIn("up", ctx.status.server.__dict__)
+
+    def test_restart_cap_exhausted_sets_server_down_no_service_restart(self):
+        # Budget exhausted (consecutive == cap, run too young) → today's
+        # surface, no ServiceRestart raised.
+        now = datetime(2026, 6, 21, 12, 0, 0)
+        ctx = self._context()
+        # Must NOT raise ServiceRestart.
+        _apply_apperror_catch(
+            ctx, AppError("boom"),
+            consecutive_restarts=self.CAP, run_start=now,
+            restart_cap=self.CAP, restart_reset_secs=self.RESET_SECS,
+            now=now)
+        self.assertFalse(ctx.status.server.up)
+        self.assertEqual("boom", ctx.status.server.error_msg)
+
+    def test_restart_reset_at_cap_raises_service_restart_auto_true_reset_true(self):
+        # The run stayed up past reset and dies at the cap → eligible AND
+        # reset signaled (finding 1) — raises ServiceRestart(auto=True,
+        # reset=True).
+        now = datetime(2026, 6, 21, 12, 0, 0)
+        run_start = now - timedelta(seconds=self.RESET_SECS + 1)
+        ctx = self._context()
+        with self.assertRaises(ServiceRestart) as cm:
+            _apply_apperror_catch(
+                ctx, AppError("boom"),
+                consecutive_restarts=self.CAP, run_start=run_start,
+                restart_cap=self.CAP, restart_reset_secs=self.RESET_SECS,
+                now=now)
+        self.assertIs(cm.exception.auto, True)
+        self.assertIs(cm.exception.reset, True)
+
+    def test_restart_exit_flag_reraises_unchanged(self):
+        # args.exit True → the AppError is re-raised unchanged (no restart,
+        # no surface mutation).
+        now = datetime(2026, 6, 21, 12, 0, 0)
+        ctx = self._context(exit_flag=True)
+        with self.assertRaises(AppError):
+            _apply_apperror_catch(
+                ctx, AppError("boom"),
+                consecutive_restarts=0, run_start=now,
+                restart_cap=self.CAP, restart_reset_secs=self.RESET_SECS,
+                now=now)
+
+    def test_ui_restart_does_not_burn_auto_budget(self):
+        # A UI restart (auto=False) must NOT change the consecutive counter,
+        # while an auto restart (reset=False) increments it.
+        ui = ServiceRestart()  # bare = UI restart
+        self.assertFalse(ui.auto)
+        self.assertEqual(
+            2, _next_consecutive(2, auto=ui.auto, reset=ui.reset))
+
+        auto = ServiceRestart(auto=True, reset=False)
+        self.assertEqual(
+            3, _next_consecutive(2, auto=auto.auto, reset=auto.reset))
+
+    def test_restart_fresh_budget_after_reset_at_cap(self):
+        # Finding 2 end-to-end: a reset-at-cap auto restart normalizes the
+        # next counter to 1 (NOT cap+1) ...
+        reset_at_cap = ServiceRestart(auto=True, reset=True)
+        next_counter = _next_consecutive(
+            self.CAP, auto=reset_at_cap.auto, reset=reset_at_cap.reset)
+        self.assertEqual(1, next_counter)
+        # ... and a subsequent quick failure at that fresh counter (1 < cap,
+        # run too young) is STILL eligible — NOT denied immediately.
+        now = datetime(2026, 6, 21, 12, 0, 0)
+        should, reset = Seedsyncarr._should_auto_restart(
+            consecutive_restarts=next_counter, cap=self.CAP,
+            current_run_start=now, reset_secs=self.RESET_SECS, now=now)
+        self.assertTrue(should)
+        self.assertFalse(reset)
