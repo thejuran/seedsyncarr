@@ -3,6 +3,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 from common import Config
@@ -482,3 +483,111 @@ class TestSeedsyncarrLegacyFallback(unittest.TestCase):
             args.config_dir, legacy_dir,
             msg="args.config_dir should be updated to the legacy dir"
         )
+
+
+def _next_consecutive(consecutive, auto, reset):
+    """Mirror of the main()-side counter-normalization rule (Phase 114 D-03).
+
+    Auto-recovery restarts increment the consecutive counter, EXCEPT a
+    reset-at-cap auto restart normalizes it to 1 (a fresh budget, NOT cap+1 —
+    finding 2). UI restarts (auto=False) never touch the counter (finding 1).
+    """
+    if not auto:
+        return consecutive
+    return 1 if reset else consecutive + 1
+
+
+class TestSeedsyncarrAutoRestart(unittest.TestCase):
+    """Unit tests for the pure _should_auto_restart helper and the
+    main()-side counter-normalization rule (RECOV-01 / Phase 114 D-03).
+
+    The helper is pure: time is injected via now/current_run_start so the
+    cases are deterministic. Every call unpacks the (should_restart,
+    reset_applied) tuple.
+    """
+
+    CAP = 3
+    RESET_SECS = 300
+
+    def test_restart_within_cap_first_death_returns_true_false(self):
+        # First death: budget remains, no current run start → no reset.
+        now = datetime(2026, 6, 21, 12, 0, 0)
+        should, reset = Seedsyncarr._should_auto_restart(
+            consecutive_restarts=0, cap=self.CAP,
+            current_run_start=None, reset_secs=self.RESET_SECS, now=now)
+        self.assertTrue(should)
+        self.assertFalse(reset)
+
+    def test_restart_within_cap_under_cap_young_run_returns_true_false(self):
+        # Under cap (2 < 3); current run too young to reset.
+        now = datetime(2026, 6, 21, 12, 0, 0)
+        should, reset = Seedsyncarr._should_auto_restart(
+            consecutive_restarts=2, cap=self.CAP,
+            current_run_start=now, reset_secs=self.RESET_SECS, now=now)
+        self.assertTrue(should)
+        self.assertFalse(reset)
+
+    def test_restart_cap_exhausted_young_run_returns_false_false(self):
+        # Cap reached (3 >= 3) and current run did NOT stay up past reset →
+        # genuine exhaustion.
+        now = datetime(2026, 6, 21, 12, 0, 0)
+        should, reset = Seedsyncarr._should_auto_restart(
+            consecutive_restarts=self.CAP, cap=self.CAP,
+            current_run_start=now, reset_secs=self.RESET_SECS, now=now)
+        self.assertFalse(should)
+        self.assertFalse(reset)
+
+    def test_restart_reset_stayed_up_under_cap_returns_true_true(self):
+        # A run that stayed up past the reset threshold (even under the cap)
+        # is recognized as eligible AND signals a reset.
+        now = datetime(2026, 6, 21, 12, 0, 0)
+        run_start = now - timedelta(seconds=self.RESET_SECS + 1)
+        should, reset = Seedsyncarr._should_auto_restart(
+            consecutive_restarts=1, cap=self.CAP,
+            current_run_start=run_start, reset_secs=self.RESET_SECS, now=now)
+        self.assertTrue(should)
+        self.assertTrue(reset)
+
+    def test_restart_reset_at_cap_returns_true_true(self):
+        # Finding 1: the CURRENT run stayed up past reset before dying →
+        # restart-eligible EVEN at the cap, and reset_applied is True.
+        now = datetime(2026, 6, 21, 12, 0, 0)
+        run_start = now - timedelta(seconds=self.RESET_SECS + 1)
+        should, reset = Seedsyncarr._should_auto_restart(
+            consecutive_restarts=self.CAP, cap=self.CAP,
+            current_run_start=run_start, reset_secs=self.RESET_SECS, now=now)
+        self.assertTrue(should)
+        self.assertTrue(reset)
+
+    def test_restart_reset_boundary_exactly_at_threshold_no_reset(self):
+        # Strictly greater-than: a run aged EXACTLY reset_secs does NOT reset.
+        now = datetime(2026, 6, 21, 12, 0, 0)
+        run_start = now - timedelta(seconds=self.RESET_SECS)
+        should, reset = Seedsyncarr._should_auto_restart(
+            consecutive_restarts=self.CAP, cap=self.CAP,
+            current_run_start=run_start, reset_secs=self.RESET_SECS, now=now)
+        self.assertFalse(should)
+        self.assertFalse(reset)
+
+    def test_restart_fresh_budget_post_reset_quick_failure_returns_true_false(self):
+        # Finding 2: after a reset-at-cap normalization main() set the counter
+        # to 1; this next quick failure (1 < cap, run too young) is STILL
+        # eligible and does NOT surface immediately.
+        now = datetime(2026, 6, 21, 12, 0, 0)
+        should, reset = Seedsyncarr._should_auto_restart(
+            consecutive_restarts=1, cap=self.CAP,
+            current_run_start=now, reset_secs=self.RESET_SECS, now=now)
+        self.assertTrue(should)
+        self.assertFalse(reset)
+
+    def test_restart_reset_at_cap_normalizes_counter_to_one(self):
+        # Finding 2 (counter-normalization rule): a reset-at-cap auto restart
+        # maps cap → 1 (a fresh budget), NOT cap+1.
+        self.assertEqual(
+            1, _next_consecutive(self.CAP, auto=True, reset=True))
+        # An auto restart WITHOUT reset increments normally.
+        self.assertEqual(
+            self.CAP + 1, _next_consecutive(self.CAP, auto=True, reset=False))
+        # A UI restart (auto=False) leaves the counter unchanged.
+        self.assertEqual(
+            self.CAP, _next_consecutive(self.CAP, auto=False, reset=False))

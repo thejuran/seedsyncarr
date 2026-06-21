@@ -372,6 +372,45 @@ class Seedsyncarr:
         return False
 
     @staticmethod
+    def _should_auto_restart(consecutive_restarts: int,
+                             cap: int,
+                             current_run_start: Optional[datetime],
+                             reset_secs: int,
+                             now: datetime) -> tuple[bool, bool]:
+        """Decide whether a permanent-class controller death should auto-restart.
+
+        Pure helper (no I/O, no logging, no side effects) so the RECOV-01
+        decision is unit-testable without spinning run()/main(). Time is passed
+        in via ``now``/``current_run_start`` so callers control the clock.
+
+        The decision is evaluated AT FAILURE TIME using the CURRENT run's age
+        (Phase 114 D-03, finding 1): if the current run stayed up longer than
+        ``reset_secs`` before dying, the consecutive count is treated as reset,
+        so the run is restart-eligible EVEN when ``consecutive_restarts`` is
+        already at the cap. The returned ``reset_applied`` flag signals the
+        caller (main()) to NORMALIZE the next counter to 1 — a FRESH budget,
+        NOT cap+1 (the codex follow-on, finding 2) — so subsequent quick
+        failures can still consume the remaining budget instead of surfacing
+        immediately. A persistently-failing controller (each run dying quickly)
+        never resets and still surfaces within the cap.
+
+        Args:
+            consecutive_restarts: Count of consecutive AUTO restarts so far.
+            cap: Maximum consecutive AUTO restarts before giving up.
+            current_run_start: When the current run started, or None if unknown.
+            reset_secs: Uptime (seconds) past which the budget is treated reset.
+            now: The failure time.
+
+        Returns:
+            (should_restart, reset_applied) — whether to auto-restart, and
+            whether the stayed-up reset fired (signalling counter normalization).
+        """
+        if (current_run_start is not None
+                and (now - current_run_start).total_seconds() > reset_secs):
+            return True, True
+        return consecutive_restarts < cap, False
+
+    @staticmethod
     def _emit_startup_warnings(logger: logging.Logger, config: Config) -> None:
         """Emit security warnings for insecure configuration states."""
         if not config.general.webhook_secret and not config.general.webhook_require_secret:
@@ -503,6 +542,17 @@ class Seedsyncarr:
         if Seedsyncarr.logger:
             Seedsyncarr.logger.info("Backing up {} to {}".format(file_path, backup_path))
         shutil.copy(file_path, backup_path)
+
+# RECOV-01 / Phase 114 D-03: bounded controller auto-restart tuning.
+# A permanent-class controller death auto-restarts via the existing
+# ServiceRestart path up to RESTART_CAP consecutive AUTO restarts; a run that
+# stays up past RESTART_RESET_SECS before dying resets the budget. After the
+# cap (with a too-young current run) the controller falls through to today's
+# server.up=False + error_msg surface. Module-scope so both main() and run()
+# can read them.
+RESTART_CAP = 3
+RESTART_RESET_SECS = 300
+
 
 def main():
     """Entry point for pip-installed seedsyncarr command."""
