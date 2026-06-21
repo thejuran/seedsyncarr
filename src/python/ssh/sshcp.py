@@ -21,6 +21,39 @@ TRANSIENT_ERROR_PATTERNS = ("Timed out", "Connection refused by server")
 # be retried — the user needs to fix the configuration.
 PERMANENT_ERROR_PATTERNS = ("Incorrect password", "Remote host key has changed", "Bad hostname:")
 
+# Error substrings that indicate a NAME-RESOLUTION (DNS) failure. These are
+# transient AT THE RETRY LAYER (a momentary DNS blip clears within a bounded
+# retry window — see Phase 114 D-01), but stay PERMANENT at the classification
+# layer: "Bad hostname:" intentionally appears in BOTH this tuple AND
+# PERMANENT_ERROR_PATTERNS, so a name-resolution failure surfaces fatal once the
+# bounded retry helper exhausts its attempts (lowest blast radius per D-01).
+#
+# This tuple must cover EVERY resolver-string surface the SSH layer can present:
+#   1. The COLLAPSED form "Bad hostname: {host}" — raised by the two literally
+#      matched pexpect indices 3 ("Could not resolve hostname") and 5 ("Name or
+#      service not known") at sshcp.py:97-98 / :128-129.
+#   2. The RAW non-zero-exit fallthrough strings — raised verbatim from
+#      `sp.before` at sshcp.py:151-155 with NO collapse, e.g.
+#      "ssh: Could not resolve hostname host: Temporary failure in name resolution".
+# Matching only "Bad hostname:" would leave the raw surfaces non-retryable.
+#
+# Entries are LOWER-CASE because the matcher (RemoteScanner._is_name_resolution_ssh_error)
+# lower-cases the message before comparing — the raw fallthrough casing varies
+# across SSH versions (test_sshcp.py asserts on `str(...).lower()`). The full
+# "temporary failure in name resolution" substring (not the bare "temporary
+# failure") is used so the tuple does not over-match an unrelated non-resolver
+# "temporary failure" while still satisfying the test_sshcp.py contract.
+#
+# Name-resolution is the ONLY error class safe to retry in-scan (it fails fast);
+# timeout/connection-refused can each block up to the 180s per-command timeout
+# and are NOT retried in-scan on either the main-scan or install path.
+NAME_RESOLUTION_ERROR_PATTERNS = (
+    "bad hostname:",
+    "could not resolve hostname",
+    "name or service not known",
+    "temporary failure in name resolution",
+)
+
 class Sshcp:
     """
     Scp command utility
