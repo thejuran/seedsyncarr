@@ -981,3 +981,431 @@ class TestRemoteScannerLogSanitization(unittest.TestCase):
 
             files, total, used = scanner.scan()
             self.assertEqual([], files)
+
+
+# ============================================================================
+# Phase 114-01: name-resolution reclassification + bounded in-scan retry
+# (SCAN-01/02/03). Retry is name-resolution ONLY (all resolver-string surfaces,
+# case-insensitive) and is shared by the main-scan call AND the install
+# md5sum/copy SSH ops via ONE bounded helper. Transient timeout/refused are NOT
+# retried in-scan on either path.
+# ============================================================================
+
+
+class TestRemoteScannerNameResolutionMatcher(unittest.TestCase):
+    """SCAN-01 classification: _is_name_resolution_ssh_error covers ALL resolver-
+    string surfaces (collapsed "Bad hostname:" AND the raw non-zero-exit
+    fallthrough strings) case-insensitively, while staying disjoint from
+    timeout/refused/auth/host-key. These tests PASS in Task 1 (the matcher exists)."""
+
+    def test_name_resolution_matches_collapsed_bad_hostname(self):
+        self.assertTrue(RemoteScanner._is_name_resolution_ssh_error(
+            SshcpError("Bad hostname: somehost")))
+
+    def test_name_resolution_matches_raw_could_not_resolve(self):
+        # Raw non-zero-exit fallthrough surface (sshcp.py:155), mixed case.
+        self.assertTrue(RemoteScanner._is_name_resolution_ssh_error(
+            SshcpError("ssh: Could not resolve hostname moon.usbx.me")))
+
+    def test_name_resolution_matches_raw_name_or_service_not_known(self):
+        self.assertTrue(RemoteScanner._is_name_resolution_ssh_error(
+            SshcpError("ssh: connect to host x: Name or service not known")))
+
+    def test_name_resolution_matches_raw_temporary_failure(self):
+        # The exact resolver-string family from the 2026-06-19 incident.
+        self.assertTrue(RemoteScanner._is_name_resolution_ssh_error(
+            SshcpError("ssh: Could not resolve hostname x: Temporary failure in name resolution")))
+
+    def test_name_resolution_matches_case_insensitive(self):
+        # Proves the matcher lower-cases the message before comparing.
+        self.assertTrue(RemoteScanner._is_name_resolution_ssh_error(
+            SshcpError("COULD NOT RESOLVE HOSTNAME X")))
+
+    def test_name_resolution_excludes_incorrect_password(self):
+        self.assertFalse(RemoteScanner._is_name_resolution_ssh_error(
+            SshcpError("Incorrect password")))
+
+    def test_name_resolution_excludes_host_key_change(self):
+        self.assertFalse(RemoteScanner._is_name_resolution_ssh_error(
+            SshcpError("Remote host key has changed")))
+
+    def test_name_resolution_excludes_timeout(self):
+        self.assertFalse(RemoteScanner._is_name_resolution_ssh_error(
+            SshcpError("Timed out")))
+
+    def test_name_resolution_excludes_connection_refused(self):
+        self.assertFalse(RemoteScanner._is_name_resolution_ssh_error(
+            SshcpError("Connection refused by server")))
+
+    def test_name_resolution_pattern_importable_and_covers_all_surfaces(self):
+        from ssh import NAME_RESOLUTION_ERROR_PATTERNS
+        self.assertIn("bad hostname:", NAME_RESOLUTION_ERROR_PATTERNS)
+        self.assertIn("could not resolve hostname", NAME_RESOLUTION_ERROR_PATTERNS)
+        self.assertIn("name or service not known", NAME_RESOLUTION_ERROR_PATTERNS)
+        self.assertIn("temporary failure in name resolution", NAME_RESOLUTION_ERROR_PATTERNS)
+
+    def test_bad_hostname_remains_in_permanent_patterns(self):
+        from ssh import PERMANENT_ERROR_PATTERNS
+        self.assertIn("Bad hostname:", PERMANENT_ERROR_PATTERNS)
+
+
+class TestRemoteScannerNameResolutionRetry(unittest.TestCase):
+    """SCAN-01/02/03 bounded in-scan retry on the MAIN-SCAN path and the INSTALL
+    path. The retry/exhaust/bounded/transient-not-retried tests are RED until
+    Task 2 builds the shared helper; the classification tests above pass in Task 1.
+
+    The number of attempts the helper makes (RemoteScanner.__SCAN_MAX_ATTEMPTS)
+    is read off the class so the bounded-count assertions track the production
+    constant rather than a hard-coded literal."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temp_dir = tempfile.mkdtemp(prefix="test_remote_scanner_nameres")
+        cls.temp_scan_script = os.path.join(cls.temp_dir, "script")
+        with open(cls.temp_scan_script, "w") as f:
+            f.write("")
+        with open(cls.temp_scan_script, "rb") as f:
+            cls.scan_script_md5 = hashlib.md5(f.read()).hexdigest()
+        # Production attempt cap (name-mangled class constant).
+        cls.max_attempts = RemoteScanner._RemoteScanner__SCAN_MAX_ATTEMPTS
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.temp_dir)
+
+    def setUp(self):
+        ssh_patcher = patch('controller.scan.remote_scanner.Sshcp')
+        self.addCleanup(ssh_patcher.stop)
+        self.mock_ssh_cls = ssh_patcher.start()
+        self.mock_ssh = self.mock_ssh_cls.return_value
+        self.mock_ssh.shell.return_value = b'error'
+
+    def _make_scanner(self, install_done: bool):
+        scanner = RemoteScanner(
+            remote_address="my remote address",
+            remote_username="my remote user",
+            remote_password="my password",
+            remote_port=1234,
+            remote_path_to_scan="/remote/path/to/scan",
+            local_path_to_scan_script=self.temp_scan_script,
+            remote_path_to_scan_script="/remote/path/to/scan/script",
+        )
+        if install_done:
+            scanner._RemoteScanner__install_done = True
+        return scanner
+
+    # ----- MAIN-SCAN path -----
+
+    def test_name_resolution_retry_recovers_main_scan(self):
+        """Collapsed "Bad hostname:" on the first main-scan attempt, success on the
+        next attempt within the SAME scan() — scan() returns, no ScannerError."""
+        scanner = self._make_scanner(install_done=True)
+        self.attempts = 0
+
+        def ssh_shell(*args):
+            self.attempts += 1
+            if self.attempts == 1:
+                raise SshcpError("Bad hostname: somehost")
+            # Retry succeeds; the trailing call is df (silent fallback).
+            return json.dumps([]).encode()
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        with patch('controller.scan.remote_scanner.time.sleep') as mock_sleep:
+            files, _, _ = scanner.scan()
+        self.assertEqual([], files)
+        self.assertEqual(1, mock_sleep.call_count)
+
+    def test_name_resolution_raw_recovers_main_scan(self):
+        """RAW resolver fallthrough string on the first main-scan attempt recovers."""
+        scanner = self._make_scanner(install_done=True)
+        self.attempts = 0
+
+        def ssh_shell(*args):
+            self.attempts += 1
+            if self.attempts == 1:
+                raise SshcpError(
+                    "ssh: Could not resolve hostname x: Temporary failure in name resolution")
+            return json.dumps([]).encode()
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        with patch('controller.scan.remote_scanner.time.sleep') as mock_sleep:
+            files, _, _ = scanner.scan()
+        self.assertEqual([], files)
+        self.assertEqual(1, mock_sleep.call_count)
+
+    def test_name_resolution_retry_exhausts_main_scan(self):
+        """Collapsed name-resolution error on every main-scan attempt → fatal with
+        the unchanged REMOTE_SERVER_SCAN message and recoverable=False (SCAN-03)."""
+        scanner = self._make_scanner(install_done=True)
+
+        def ssh_shell(*args):
+            raise SshcpError("Bad hostname: somehost")
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        with patch('controller.scan.remote_scanner.time.sleep'):
+            with self.assertRaises(ScannerError) as ctx:
+                scanner.scan()
+        self.assertEqual(
+            Localization.Error.REMOTE_SERVER_SCAN.format("Bad hostname: somehost"),
+            str(ctx.exception))
+        self.assertFalse(ctx.exception.recoverable)
+
+    def test_name_resolution_retry_exhausts_raw_main_scan(self):
+        """RAW resolver string exhaustion surfaces the SAME recoverable=False
+        REMOTE_SERVER_SCAN surface as the collapsed form."""
+        scanner = self._make_scanner(install_done=True)
+        raw = "ssh: Could not resolve hostname x: Temporary failure in name resolution"
+
+        def ssh_shell(*args):
+            raise SshcpError(raw)
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        with patch('controller.scan.remote_scanner.time.sleep'):
+            with self.assertRaises(ScannerError) as ctx:
+                scanner.scan()
+        self.assertEqual(
+            Localization.Error.REMOTE_SERVER_SCAN.format(raw),
+            str(ctx.exception))
+        self.assertFalse(ctx.exception.recoverable)
+
+    def test_name_resolution_retry_bounded_main_scan(self):
+        """The main-scan shell invocation count for one scan() never exceeds the cap."""
+        scanner = self._make_scanner(install_done=True)
+        self.attempts = 0
+
+        def ssh_shell(*args):
+            self.attempts += 1
+            raise SshcpError("Bad hostname: somehost")
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        with patch('controller.scan.remote_scanner.time.sleep'):
+            with self.assertRaises(ScannerError):
+                scanner.scan()
+        self.assertLessEqual(self.attempts, self.max_attempts)
+        self.assertEqual(self.max_attempts, self.attempts)
+
+    def test_name_resolution_retry_bounded_raw_main_scan(self):
+        """Bounded attempt count also holds for the RAW resolver surface."""
+        scanner = self._make_scanner(install_done=True)
+        self.attempts = 0
+
+        def ssh_shell(*args):
+            self.attempts += 1
+            raise SshcpError("ssh: Could not resolve hostname x")
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        with patch('controller.scan.remote_scanner.time.sleep'):
+            with self.assertRaises(ScannerError):
+                scanner.scan()
+        self.assertLessEqual(self.attempts, self.max_attempts)
+
+    def test_transient_timeout_not_retried_in_scan(self):
+        """"Timed out" on the first main-scan attempt raises immediately on attempt
+        1 (recoverable=True), with NO backoff sleep — pins the name-resolution-only
+        invariant. Existing first-run timeout behavior is preserved."""
+        scanner = self._make_scanner(install_done=True)
+        self.attempts = 0
+
+        def ssh_shell(*args):
+            self.attempts += 1
+            raise SshcpError("Timed out")
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        with patch('controller.scan.remote_scanner.time.sleep') as mock_sleep:
+            with self.assertRaises(ScannerError) as ctx:
+                scanner.scan()
+        # install_done=True so the first shell call IS the main scan.
+        self.assertEqual(1, self.attempts)
+        mock_sleep.assert_not_called()
+        self.assertEqual(
+            Localization.Error.REMOTE_SERVER_SCAN.format("Timed out"),
+            str(ctx.exception))
+        self.assertTrue(ctx.exception.recoverable)
+
+    # ----- INSTALL path (__install_done is false) -----
+
+    def test_install_name_resolution_recovers(self):
+        """Fresh scanner (install runs): md5sum op raises a collapsed name-resolution
+        error once then returns a hash MISMATCH so copy runs and succeeds, then the
+        main scan returns — scan() returns with NO ScannerError."""
+        scanner = self._make_scanner(install_done=False)
+        self.attempts = 0
+
+        def ssh_shell(*args):
+            self.attempts += 1
+            if self.attempts == 1:
+                # md5sum op: name-resolution blip
+                raise SshcpError("Bad hostname: somehost")
+            elif self.attempts == 2:
+                # md5sum retry: mismatch → triggers copy
+                return b""
+            # main scan + df
+            return json.dumps([]).encode()
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        with patch('controller.scan.remote_scanner.time.sleep') as mock_sleep:
+            files, _, _ = scanner.scan()
+        self.assertEqual([], files)
+        self.assertEqual(1, mock_sleep.call_count)
+        self.mock_ssh.copy.assert_called_once()
+
+    def test_install_name_resolution_recovers_copy(self):
+        """Fresh scanner: the COPY op raises a collapsed name-resolution error once
+        then succeeds; scan() returns with NO ScannerError."""
+        scanner = self._make_scanner(install_done=False)
+        self.attempts = 0
+
+        def ssh_shell(*args):
+            self.attempts += 1
+            if self.attempts == 1:
+                # md5sum mismatch → triggers copy
+                return b""
+            return json.dumps([]).encode()
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        self.copy_attempts = 0
+
+        def ssh_copy(*args, **kwargs):
+            self.copy_attempts += 1
+            if self.copy_attempts == 1:
+                raise SshcpError("Bad hostname: somehost")
+            return None
+        self.mock_ssh.copy.side_effect = ssh_copy
+
+        with patch('controller.scan.remote_scanner.time.sleep') as mock_sleep:
+            files, _, _ = scanner.scan()
+        self.assertEqual([], files)
+        self.assertEqual(1, mock_sleep.call_count)
+        self.assertEqual(2, self.copy_attempts)
+
+    def test_install_name_resolution_raw_recovers(self):
+        """Fresh scanner: md5sum op raises a RAW resolver fallthrough string once
+        then recovers — pins the raw surface on the install path."""
+        scanner = self._make_scanner(install_done=False)
+        self.attempts = 0
+
+        def ssh_shell(*args):
+            self.attempts += 1
+            if self.attempts == 1:
+                raise SshcpError(
+                    "ssh: Could not resolve hostname x: Temporary failure in name resolution")
+            elif self.attempts == 2:
+                return b""  # md5sum mismatch → copy
+            return json.dumps([]).encode()
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        with patch('controller.scan.remote_scanner.time.sleep') as mock_sleep:
+            files, _, _ = scanner.scan()
+        self.assertEqual([], files)
+        self.assertEqual(1, mock_sleep.call_count)
+
+    def test_install_name_resolution_bounded(self):
+        """Fresh scanner: md5sum op raises a name-resolution error forever → fatal
+        with the unchanged REMOTE_SERVER_INSTALL message + recoverable=False, and a
+        bounded md5sum-op call count (SCAN-02/03 on the install path)."""
+        scanner = self._make_scanner(install_done=False)
+        self.attempts = 0
+
+        def ssh_shell(*args):
+            self.attempts += 1
+            raise SshcpError("Bad hostname: somehost")
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        with patch('controller.scan.remote_scanner.time.sleep'):
+            with self.assertRaises(ScannerError) as ctx:
+                scanner.scan()
+        self.assertEqual(
+            Localization.Error.REMOTE_SERVER_INSTALL.format("Bad hostname: somehost"),
+            str(ctx.exception))
+        self.assertFalse(ctx.exception.recoverable)
+        self.assertLessEqual(self.attempts, self.max_attempts)
+        self.assertEqual(self.max_attempts, self.attempts)
+
+    def test_install_name_resolution_bounded_copy(self):
+        """Fresh scanner: the COPY op raises a name-resolution error forever →
+        bounded copy-op call count + REMOTE_SERVER_INSTALL recoverable=False."""
+        scanner = self._make_scanner(install_done=False)
+        # md5sum mismatch → triggers copy
+        self.mock_ssh.shell.return_value = b""
+        self.copy_attempts = 0
+
+        def ssh_copy(*args, **kwargs):
+            self.copy_attempts += 1
+            raise SshcpError("Bad hostname: somehost")
+        self.mock_ssh.copy.side_effect = ssh_copy
+
+        with patch('controller.scan.remote_scanner.time.sleep'):
+            with self.assertRaises(ScannerError) as ctx:
+                scanner.scan()
+        self.assertEqual(
+            Localization.Error.REMOTE_SERVER_INSTALL.format("Bad hostname: somehost"),
+            str(ctx.exception))
+        self.assertFalse(ctx.exception.recoverable)
+        self.assertLessEqual(self.copy_attempts, self.max_attempts)
+        self.assertEqual(self.max_attempts, self.copy_attempts)
+
+    def test_install_name_resolution_bounded_raw(self):
+        """Fresh scanner: md5sum op raises a RAW resolver string forever → bounded
+        + REMOTE_SERVER_INSTALL recoverable=False (raw surface on install path)."""
+        scanner = self._make_scanner(install_done=False)
+        raw = "ssh: connect to host x: Name or service not known"
+        self.attempts = 0
+
+        def ssh_shell(*args):
+            self.attempts += 1
+            raise SshcpError(raw)
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        with patch('controller.scan.remote_scanner.time.sleep'):
+            with self.assertRaises(ScannerError) as ctx:
+                scanner.scan()
+        self.assertEqual(
+            Localization.Error.REMOTE_SERVER_INSTALL.format(raw),
+            str(ctx.exception))
+        self.assertFalse(ctx.exception.recoverable)
+        self.assertLessEqual(self.attempts, self.max_attempts)
+
+    def test_install_timeout_unchanged(self):
+        """Fresh scanner: md5sum op times out → raises immediately on attempt 1 with
+        the existing REMOTE_SERVER_INSTALL("Timed out") recoverable=True surface, NO
+        backoff sleep — proves timeout is NOT retried on the install path either."""
+        scanner = self._make_scanner(install_done=False)
+        self.attempts = 0
+
+        def ssh_shell(*args):
+            self.attempts += 1
+            raise SshcpError("Timed out")
+        self.mock_ssh.shell.side_effect = ssh_shell
+
+        with patch('controller.scan.remote_scanner.time.sleep') as mock_sleep:
+            with self.assertRaises(ScannerError) as ctx:
+                scanner.scan()
+        self.assertEqual(1, self.attempts)
+        mock_sleep.assert_not_called()
+        self.assertEqual(
+            Localization.Error.REMOTE_SERVER_INSTALL.format("Timed out"),
+            str(ctx.exception))
+        self.assertTrue(ctx.exception.recoverable)
+
+    def test_install_timeout_unchanged_copy(self):
+        """Fresh scanner: the COPY op times out → raises immediately on attempt 1
+        with REMOTE_SERVER_INSTALL("Timed out") recoverable=True, NO backoff sleep."""
+        scanner = self._make_scanner(install_done=False)
+        # md5sum mismatch → triggers copy
+        self.mock_ssh.shell.return_value = b""
+        self.copy_attempts = 0
+
+        def ssh_copy(*args, **kwargs):
+            self.copy_attempts += 1
+            raise SshcpError("Timed out")
+        self.mock_ssh.copy.side_effect = ssh_copy
+
+        with patch('controller.scan.remote_scanner.time.sleep') as mock_sleep:
+            with self.assertRaises(ScannerError) as ctx:
+                scanner.scan()
+        self.assertEqual(1, self.copy_attempts)
+        mock_sleep.assert_not_called()
+        self.assertEqual(
+            Localization.Error.REMOTE_SERVER_INSTALL.format("Timed out"),
+            str(ctx.exception))
+        self.assertTrue(ctx.exception.recoverable)

@@ -7,7 +7,8 @@ import shlex
 
 from .scanner_process import IScanner, ScannerError
 from common import overrides, Localization, sanitize_log_value
-from ssh import Sshcp, SshcpError, TRANSIENT_ERROR_PATTERNS, PERMANENT_ERROR_PATTERNS
+from ssh import (Sshcp, SshcpError, TRANSIENT_ERROR_PATTERNS,
+                 PERMANENT_ERROR_PATTERNS, NAME_RESOLUTION_ERROR_PATTERNS)
 from system import SystemFile
 
 class RemoteScanner(IScanner):
@@ -26,6 +27,46 @@ class RemoteScanner(IScanner):
         """Check if an SSH error is a permanent config problem (wrong password, bad host, etc.)"""
         msg = str(error)
         return any(pattern in msg for pattern in PERMANENT_ERROR_PATTERNS)
+
+    @staticmethod
+    def _is_name_resolution_ssh_error(error: SshcpError) -> bool:
+        """Check if an SSH error is a name-resolution (DNS) failure.
+
+        Name-resolution failures are the ONLY error class retried by the bounded
+        retry helper: they fail fast, so a momentary DNS blip can clear inside a
+        tight in-scan retry window (timeout/connection-refused are NOT retried
+        in-scan — each can block up to the 180s Sshcp per-command timeout). The
+        same helper wraps BOTH the main scan SSH call and the install-path
+        md5sum/copy SSH ops; on exhaustion the failure surfaces fatal.
+
+        Unlike ``_is_transient_ssh_error`` / ``_is_permanent_ssh_error`` (which
+        compare CASE-SENSITIVELY), this matcher is CASE-INSENSITIVE: it lower-cases
+        the message before comparing against the already-lower-cased
+        ``NAME_RESOLUTION_ERROR_PATTERNS``. This is required because the SSH layer
+        presents name-resolution failures on TWO surfaces and only one collapses:
+        the COLLAPSED "Bad hostname:" (pexpect indices 3/5, sshcp.py:97-98/:128-129)
+        AND the RAW non-zero-exit fallthrough strings (sshcp.py:155 raw
+        ``sp.before``) such as "Could not resolve hostname" / "Name or service not
+        known" / "Temporary failure in name resolution", whose casing varies
+        across SSH versions.
+
+        The name-resolution patterns are DISJOINT from
+        ``TRANSIENT_ERROR_PATTERNS`` ("Timed out", "Connection refused by server")
+        and from the non-resolver members of ``PERMANENT_ERROR_PATTERNS``
+        ("Incorrect password", "Remote host key has changed"): none of "timed out",
+        "connection refused", "incorrect password", or "remote host key has
+        changed" is a substring of any name-resolution pattern, so timeout/
+        refused/auth/host-key keep their existing classification + immediate-raise
+        behavior — the retry gate stays name-resolution ONLY (Phase 114 D-01).
+
+        Args:
+            error: The SSH error to classify.
+
+        Returns:
+            True if the error message contains a name-resolution substring.
+        """
+        msg = str(error).lower()
+        return any(pattern in msg for pattern in NAME_RESOLUTION_ERROR_PATTERNS)
 
     @staticmethod
     def _parse_df_output(out: Union[bytes, str]) -> Tuple[Optional[int], Optional[int]]:
