@@ -43,10 +43,25 @@ TRANSIENT_ERROR_PATTERNS = ("Timed out", "Connection refused by server")
 PERMANENT_ERROR_PATTERNS = ("Incorrect password", "Remote host key has changed", "Bad hostname:")
 ```
 
-**Copy-from instruction:** Add a third module-level tuple in the **same place and style**. `"Bad hostname:"` MUST stay in `PERMANENT_ERROR_PATTERNS` (do NOT move it) — it appears intentionally in BOTH tuples (Pattern 1 in RESEARCH, A3). The single raised string for all three name-resolution conditions is `"Bad hostname: {host}"` — verified at `sshcp.py:97-98` and `:128-129`, where pexpect indices 3 (`Could not resolve hostname`) and 5 (`Name or service not known`) both map to that one message. So the tuple needs only the `"Bad hostname:"` prefix:
+**Copy-from instruction:** Add a third module-level tuple in the **same place and style**. `"Bad hostname:"` MUST stay in `PERMANENT_ERROR_PATTERNS` (do NOT move it) — it appears intentionally in BOTH tuples (Pattern 1 in RESEARCH, A3). **CRITICAL (codex matcher-coverage finding):** the tuple must cover ALL resolver-string surfaces, not only the collapsed `Bad hostname:`. There are TWO surfaces and only one collapses:
+- The two pexpect expect indices that LITERALLY match a resolver string — index 3 (`Could not resolve hostname`) and index 5 (`Name or service not known`) — are caught inside `__run_command` and BOTH re-raised as the single message `"Bad hostname: {host}"` (`sshcp.py:97-98, 128-129`). Only for these two literally-matched indices is the downstream string `"Bad hostname:"`.
+- The non-zero-exit fallthrough at `sshcp.py:151-155` raises the RAW `sp.before.decode().strip()` string with NO collapse — so a resolver output arriving on a plain non-zero exit (e.g. `ssh: Could not resolve hostname moon.usbx.me: Temporary failure in name resolution`) reaches the `RemoteScanner` layer verbatim.
+
+So the tuple must include the raw resolver substrings too, and entries are stored LOWER-CASE for the case-insensitive matcher (the raw fallthrough casing varies across SSH versions; the existing `test_sshcp.py` asserts on `str(...).lower()`):
 ```python
-NAME_RESOLUTION_ERROR_PATTERNS = ("Bad hostname:",)
+# Name-resolution failures: transient at the retry layer (DNS blips), but still
+# permanent at the classification layer (the collapsed "Bad hostname:" stays in
+# PERMANENT_ERROR_PATTERNS too). The raw resolver substrings are here because the
+# non-zero-exit fallthrough (sshcp.py:155) raises the raw sp.before un-collapsed.
+# Lower-case for case-insensitive matching (Phase 114 D-01).
+NAME_RESOLUTION_ERROR_PATTERNS = (
+    "bad hostname:",
+    "could not resolve hostname",
+    "name or service not known",
+    "temporary failure in name resolution",
+)
 ```
+Use the full substring `"temporary failure in name resolution"` (not the bare `"temporary failure"`) so the tuple does not over-match an unrelated "temporary failure" from a non-resolver subsystem while still satisfying the `test_sshcp.py` contract (whose accepted `"temporary failure"` substring is contained within it). Confirm the new patterns are DISJOINT from `TRANSIENT_ERROR_PATTERNS` ("Timed out", "Connection refused by server") and from the non-resolver members of `PERMANENT_ERROR_PATTERNS` ("Incorrect password", "Remote host key has changed") — none of those (lower-cased) is a substring of any name-resolution pattern.
 
 **Export note:** `remote_scanner.py:10` imports these names from the `ssh` package (`from ssh import Sshcp, SshcpError, TRANSIENT_ERROR_PATTERNS, PERMANENT_ERROR_PATTERNS`). The new tuple must be re-exported the same way the existing two are (check `src/python/ssh/__init__.py` and add `NAME_RESOLUTION_ERROR_PATTERNS` to its export list — same mechanism as the existing tuples).
 
@@ -56,7 +71,7 @@ NAME_RESOLUTION_ERROR_PATTERNS = ("Bad hostname:",)
 
 **Analog:** the existing `scan()` classification block (lines 88-111) and the two static matcher helpers (lines 18-28), all in the same file.
 
-**Matcher pattern to copy** (lines 18-28 — add a sibling `_is_name_resolution_ssh_error` with identical shape):
+**Matcher pattern to copy** (lines 18-28 — add a sibling `_is_name_resolution_ssh_error`, but CASE-INSENSITIVE):
 ```python
 @staticmethod
 def _is_transient_ssh_error(error: SshcpError) -> bool:
@@ -69,6 +84,17 @@ def _is_permanent_ssh_error(error: SshcpError) -> bool:
     """Check if an SSH error is a permanent config problem (wrong password, bad host, etc.)"""
     msg = str(error)
     return any(pattern in msg for pattern in PERMANENT_ERROR_PATTERNS)
+```
+The new name-resolution matcher differs in ONE way: it lower-cases the message before comparing, because it must catch the raw fallthrough resolver string regardless of the SSH version's casing (the tuple entries are already lower-case):
+```python
+@staticmethod
+def _is_name_resolution_ssh_error(error: SshcpError) -> bool:
+    """Name-resolution failures (DNS blips) — retried by the bounded helper on both
+    the scan and install paths, then surface fatal on exhaustion. Covers BOTH the
+    collapsed "Bad hostname:" and the raw fallthrough resolver strings (sshcp.py:155),
+    matched case-insensitively. Disjoint from timeout/refused/auth/host-key. Phase 114 D-01."""
+    msg = str(error).lower()
+    return any(pattern in msg for pattern in NAME_RESOLUTION_ERROR_PATTERNS)
 ```
 
 **Core pattern being replaced — the EXACT classification + raise at lines 88-111** (the shared retry helper wraps this `self.__ssh.shell(...)` call AND the install md5sum `:155` + copy `:180` ops; ONLY `df` at `:138` stays untouched per Pitfall 3):
@@ -117,15 +143,15 @@ self.__ssh.copy(local_path=self.__local_path_to_scan_script,
 **Copy-from instructions:**
 - **Preserve the immediate-raise recoverable logic exactly** (Pitfall 4). Factor the lines 95-110 classification (the `recoverable = True` … `raise ScannerError(...)` body) into a private helper `__to_scanner_error(e)` that returns the correctly-flagged `ScannerError`. The main-scan non-retried branch (transient timeout/refused, `SystemScannerError`, or any permanent error) calls this helper so `__first_run`-aware recoverable values stay byte-for-byte identical (including transient-after-first-run → `recoverable=True`). The install path KEEPS its own existing except blocks verbatim (`recoverable=self._is_transient_ssh_error(e)`) — do not refactor them.
 - **Use ONE shared retry helper for all three call sites** (RESEARCH "Don't Hand-Roll" + Pattern 2). Add a private `__ssh_call_with_name_resolution_retry(self, ssh_call, op_label)` that takes a zero-arg callable + a short literal label, runs `for attempt in range(1, self.__SCAN_MAX_ATTEMPTS + 1)`, returns `ssh_call()` on success, and on `SshcpError`: if `not self._is_name_resolution_ssh_error(e)` → `raise` (re-raise unchanged); if `attempt < cap` → sleep backoff + `continue`; else (name-resolution exhausted) → `raise` (re-raise unchanged). The helper NEVER builds a `ScannerError` — it only re-raises the original `SshcpError`, so each caller's existing except converts it on its own path (main scan → `__to_scanner_error` / `REMOTE_SERVER_SCAN`; install → `REMOTE_SERVER_INSTALL`). Wrap the main scan call (`:89-92`), the md5sum op (`:155`), and the copy op (`:180`) with this helper via lambdas that close over the existing quoted strings/kwargs.
-- **Retry condition is strictly** `self._is_name_resolution_ssh_error(e)` — **name-resolution ONLY** (Pitfall 2). Do NOT include `_is_transient_ssh_error` in the retry gate. `Timed out` / `Connection refused by server` are transient but each can block up to the Sshcp 180s per-command timeout, so retrying them in-scan would stack multiple 180s windows and break the existing first-run AND install timeout/refused tests — they keep their existing immediate-raise (main scan: recoverable per `__first_run`; install: recoverable per `_is_transient_ssh_error`) and recover on the next ~30s scan interval. `Incorrect password` / `Remote host key has changed` are NOT in the name-resolution tuple either, so they also hit the immediate-raise branch unchanged. `_is_transient_ssh_error` is referenced ONLY inside `__to_scanner_error`'s classification and the existing `_install_scanfs` excepts — never in the `retryable` gate.
-- **Main-scan exhaustion branch (SCAN-03) must reproduce today's raise byte-for-byte.** After the `try` that calls the helper, an `except SshcpError as e` checks `if self._is_name_resolution_ssh_error(e): raise ScannerError(Localization.Error.REMOTE_SERVER_SCAN.format(str(e).strip()), recoverable=False)` (the exhausted name-resolution case) else `raise self.__to_scanner_error(e)`:
+- **Retry condition is strictly** `self._is_name_resolution_ssh_error(e)` — **name-resolution ONLY** (Pitfall 2), and that matcher now covers ALL resolver-string surfaces (collapsed + raw fallthrough) case-insensitively. Do NOT include `_is_transient_ssh_error` in the retry gate. `Timed out` / `Connection refused by server` are transient but each can block up to the Sshcp 180s per-command timeout, so retrying them in-scan would stack multiple 180s windows and break the existing first-run AND install timeout/refused tests — they keep their existing immediate-raise (main scan: recoverable per `__first_run`; install: recoverable per `_is_transient_ssh_error`) and recover on the next ~30s scan interval. `Incorrect password` / `Remote host key has changed` are NOT in the name-resolution tuple either (and are not substrings of any entry), so they also hit the immediate-raise branch unchanged. `_is_transient_ssh_error` is referenced ONLY inside `__to_scanner_error`'s classification and the existing `_install_scanfs` excepts — never in the `retryable` gate.
+- **Main-scan exhaustion branch (SCAN-03) must reproduce today's raise byte-for-byte.** After the `try` that calls the helper, an `except SshcpError as e` checks `if self._is_name_resolution_ssh_error(e): raise ScannerError(Localization.Error.REMOTE_SERVER_SCAN.format(str(e).strip()), recoverable=False)` (the exhausted name-resolution case — collapsed OR raw) else `raise self.__to_scanner_error(e)`:
   ```python
   raise ScannerError(
       Localization.Error.REMOTE_SERVER_SCAN.format(str(e).strip()),
       recoverable=False)
   ```
   Same `Localization.Error.REMOTE_SERVER_SCAN.format(...)` message, `recoverable=False`. This is the SCAN-03 contract — the downstream chain (`scanner_process.run_loop` re-raise → propagation → `seedsyncarr.py:186-187`) is preserved.
-- **Install exhaustion surface (SCAN-03) is byte-for-byte via the UNCHANGED `_install_scanfs` except:** on name-resolution exhaustion the helper re-raises the `SshcpError`, the existing except raises `ScannerError(Localization.Error.REMOTE_SERVER_INSTALL.format(str(e).strip()), recoverable=self._is_transient_ssh_error(e))` → `recoverable=False` for `"Bad hostname:"` with the unchanged message. A persistently-wrong hostname at startup/post-restart still surfaces and is bounded — without burning RECOV-01 budget on a blip.
+- **Install exhaustion surface (SCAN-03) is byte-for-byte via the UNCHANGED `_install_scanfs` except:** on name-resolution exhaustion the helper re-raises the `SshcpError`, the existing except raises `ScannerError(Localization.Error.REMOTE_SERVER_INSTALL.format(str(e).strip()), recoverable=self._is_transient_ssh_error(e))` → `recoverable=False` for any resolver string (none are in `TRANSIENT_ERROR_PATTERNS`) with the unchanged message. A persistently-wrong hostname at startup/post-restart still surfaces and is bounded — without burning RECOV-01 budget on a blip.
 - **Class-level constants** (convention is `__UPPER` mangled, per `Sshcp.__TIMEOUT_SECS` at `sshcp.py:28`). Add e.g. `__SCAN_MAX_ATTEMPTS`, `__SCAN_BACKOFF_BASE_SECS`, `__SCAN_BACKOFF_CEILING_SECS`, `__SCAN_BACKOFF_JITTER` as class attributes on `RemoteScanner` (research recommends 3 / 1.0 / 4.0 / 0.2 — Claude's discretion per D-02). Because only fast-failing name-resolution is retried, the worst-case in-scan backoff stack is small (~3s) on both the scan and install paths.
 - **Imports:** `remote_scanner.py` does NOT currently import `time` or `random`; the retry helper adds `import time` (and `import random` for jitter) at the top per import-order convention. Add `NAME_RESOLUTION_ERROR_PATTERNS` to the existing `from ssh import ...` line at `:10`. (Ruff whole-tree gate will flag an unused import — Pitfall 5.)
 - **Logging convention:** use lazy `%`-style logging in the shared helper (the `df` branch at `:141-145` already does: `self.logger.warning("df output parse failed for '%s': %r", ...)`). Do NOT use f-strings or `.format()` in the new log lines (Pitfall 5 / Security V7 — ruff + CWE-117). For any path/host value logged, follow the `sanitize_log_value` convention already used at `:124-126`.
@@ -239,10 +265,23 @@ def ssh_shell(*args):
 self.mock_ssh.shell.side_effect = ssh_shell
 ```
 
+**Raw-resolver-surface harness — drive the RAW fallthrough string (codex matcher-coverage finding):**
+```python
+# The raw non-zero-exit fallthrough (sshcp.py:155) surfaces resolver text un-collapsed.
+# New install/main-scan retry tests MUST exercise these raw strings, not only "Bad hostname:".
+def ssh_shell_raw_resolver(*args):
+    self.ssh_run_command_count += 1
+    if self.ssh_run_command_count == 1:
+        raise SshcpError("ssh: Could not resolve hostname moon.usbx.me: Temporary failure in name resolution")
+    else:
+        return b''   # md5sum mismatch / later attempt succeeds
+self.mock_ssh.shell.side_effect = ssh_shell_raw_resolver
+```
+
 **Copy-op harness — drive the install copy separately (lines 492-514, 671-689):**
 ```python
 def ssh_copy(*args, **kwargs):
-    raise SshcpError("Bad hostname: somehost")   # install-time name-resolution blip on copy
+    raise SshcpError("Bad hostname: somehost")   # install-time name-resolution blip on copy (collapsed surface)
 self.mock_ssh.copy.side_effect = ssh_copy
 ```
 
@@ -277,8 +316,8 @@ self.assertFalse(ctx.exception.recoverable)
 ```
 
 **Copy-from instructions:**
-- New MAIN-SCAN tests: **name_resolution_retry_recovers_main_scan** (raise `SshcpError("Bad hostname: somehost")` on attempts N-1, succeed on attempt N → `scan()` returns, assert sleep called N-1 times), **name_resolution_retry_exhausts_main_scan** (`Bad hostname:` every attempt → `assertRaises(ScannerError)` with `assertFalse(ctx.exception.recoverable)` and the unchanged `Localization.Error.REMOTE_SERVER_SCAN.format(...)` message), **name_resolution_retry_bounded_main_scan** (assert `self.mock_ssh.shell` main-scan call count for that scan never exceeds `MAX_ATTEMPTS`), **name-resolution-classified** (`_is_name_resolution_ssh_error` returns True for `"Bad hostname: x"`, False for `"Incorrect password"` / `"Timed out"` / `"Connection refused by server"`), **transient_timeout_not_retried_in_scan** (`"Timed out"` on the first main-scan attempt → `scan()` raises immediately on attempt 1 with `recoverable=True`, `time.sleep` NOT called, main-scan shell invocation count == 1 — pins the name-resolution-only invariant / finding 2).
-- New INSTALL-path tests (`__install_done=false` — the path that runs at startup + after every auto-restart; selectable via `-k install_name_resolution_recovers / install_name_resolution_bounded / install_timeout_unchanged`): **install_name_resolution_recovers** (md5sum-op variant: a fresh scanner, the md5sum check raises `SshcpError("Bad hostname: somehost")` k times then returns a non-matching md5 so the copy runs and succeeds, the main scan returns → `scan()` returns with NO ScannerError, sleep called k times; AND a copy-op variant via `self.mock_ssh.copy.side_effect` raising Bad hostname k times then succeeding), **install_name_resolution_bounded** (md5sum-op variant: the md5sum check raises `Bad hostname:` forever → `assertRaises(ScannerError)`, assert the md5sum-op call count never exceeds the cap, `assertFalse(ctx.exception.recoverable)`, message equals `Localization.Error.REMOTE_SERVER_INSTALL.format("Bad hostname: ...")`; AND a copy-op variant asserting the copy attempt count is bounded and the same REMOTE_SERVER_INSTALL recoverable=False surface), **install_timeout_unchanged** (md5sum-op variant: `SshcpError("Timed out")` → `scan()` raises immediately on attempt 1 with `Localization.Error.REMOTE_SERVER_INSTALL.format("Timed out")` and `recoverable=True`, `time.sleep` NOT called, md5sum-op count == 1; AND a copy-op timeout variant mirroring `test_raises_recoverable_error_on_copy_timeout`).
+- New MAIN-SCAN tests — exercise BOTH the collapsed and raw resolver surfaces: **name_resolution_retry_recovers_main_scan** (raise `SshcpError("Bad hostname: somehost")` on attempts N-1, succeed on attempt N → `scan()` returns, assert sleep called N-1 times) AND **name_resolution_raw_recovers_main_scan** (same shape but raising a RAW resolver string like `"ssh: Could not resolve hostname x"` and/or `"ssh: ... Temporary failure in name resolution"`), **name_resolution_retry_exhausts_main_scan** (a name-resolution error every attempt → `assertRaises(ScannerError)` with `assertFalse(ctx.exception.recoverable)` and the unchanged `Localization.Error.REMOTE_SERVER_SCAN.format(...)` message; include a raw-string exhaustion variant), **name_resolution_retry_bounded_main_scan** (assert `self.mock_ssh.shell` main-scan call count for that scan never exceeds `MAX_ATTEMPTS`; include a raw-string variant), **name-resolution-classified** (`_is_name_resolution_ssh_error` returns True for `"Bad hostname: x"`, `"ssh: Could not resolve hostname x"`, `"ssh: ... Name or service not known"`, `"ssh: ... Temporary failure in name resolution"`, and an UPPER/mixed-case variant proving case-insensitivity; False for `"Incorrect password"` / `"Remote host key has changed"` / `"Timed out"` / `"Connection refused by server"` — the matcher-excludes asserts), **transient_timeout_not_retried_in_scan** (`"Timed out"` on the first main-scan attempt → `scan()` raises immediately on attempt 1 with `recoverable=True`, `time.sleep` NOT called, main-scan shell invocation count == 1 — pins the name-resolution-only invariant / finding 2).
+- New INSTALL-path tests (`__install_done=false` — the path that runs at startup + after every auto-restart; selectable via `-k install_name_resolution_recovers / install_name_resolution_raw_recovers / install_name_resolution_bounded / install_timeout_unchanged`): **install_name_resolution_recovers** (md5sum-op variant: a fresh scanner, the md5sum check raises `SshcpError("Bad hostname: somehost")` k times then returns a non-matching md5 so the copy runs and succeeds, the main scan returns → `scan()` returns with NO ScannerError, sleep called k times; AND a copy-op variant via `self.mock_ssh.copy.side_effect` raising Bad hostname k times then succeeding), **install_name_resolution_raw_recovers** (the same recover behavior but raising a RAW resolver string `"ssh: Could not resolve hostname x"` / `"ssh: ... Temporary failure in name resolution"` on the md5sum op AND on the copy op — pins the raw surface on the install path), **install_name_resolution_bounded** (md5sum-op variant: the md5sum check raises a name-resolution error forever → `assertRaises(ScannerError)`, assert the md5sum-op call count never exceeds the cap, `assertFalse(ctx.exception.recoverable)`, message equals `Localization.Error.REMOTE_SERVER_INSTALL.format("<resolver string>")`; AND a copy-op variant AND a raw-resolver-string variant asserting the same REMOTE_SERVER_INSTALL recoverable=False surface and a bounded op count), **install_timeout_unchanged** (md5sum-op variant: `SshcpError("Timed out")` → `scan()` raises immediately on attempt 1 with `Localization.Error.REMOTE_SERVER_INSTALL.format("Timed out")` and `recoverable=True`, `time.sleep` NOT called, md5sum-op count == 1; AND a copy-op timeout variant mirroring `test_raises_recoverable_error_on_copy_timeout`).
 - **Patch `time.sleep` to make backoff instant** (no existing precedent in this suite; standard mock at the module under test):
   ```python
   with patch('controller.scan.remote_scanner.time.sleep') as mock_sleep:
@@ -322,7 +361,7 @@ mock_logger.warning.assert_called_once()
 
 ### Error classification (substring-match on prefix tuples)
 **Source:** `src/python/ssh/sshcp.py:14-22` (tuples) + `src/python/controller/scan/remote_scanner.py:18-28` (matchers)
-**Apply to:** SCAN-01 (new `NAME_RESOLUTION_ERROR_PATTERNS` tuple + `_is_name_resolution_ssh_error` matcher). Classification stays centralized in `ssh/sshcp.py`; matchers are `@staticmethod` substring checks. Do NOT introduce regex or scatter classification into the helper body.
+**Apply to:** SCAN-01 (new `NAME_RESOLUTION_ERROR_PATTERNS` tuple + `_is_name_resolution_ssh_error` matcher). Classification stays centralized in `ssh/sshcp.py`; matchers are `@staticmethod` substring checks. The name-resolution matcher is CASE-INSENSITIVE (lower-cases the message) and the tuple covers all resolver-string surfaces (collapsed + raw fallthrough). Do NOT introduce regex or scatter classification into the helper body.
 
 ### One shared bounded retry helper (don't write two loops)
 **Source:** no existing analog as a loop, but the constituent parts (constants convention, classification, raise shape, logging) all have in-repo analogs.
@@ -341,7 +380,7 @@ except ScannerError as e:
 
 ### SCAN-03 user-facing surface (preserve byte-for-byte)
 **Source:** `src/python/seedsyncarr.py:184-188` (`status.server.up = False` + `error_msg = str(exc)`) + `src/python/common/status.py` `ServerStatus.up`/`error_msg`
-**Apply to:** SCAN-03 (both the scan-exhaustion REMOTE_SERVER_SCAN and install-exhaustion REMOTE_SERVER_INSTALL paths) + RECOV-01 cap-exhausted path. This exact pair of assignments is the only error surface; all paths route to it after their bounds exhaust. Do not change the localized message formats or these field semantics.
+**Apply to:** SCAN-03 (both the scan-exhaustion REMOTE_SERVER_SCAN and install-exhaustion REMOTE_SERVER_INSTALL paths, for the collapsed AND raw resolver surfaces) + RECOV-01 cap-exhausted path. This exact pair of assignments is the only error surface; all paths route to it after their bounds exhaust. Do not change the localized message formats or these field semantics.
 
 ### Restart machinery (reuse `ServiceRestart` → `main()` `continue`)
 **Source:** `src/python/common/error.py:14-18` (`ServiceRestart(AppError)`) + `src/python/seedsyncarr.py:192-194` (raise) + `:507-523` (`main()` catch → `continue`)
@@ -353,7 +392,7 @@ except ScannerError as e:
 
 ### Logging + log-injection safety
 **Source:** `src/python/controller/scan/remote_scanner.py:124-126` (`sanitize_log_value` on untrusted values) + `:141-145` (lazy `%`-style logging)
-**Apply to:** all new retry/restart log lines (including the shared helper's attempt-counter line). Lazy `%`-style logging (ruff/perf + matches codebase); `sanitize_log_value` for any path/host text (CWE-117 / Security V7). Never log the password.
+**Apply to:** all new retry/restart log lines (including the shared helper's attempt-counter line, which may now log raw resolver fallthrough text). Lazy `%`-style logging (ruff/perf + matches codebase); `sanitize_log_value` for any path/host text (CWE-117 / Security V7). Never log the password.
 
 ### Command-injection guard (do not rebuild the quoted command)
 **Source:** `src/python/controller/scan/remote_scanner.py:89-92,155` (`shlex.quote` on args) + the `copy(local_path=, remote_path=)` kwargs at `:180`
@@ -370,6 +409,6 @@ None. Every touched file has a strong in-file or same-package analog — consist
 ## Metadata
 
 **Analog search scope:** `src/python/ssh/`, `src/python/controller/scan/`, `src/python/common/`, `src/python/` (entrypoint), `src/python/tests/unittests/` (test_controller/test_scan, test_seedsyncarr, test_ssh, test_common)
-**Files scanned (read in full or targeted):** `ssh/sshcp.py`, `controller/scan/remote_scanner.py`, `controller/scan/scanner_process.py`, `common/error.py`, `seedsyncarr.py` (run/main/static-helper regions), `tests/unittests/test_controller/test_scan/test_remote_scanner.py` (harness + key tests, incl. install md5sum/copy timeout tests), `tests/unittests/test_seedsyncarr.py` (static-helper test classes), `tests/unittests/test_common/test_error.py` (ServiceRestart message contract)
+**Files scanned (read in full or targeted):** `ssh/sshcp.py`, `controller/scan/remote_scanner.py`, `controller/scan/scanner_process.py`, `common/error.py`, `seedsyncarr.py` (run/main/static-helper regions), `tests/unittests/test_controller/test_scan/test_remote_scanner.py` (harness + key tests, incl. install md5sum/copy timeout tests), `tests/unittests/test_seedsyncarr.py` (static-helper test classes), `tests/unittests/test_common/test_error.py` (ServiceRestart message contract), `tests/unittests/test_ssh/test_sshcp.py` (the bad-host accepted-substring contract — collapse vs raw fallthrough)
 **Project conventions verified:** no `CLAUDE.md` in working dir; `.claude/skills/` and `.agents/skills/` contain only `aidesigner-frontend` (frontend skill, not applicable to this Python backend phase). CI runs `ruff check src/python/` as a SEPARATE gate from pytest (Pitfall 5 — every task must run both).
 **Pattern extraction date:** 2026-06-21
