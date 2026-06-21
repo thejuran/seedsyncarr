@@ -374,10 +374,10 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 **CI gate:** Python full suite green AND `ruff check src/python/` clean — note that CI runs ruff as a **separate gate from pytest**, so build-verify must run ruff whole-tree (not just the touched files), not only the test suite. No release/tag/version work happens inside the phase.
 
-- [ ] **Phase 114: Scanner Auto-Recovery** - Reclassify transient name-resolution failures as recoverable so the scanner retries with bounded backoff (SCAN-01, SCAN-02); surface the failure to the user unchanged once retries are exhausted so real config errors still stop (SCAN-03); auto-restart the controller via the existing `ServiceRestart` path after a permanent-class death, itself bounded so an unrecoverable condition doesn't become a restart loop (RECOV-01)
+- [x] **Phase 114: Scanner Auto-Recovery** - Reclassify transient name-resolution failures as recoverable so the scanner retries with bounded backoff (SCAN-01, SCAN-02); surface the failure to the user unchanged once retries are exhausted so real config errors still stop (SCAN-03); auto-restart the controller via the existing `ServiceRestart` path after a permanent-class death, itself bounded so an unrecoverable condition doesn't become a restart loop (RECOV-01) (completed 2026-06-21)
   - **Plans:** 2 plans (1 wave)
-  - [ ] 114-01-PLAN.md — SCAN-01/02/03: NAME_RESOLUTION_ERROR_PATTERNS tuple + _is_name_resolution_ssh_error matcher + bounded in-scan retry loop in RemoteScanner.scan() with byte-for-byte exhaustion surface (wave 1)
-  - [ ] 114-02-PLAN.md — RECOV-01: pure _should_auto_restart helper + bounded consecutive-restart cap with stayed-up reset wired into seedsyncarr.py run()/main() via the existing ServiceRestart path (wave 1)
+  - [x] 114-01-PLAN.md — SCAN-01/02/03: NAME_RESOLUTION_ERROR_PATTERNS tuple + _is_name_resolution_ssh_error matcher + bounded in-scan retry loop in RemoteScanner.scan() with byte-for-byte exhaustion surface (wave 1)
+  - [x] 114-02-PLAN.md — RECOV-01: pure _should_auto_restart helper + bounded consecutive-restart cap with stayed-up reset wired into seedsyncarr.py run()/main() via the existing ServiceRestart path (wave 1)
 - [ ] **Phase 115: Dependency & Security Maintenance** - Clear all 8 open Dependabot security alerts (3 HIGH: hono CORS-credentials reflection, piscina prototype-pollution→RCE, undici TLS-cert-validation bypass; 5 MEDIUM: 4× hono, 1× undici cross-user info disclosure) and merge all 7 open Dependabot dependency PRs (#60–#66), each gated on CI green (DEPS-01, DEPS-02)
 
 
@@ -694,7 +694,7 @@ Plans:
 | 111. Config-Set Endpoint Migration | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
 | 112. Defensive Guards & Code Hardening | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
 | 113. Presentation & Launch Readiness | v1.4.0 | 4/4 | Complete   | 2026-06-03 |
-| 114. Scanner Auto-Recovery | v1.4.1 | 0/? | Not started | - |
+| 114. Scanner Auto-Recovery | v1.4.1 | 2/2 | Complete   | 2026-06-21 |
 | 115. Dependency & Security Maintenance | v1.4.1 | 0/? | Not started | - |
 
 ---
