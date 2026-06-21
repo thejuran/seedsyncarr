@@ -21,6 +21,16 @@ from web import WebAppJob, WebAppBuilder
 
 T_Persist = TypeVar('T_Persist', bound=Persist)
 
+# RECOV-01 / Phase 114 D-03: bounded controller auto-restart tuning.
+# A permanent-class controller death auto-restarts via the existing
+# ServiceRestart path up to RESTART_CAP consecutive AUTO restarts; a run that
+# stays up past RESTART_RESET_SECS before dying resets the budget. After the
+# cap (with a too-young current run) the controller falls through to today's
+# server.up=False + error_msg surface. Module-scope so both main() and run()
+# can read them (and so they can serve as run()'s parameter defaults).
+RESTART_CAP = 3
+RESTART_RESET_SECS = 300
+
 class Seedsyncarr:
     """
     Implements the service for seedsyncarr
@@ -109,7 +119,11 @@ class Seedsyncarr:
         self.auto_queue_persist_path = os.path.join(args.config_dir, Seedsyncarr.__FILE_AUTO_QUEUE_PERSIST)
         self.auto_queue_persist = self._load_persist(AutoQueuePersist, self.auto_queue_persist_path)
 
-    def run(self):
+    def run(self,
+            consecutive_restarts: int = 0,
+            run_start: Optional[datetime] = None,
+            restart_cap: int = RESTART_CAP,
+            restart_reset_secs: int = RESTART_RESET_SECS):
         self.context.logger.info("Starting SeedSyncarr")
         self.context.logger.info("Platform: {}".format(platform.machine()))
 
@@ -182,12 +196,26 @@ class Seedsyncarr:
                 try:
                     controller_job.propagate_exception()
                 except AppError as exc:
-                    if not self.context.args.exit:
-                        self.context.status.server.up = False
-                        self.context.status.server.error_msg = str(exc)
-                        Seedsyncarr.logger.exception("Caught exception")
-                    else:
+                    if self.context.args.exit:
                         raise
+                    # RECOV-01 / Phase 114 D-03: decide restart-vs-surface AT
+                    # FAILURE TIME using the current run's age. A permanent-class
+                    # controller death routes into the existing ServiceRestart
+                    # machinery while the bounded budget allows; once exhausted
+                    # it falls through to today's server.up=False surface.
+                    should_restart, reset_applied = Seedsyncarr._should_auto_restart(
+                        consecutive_restarts, restart_cap, run_start,
+                        restart_reset_secs, datetime.now())
+                    if should_restart:
+                        Seedsyncarr.logger.warning(
+                            "Controller died; auto-restarting via ServiceRestart "
+                            "(consecutive=%d/%d, reset=%s)",
+                            consecutive_restarts, restart_cap, reset_applied)
+                        raise ServiceRestart(auto=True, reset=reset_applied)
+                    # Budget genuinely exhausted: byte-for-byte today's surface.
+                    self.context.status.server.up = False
+                    self.context.status.server.error_msg = str(exc)
+                    Seedsyncarr.logger.exception("Caught exception")
 
                 # Check if a restart is requested
                 if web_app_builder.server_handler.is_restart_requested():
@@ -372,6 +400,45 @@ class Seedsyncarr:
         return False
 
     @staticmethod
+    def _should_auto_restart(consecutive_restarts: int,
+                             cap: int,
+                             current_run_start: Optional[datetime],
+                             reset_secs: int,
+                             now: datetime) -> tuple[bool, bool]:
+        """Decide whether a permanent-class controller death should auto-restart.
+
+        Pure helper (no I/O, no logging, no side effects) so the RECOV-01
+        decision is unit-testable without spinning run()/main(). Time is passed
+        in via ``now``/``current_run_start`` so callers control the clock.
+
+        The decision is evaluated AT FAILURE TIME using the CURRENT run's age
+        (Phase 114 D-03, finding 1): if the current run stayed up longer than
+        ``reset_secs`` before dying, the consecutive count is treated as reset,
+        so the run is restart-eligible EVEN when ``consecutive_restarts`` is
+        already at the cap. The returned ``reset_applied`` flag signals the
+        caller (main()) to NORMALIZE the next counter to 1 — a FRESH budget,
+        NOT cap+1 (the codex follow-on, finding 2) — so subsequent quick
+        failures can still consume the remaining budget instead of surfacing
+        immediately. A persistently-failing controller (each run dying quickly)
+        never resets and still surfaces within the cap.
+
+        Args:
+            consecutive_restarts: Count of consecutive AUTO restarts so far.
+            cap: Maximum consecutive AUTO restarts before giving up.
+            current_run_start: When the current run started, or None if unknown.
+            reset_secs: Uptime (seconds) past which the budget is treated reset.
+            now: The failure time.
+
+        Returns:
+            (should_restart, reset_applied) — whether to auto-restart, and
+            whether the stayed-up reset fired (signalling counter normalization).
+        """
+        if (current_run_start is not None
+                and (now - current_run_start).total_seconds() > reset_secs):
+            return True, True
+        return consecutive_restarts < cap, False
+
+    @staticmethod
     def _emit_startup_warnings(logger: logging.Logger, config: Config) -> None:
         """Emit security warnings for insecure configuration states."""
         if not config.general.webhook_secret and not config.general.webhook_require_secret:
@@ -508,14 +575,37 @@ def main():
     """Entry point for pip-installed seedsyncarr command."""
     if sys.hexversion < 0x03050000:
         sys.exit("Python 3.5 or newer is required to run this program.")
+    # RECOV-01 / Phase 114 D-03: restart bookkeeping survives across a
+    # ServiceRestart (main() is the only scope that does — each loop builds a
+    # fresh Seedsyncarr()). The decision itself is evaluated AT FAILURE TIME
+    # inside run() using current_run_start; main() only tracks the counter and
+    # normalizes it on the restart signal.
+    consecutive_restarts = 0
+    current_run_start = None
     while True:
         try:
             app = Seedsyncarr()
-            app.run()
+            current_run_start = datetime.now()
+            app.run(consecutive_restarts=consecutive_restarts,
+                    run_start=current_run_start,
+                    restart_cap=RESTART_CAP,
+                    restart_reset_secs=RESTART_RESET_SECS)
         except ServiceExit:
             break
-        except ServiceRestart:
-            Seedsyncarr.logger.info("Restarting...")
+        except ServiceRestart as restart:
+            # Only auto-recovery restarts burn the budget (finding 1); a UI
+            # restart (auto=False) leaves the counter untouched. A reset-at-cap
+            # auto restart normalizes the counter to a FRESH budget of 1 (NOT
+            # cap+1 — finding 2) so subsequent quick failures still recover.
+            if getattr(restart, "auto", False):
+                consecutive_restarts = (
+                    1 if getattr(restart, "reset", False)
+                    else consecutive_restarts + 1)
+            Seedsyncarr.logger.info(
+                "Restarting (auto=%s, reset=%s, consecutive=%d/%d)...",
+                getattr(restart, "auto", False),
+                getattr(restart, "reset", False),
+                consecutive_restarts, RESTART_CAP)
             continue
         except Exception:
             Seedsyncarr.logger.exception("Caught exception")
