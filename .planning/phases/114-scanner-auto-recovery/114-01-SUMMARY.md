@@ -2,6 +2,7 @@
 phase: 114-scanner-auto-recovery
 plan: 01
 subsystem: controller/scan + ssh
+requirements-completed: [SCAN-01, SCAN-02, SCAN-03]  # recovery half (in-scan bounded name-resolution retry); RECOV-01 is plan 114-02. Back-filled at v1.4.1 audit 2026-06-22 — code shipped 2026-06-21 (f497cd2, cfe5e37).
 tags: [scanner, ssh, dns, retry, backoff, resilience, tdd]
 requires:
   - "ssh.SshcpError + TRANSIENT/PERMANENT_ERROR_PATTERNS (existing classification)"

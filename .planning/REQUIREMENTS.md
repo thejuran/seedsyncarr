@@ -9,13 +9,13 @@ Requirements for milestone v1.4.1. Each maps to a roadmap phase.
 
 ### Scanner Resilience
 
-- [ ] **SCAN-01**: A transient remote name-resolution failure during a scan (SSH errors matching `Could not resolve hostname` / `Name or service not known`, and a momentary `Bad hostname`) is classified as **recoverable** so the scanner retries the scan instead of terminating. The list keeps updating once the blip clears.
-- [ ] **SCAN-02**: Recoverable scan failures are retried with **bounded backoff** — a capped number of attempts, not an infinite loop.
-- [ ] **SCAN-03**: When retries are exhausted (a genuinely wrong / persistently-unresolvable hostname or bad credentials), the error is **surfaced to the user exactly as today** (controller reports the failure / `server.up=False` with the error message) so real configuration problems still stop and prompt — the retry path must never silently mask a permanent config error.
+- [x] **SCAN-01**: A transient remote name-resolution failure during a scan (SSH errors matching `Could not resolve hostname` / `Name or service not known`, and a momentary `Bad hostname`) is classified as **recoverable** so the scanner retries the scan instead of terminating. The list keeps updating once the blip clears.
+- [x] **SCAN-02**: Recoverable scan failures are retried with **bounded backoff** — a capped number of attempts, not an infinite loop.
+- [x] **SCAN-03**: When retries are exhausted (a genuinely wrong / persistently-unresolvable hostname or bad credentials), the error is **surfaced to the user exactly as today** (controller reports the failure / `server.up=False` with the error message) so real configuration problems still stop and prompt — the retry path must never silently mask a permanent config error.
 
 ### Controller Recovery
 
-- [ ] **RECOV-01**: If the controller dies from a permanent-class error, it **auto-restarts** via the existing `ServiceRestart` recovery path instead of remaining down (`server.up=False`) indefinitely. Recovery is itself bounded so a genuinely unrecoverable condition does not become a restart loop.
+- [x] **RECOV-01**: If the controller dies from a permanent-class error, it **auto-restarts** via the existing `ServiceRestart` recovery path instead of remaining down (`server.up=False`) indefinitely. Recovery is itself bounded so a genuinely unrecoverable condition does not become a restart loop.
 
 ### Dependency & Security Maintenance
 
@@ -43,10 +43,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCAN-01 | Phase 114 | Pending |
-| SCAN-02 | Phase 114 | Pending |
-| SCAN-03 | Phase 114 | Pending |
-| RECOV-01 | Phase 114 | Pending |
+| SCAN-01 | Phase 114 | Complete |
+| SCAN-02 | Phase 114 | Complete |
+| SCAN-03 | Phase 114 | Complete |
+| RECOV-01 | Phase 114 | Complete |
 | DEPS-01 | Phase 115 | Complete |
 | DEPS-02 | Phase 115 | Complete |
 
