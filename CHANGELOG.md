@@ -4,6 +4,36 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.0] - 2026-06-22
+
+A reliability and security-maintenance release. It makes the remote scanner
+recover automatically from transient network blips instead of going dark until
+a manual restart, and clears every outstanding dependency advisory. Existing
+config files load unchanged with no migration step.
+
+### Added
+
+- Automatic scanner recovery from transient remote name-resolution failures.
+  A scan that hits a momentary DNS/SSH name-resolution error (for example
+  `Could not resolve hostname` or a fleeting `Bad hostname`) is now retried
+  in-scan with bounded, jittered backoff (a capped number of attempts, never an
+  infinite loop) instead of terminating the scanner. The file list keeps
+  updating once the blip clears. A genuinely wrong or persistently-unresolvable
+  host still surfaces to the operator exactly as before once retries are
+  exhausted, so real configuration mistakes still stop and prompt.
+- Bounded controller auto-restart. If the controller dies from a
+  permanent-class error it now auto-restarts through the existing service
+  recovery path instead of staying down indefinitely, with the restart budget
+  bounded so an unrecoverable condition cannot become a restart loop. UI-driven
+  restarts do not consume the auto-recovery budget.
+
+### Security
+
+- Cleared all 8 open Dependabot alerts (3 high, 5 medium) by merging the
+  outstanding dependency PRs and forcing the build-time `piscina` dependency to
+  a patched version via an npm override. No runtime image changes — the affected
+  packages are build/dev tooling only.
+
 ## [1.4.2] - 2026-06-15
 
 A bug-fix and security-maintenance release. It fixes a startup hang that could
