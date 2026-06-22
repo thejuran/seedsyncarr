@@ -379,6 +379,8 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   - [x] 114-01-PLAN.md — SCAN-01/02/03: NAME_RESOLUTION_ERROR_PATTERNS tuple + _is_name_resolution_ssh_error matcher + bounded in-scan retry loop in RemoteScanner.scan() with byte-for-byte exhaustion surface (wave 1)
   - [x] 114-02-PLAN.md — RECOV-01: pure _should_auto_restart helper + bounded consecutive-restart cap with stayed-up reset wired into seedsyncarr.py run()/main() via the existing ServiceRestart path (wave 1)
 - [ ] **Phase 115: Dependency & Security Maintenance** - Clear all 8 open Dependabot security alerts (3 HIGH: hono CORS-credentials reflection, piscina prototype-pollution→RCE, undici TLS-cert-validation bypass; 5 MEDIUM: 4× hono, 1× undici cross-user info disclosure) and merge all 7 open Dependabot dependency PRs (#60–#66), each gated on CI green (DEPS-01, DEPS-02)
+  - **Plans:** 1 plan (1 wave)
+  - [ ] 115-01-PLAN.md — Re-verify live PR/alert state, then squash-merge all 7 Dependabot PRs CI-green-gated one-at-a-time in security-first order (#64→#65→#66→#60→#61→#62→#63), then end-state gate: 0 open alerts + 7 MERGED + local whole-tree ruff 0.15.17 clean (wave 1)
 
 
 ## Phase Details
@@ -656,7 +658,7 @@ Plans:
   4. After the Python dev-dep bumps (#60–#63), the Python suite is green **and** `ruff check src/python/` is clean — note `ruff` itself bumps in #61 and CI runs `ruff` as a **separate gate from pytest**, so verification must run ruff whole-tree, not only pytest, with the new ruff version (DEPS-02).
   5. **Cross-cutting (scope guard):** no release/tag/version work happens inside this phase — bumping the app version and cutting the single `v1.4.1` tag are milestone-end actions, not part of this dependency-maintenance phase (DEPS-01, DEPS-02).
 
-**Plans**: TBD
+**Plans**: 1 plan (1 wave)
 
 ## Progress
 
