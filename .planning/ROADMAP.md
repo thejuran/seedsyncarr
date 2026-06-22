@@ -378,9 +378,9 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   - **Plans:** 2 plans (1 wave)
   - [x] 114-01-PLAN.md — SCAN-01/02/03: NAME_RESOLUTION_ERROR_PATTERNS tuple + _is_name_resolution_ssh_error matcher + bounded in-scan retry loop in RemoteScanner.scan() with byte-for-byte exhaustion surface (wave 1)
   - [x] 114-02-PLAN.md — RECOV-01: pure _should_auto_restart helper + bounded consecutive-restart cap with stayed-up reset wired into seedsyncarr.py run()/main() via the existing ServiceRestart path (wave 1)
-- [ ] **Phase 115: Dependency & Security Maintenance** - Clear all 8 open Dependabot security alerts (3 HIGH: hono CORS-credentials reflection, piscina prototype-pollution→RCE, undici TLS-cert-validation bypass; 5 MEDIUM: 4× hono, 1× undici cross-user info disclosure) and merge all 7 open Dependabot dependency PRs (#60–#66), each gated on CI green (DEPS-01, DEPS-02)
+- [x] **Phase 115: Dependency & Security Maintenance** - Merge all 7 open Dependabot dependency PRs (#60–#66), each gated on CI green (DEPS-02 ✅). Clear the open Dependabot security alerts (DEPS-01): 7 of 8 cleared (2 HIGH hono/undici + all 5 MEDIUM). **⚠️ 1 HIGH remains OPEN: piscina alert #37 (prototype-pollution→RCE)** — unremediable by the #60–#66 set because `@angular/build ^22.0.2` pins piscina to 5.1.4 (first-patched 5.2.0); a build-time devDep, surfaced as an operator decision (toolchain bump / npm override / risk-accept). DEPS-01 NOT fully met until #37 is resolved. (plan executed 2026-06-22)
   - **Plans:** 1 plan (1 wave)
-  - [ ] 115-01-PLAN.md — Re-verify live PR/alert state, then squash-merge all 7 Dependabot PRs CI-green-gated one-at-a-time in security-first order (#64→#65→#66→#60→#61→#62→#63), then end-state gate: 0 open alerts + 7 MERGED + local whole-tree ruff 0.15.17 clean (wave 1)
+  - [x] 115-01-PLAN.md — Re-verify live PR/alert state, then squash-merge all 7 Dependabot PRs CI-green-gated one-at-a-time in security-first order (#64→#65→#66→#60→#61→#62→#63), then end-state gate: 0 open alerts + 7 MERGED + local whole-tree ruff 0.15.17 clean (wave 1)
 
 
 ## Phase Details
@@ -697,7 +697,7 @@ Plans:
 | 112. Defensive Guards & Code Hardening | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
 | 113. Presentation & Launch Readiness | v1.4.0 | 4/4 | Complete   | 2026-06-03 |
 | 114. Scanner Auto-Recovery | v1.4.1 | 2/2 | Complete   | 2026-06-21 |
-| 115. Dependency & Security Maintenance | v1.4.1 | 0/? | Not started | - |
+| 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Blocked (alert #37) | 2026-06-22 |
 
 ---
 

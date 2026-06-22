@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4.1
 milestone_name: Scanner Auto-Recovery
 status: executing
-stopped_at: Phase 115 context gathered
-last_updated: "2026-06-22T15:03:13.213Z"
-last_activity: 2026-06-21 -- Phase 114 execution started
+stopped_at: "Completed 115-01-PLAN.md (7 PRs merged, ruff clean) — BLOCKED on Dependabot alert #37 piscina HIGH"
+last_updated: "2026-06-22T15:39:34.315Z"
+last_activity: 2026-06-22 -- Phase 115 execution started
 progress:
   total_phases: 15
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 7
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
+  percent: 13
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-21)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 114 — Scanner Auto-Recovery
+**Current focus:** Phase 115 — dependency-security-maintenance
 
 ## Current Position
 
-Phase: 114 (Scanner Auto-Recovery) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 114
-Last activity: 2026-06-21 -- Phase 114 execution started
+Phase: 115 (dependency-security-maintenance) — PLAN EXECUTED, BLOCKED on alert #37
+Plan: 1 of 1 (complete — SUMMARY written)
+Status: Ready for verification — 7 of 8 alerts cleared; HIGH alert #37 (piscina) surfaced as operator blocker
+Last activity: 2026-06-22 -- Phase 115 plan 115-01 executed (7 Dependabot PRs merged; piscina HIGH unremediable by target set)
 
 ## Accumulated Context
 
@@ -60,6 +60,8 @@ Roadmap shape (v1.4.1): **two phases**. Phase 114 (Scanner Auto-Recovery), deriv
 
 **Dependency edges:** Phase 114 depends on Phase 113 (v1.4.0 shipped on `main`). No intra-milestone edges (single phase).
 
+- [Phase ?]: Phase 115: merged all 7 Dependabot PRs #60-#66 SHA-pinned via --match-head-commit in locked order #64->#65->#66->#60->#61->#62->#63; cleared 7 of 8 alerts (2/3 HIGH + all 5 MEDIUM); whole-tree ruff 0.15.17 clean. HALTED on D-06 0-alert gate: piscina HIGH #37 unremediable by the target set (transitive pin via @angular/build) -- surfaced to operator, not auto-resolved.
+
 ### Phase 110 Decisions (2026-06-02)
 
 - **GUARD-02 warning-correctness gap confirmed:** `empty webhook_secret + require_secret=True` fires first startup warning saying "accept any caller" while the handler actually returns 503 (fail-closed). Phase 112 fixed warning text accuracy (v1.4.0).
@@ -72,7 +74,7 @@ None.
 
 ### Blockers/Concerns
 
-None.
+- Dependabot alert #37 (piscina HIGH RCE, GHSA-x9g3-xrwr-cwfg) remains OPEN after Phase 115: piscina pinned to 5.1.4 transitively by @angular/build ^22.0.2 (dev scope); first-patched 5.2.0 unreachable without an Angular toolchain bump (outside #60-#66 target set). Operator decision required: bump @angular/build, add npm override piscina>=5.2.0 (needs CI), or risk-accept (build-time devDep, not in runtime image).
 
 ### Quick Tasks Completed
 
@@ -120,10 +122,14 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-22T15:03:13.209Z
-Stopped at: Phase 115 context gathered
-Next action: Plan Phase 114 (Scanner Auto-Recovery) with `/gsd:plan-phase 114` (or discuss first with `/gsd:discuss-phase 114`)
+Last session: 2026-06-22T15:39:34.311Z
+Stopped at: Completed 115-01-PLAN.md (7 PRs merged, ruff clean) — BLOCKED on Dependabot alert #37 piscina HIGH
+Next action: Resolve Dependabot alert #37 (piscina HIGH) — the only thing standing between Phase 115 and a true 0-alert end-state. See 115-01-SUMMARY.md "Issues Encountered" for the three operator options.
 
 ## Operator Next Steps
 
-- Plan the milestone's single phase with `/gsd:plan-phase 114`
+- **Resolve piscina alert #37 (HIGH, build-time devDep) — operator decision required.** It is unremediable by the merged #60-#66 set because `@angular/build ^22.0.2` pins piscina to 5.1.4 (first-patched 5.2.0). Pick one:
+  1. Wait for / merge an `@angular/build` (Angular toolchain) bump that pulls piscina >= 5.2.0 — the clean fix; was out of Phase 115 scope.
+  2. Add an npm `overrides` entry forcing `piscina` >= 5.2.0 in `src/angular/package.json` and run CI to confirm `@angular/build` tolerates 5.2.0 (the tight pin suggests it may not). Own task/PR.
+  3. Dismiss #37 as risk-accepted (vulnerable code is a build-time devDep, not in the shipped runtime image per Dockerfile:123) — an explicit logged decision the operator owns.
+- Phase 115 plan executed: all 7 PRs #60-#66 MERGED, 7 of 8 alerts cleared, whole-tree ruff 0.15.17 clean. Run the verifier when ready.
