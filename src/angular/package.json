@@ -66,6 +66,7 @@
     "esbuild": "^0.28.1",
     "hono": "^4.12.18",
     "@hono/node-server": "^1.19.13",
-    "@babel/core": "^7.29.6"
+    "@babel/core": "^7.29.6",
+    "piscina": ">=5.2.0"
   }
 }
