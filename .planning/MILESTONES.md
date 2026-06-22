@@ -1,5 +1,20 @@
 # Project Milestones: SeedSync
 
+## v1.4.1 Scanner Auto-Recovery (Shipped: 2026-06-22, tagged `v1.5.0`)
+
+**Phases completed:** 2 phases (114-115), 3 plans, 6 tasks. Tagged `v1.5.0` — the GSD `v1.4.1` milestone label predates the earlier `v1.4.1`/`v1.4.2` git tags (cut 2026-06-15 for separate spawn-hang/security work); this delta is a new minor release.
+
+**Delivered:** Automatic scanner recovery from transient remote network blips plus a full Dependabot cleanup. The scanner now retries transient name-resolution failures in-scan instead of going dark, the controller auto-restarts after a permanent-class death, and all 8 open Dependabot alerts are cleared (0 open). Milestone audit: tech_debt (6/6 requirements satisfied, 6/6 cross-phase integration WIRED, 0 blockers — open items were GSD bookkeeping only, since back-filled); vibe-check deep-review clean (0 findings).
+
+**Key accomplishments:**
+
+- **Phase 114 (Scanner Auto-Recovery — SCAN-01/02/03, RECOV-01):** transient remote name-resolution failures during a scan (e.g. `Could not resolve hostname`, momentary `Bad hostname`) are now reclassified as in-scan-retryable and retried with bounded jittered backoff (capped attempts, shared by the scan + install SSH ops) instead of terminating the scanner; once retries exhaust, a genuinely wrong host still surfaces unchanged (`server.up=False` + error). A permanent-class controller death now auto-restarts via the existing `ServiceRestart` path, bounded by a consecutive-restart cap with a stayed-up reset at failure time, and keyword-only auto/reset flags so UI restarts never burn the auto-recovery budget.
+- **Phase 115 (Dependency & Security Maintenance — DEPS-01/02):** all 7 Dependabot bumps #60-#66 merged (SHA-pinned via `--match-head-commit`, security-first order, each CI-green-gated) plus a clean whole-tree ruff 0.15.17. The final HIGH — piscina alert #37 (prototype-pollution→RCE), transitively pinned to 5.1.4 by `@angular/build` — was closed by follow-on PR #67 adding an npm `overrides` entry forcing `piscina >=5.2.0` (CI build/Karma/E2E confirmed the toolchain tolerates 5.2.0). **0 open Dependabot alerts** (was 8: 3 HIGH + 5 MEDIUM).
+
+**Known deferred items at close:** webob-cgi-upstream-unblock (blocked on upstream webob 2.0) and 3 prior-session Dependabot quick-tasks with missing SUMMARYs (housekeeping). See STATE.md Deferred Items.
+
+---
+
 ## v1.4.0 Launch-Hardening for Public Release (Shipped: 2026-06-03)
 
 **Phases completed:** 4 phases (110-113), 11 plans. Single `v1.4.0` tag (first release since v1.3.0).

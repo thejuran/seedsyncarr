@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.4.1
 milestone_name: Scanner Auto-Recovery
-status: executing
+status: Awaiting next milestone
 stopped_at: "Completed 115-01 + follow-on piscina override PR #67 — alert #37 closed, 0 open Dependabot alerts, DEPS-01 fully met"
-last_updated: "2026-06-22T16:01:00.000Z"
-last_activity: 2026-06-22 -- piscina override PR #67 merged (CI-green), alert #37 auto-closed, DEPS-01 met
+last_updated: "2026-06-22T16:22:40.555Z"
+last_activity: 2026-06-22 — Milestone v1.4.1 completed and archived
 progress:
   total_phases: 15
   completed_phases: 2
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-21)
 
 ## Current Position
 
-Phase: 115 (dependency-security-maintenance) — COMPLETE (8 of 8 alerts cleared, 0 open)
-Plan: 1 of 1 (complete — SUMMARY + follow-on resolution written)
-Status: DEPS-01 + DEPS-02 fully met — alert #37 (piscina) closed via override PR #67; 0 open Dependabot alerts
-Last activity: 2026-06-22 -- piscina override PR #67 merged CI-green (Angular build/Karma/E2E all pass); alert #37 auto-closed (fixed)
+Phase: Milestone v1.4.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-22 — Milestone v1.4.1 completed and archived
 
 ## Accumulated Context
 
@@ -128,5 +128,4 @@ Next action: Phase 115 is complete (DEPS-01 + DEPS-02 met, 0 open alerts). Run t
 
 ## Operator Next Steps
 
-- **piscina alert #37 RESOLVED (2026-06-22) — operator option 2 taken.** Added npm `overrides` entry `piscina >=5.2.0` to `src/angular/package.json`; PR #67 confirmed `@angular/build ^22.0.2` tolerates piscina 5.2.0 (Angular build / Karma / E2E gates all GREEN). SHA-pin-merged to main (39133ff); alert #37 auto-closed (`fixed`). **0 open Dependabot alerts.**
-- Phase 115 fully complete: all 7 PRs #60-#66 MERGED + piscina override #67 MERGED; 8 of 8 alerts cleared; whole-tree ruff 0.15.17 clean. Run the verifier when ready, then move toward the single `v1.4.1` milestone-end tag (milestone-close action, not in-phase).
+- Start the next milestone with /gsd-new-milestone
