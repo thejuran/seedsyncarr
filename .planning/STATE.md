@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.4.1
 milestone_name: Scanner Auto-Recovery
 status: executing
-stopped_at: "Completed 115-01-PLAN.md (7 PRs merged, ruff clean) — BLOCKED on Dependabot alert #37 piscina HIGH"
-last_updated: "2026-06-22T15:39:34.315Z"
-last_activity: 2026-06-22 -- Phase 115 execution started
+stopped_at: "Completed 115-01 + follow-on piscina override PR #67 — alert #37 closed, 0 open Dependabot alerts, DEPS-01 fully met"
+last_updated: "2026-06-22T16:01:00.000Z"
+last_activity: 2026-06-22 -- piscina override PR #67 merged (CI-green), alert #37 auto-closed, DEPS-01 met
 progress:
   total_phases: 15
   completed_phases: 2
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-21)
 
 ## Current Position
 
-Phase: 115 (dependency-security-maintenance) — PLAN EXECUTED, BLOCKED on alert #37
-Plan: 1 of 1 (complete — SUMMARY written)
-Status: Ready for verification — 7 of 8 alerts cleared; HIGH alert #37 (piscina) surfaced as operator blocker
-Last activity: 2026-06-22 -- Phase 115 plan 115-01 executed (7 Dependabot PRs merged; piscina HIGH unremediable by target set)
+Phase: 115 (dependency-security-maintenance) — COMPLETE (8 of 8 alerts cleared, 0 open)
+Plan: 1 of 1 (complete — SUMMARY + follow-on resolution written)
+Status: DEPS-01 + DEPS-02 fully met — alert #37 (piscina) closed via override PR #67; 0 open Dependabot alerts
+Last activity: 2026-06-22 -- piscina override PR #67 merged CI-green (Angular build/Karma/E2E all pass); alert #37 auto-closed (fixed)
 
 ## Accumulated Context
 
@@ -60,7 +60,7 @@ Roadmap shape (v1.4.1): **two phases**. Phase 114 (Scanner Auto-Recovery), deriv
 
 **Dependency edges:** Phase 114 depends on Phase 113 (v1.4.0 shipped on `main`). No intra-milestone edges (single phase).
 
-- [Phase ?]: Phase 115: merged all 7 Dependabot PRs #60-#66 SHA-pinned via --match-head-commit in locked order #64->#65->#66->#60->#61->#62->#63; cleared 7 of 8 alerts (2/3 HIGH + all 5 MEDIUM); whole-tree ruff 0.15.17 clean. HALTED on D-06 0-alert gate: piscina HIGH #37 unremediable by the target set (transitive pin via @angular/build) -- surfaced to operator, not auto-resolved.
+- [Phase ?]: Phase 115: merged all 7 Dependabot PRs #60-#66 SHA-pinned via --match-head-commit in locked order #64->#65->#66->#60->#61->#62->#63; cleared 7 of 8 alerts (2/3 HIGH + all 5 MEDIUM); whole-tree ruff 0.15.17 clean. Follow-on: piscina HIGH #37 (transitive pin via @angular/build) closed via npm override `piscina >=5.2.0` in PR #67 — CI-gated (Angular build/Karma/E2E all green), SHA-pin-merged to main (39133ff), alert #37 auto-closed. **8 of 8 alerts cleared, 0 open; DEPS-01 fully met.**
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -74,7 +74,7 @@ None.
 
 ### Blockers/Concerns
 
-- Dependabot alert #37 (piscina HIGH RCE, GHSA-x9g3-xrwr-cwfg) remains OPEN after Phase 115: piscina pinned to 5.1.4 transitively by @angular/build ^22.0.2 (dev scope); first-patched 5.2.0 unreachable without an Angular toolchain bump (outside #60-#66 target set). Operator decision required: bump @angular/build, add npm override piscina>=5.2.0 (needs CI), or risk-accept (build-time devDep, not in runtime image).
+- None. (RESOLVED 2026-06-22) Dependabot alert #37 (piscina HIGH RCE, GHSA-x9g3-xrwr-cwfg) is CLOSED: npm override `piscina >=5.2.0` added to `src/angular/package.json` lifted the transitively-pinned 5.1.4 to patched 5.2.0; PR #67 CI-gated (Angular build/Karma/E2E all green — the @angular/build pin tolerated 5.2.0), SHA-pin-merged to main (39133ff). Alert #37 auto-closed (state `fixed`); 0 open Dependabot alerts.
 
 ### Quick Tasks Completed
 
@@ -122,14 +122,11 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-22T15:39:34.311Z
-Stopped at: Completed 115-01-PLAN.md (7 PRs merged, ruff clean) — BLOCKED on Dependabot alert #37 piscina HIGH
-Next action: Resolve Dependabot alert #37 (piscina HIGH) — the only thing standing between Phase 115 and a true 0-alert end-state. See 115-01-SUMMARY.md "Issues Encountered" for the three operator options.
+Last session: 2026-06-22T16:01:00.000Z
+Stopped at: Completed 115-01 + follow-on piscina override PR #67 — alert #37 closed, 0 open Dependabot alerts, DEPS-01 fully met
+Next action: Phase 115 is complete (DEPS-01 + DEPS-02 met, 0 open alerts). Run the Phase 115 verifier when ready, then proceed toward the v1.4.1 milestone close.
 
 ## Operator Next Steps
 
-- **Resolve piscina alert #37 (HIGH, build-time devDep) — operator decision required.** It is unremediable by the merged #60-#66 set because `@angular/build ^22.0.2` pins piscina to 5.1.4 (first-patched 5.2.0). Pick one:
-  1. Wait for / merge an `@angular/build` (Angular toolchain) bump that pulls piscina >= 5.2.0 — the clean fix; was out of Phase 115 scope.
-  2. Add an npm `overrides` entry forcing `piscina` >= 5.2.0 in `src/angular/package.json` and run CI to confirm `@angular/build` tolerates 5.2.0 (the tight pin suggests it may not). Own task/PR.
-  3. Dismiss #37 as risk-accepted (vulnerable code is a build-time devDep, not in the shipped runtime image per Dockerfile:123) — an explicit logged decision the operator owns.
-- Phase 115 plan executed: all 7 PRs #60-#66 MERGED, 7 of 8 alerts cleared, whole-tree ruff 0.15.17 clean. Run the verifier when ready.
+- **piscina alert #37 RESOLVED (2026-06-22) — operator option 2 taken.** Added npm `overrides` entry `piscina >=5.2.0` to `src/angular/package.json`; PR #67 confirmed `@angular/build ^22.0.2` tolerates piscina 5.2.0 (Angular build / Karma / E2E gates all GREEN). SHA-pin-merged to main (39133ff); alert #37 auto-closed (`fixed`). **0 open Dependabot alerts.**
+- Phase 115 fully complete: all 7 PRs #60-#66 MERGED + piscina override #67 MERGED; 8 of 8 alerts cleared; whole-tree ruff 0.15.17 clean. Run the verifier when ready, then move toward the single `v1.4.1` milestone-end tag (milestone-close action, not in-phase).

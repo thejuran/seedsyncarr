@@ -10,9 +10,10 @@ requires:
     provides: "v1.4.0 shipped on main — the baseline the Dependabot bumps apply against"
 provides:
   - "7 Dependabot dependency bumps merged (#60-#66): pyinstaller, ruff 0.15.17, testfixtures, pytest, npm group (18 updates), hono 4.12.26, undici 7.28.0"
-  - "7 of 8 Dependabot security alerts cleared (2 of 3 HIGH + all 5 MEDIUM)"
+  - "8 of 8 Dependabot security alerts cleared (all 3 HIGH + all 5 MEDIUM) — alert #37 (piscina HIGH RCE) closed via follow-on npm override PR #67"
   - "ruff dev-dependency resolved to 0.15.17 (poetry.lock); whole-tree ruff 0.15.17 lint confirmed clean"
-affects: [v1.4.1-milestone-close, future-angular-toolchain-bump]
+  - "npm overrides entry piscina >=5.2.0 forces patched piscina past @angular/build's transitive 5.1.4 pin — CI-gated (Angular build/Karma/E2E all green) before landing on main"
+affects: [v1.4.1-milestone-close]
 
 # Tech tracking
 tech-stack:
@@ -37,7 +38,7 @@ key-decisions:
 patterns-established:
   - "Pattern: SHA-pinned Dependabot merge gate with mergeability-recompute polling (UNKNOWN -> MERGEABLE) before each pinned merge"
 
-requirements-completed: []  # DEPS-01 NOT fully satisfied (1 HIGH alert open); DEPS-02 PR-merge half satisfied but its '0 alerts after' bar is not met. Left empty pending operator resolution of #37.
+requirements-completed: [DEPS-01]  # DEPS-01 fully satisfied: alert #37 (piscina HIGH) closed via follow-on override PR #67 — 0 open Dependabot alerts. DEPS-02 PR-merge half complete (#60-#66 merged) and its '0 alerts after' bar now also met.
 
 # Metrics
 duration: ~35min
@@ -160,5 +161,39 @@ N/A — non-TDD maintenance plan (`type: execute`, no `tdd="true"` tasks).
 - All 7 dependency squash-merge commits present on main (#60-#66: `4d7a35d`, `161a357`, `9063527`, `cb15f08`, `796f457`, `8a341b9`, `452c290`) + reconciliation merge `c6b20b4`.
 
 ---
+
+## Follow-on resolution (2026-06-22): alert #37 closed — DEPS-01 fully met
+
+The HALT above was resolved by **operator option 2** (npm `overrides` entry forcing piscina, CI-gated) rather than waiting on an Angular toolchain bump. Executed sequentially on the main working tree via the PR route so CI gated the override **before** it touched main.
+
+**What was done:**
+- Added `"piscina": ">=5.2.0"` to the **existing** overrides block in `src/angular/package.json` (no second block, no removed entries).
+- Regenerated `package-lock.json`: resolved `node_modules/piscina` moved `5.1.4 -> 5.2.0`. Diff was surgical — only the piscina node changed; no collateral lockfile churn. Verified no `piscina-5.1.4.tgz` remains anywhere in the lockfile, and installed `node_modules/piscina` reports `5.2.0`.
+- Commit `81bec2c` on branch `chore/piscina-override-deps-01` -> **PR #67**.
+
+**CI gate result — ALL active gates GREEN** (the risk that 5.2.0 breaks the Angular build did NOT materialize):
+
+| Gate | Result |
+|---|---|
+| Lint (Angular) | **pass** (26s) |
+| Angular unit tests | **pass** (1m24s) |
+| Build Docker Image | **pass** (5m44s) — Angular build tolerates piscina 5.2.0 |
+| End-to-end tests on Docker Image (amd64) | **pass** (3m54s) |
+| CodeQL / Analyze (all) / Python lint+tests | pass |
+| Publish* / PyPI jobs | skipping (release-only, normal) |
+
+**Merge:** SHA-pinned squash exactly as the #60-#66 merges — captured `headRefOid 81bec2c`, confirmed `mergeable==MERGEABLE` + `mergeStateStatus==CLEAN`, then `gh pr merge 67 --squash --delete-branch --match-head-commit 81bec2c...`. PR #67 shows **MERGED**. Local main fast-forwarded to squash commit `39133ff`; local == origin/main.
+
+**End-state verification:**
+- Dependabot **open-alert count == 0**. Alert **#37 auto-closed** — state `fixed`, `fixed_at 2026-06-22T16:00:54Z` (~14s after merge).
+- `ruff check src/python/` still exits 0 (no Python touched; no regression).
+- piscina override present on `origin/main:src/angular/package.json` (`piscina: >=5.2.0`); lockfile resolves `piscina-5.2.0.tgz`.
+
+**DEPS-01 is now fully satisfied** (8 of 8 alerts cleared, 0 open). **DEPS-02**'s "0 alerts after" bar is consequently also met.
+
+### Follow-on commits
+- `81bec2c` — `fix(deps): override piscina >=5.2.0 to close Dependabot alert #37 (DEPS-01)` (squashed onto main as `39133ff` via PR #67)
+
+---
 *Phase: 115-dependency-security-maintenance*
-*Completed: 2026-06-22 (with one surfaced operator blocker: piscina alert #37)*
+*Completed: 2026-06-22 — operator blocker (piscina alert #37) resolved via override PR #67; 0 open Dependabot alerts, DEPS-01 fully met*

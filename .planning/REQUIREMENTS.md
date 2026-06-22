@@ -19,7 +19,7 @@ Requirements for milestone v1.4.1. Each maps to a roadmap phase.
 
 ### Dependency & Security Maintenance
 
-- [ ] **DEPS-01**: All open Dependabot security alerts are cleared. As of 2026-06-21 that is **8 alerts** — 3 HIGH (`hono` CORS-credentials reflection, `piscina` prototype-pollution→RCE, `undici` TLS-cert-validation bypass) and 5 MEDIUM (4× `hono`, 1× `undici` cross-user info disclosure) — by upgrading each affected package to its patched version.
+- [x] **DEPS-01**: All open Dependabot security alerts are cleared. As of 2026-06-21 that is **8 alerts** — 3 HIGH (`hono` CORS-credentials reflection, `piscina` prototype-pollution→RCE, `undici` TLS-cert-validation bypass) and 5 MEDIUM (4× `hono`, 1× `undici` cross-user info disclosure) — by upgrading each affected package to its patched version.
 - [x] **DEPS-02**: All open Dependabot dependency PRs are merged (as of 2026-06-21: #60–#66 — 4 Python dev-dep bumps, 3 JS dev-dep bumps, and the 18-update npm group), each gated on CI green so no merge regresses the build or test/lint gates.
 
 ## Future Requirements
@@ -47,7 +47,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SCAN-02 | Phase 114 | Pending |
 | SCAN-03 | Phase 114 | Pending |
 | RECOV-01 | Phase 114 | Pending |
-| DEPS-01 | Phase 115 | Pending |
+| DEPS-01 | Phase 115 | Complete |
 | DEPS-02 | Phase 115 | Complete |
 
 **Coverage:**
