@@ -212,7 +212,8 @@ class RemoteScanner(IScanner):
             except SshcpError as e:
                 self.logger.warning(
                     "Caught an SshcpError during %s (attempt %d/%d): %s",
-                    op_label, attempt, self.__SCAN_MAX_ATTEMPTS, str(e))
+                    op_label, attempt, self.__SCAN_MAX_ATTEMPTS,
+                    sanitize_log_value(str(e)))
                 # The SOLE retry gate is name-resolution (any resolver-string
                 # surface, case-insensitive). Transient timeout/refused are NOT
                 # retried in-scan.
