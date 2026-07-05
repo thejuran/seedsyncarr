@@ -100,4 +100,11 @@ if [ -x /scripts/setup_default_config.sh ]; then
 fi
 
 log "Starting seedsyncarr as uid ${PUID} gid ${PGID}"
-exec gosu "${PUID}:${PGID}" "$@"
+# Run the app under tini as PID 1's reaping init. seedsyncarr.py spawns ssh/scp
+# (sshcp.py) and lftp (lftp.py) via pexpect on every scan cycle; without an init
+# in front, the app process itself is PID 1 and the kernel does NOT auto-reap
+# children that exit and reparent to it, so they pile up as <defunct> zombies
+# (observed: 1000+ over time, eventually exhausting the PID table). tini reaps
+# them. `-g` forwards signals to the whole process group so the existing
+# SIGTERM/SIGINT handlers in seedsyncarr.py still fire on container stop.
+exec gosu "${PUID}:${PGID}" tini -g -- "$@"
