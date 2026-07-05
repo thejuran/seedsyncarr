@@ -89,6 +89,7 @@ RUN sed -i 's/Components: main/Components: main contrib non-free non-free-firmwa
         bzip2 \
         curl \
         gosu \
+        tini \
         libnss-wrapper \
         libxml2-dev libxslt-dev libffi-dev \
     && apt-get clean
@@ -161,8 +162,9 @@ RUN chmod a+x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]
 
-# Must run app inside shell
-# Otherwise the container crashes as soon as a child process exits
+# The app is launched under tini (see entrypoint.sh) so that PID 1 reaps the
+# ssh/scp/lftp children the app spawns per scan cycle, instead of accumulating
+# zombies. This CMD is the command tini supervises.
 CMD [ \
     "python", \
     "/app/python/seedsyncarr.py", \
