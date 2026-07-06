@@ -1,18 +1,13 @@
-A reliability and security-maintenance release. The remote scanner now recovers on its own from transient network blips instead of going dark until a manual restart, and every outstanding dependency advisory is cleared.
+A bug-fix release that stops the container from slowly piling up defunct ("zombie") child processes over time.
 
 Existing config files (including encrypted ones) load unchanged, with no migration step.
 
 ### What changed for you
 
-- **The scanner recovers from transient network blips on its own** — A scan that hit a momentary DNS/name-resolution hiccup (for example "could not resolve hostname" or a fleeting bad-hostname error) used to terminate the scanner, which could leave your file list frozen for a long time until you restarted the container by hand. Those transient failures are now retried in-scan with a short, bounded backoff, so the list keeps updating once the blip clears. A host that is genuinely wrong or persistently unreachable still surfaces the error to you as before once the retries are exhausted — so a real misconfiguration still stops and prompts.
-- **The controller restarts itself after a fatal error** — If the controller dies from a permanent-class error, it now auto-restarts through the existing recovery path instead of staying down indefinitely. The restart is bounded, so an genuinely unrecoverable condition can't turn into a restart loop, and a restart you trigger from the UI doesn't eat into the automatic-recovery budget.
-
-### Security
-
-- **Cleared all open dependency advisories** — Merged the outstanding dependency updates and pulled the build-time `piscina` dependency up to a patched version, clearing all 8 open Dependabot alerts (3 high, 5 medium). The affected packages are build/dev tooling only — there are no changes to the running app's dependencies.
+- **No more zombie process build-up** — Because of how the app started inside the container, the short-lived helper processes it launches on every scan (the `ssh`/`scp` used for remote scanning and the `lftp` used for downloads) were never cleaned up after they finished. They accumulated as harmless-looking but ever-growing "defunct" entries — over a thousand in long-running setups — which would eventually fill the process table and stop the container from starting anything new. Those helpers are now cleaned up as they exit. Stop and restart behave exactly as before.
 
 ### Should you update?
 
-Yes — especially if your seedbox connection ever has brief DNS or network hiccups, where this release keeps the scanner alive and recovering instead of silently freezing.
+Yes — especially if your container runs for weeks at a time without a restart. This is a Docker-image-only fix with no config or behaviour changes, so updating is low-risk.
 
 **Full changelog:** https://github.com/thejuran/seedsyncarr/blob/v{{VERSION}}/CHANGELOG.md

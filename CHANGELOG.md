@@ -4,6 +4,26 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.1] - 2026-07-06
+
+A bug-fix release. It stops the container from slowly accumulating defunct
+("zombie") child processes over time. Existing config files load unchanged with
+no migration step.
+
+### Fixed
+
+- Fixed an accumulation of zombie (`<defunct>`) child processes. The application
+  process ran as PID 1 inside the container, and a plain PID 1 does not receive
+  the kernel's automatic reaping of children that exit or are reparented to it.
+  Because the app spawns `ssh`/`scp` (remote scan) and `lftp` (downloads) on
+  every scan cycle, exited children piled up as zombies — over a thousand were
+  observed in long-running deployments, which would eventually exhaust the
+  process table and prevent new processes from starting. The app is now launched
+  under `tini` as the container's init, which reaps these children. Signal
+  forwarding is preserved, so container stop/restart behaves exactly as before.
+  This is a Docker-image change only; there are no application-code or config
+  changes.
+
 ## [1.5.0] - 2026-06-22
 
 A reliability and security-maintenance release. It makes the remote scanner
