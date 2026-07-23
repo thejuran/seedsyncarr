@@ -1,7 +1,7 @@
 import {ComponentFixture, fakeAsync, TestBed, tick} from "@angular/core/testing";
 import {DatePipe, NgClass} from "@angular/common";
 import {RouterModule} from "@angular/router";
-import {Observable, Subject} from "rxjs";
+import {BehaviorSubject, Observable, Subject} from "rxjs";
 
 import {DashboardLogPaneComponent} from "../../../../pages/files/dashboard-log-pane.component";
 import {StreamServiceRegistry} from "../../../../services/base/stream-service.registry";
@@ -24,10 +24,12 @@ const LOG_PANE_TEMPLATE = `
     </div>
   </div>
   <div class="log-pane__body">
-    @if (!logService.hasReceivedLogs) {
+    @if (!logService.hasReceivedLogs && !logService.isConnected) {
       <div class="log-pane__spinner">
         <i class="ph ph-circle-notch ph-spin"></i>
       </div>
+    } @else if (!logService.hasReceivedLogs) {
+      <div class="log-pane__empty">No recent events</div>
     }
     @for (entry of entries; track $index) {
       <div class="log-entry"
@@ -49,14 +51,27 @@ const LOG_PANE_TEMPLATE = `
 
 class MockLogService {
     private _logs$ = new Subject<LogRecord>();
+    private _connected$ = new BehaviorSubject<boolean>(false);
     hasReceivedLogs = false;
 
     get logs(): Observable<LogRecord> {
         return this._logs$.asObservable();
     }
 
+    get connected(): Observable<boolean> {
+        return this._connected$.asObservable();
+    }
+
+    get isConnected(): boolean {
+        return this._connected$.getValue();
+    }
+
     emit(record: LogRecord): void {
         this._logs$.next(record);
+    }
+
+    setConnected(state: boolean): void {
+        this._connected$.next(state);
     }
 }
 
@@ -208,7 +223,7 @@ describe("DashboardLogPaneComponent", () => {
         expect(badge!.classList.contains("log-entry__badge--error")).toBeTrue();
     }));
 
-    it("should show spinner when hasReceivedLogs is false", fakeAsync(() => {
+    it("should show spinner when disconnected and no logs received", fakeAsync(() => {
         mockRegistry.logService.hasReceivedLogs = false;
         fixture.detectChanges();
         tick();
@@ -224,6 +239,24 @@ describe("DashboardLogPaneComponent", () => {
 
         const spinner = fixture.nativeElement.querySelector(".log-pane__spinner");
         expect(spinner).toBeFalsy();
+    }));
+
+    it("should resolve spinner to empty state when connected with no logs", fakeAsync(() => {
+        // Regression: the spinner previously waited on a first log-record
+        // event forever; "connected but no logs" is a normal empty state
+        mockRegistry.logService.hasReceivedLogs = false;
+        fixture.detectChanges();
+        tick();
+
+        mockRegistry.logService.setConnected(true);
+        tick();
+        fixture.detectChanges();
+
+        const spinner = fixture.nativeElement.querySelector(".log-pane__spinner");
+        expect(spinner).toBeFalsy();
+        const empty = fixture.nativeElement.querySelector(".log-pane__empty");
+        expect(empty).toBeTruthy();
+        expect(empty!.textContent).toContain("No recent events");
     }));
 
     it("should call navigator.clipboard.writeText when copyLogs is called", fakeAsync(() => {

@@ -94,10 +94,22 @@ export class ViewFileService implements OnDestroy {
                 .pipe(takeUntil(this.destroy$))
                 .subscribe({
                     next: modelFiles => {
-                        const t0 = performance.now();
-                        _viewFileService.buildViewFromModelFiles(modelFiles);
-                        const t1 = performance.now();
-                        this._logger.debug("ViewFile creation took", (t1 - t0).toFixed(0), "ms");
+                        // A throw inside next() would terminate this subscription
+                        // permanently and silently freeze the file list (all further
+                        // model updates dropped). Catch, log, and resync state so
+                        // one bad event cannot take down the whole dashboard.
+                        try {
+                            const t0 = performance.now();
+                            _viewFileService.buildViewFromModelFiles(modelFiles);
+                            const t1 = performance.now();
+                            this._logger.debug("ViewFile creation took", (t1 - t0).toFixed(0), "ms");
+                        } catch (error) {
+                            this._logger.error("Error building view from model files:", error);
+                            _viewFileService.rebuildViewFromScratch(modelFiles);
+                        }
+                    },
+                    error: error => {
+                        this._logger.error("Model file stream terminated with error:", error);
                     }
                 });
         } else {
@@ -189,6 +201,38 @@ export class ViewFileService implements OnDestroy {
         this.pushViewFiles();
         this._prevModelFiles = modelFiles;
         this._logger.debug("New view model: %O", this._files.toJS());
+    }
+
+    /**
+     * Recovery path: discard all incremental diff state and rebuild the view
+     * completely from the given model. Used when buildViewFromModelFiles throws
+     * (e.g. _indices desynced from _files), so the stream subscription survives
+     * and the next model emission renders a correct list instead of freezing.
+     * Selection state is preserved by name where possible.
+     */
+    private rebuildViewFromScratch(modelFiles: Immutable.Map<string, ModelFile>): void {
+        const selectedNames = new Set<string>();
+        this._files.forEach(file => {
+            if (file.isSelected) { selectedNames.add(file.name!); }
+        });
+
+        let newViewFiles = Immutable.List<ViewFile>();
+        modelFiles.forEach((modelFile, name) => {
+            newViewFiles = newViewFiles.push(
+                ViewFileService.createViewFile(modelFile!, selectedNames.has(name!))
+            );
+        });
+        if (this._sortComparator != null) {
+            newViewFiles = newViewFiles.sort(this._sortComparator).toList();
+        }
+        this._indices.clear();
+        newViewFiles.forEach(
+            (value, index) => this._indices.set(value.name!, index!)
+        );
+
+        this._files = newViewFiles;
+        this.pushViewFiles();
+        this._prevModelFiles = modelFiles;
     }
 
     get files(): Observable<Immutable.List<ViewFile>> {

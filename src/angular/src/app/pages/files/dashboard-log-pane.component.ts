@@ -46,6 +46,12 @@ export class DashboardLogPaneComponent implements OnInit {
                 this.entries = entries;
                 this.cdr.markForCheck();
             });
+
+        // Re-render when the stream connects/disconnects so the spinner can
+        // resolve to the empty state even when no log records ever arrive
+        this.logService.connected
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(() => this.cdr.markForCheck());
     }
 
     levelBadge(level: LogRecord.Level): string {

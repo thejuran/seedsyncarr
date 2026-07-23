@@ -75,6 +75,42 @@ describe("Testing view file service", () => {
         sub.unsubscribe();
     }));
 
+    it("should survive an exception during view build and keep processing model updates", fakeAsync(() => {
+        // Incident 2026-07-23: a throw inside the model subscription's next()
+        // handler killed the subscription permanently and silently — the file
+        // list froze (rendered 0 files) while the backend kept streaming.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const svc: any = viewService;
+        const original = svc.buildViewFromModelFiles.bind(svc);
+        let shouldThrow = true;
+        spyOn(svc, "buildViewFromModelFiles").and.callFake((modelFiles: Immutable.Map<string, ModelFile>) => {
+            if (shouldThrow) {
+                shouldThrow = false;
+                throw new Error("simulated internal desync");
+            }
+            return original(modelFiles);
+        });
+
+        let model = Immutable.Map<string, ModelFile>();
+        model = model.set("a", new ModelFile({name: "a", is_dir: false, state: ModelFile.State.DEFAULT}));
+        // First emission throws inside the handler -> recovery path rebuilds
+        mockModelService._files.next(model);
+        tick();
+
+        let latest: Immutable.List<ViewFile> = null!;
+        const sub = viewService.files.subscribe(list => latest = list);
+        tick();
+        expect(latest.size).toBe(1);
+        expect(latest.get(0)!.name).toBe("a");
+
+        // Subscription must still be alive: subsequent emissions processed
+        model = model.set("b", new ModelFile({name: "b", is_dir: false, state: ModelFile.State.DEFAULT}));
+        mockModelService._files.next(model);
+        tick();
+        expect(latest.size).toBe(2);
+        sub.unsubscribe();
+    }));
+
     it("should correctly populate ViewFile props from a ModelFile", fakeAsync(() => {
         let model = Immutable.Map<string, ModelFile>();
         model = model.set("a", new ModelFile({

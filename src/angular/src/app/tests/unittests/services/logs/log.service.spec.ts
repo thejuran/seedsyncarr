@@ -94,6 +94,25 @@ describe("Testing log service", () => {
         expect(count).toBe(1);
     }));
 
+    it("should track connection state for the log pane spinner", fakeAsync(() => {
+        // "Connected but no logs yet" is a normal empty state; the pane's
+        // spinner previously never resolved when no log records arrived
+        const states: boolean[] = [];
+        logService.connected.subscribe(state => states.push(state));
+        tick();
+        expect(logService.isConnected).toBe(false);
+
+        logService.notifyConnected();
+        tick();
+        expect(logService.isConnected).toBe(true);
+
+        logService.notifyDisconnected();
+        tick();
+        expect(logService.isConnected).toBe(false);
+
+        expect(states).toEqual([false, true, false]);
+    }));
+
     it("should cache records", fakeAsync(() => {
         let count = 0;
         let latestRecord: LogRecord = null!;

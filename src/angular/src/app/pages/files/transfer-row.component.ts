@@ -68,12 +68,28 @@ export class TransferRowComponent {
         [ViewFile.Status.DELETED]: "badge bg-danger",
     };
 
+    /**
+     * A DELETED file that still exists remotely but has no local content is a
+     * "skipped" file: SeedSyncarr is intentionally not re-downloading it (it
+     * was synced and then moved/removed locally, e.g. by a Sonarr/Radarr
+     * import). This state silently blocked a re-grabbed release in the
+     * 2026-07-23 incident, so it gets a distinct warning badge instead of
+     * being indistinguishable from a plain deleted file.
+     */
+    get isSkippedRemote(): boolean {
+        return this.file.status === ViewFile.Status.DELETED &&
+            this.file.remoteSize != null && this.file.remoteSize > 0 &&
+            (this.file.localSize == null || this.file.localSize === 0);
+    }
+
     get badgeLabel(): string {
+        if (this.isSkippedRemote) { return "Skipped (remote)"; }
         const status = this.file.status ?? ViewFile.Status.DEFAULT;
         return TransferRowComponent.BADGE_LABELS[status] ?? "\u2014";
     }
 
     get badgeClass(): string {
+        if (this.isSkippedRemote) { return "badge bg-warning text-dark"; }
         const status = this.file.status ?? ViewFile.Status.DEFAULT;
         return TransferRowComponent.BADGE_CLASSES[status] ?? "badge bg-dark";
     }

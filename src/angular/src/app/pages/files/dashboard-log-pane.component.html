@@ -13,10 +13,12 @@
     </div>
   </div>
   <div class="log-pane__body">
-    @if (!logService.hasReceivedLogs) {
+    @if (!logService.hasReceivedLogs && !logService.isConnected) {
       <div class="log-pane__spinner">
         <i class="ph ph-circle-notch ph-spin"></i>
       </div>
+    } @else if (!logService.hasReceivedLogs) {
+      <div class="log-pane__empty">No recent events</div>
     }
     @for (entry of entries; track $index) {
       <div class="log-entry"

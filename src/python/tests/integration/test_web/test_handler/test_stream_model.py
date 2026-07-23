@@ -20,27 +20,28 @@ class TestModelStreamHandler(BaseTestWebApp):
     def test_stream_model_serializes_initial_model(self, mock_serialize_model_cls):
         # Setup mock serialize instance
         mock_serialize = mock_serialize_model_cls.return_value
+        mock_serialize.model.return_value = "\n"
         mock_serialize.update_event.return_value = "\n"
         # Use the real UpdateEvent class so the handler can construct events
         mock_serialize_model_cls.UpdateEvent = SerializeModel.UpdateEvent
 
-        # Initial model -- handler sends each file as an ADDED update_event
+        # Initial model -- handler sends all files in a single model-init event
         self.model_files = [ModelFile("a", True), ModelFile("b", False)]
 
         collect_sse_chunks(self.web_app)
-        self.assertEqual(2, len(mock_serialize.update_event.call_args_list))
-        call1, call2 = mock_serialize.update_event.call_args_list
-        self.assertEqual(SerializeModel.UpdateEvent.Change.ADDED, call1[0][0].change)
-        self.assertEqual(None, call1[0][0].old_file)
-        self.assertEqual(ModelFile("a", True), call1[0][0].new_file)
-        self.assertEqual(SerializeModel.UpdateEvent.Change.ADDED, call2[0][0].change)
-        self.assertEqual(None, call2[0][0].old_file)
-        self.assertEqual(ModelFile("b", False), call2[0][0].new_file)
+        self.assertEqual(1, len(mock_serialize.model.call_args_list))
+        self.assertEqual(
+            [ModelFile("a", True), ModelFile("b", False)],
+            mock_serialize.model.call_args[0][0]
+        )
+        # No per-file added events for the initial model
+        self.assertEqual(0, len(mock_serialize.update_event.call_args_list))
 
     @patch("web.handler.stream_model.SerializeModel")
     def test_stream_model_serializes_updates(self, mock_serialize_model_cls):
         # Setup mock serialize instance
         mock_serialize = mock_serialize_model_cls.return_value
+        mock_serialize.model.return_value = "\n"
         mock_serialize.update_event.return_value = "\n"
         # Use the real UpdateEvent class
         mock_serialize_model_cls.UpdateEvent = SerializeModel.UpdateEvent

@@ -57,25 +57,29 @@ class TestModelStreamHandler(unittest.TestCase):
         call_args = self.mock_controller.get_model_files_and_add_listener.call_args[0][0]
         self.assertIs(call_args, self.handler.model_listener)
 
-    def test_initial_files_sent_one_at_a_time(self):
+    def test_initial_files_sent_as_single_init_event(self):
         file1 = ModelFile("alpha.txt", False)
         file2 = ModelFile("beta.txt", False)
         self.mock_controller.get_model_files_and_add_listener.return_value = [file1, file2]
         self.handler.setup()
         result1 = self.handler.get_value()
         self.assertIsNotNone(result1)
-        self.assertIn("model-added", result1)
+        self.assertIn("model-init", result1)
+        self.assertIn("alpha.txt", result1)
+        self.assertIn("beta.txt", result1)
         result2 = self.handler.get_value()
-        self.assertIsNotNone(result2)
-        self.assertIn("model-added", result2)
-        result3 = self.handler.get_value()
-        self.assertIsNone(result3)
+        self.assertIsNone(result2)
 
-    def test_empty_initial_model(self):
+    def test_empty_initial_model_sends_empty_init_event(self):
+        # An empty model still sends model-init so the frontend knows the
+        # initial state has loaded
         self.mock_controller.get_model_files_and_add_listener.return_value = []
         self.handler.setup()
         result = self.handler.get_value()
-        self.assertIsNone(result)
+        self.assertIsNotNone(result)
+        self.assertIn("model-init", result)
+        result2 = self.handler.get_value()
+        self.assertIsNone(result2)
 
     def test_initial_files_contain_file_data(self):
         file = ModelFile("test.txt", False)
@@ -87,6 +91,7 @@ class TestModelStreamHandler(unittest.TestCase):
     def test_realtime_events_after_initial_files(self):
         self.mock_controller.get_model_files_and_add_listener.return_value = []
         self.handler.setup()
+        self.handler.get_value()  # consume model-init
         new_file = ModelFile("new.txt", False)
         self.handler.model_listener.file_added(new_file)
         result = self.handler.get_value()
@@ -97,6 +102,7 @@ class TestModelStreamHandler(unittest.TestCase):
     def test_realtime_removed_event(self):
         self.mock_controller.get_model_files_and_add_listener.return_value = []
         self.handler.setup()
+        self.handler.get_value()  # consume model-init
         old_file = ModelFile("removed.txt", False)
         self.handler.model_listener.file_removed(old_file)
         result = self.handler.get_value()
@@ -105,6 +111,7 @@ class TestModelStreamHandler(unittest.TestCase):
     def test_realtime_updated_event(self):
         self.mock_controller.get_model_files_and_add_listener.return_value = []
         self.handler.setup()
+        self.handler.get_value()  # consume model-init
         old_file = ModelFile("updated.txt", False)
         new_file = ModelFile("updated.txt", False)
         self.handler.model_listener.file_updated(old_file, new_file)
@@ -114,6 +121,7 @@ class TestModelStreamHandler(unittest.TestCase):
     def test_no_events_returns_none(self):
         self.mock_controller.get_model_files_and_add_listener.return_value = []
         self.handler.setup()
+        self.handler.get_value()  # consume model-init
         result = self.handler.get_value()
         self.assertIsNone(result)
 

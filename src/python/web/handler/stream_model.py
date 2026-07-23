@@ -38,7 +38,8 @@ class ModelStreamHandler(IStreamHandler):
         self.controller = controller
         self.serialize = SerializeModel()
         self.model_listener = WebResponseModelListener()
-        self.initial_model_files: List[ModelFile] = []
+        # None until setup() runs; a list (possibly empty) afterwards
+        self.initial_model_files: Optional[List[ModelFile]] = None
 
     @overrides(IStreamHandler)
     def setup(self):
@@ -48,18 +49,19 @@ class ModelStreamHandler(IStreamHandler):
 
     @overrides(IStreamHandler)
     def get_value(self) -> Optional[str]:
-        # Send initial files one at a time as "added" events
-        # The streaming loop ensures fair interleaving with other handlers
-        if self.initial_model_files:
-            file = self.initial_model_files.pop(0)
-            event = SerializeModel.UpdateEvent(
-                change=SerializeModel.UpdateEvent.Change.ADDED,
-                old_file=None,
-                new_file=file
-            )
-            return self.serialize.update_event(event)
+        # Send the entire initial model as a single "model-init" event.
+        # Sending per-file "added" events instead (one per stream iteration,
+        # 10ms apart) made the frontend re-sort and re-render the file list
+        # once per file — with hundreds of root files the initial page load
+        # starved the browser main thread and could stall the dashboard.
+        # An empty model still sends model-init so the frontend knows the
+        # initial state has loaded.
+        if self.initial_model_files is not None:
+            files = self.initial_model_files
+            self.initial_model_files = None
+            return self.serialize.model(files)
 
-        # After all initial files are sent, process real-time updates
+        # After the initial model is sent, process real-time updates
         event = self.model_listener.get_next_event()
         if event is not None:
             return self.serialize.update_event(event)

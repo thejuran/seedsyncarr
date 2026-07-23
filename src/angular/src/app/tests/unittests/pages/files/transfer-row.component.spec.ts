@@ -102,6 +102,31 @@ describe("TransferRowComponent", () => {
         expect(component.badgeLabel).toBe("Deleted");
     });
 
+    // Incident 2026-07-23: a DELETED file that still exists remotely with no
+    // local content is being skipped by auto-queue — it must be visually
+    // distinct from a plain deleted file so silent skips are noticeable.
+    it("should return 'Skipped (remote)' badge for DELETED with remote content and no local content", () => {
+        setFile(ViewFile.Status.DELETED, {remoteSize: 5000, localSize: null});
+        expect(component.badgeLabel).toBe("Skipped (remote)");
+        expect(component.badgeClass).toContain("bg-warning");
+    });
+
+    it("should return 'Skipped (remote)' badge for DELETED with remote content and zero local size", () => {
+        setFile(ViewFile.Status.DELETED, {remoteSize: 5000, localSize: 0});
+        expect(component.badgeLabel).toBe("Skipped (remote)");
+    });
+
+    it("should return plain 'Deleted' badge for DELETED with no remote content", () => {
+        setFile(ViewFile.Status.DELETED, {remoteSize: null, localSize: null});
+        expect(component.badgeLabel).toBe("Deleted");
+        expect(component.badgeClass).toContain("bg-danger");
+    });
+
+    it("should return plain 'Deleted' badge for DELETED with local content still present", () => {
+        setFile(ViewFile.Status.DELETED, {remoteSize: 5000, localSize: 2500});
+        expect(component.badgeLabel).toBe("Deleted");
+    });
+
     // DASH-08: Badge CSS classes with semantic colors
     it("should return warning badge class for DOWNLOADING", () => {
         setFile(ViewFile.Status.DOWNLOADING);

@@ -340,7 +340,7 @@ test.describe.serial('UAT-01: selection and bulk bar', () => {
         // clients.jpg from downloaded_files before this spec asserts. If the guard fails, re-seed
         // DELETED directly rather than flaking on a stale row state.
         try {
-            await dashboardPage.waitForFileStatus(DELETED_FILE, 'Deleted', 5_000);
+            await dashboardPage.waitForFileStatus(DELETED_FILE, 'Skipped (remote)', 5_000);
         } catch {
             await seedStatus(page, DELETED_FILE, 'DELETED');
         }
@@ -464,9 +464,9 @@ test.describe.serial('UAT-02: status filter and URL', () => {
         await expect(dashboardPage.getEmptyRow()).not.toBeVisible();
     });
 
-    test('UAT-02: status filter deleted — Errors → Deleted shows DELETED-state rows (Deleted badge, FIX-01 fixture)', async ({ page }) => {
+    test('UAT-02: status filter deleted — Errors → Deleted shows DELETED-state rows (Skipped (remote) badge: still-remote fixture, FIX-01)', async ({ page }) => {
         // Belt-and-braces: verify beforeAll seed landed before clicking the filter.
-        await dashboardPage.waitForFileStatus(DELETED_FILE, 'Deleted', 10_000);
+        await dashboardPage.waitForFileStatus(DELETED_FILE, 'Skipped (remote)', 10_000);
 
         await dashboardPage.getSegmentButton('Errors').click();
         await dashboardPage.getSubButton('Deleted').click();
@@ -474,7 +474,7 @@ test.describe.serial('UAT-02: status filter and URL', () => {
         await expect(page).toHaveURL(/[?&]segment=errors(&|$)/);
         await expect(page).toHaveURL(/[?&]sub=deleted(&|$)/);
 
-        await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Deleted');
+        await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Skipped (remote)');
         await expect(dashboardPage.getEmptyRow()).not.toBeVisible();
     });
 
@@ -555,7 +555,7 @@ test.describe.serial('UAT-02: status filter and URL', () => {
     test('UAT-02: URL round-trip sub — Errors→Deleted persists across page.reload() (clients.jpg row visible)', async ({ page }) => {
         // Re-guard DELETED fixture — this is the last UAT-02 spec and mutations in earlier specs
         // of the block do not touch clients.jpg, but belt-and-braces.
-        await dashboardPage.waitForFileStatus(DELETED_FILE, 'Deleted', 10_000);
+        await dashboardPage.waitForFileStatus(DELETED_FILE, 'Skipped (remote)', 10_000);
 
         await dashboardPage.getSegmentButton('Errors').click();
         await dashboardPage.getSubButton('Deleted').click();
@@ -564,7 +564,7 @@ test.describe.serial('UAT-02: status filter and URL', () => {
         await expect(page).toHaveURL(/[?&]sub=deleted(&|$)/);
 
         // Verify filter scoped to Deleted before reload.
-        await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Deleted');
+        await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Skipped (remote)');
 
         // D-15: page.reload() — exercises hydration via queryParamMap.
         await page.reload();
@@ -574,6 +574,6 @@ test.describe.serial('UAT-02: status filter and URL', () => {
         await expect(page).toHaveURL(/[?&]segment=errors(&|$)/);
         await expect(page).toHaveURL(/[?&]sub=deleted(&|$)/);
         await expect(dashboardPage.getSubButton('Deleted')).toBeVisible();  // sub buttons visible means Errors parent is expanded
-        await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Deleted');
+        await expect(dashboardPage.getStatusBadge(DELETED_FILE)).toContainText('Skipped (remote)');
     });
 });
