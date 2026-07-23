@@ -4,6 +4,69 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.6.0] - 2026-07-23
+
+A reliability release driven by a production incident: a completed seedbox
+download was silently never synced, because tracking state left over from an
+earlier download/import of the same release name permanently blacklisted it
+from auto-queue while the failure was invisible in the dashboard. This release
+fixes the root causes, makes *arr import detection strictly evidence-based,
+and surfaces skipped files in the UI. Existing config and persist files load
+unchanged; a new persist field (`absent_since`) is added automatically on the
+next save, with no migration step.
+
+### Fixed
+
+- Fixed re-grabbed releases being silently blacklisted forever. Downloaded and
+  imported tracking entries are keyed by file name and were kept indefinitely,
+  so when Sonarr/Radarr re-grabbed a release that had been synced and imported
+  months earlier, the re-appearing remote file was marked Deleted and
+  auto-queue skipped it with no error. SeedSyncarr now records when a tracked
+  file disappears from both the seedbox and local storage; if it re-appears
+  remotely after more than 24 hours of absence, that is treated as a new
+  lifecycle (a re-grab) and the stale tracking is cleared so the file syncs
+  fresh. The 24-hour threshold prevents a transient empty remote scan from
+  clearing tracking en masse (which would re-download still-seeding,
+  already-imported files), and the absence clock only advances on successful
+  remote scans, so a seedbox outage does not count toward it.
+- Fixed interrupted downloads becoming permanently un-queueable. A file was
+  marked "downloaded" as soon as its transfer started writing bytes; if the
+  transfer was interrupted (app restart, lftp crash) and the partial file
+  disappeared, the file was marked Deleted on the next model build and skipped
+  by auto-queue forever. Only completed downloads are now tracked. Files that
+  did complete and were then moved or deleted by external tools (e.g. a
+  Sonarr/Radarr import) still never re-download.
+- Fixed a webhook false-import vector. A Sonarr/Radarr "Download" event
+  without a source file path fell back to the release title — which for a
+  single-file release equals the tracked file name exactly — so such an event
+  could mark a file imported (and arm auto-delete) without any real import.
+  Import detection now requires `movieFile.sourcePath` /
+  `episodeFile.sourcePath`; Download events without it are logged and ignored.
+  The failure direction is safe: a missed import means no auto-delete, never a
+  wrong one.
+- Fixed the dashboard file list being able to freeze silently and render zero
+  files: an error while processing a single model update killed the update
+  subscription permanently. The view now recovers by rebuilding from the full
+  model and keeps processing subsequent updates.
+- Fixed the System Event Log spinner never resolving when no log lines arrive
+  within the stream's short replay window. It now shows "No recent events"
+  once the stream connects.
+
+### Changed
+
+- The initial file list is sent to the browser as a single snapshot event
+  instead of one event per file. With hundreds of tracked files, the per-file
+  burst forced the frontend through hundreds of re-sort/render cycles on page
+  load and could starve the browser main thread.
+- Files in the Deleted state that still exist on the seedbox with no local
+  copy now show an amber "Skipped (remote)" badge instead of a red "Deleted"
+  badge, making intentionally-skipped (and wrongly-stuck) files visible at a
+  glance.
+- Every webhook import decision is now logged with its provenance (event type
+  and the payload field that produced the file name), and ignored webhook
+  event types are logged at INFO, so any unexplained import mark can be traced
+  to the exact webhook that caused it.
+
 ## [1.5.1] - 2026-07-06
 
 A bug-fix release. It stops the container from slowly accumulating defunct
