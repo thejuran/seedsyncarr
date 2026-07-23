@@ -21,57 +21,76 @@ def _compute_hmac(secret: str, body: bytes) -> str:
 
 
 class TestWebhookHandlerExtractSonarrTitle(unittest.TestCase):
-    """Tests for _extract_sonarr_title static method."""
+    """Tests for _extract_sonarr_title static method.
+
+    Only episodeFile.sourcePath is trusted. Regression (incident 2026-07-23):
+    the old release.releaseTitle/series.title fallbacks could mark a file
+    imported without a real import — for a single-file release the
+    releaseTitle equals the file name exactly, so any Download-typed event
+    lacking a sourcePath would false-positively arm auto-delete.
+    """
 
     def test_extracts_source_path_basename(self):
         body = {"episodeFile": {"sourcePath": "/downloads/Game.of.Thrones.S01E01-GROUP"}}
-        result = WebhookHandler._extract_sonarr_title(body)
+        result, provenance = WebhookHandler._extract_sonarr_title(body)
         self.assertEqual("Game.of.Thrones.S01E01-GROUP", result)
+        self.assertEqual("episodeFile.sourcePath", provenance)
 
-    def test_falls_back_to_release_title(self):
-        body = {"release": {"releaseTitle": "Game.of.Thrones.S01E01-GROUP"}}
-        result = WebhookHandler._extract_sonarr_title(body)
-        self.assertEqual("Game.of.Thrones.S01E01-GROUP", result)
+    def test_release_title_alone_is_not_trusted(self):
+        body = {"release": {"releaseTitle": "Game.of.Thrones.S01E01-GROUP.mkv"}}
+        result, provenance = WebhookHandler._extract_sonarr_title(body)
+        self.assertEqual("", result)
+        self.assertEqual("", provenance)
 
-    def test_falls_back_to_series_title(self):
+    def test_series_title_alone_is_not_trusted(self):
         body = {"series": {"title": "Game of Thrones"}}
-        result = WebhookHandler._extract_sonarr_title(body)
-        self.assertEqual("Game of Thrones", result)
+        result, _ = WebhookHandler._extract_sonarr_title(body)
+        self.assertEqual("", result)
 
     def test_prefers_source_path_over_release_title(self):
         body = {
             "episodeFile": {"sourcePath": "/downloads/FromSourcePath"},
             "release": {"releaseTitle": "FromRelease"}
         }
-        result = WebhookHandler._extract_sonarr_title(body)
+        result, _ = WebhookHandler._extract_sonarr_title(body)
         self.assertEqual("FromSourcePath", result)
 
     def test_empty_body_returns_empty(self):
-        result = WebhookHandler._extract_sonarr_title({})
+        result, provenance = WebhookHandler._extract_sonarr_title({})
         self.assertEqual("", result)
+        self.assertEqual("", provenance)
 
 
 class TestWebhookHandlerExtractRadarrTitle(unittest.TestCase):
-    """Tests for _extract_radarr_title static method."""
+    """Tests for _extract_radarr_title static method.
+
+    Only movieFile.sourcePath is trusted; see TestWebhookHandlerExtractSonarrTitle
+    docstring for the false-positive import regression this guards against.
+    """
 
     def test_extracts_source_path_basename(self):
         body = {"movieFile": {"sourcePath": "/downloads/Inception.2010.1080p-GROUP"}}
-        result = WebhookHandler._extract_radarr_title(body)
+        result, provenance = WebhookHandler._extract_radarr_title(body)
         self.assertEqual("Inception.2010.1080p-GROUP", result)
+        self.assertEqual("movieFile.sourcePath", provenance)
 
-    def test_falls_back_to_release_title(self):
-        body = {"release": {"releaseTitle": "Inception.2010.1080p-GROUP"}}
-        result = WebhookHandler._extract_radarr_title(body)
-        self.assertEqual("Inception.2010.1080p-GROUP", result)
+    def test_release_title_alone_is_not_trusted(self):
+        # Single-file release: releaseTitle equals the tracked file name
+        # exactly. Trusting it would mark an import that never happened.
+        body = {"release": {"releaseTitle": "Inception.2010.1080p-GROUP.mkv"}}
+        result, provenance = WebhookHandler._extract_radarr_title(body)
+        self.assertEqual("", result)
+        self.assertEqual("", provenance)
 
-    def test_falls_back_to_movie_title(self):
+    def test_movie_title_alone_is_not_trusted(self):
         body = {"movie": {"title": "Inception"}}
-        result = WebhookHandler._extract_radarr_title(body)
-        self.assertEqual("Inception", result)
+        result, _ = WebhookHandler._extract_radarr_title(body)
+        self.assertEqual("", result)
 
     def test_empty_body_returns_empty(self):
-        result = WebhookHandler._extract_radarr_title({})
+        result, provenance = WebhookHandler._extract_radarr_title({})
         self.assertEqual("", result)
+        self.assertEqual("", provenance)
 
 
 class TestWebhookHandlerRoutes(unittest.TestCase):
@@ -92,7 +111,8 @@ class TestWebhookHandlerRoutes(unittest.TestCase):
         response = self.handler._handle_webhook("Sonarr", WebhookHandler._extract_sonarr_title)
         self.assertEqual(200, response.status_code)
         self.mock_webhook_manager.enqueue_import.assert_called_once_with(
-            "Sonarr", "Test.File-GROUP"
+            "Sonarr", "Test.File-GROUP",
+            provenance="eventType=Download, episodeFile.sourcePath"
         )
 
     @patch('web.handler.webhook.request')
@@ -105,7 +125,8 @@ class TestWebhookHandlerRoutes(unittest.TestCase):
         response = self.handler._handle_webhook("Radarr", WebhookHandler._extract_radarr_title)
         self.assertEqual(200, response.status_code)
         self.mock_webhook_manager.enqueue_import.assert_called_once_with(
-            "Radarr", "Movie.2024-GROUP"
+            "Radarr", "Movie.2024-GROUP",
+            provenance="eventType=Download, movieFile.sourcePath"
         )
 
     @patch('web.handler.webhook.request')
@@ -155,6 +176,22 @@ class TestWebhookHandlerRoutes(unittest.TestCase):
         mock_request.content_length = -1
         mock_request.json = {"eventType": "Download"}
         response = self.handler._handle_webhook("Sonarr", WebhookHandler._extract_sonarr_title)
+        self.assertEqual(200, response.status_code)
+        self.mock_webhook_manager.enqueue_import.assert_not_called()
+
+    @patch('web.handler.webhook.request')
+    def test_download_with_only_release_title_not_enqueued(self, mock_request):
+        # Regression (incident 2026-07-23): a Download event without
+        # movieFile.sourcePath must NOT mark an import via release.releaseTitle.
+        # For a single-file release the releaseTitle equals the file name, so
+        # the old fallback would false-positively mark the file imported and
+        # arm auto-delete without any real *arr import.
+        mock_request.content_length = -1
+        mock_request.json = {
+            "eventType": "Download",
+            "release": {"releaseTitle": "Movie.2024.2160p-GROUP.mkv"}
+        }
+        response = self.handler._handle_webhook("Radarr", WebhookHandler._extract_radarr_title)
         self.assertEqual(200, response.status_code)
         self.mock_webhook_manager.enqueue_import.assert_not_called()
 

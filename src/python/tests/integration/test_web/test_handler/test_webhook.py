@@ -29,7 +29,8 @@ class TestWebhookIntegration(BaseTestWebApp):
         resp = self.test_app.post_json("/server/webhook/sonarr", body)
         self.assertEqual(200, resp.status_int)
         self._webhook_manager_mock.enqueue_import.assert_called_once_with(
-            "Sonarr", "Show.S01E01-GROUP"
+            "Sonarr", "Show.S01E01-GROUP",
+            provenance="eventType=Download, episodeFile.sourcePath"
         )
 
     def test_radarr_download_enqueues_via_web_layer(self):
@@ -40,7 +41,8 @@ class TestWebhookIntegration(BaseTestWebApp):
         resp = self.test_app.post_json("/server/webhook/radarr", body)
         self.assertEqual(200, resp.status_int)
         self._webhook_manager_mock.enqueue_import.assert_called_once_with(
-            "Radarr", "Movie.2024-GROUP"
+            "Radarr", "Movie.2024-GROUP",
+            provenance="eventType=Download, movieFile.sourcePath"
         )
 
     def test_sonarr_test_event_returns_200_without_enqueue(self):

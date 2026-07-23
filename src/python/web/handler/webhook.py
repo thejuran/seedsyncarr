@@ -4,11 +4,11 @@ import hashlib
 import json
 import os
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
 from bottle import HTTPResponse, request
 
-from common import overrides
+from common import overrides, sanitize_log_value
 from common.config import Config
 from controller.webhook_manager import WebhookManager
 from ..rate_limit import rate_limit
@@ -142,81 +142,73 @@ class WebhookHandler(IHandler):
             logger.info("{} webhook test event received".format(source))
             return HTTPResponse(status=200, body="Test OK")
 
-        # Only process Download (import) events
+        # Only process Download (import) events. INFO (not debug) so production
+        # logs record exactly which events were received and ignored -- an
+        # unexplained import mark must be traceable to a specific webhook.
         if event_type != "Download":
-            logger.debug("{} webhook ignored event type: {}".format(source, event_type))
+            logger.info("{} webhook ignored event type: '{}'".format(
+                source, sanitize_log_value(str(event_type))))
             return HTTPResponse(status=200, body="OK")
 
-        # Extract title
-        title = extract_title_fn(body)
+        # Extract title from the imported file's sourcePath ONLY. A Download
+        # event without a file path is NOT treated as an import: falling back to
+        # release.releaseTitle would false-positively mark a file imported (for a
+        # single-file release the releaseTitle equals the file name exactly),
+        # which arms auto-delete for a file *arr never actually imported.
+        title, provenance = extract_title_fn(body)
         if not title:
-            logger.debug("{} webhook Download event has no extractable title".format(source))
+            release_title = body.get("release", {}).get("releaseTitle", "")
+            logger.warning(
+                "{} webhook Download event has no source file path; NOT marking an "
+                "import (release.releaseTitle: '{}')".format(
+                    source, sanitize_log_value(release_title)
+                )
+            )
             return HTTPResponse(status=200, body="OK")
 
-        # Enqueue import
-        self.__webhook_manager.enqueue_import(source, title)
+        # Enqueue import; provenance records which event/field produced the title
+        # so every imported-mark in the logs is traceable to its webhook.
+        self.__webhook_manager.enqueue_import(
+            source, title, provenance="eventType={}, {}".format(event_type, provenance)
+        )
         return HTTPResponse(status=200, body="OK")
 
     @staticmethod
-    def _extract_sonarr_title(body: dict) -> str:
+    def _extract_sonarr_title(body: dict) -> Tuple[str, str]:
         """
-        Extract title from Sonarr webhook body.
-        Fallback chain: episodeFile.sourcePath (basename) -> release.releaseTitle -> series.title
+        Extract the imported file name from a Sonarr webhook body.
+        Only episodeFile.sourcePath is trusted: it is the actual imported file.
+        releaseTitle/series.title fallbacks were removed -- they can mark files
+        imported without a real import (see _handle_webhook).
 
         Args:
             body: Parsed JSON body from Sonarr webhook
 
         Returns:
-            Extracted title or empty string if none found
+            (title, provenance) tuple; ("", "") if no source path found
         """
-        # Try episodeFile.sourcePath (most accurate - actual file name)
         episode_file = body.get("episodeFile", {})
         source_path = episode_file.get("sourcePath", "")
         if source_path:
-            return os.path.basename(source_path)
-
-        # Fallback to release.releaseTitle
-        release = body.get("release", {})
-        release_title = release.get("releaseTitle", "")
-        if release_title:
-            return release_title
-
-        # Fallback to series.title (least accurate)
-        series = body.get("series", {})
-        series_title = series.get("title", "")
-        if series_title:
-            return series_title
-
-        return ""
+            return os.path.basename(source_path), "episodeFile.sourcePath"
+        return "", ""
 
     @staticmethod
-    def _extract_radarr_title(body: dict) -> str:
+    def _extract_radarr_title(body: dict) -> Tuple[str, str]:
         """
-        Extract title from Radarr webhook body.
-        Fallback chain: movieFile.sourcePath (basename) -> release.releaseTitle -> movie.title
+        Extract the imported file name from a Radarr webhook body.
+        Only movieFile.sourcePath is trusted: it is the actual imported file.
+        releaseTitle/movie.title fallbacks were removed -- they can mark files
+        imported without a real import (see _handle_webhook).
 
         Args:
             body: Parsed JSON body from Radarr webhook
 
         Returns:
-            Extracted title or empty string if none found
+            (title, provenance) tuple; ("", "") if no source path found
         """
-        # Try movieFile.sourcePath (most accurate - actual file name)
         movie_file = body.get("movieFile", {})
         source_path = movie_file.get("sourcePath", "")
         if source_path:
-            return os.path.basename(source_path)
-
-        # Fallback to release.releaseTitle
-        release = body.get("release", {})
-        release_title = release.get("releaseTitle", "")
-        if release_title:
-            return release_title
-
-        # Fallback to movie.title (least accurate)
-        movie = body.get("movie", {})
-        movie_title = movie.get("title", "")
-        if movie_title:
-            return movie_title
-
-        return ""
+            return os.path.basename(source_path), "movieFile.sourcePath"
+        return "", ""

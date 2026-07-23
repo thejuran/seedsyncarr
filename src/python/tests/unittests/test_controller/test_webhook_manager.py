@@ -57,17 +57,25 @@ class TestWebhookManager(unittest.TestCase):
         result = self.manager.process({})
         self.assertEqual([], result)
 
-    def test_enqueue_logs_info(self):
-        self.manager.enqueue_import("Sonarr", "File.A")
+    def test_enqueue_logs_info_with_provenance(self):
+        self.manager.enqueue_import(
+            "Sonarr", "File.A",
+            provenance="eventType=Download, episodeFile.sourcePath"
+        )
         self.manager.logger.info.assert_called_with(
-            "Sonarr webhook import enqueued: 'File.A'"
+            "Sonarr webhook import enqueued: 'File.A' "
+            "(eventType=Download, episodeFile.sourcePath)"
         )
 
-    def test_matched_import_logs_info(self):
-        self.manager.enqueue_import("Sonarr", "File.A")
+    def test_matched_import_logs_info_with_provenance(self):
+        self.manager.enqueue_import(
+            "Sonarr", "File.A",
+            provenance="eventType=Download, episodeFile.sourcePath"
+        )
         self.manager.process(self.name_to_root)
         self.manager.logger.info.assert_any_call(
-            "Sonarr import detected: 'File.A' (matched SeedSyncarr file 'File.A')"
+            "Sonarr import detected: 'File.A' (matched SeedSyncarr file 'File.A'; "
+            "eventType=Download, episodeFile.sourcePath)"
         )
 
     def test_unmatched_import_logs_warning(self):
@@ -97,7 +105,7 @@ class TestWebhookManager(unittest.TestCase):
         self.manager.enqueue_import("Sonarr", "Episode.S01E01.mkv")
         self.manager.process(name_to_root)
         self.manager.logger.info.assert_any_call(
-            "Sonarr import detected: 'Episode.S01E01.mkv' (matched SeedSyncarr file 'ShowDir')"
+            "Sonarr import detected: 'Episode.S01E01.mkv' (matched SeedSyncarr file 'ShowDir'; )"
         )
 
     def test_child_file_match_returns_root_and_child_tuple(self):

@@ -22,7 +22,7 @@ class WebhookManager:
         self.logger = context.logger.getChild("WebhookManager")
         self.__import_queue = Queue()
 
-    def enqueue_import(self, source: str, file_name: str):
+    def enqueue_import(self, source: str, file_name: str, provenance: str = ""):
         """
         Enqueue an import event from webhook.
         Called from web server thread.
@@ -30,12 +30,16 @@ class WebhookManager:
         Args:
             source: Source service ("Sonarr" or "Radarr")
             file_name: Name of the imported file
+            provenance: Description of the webhook event/field that produced
+                file_name (e.g. "eventType=Download, movieFile.sourcePath"),
+                logged so every imported-mark is traceable to its webhook
         """
-        self.__import_queue.put((source, file_name))
+        self.__import_queue.put((source, file_name, provenance))
         # Sanitize newlines and control chars before logging -- file_name is
         # webhook-supplied and could otherwise be used for log injection (CWE-117).
         safe_file_name = sanitize_log_value(file_name)
-        self.logger.info("{} webhook import enqueued: '{}'".format(source, safe_file_name))
+        self.logger.info("{} webhook import enqueued: '{}' ({})".format(
+            source, safe_file_name, sanitize_log_value(provenance)))
 
     def process(self, name_to_root: Dict[str, str]) -> List[Tuple[str, str]]:
         """
@@ -63,7 +67,7 @@ class WebhookManager:
         # Drain queue
         while not self.__import_queue.empty():
             try:
-                source, file_name = self.__import_queue.get_nowait()
+                source, file_name, provenance = self.__import_queue.get_nowait()
             except Empty:
                 # Queue empty (race condition between empty() and get_nowait())
                 break
@@ -77,8 +81,8 @@ class WebhookManager:
             if root_name is not None:
                 newly_imported.append((root_name, file_name))
                 self.logger.info(
-                    "{} import detected: '{}' (matched SeedSyncarr file '{}')".format(
-                        source, safe_file_name, root_name
+                    "{} import detected: '{}' (matched SeedSyncarr file '{}'; {})".format(
+                        source, safe_file_name, root_name, sanitize_log_value(provenance)
                     )
                 )
             else:
