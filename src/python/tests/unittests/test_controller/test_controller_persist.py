@@ -279,3 +279,41 @@ class TestControllerPersist(unittest.TestCase):
         # Eviction stats reflect it
         stats = persist.get_eviction_stats()
         self.assertEqual(1, stats['imported_children_evictions'])
+
+    def test_absent_since_roundtrip(self):
+        """Test absent_since serialization roundtrip."""
+        persist = ControllerPersist()
+        persist.absent_since["file_a"] = 1750000000.0
+        persist.absent_since["file_b"] = 1750001234.5
+
+        persist_actual = ControllerPersist.from_str(persist.to_str())
+        self.assertEqual(persist.absent_since, persist_actual.absent_since)
+
+    def test_absent_since_in_to_str(self):
+        """Test absent_since key appears in serialized output."""
+        persist = ControllerPersist()
+        persist.absent_since["file_a"] = 1750000000.0
+        dct = json.loads(persist.to_str())
+        self.assertIn("absent_since", dct)
+        self.assertEqual({"file_a": 1750000000.0}, dct["absent_since"])
+
+    def test_backward_compatibility_no_absent_since_key(self):
+        """Test old persist files without absent_since key load successfully."""
+        content = json.dumps({
+            "downloaded": ["a"],
+            "extracted": ["b"],
+            "stopped": [],
+            "imported": ["c"],
+        })
+        persist = ControllerPersist.from_str(content)
+        self.assertEqual({}, persist.absent_since)
+
+    def test_absent_since_malformed_entries_skipped(self):
+        """Test malformed absent_since entries are skipped, valid ones kept."""
+        content = json.dumps({
+            "downloaded": [],
+            "extracted": [],
+            "absent_since": {"good": 1750000000, "bad": "not-a-number"},
+        })
+        persist = ControllerPersist.from_str(content)
+        self.assertEqual({"good": 1750000000.0}, persist.absent_since)

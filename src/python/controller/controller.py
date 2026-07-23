@@ -421,10 +421,6 @@ class Controller:
             remote_scan, local_scan, active_scan, lftp_statuses, extract_statuses, extracted_results
         )
 
-    def _detect_and_track_queued(self, diff: ModelDiff) -> None:
-        """Forwarding wrapper — logic lives in ModelPipeline.detect_and_track_queued (D-06/109-03)."""
-        return self.__model_pipeline.detect_and_track_queued(diff)
-
     def _detect_and_track_download(self, diff: ModelDiff) -> None:
         """Forwarding wrapper — logic lives in ModelPipeline.detect_and_track_download (D-06/109-03)."""
         return self.__model_pipeline.detect_and_track_download(diff)

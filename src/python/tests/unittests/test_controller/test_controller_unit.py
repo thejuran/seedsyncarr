@@ -1,3 +1,4 @@
+import time
 from unittest.mock import MagicMock
 
 from controller import Controller
@@ -627,79 +628,175 @@ class TestControllerFeedModelBuilder(BaseControllerTestCase):
         )
         self.mock_model_builder.set_active_files.assert_not_called()
 
-class TestControllerDetectAndTrackQueued(BaseControllerTestCase):
-    """Tests for Controller._detect_and_track_queued()."""
+class TestControllerNoTrackingBeforeCompletion(BaseControllerTestCase):
+    """Regression tests: files must NOT be tracked as downloaded before completion.
 
-    def test_added_downloading_with_local_size_tracked(self):
+    Incident 2026-07-23: a file that started DOWNLOADING (local_size > 0) was
+    added to downloaded_file_names immediately. When the transfer was
+    interrupted and the partial file disappeared, the file was marked DELETED
+    on the next model build (name tracked + no local file) and auto-queue
+    permanently skipped it via is_file_downloaded(). Only COMPLETED downloads
+    may be tracked (Controller._detect_and_track_download).
+    """
+
+    def _apply_diff(self, diff):
+        self.controller._apply_model_diff([diff])
+
+    def test_added_downloading_with_local_size_not_tracked(self):
         f = ModelFile("file", False)
         f.state = ModelFile.State.DOWNLOADING
         f.local_size = 100
-        diff = ModelDiff(ModelDiff.Change.ADDED, None, f)
-        self.controller._detect_and_track_queued(diff)
-        self.assertIn("file", self.persist.downloaded_file_names)
-
-    def test_added_queued_not_tracked(self):
-        f = ModelFile("file", False)
-        f.state = ModelFile.State.QUEUED
-        diff = ModelDiff(ModelDiff.Change.ADDED, None, f)
-        self.controller._detect_and_track_queued(diff)
+        self._apply_diff(ModelDiff(ModelDiff.Change.ADDED, None, f))
         self.assertNotIn("file", self.persist.downloaded_file_names)
 
-    def test_downloading_with_local_size_zero_not_tracked(self):
-        f = ModelFile("file", False)
-        f.state = ModelFile.State.DOWNLOADING
-        f.local_size = 0
-        diff = ModelDiff(ModelDiff.Change.ADDED, None, f)
-        self.controller._detect_and_track_queued(diff)
-        self.assertNotIn("file", self.persist.downloaded_file_names)
-
-    def test_downloading_with_local_size_none_not_tracked(self):
-        f = ModelFile("file", False)
-        f.state = ModelFile.State.DOWNLOADING
-        diff = ModelDiff(ModelDiff.Change.ADDED, None, f)
-        self.controller._detect_and_track_queued(diff)
-        self.assertNotIn("file", self.persist.downloaded_file_names)
-
-    def test_already_tracked_not_readded(self):
-        self.persist.downloaded_file_names.add("file")
-        f = ModelFile("file", False)
-        f.state = ModelFile.State.DOWNLOADING
-        f.local_size = 100
-        diff = ModelDiff(ModelDiff.Change.ADDED, None, f)
-        # Reset mock to detect if set_downloaded_files is called again
-        self.mock_model_builder.set_downloaded_files.reset_mock()
-        self.controller._detect_and_track_queued(diff)
-        # Should NOT call set_downloaded_files again since already tracked
-        self.mock_model_builder.set_downloaded_files.assert_not_called()
-
-    def test_updated_default_to_downloading_with_content_tracked(self):
+    def test_updated_default_to_downloading_with_content_not_tracked(self):
         old_f = ModelFile("file", False)
         old_f.state = ModelFile.State.DEFAULT
         new_f = ModelFile("file", False)
         new_f.state = ModelFile.State.DOWNLOADING
         new_f.local_size = 500
-        diff = ModelDiff(ModelDiff.Change.UPDATED, old_f, new_f)
-        self.controller._detect_and_track_queued(diff)
-        self.assertIn("file", self.persist.downloaded_file_names)
-
-    def test_updated_downloading_no_content_to_content_tracked(self):
-        old_f = ModelFile("file", False)
-        old_f.state = ModelFile.State.DOWNLOADING
-        old_f.local_size = 0
-        new_f = ModelFile("file", False)
-        new_f.state = ModelFile.State.DOWNLOADING
-        new_f.local_size = 500
-        diff = ModelDiff(ModelDiff.Change.UPDATED, old_f, new_f)
-        self.controller._detect_and_track_queued(diff)
-        self.assertIn("file", self.persist.downloaded_file_names)
-
-    def test_removed_diff_no_change(self):
-        old_f = ModelFile("file", False)
-        old_f.state = ModelFile.State.DOWNLOADING
-        old_f.local_size = 100
-        diff = ModelDiff(ModelDiff.Change.REMOVED, old_f, None)
-        self.controller._detect_and_track_queued(diff)
+        # File must exist in model for the UPDATED diff to apply
+        self._apply_diff(ModelDiff(ModelDiff.Change.ADDED, None, old_f))
+        self._apply_diff(ModelDiff(ModelDiff.Change.UPDATED, old_f, new_f))
         self.assertNotIn("file", self.persist.downloaded_file_names)
+
+    def test_interrupted_download_with_partial_gone_is_requeueable(self):
+        """The incident scenario end-to-end at the tracking layer:
+        DOWNLOADING (partial content) -> interrupted -> partial gone ->
+        file must NOT be in downloaded_file_names, so auto-queue's
+        is_file_downloaded() returns False and the file can re-queue.
+        """
+        f1 = ModelFile("file", False)
+        f1.state = ModelFile.State.DOWNLOADING
+        f1.remote_size = 1000
+        f1.local_size = 400
+        self._apply_diff(ModelDiff(ModelDiff.Change.ADDED, None, f1))
+
+        # Interrupted: partial file disappears, file returns to DEFAULT
+        f2 = ModelFile("file", False)
+        f2.state = ModelFile.State.DEFAULT
+        f2.remote_size = 1000
+        self._apply_diff(ModelDiff(ModelDiff.Change.UPDATED, f1, f2))
+
+        self.assertNotIn("file", self.persist.downloaded_file_names)
+        self.assertFalse(self.controller.is_file_downloaded("file"))
+
+    def test_completed_download_is_still_tracked(self):
+        """The original purpose is preserved: a COMPLETED download that is
+        later moved/deleted by external tools must not re-download."""
+        f1 = ModelFile("file", False)
+        f1.state = ModelFile.State.DOWNLOADING
+        f1.remote_size = 1000
+        f1.local_size = 400
+        self._apply_diff(ModelDiff(ModelDiff.Change.ADDED, None, f1))
+
+        f2 = ModelFile("file", False)
+        f2.state = ModelFile.State.DOWNLOADED
+        f2.remote_size = 1000
+        f2.local_size = 1000
+        self._apply_diff(ModelDiff(ModelDiff.Change.UPDATED, f1, f2))
+
+        self.assertIn("file", self.persist.downloaded_file_names)
+        self.assertTrue(self.controller.is_file_downloaded("file"))
+
+
+class TestControllerLifecycleReset(BaseControllerTestCase):
+    """Tests for ModelPipeline._prune_downloaded_files lifecycle detection.
+
+    Incident 2026-07-23: Radarr re-grabbed a release it had already imported
+    months earlier. The stale downloaded/imported persist entries (keyed by
+    bare file name) marked the re-appearing remote file DELETED and auto-queue
+    skipped it forever. A file that re-appears remotely after sustained absence
+    (> 24h) is a new lifecycle and its stale tracking must be cleared.
+    """
+
+    OLD = 25 * 3600  # absence older than the 24h threshold
+    RECENT = 60      # absence within the threshold (e.g. scan flap)
+
+    def setUp(self):
+        super().setUp()
+        self.pipeline = self.controller._Controller__model_pipeline
+        self.ok_scan = MagicMock(failed=False)
+
+    def _absent_for(self, seconds):
+        return time.time() - seconds
+
+    def test_regrab_after_long_absence_clears_tracking(self):
+        self.persist.downloaded_file_names.add("file")
+        self.persist.imported_file_names.add("file")
+        self.persist.add_imported_child("file", "file")
+        self.persist.absent_since["file"] = self._absent_for(self.OLD)
+        self._add_file_to_model("file", remote_size=1000)
+
+        self.pipeline._prune_downloaded_files(self.ok_scan)
+
+        self.assertNotIn("file", self.persist.downloaded_file_names)
+        self.assertNotIn("file", self.persist.imported_file_names)
+        self.assertNotIn("file", self.persist.imported_children)
+        self.assertNotIn("file", self.persist.absent_since)
+        self.assertFalse(self.controller.is_file_downloaded("file"))
+
+    def test_reappearance_within_threshold_keeps_tracking(self):
+        # A transient empty remote scan (flap) must NOT clear tracking,
+        # else still-seeding imported files would mass re-download
+        self.persist.downloaded_file_names.add("file")
+        self.persist.imported_file_names.add("file")
+        self.persist.absent_since["file"] = self._absent_for(self.RECENT)
+        self._add_file_to_model("file", remote_size=1000)
+
+        self.pipeline._prune_downloaded_files(self.ok_scan)
+
+        self.assertIn("file", self.persist.downloaded_file_names)
+        self.assertIn("file", self.persist.imported_file_names)
+        # Absence record cleared: the file is present again
+        self.assertNotIn("file", self.persist.absent_since)
+
+    def test_missing_file_starts_absence_clock(self):
+        self.persist.downloaded_file_names.add("ghost")
+
+        self.pipeline._prune_downloaded_files(self.ok_scan)
+
+        self.assertIn("ghost", self.persist.absent_since)
+        # Still tracked: absence alone must never clear (moved-by-Sonarr files
+        # would re-download when the torrent is eventually removed remotely)
+        self.assertIn("ghost", self.persist.downloaded_file_names)
+
+    def test_absence_clock_not_restarted_on_later_cycles(self):
+        self.persist.downloaded_file_names.add("ghost")
+        original = self._absent_for(self.OLD)
+        self.persist.absent_since["ghost"] = original
+
+        self.pipeline._prune_downloaded_files(self.ok_scan)
+
+        self.assertEqual(original, self.persist.absent_since["ghost"])
+
+    def test_reappearance_local_only_does_not_clear(self):
+        # Re-appearing with NO remote size (local-only) is not a re-grab
+        self.persist.downloaded_file_names.add("file")
+        self.persist.absent_since["file"] = self._absent_for(self.OLD)
+        self._add_file_to_model("file", local_size=1000)
+
+        self.pipeline._prune_downloaded_files(self.ok_scan)
+
+        self.assertIn("file", self.persist.downloaded_file_names)
+        self.assertNotIn("file", self.persist.absent_since)
+
+    def test_failed_remote_scan_does_not_advance_absence(self):
+        self.persist.downloaded_file_names.add("ghost")
+
+        self.pipeline._prune_downloaded_files(MagicMock(failed=True))
+        self.assertNotIn("ghost", self.persist.absent_since)
+
+        self.pipeline._prune_downloaded_files(None)
+        self.assertNotIn("ghost", self.persist.absent_since)
+
+    def test_absence_records_pruned_for_untracked_names(self):
+        # Entry left behind after eviction/clear of downloaded_file_names
+        self.persist.absent_since["stale"] = self._absent_for(self.OLD)
+
+        self.pipeline._prune_downloaded_files(self.ok_scan)
+
+        self.assertNotIn("stale", self.persist.absent_since)
 
 
 class TestControllerDetectAndTrackDownload(BaseControllerTestCase):

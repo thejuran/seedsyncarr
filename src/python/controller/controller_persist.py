@@ -20,6 +20,7 @@ class ControllerPersist(Persist):
     __KEY_STOPPED_FILE_NAMES = "stopped"
     __KEY_IMPORTED_FILE_NAMES = "imported"
     __KEY_IMPORTED_CHILDREN = "imported_children"
+    __KEY_ABSENT_SINCE = "absent_since"
 
     # Default maximum tracked files (shared between downloaded and extracted)
     DEFAULT_MAX_TRACKED_FILES = 10000
@@ -61,6 +62,13 @@ class ControllerPersist(Persist):
         #   - Global root-key cap = self._max_tracked_files (10000 roots)
         # See phase 75 (GH #19) D-01, D-02.
         self.imported_children: "collections.OrderedDict[str, BoundedOrderedSet[str]]" = collections.OrderedDict()
+        # Absence tracking for lifecycle detection: maps a downloaded file name
+        # to the epoch timestamp when it was first observed missing from the
+        # model (gone from both local and remote). Used by ModelPipeline to
+        # detect a re-grab (re-appearance after sustained absence) and clear
+        # stale downloaded/imported tracking. Keys are a subset of
+        # downloaded_file_names, so size is bounded by max_tracked_files.
+        self.absent_since: dict = {}
 
     def add_imported_child(self, root: str, child: str) -> None:
         """
@@ -208,6 +216,19 @@ class ControllerPersist(Persist):
                         continue
                     persist.add_imported_child(root_name, child_name)
 
+            # absent_since is optional for backwards compatibility with old persist files
+            absent_since_dct = dct.get(ControllerPersist.__KEY_ABSENT_SINCE, {})
+            if not isinstance(absent_since_dct, dict):
+                raise PersistError(
+                    "Error parsing ControllerPersist: 'absent_since' must be a dict, "
+                    "got {}".format(type(absent_since_dct).__name__)
+                )
+            for file_name, timestamp in absent_since_dct.items():
+                if not isinstance(file_name, str) or not isinstance(timestamp, (int, float)):
+                    # Skip malformed entries silently -- tolerant of schema drift
+                    continue
+                persist.absent_since[file_name] = float(timestamp)
+
             return persist
         except (json.decoder.JSONDecodeError, KeyError, TypeError, AttributeError) as e:
             raise PersistError("Error parsing ControllerPersist - {}: {}".format(
@@ -229,6 +250,7 @@ class ControllerPersist(Persist):
         dct[ControllerPersist.__KEY_IMPORTED_CHILDREN] = {
             root: bset.as_list() for root, bset in self.imported_children.items()
         }
+        dct[ControllerPersist.__KEY_ABSENT_SINCE] = dict(self.absent_since)
         return json.dumps(dct, indent=Constants.JSON_PRETTY_PRINT_INDENT)
 
     @classmethod

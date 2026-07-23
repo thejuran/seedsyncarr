@@ -1,4 +1,5 @@
 import copy
+import time
 from typing import List, Optional, Tuple
 
 from common import Context
@@ -6,6 +7,15 @@ from model import ModelError, ModelFile, Model, ModelDiff, ModelDiffUtil
 from lftp import LftpJobStatus
 from .extract import ExtractStatusResult, ExtractCompletedResult
 from .scan import ScannerResult
+
+
+# Minimum continuous absence (from both local and remote) before a re-appearing
+# remote file is treated as a NEW lifecycle (Sonarr/Radarr re-grab) and its stale
+# downloaded/imported tracking is cleared. Long enough that a transient empty
+# remote scan (seedbox-side mount flap) cannot mass-clear tracking and trigger a
+# re-download storm; short enough that a re-grabbed release syncs automatically
+# by the next day instead of being blacklisted forever.
+_LIFECYCLE_ABSENCE_THRESHOLD_SECONDS = 24 * 3600
 
 
 class ModelPipeline:
@@ -163,43 +173,17 @@ class ModelPipeline:
     # Tracking helpers (called from apply_model_diff and build_and_apply_model)
     # =========================================================================
 
-    def detect_and_track_queued(self, diff: ModelDiff) -> None:
-        """Detect if a file has started downloading and update persist state.
-
-        Tracked when DOWNLOADING with local_size > 0. Not tracked when merely
-        QUEUED — stopping a queued file returns it to DEFAULT, not DELETED.
-        """
-        new_file = diff.new_file
-        if not new_file:
-            return
-        if new_file.state != ModelFile.State.DOWNLOADING:
-            return
-        if not new_file.local_size or new_file.local_size <= 0:
-            return
-        if new_file.name in self._persist.downloaded_file_names:
-            return
-
-        should_track = False
-        if diff.change == ModelDiff.Change.ADDED:
-            should_track = True
-        elif diff.change == ModelDiff.Change.UPDATED:
-            old_file = diff.old_file
-            old_state = old_file.state if old_file else None
-            old_local_size = old_file.local_size if old_file else None
-            if old_state not in (ModelFile.State.DOWNLOADING, ModelFile.State.DOWNLOADED):
-                should_track = True
-            elif old_state == ModelFile.State.DOWNLOADING and (old_local_size is None or old_local_size <= 0):
-                should_track = True
-
-        if should_track:
-            self._persist.downloaded_file_names.add(new_file.name)
-            self._model_builder.set_downloaded_files(self._persist.downloaded_file_names)
-
     def detect_and_track_download(self, diff: ModelDiff) -> None:
         """Detect if a file was just downloaded and update persist state.
 
         "Just downloaded" = added in DOWNLOADED state, or updated TO DOWNLOADED
         from a non-DOWNLOADED state.
+
+        Only COMPLETED downloads are tracked. Files that merely started
+        downloading must stay untracked: an interrupted transfer whose partial
+        file later disappears would otherwise be marked DELETED and permanently
+        skipped by auto-queue instead of being re-queued (GH incident 2026-07-23,
+        "Eyes Wide Shut" 73.7GB never re-synced).
         """
         downloaded = False
         if diff.change == ModelDiff.Change.ADDED and \
@@ -234,15 +218,61 @@ class ModelPipeline:
             self._model_builder.set_extracted_files(self._persist.extracted_file_names)
 
     def _prune_downloaded_files(self, latest_remote_scan: Optional[ScannerResult]) -> None:
-        """No-op: downloaded_file_names uses BoundedOrderedSet with LRU eviction.
+        """Track absence of downloaded files and reset tracking on a new lifecycle.
 
-        Files are intentionally kept even when deleted from both local and remote,
-        preventing re-downloads of files moved by external tools (e.g., Sonarr).
-        BoundedOrderedSet evicts oldest entries when the configured limit is reached.
+        Files in downloaded_file_names are intentionally kept when they disappear
+        from both local and remote, preventing re-downloads of files moved by
+        external tools (e.g., Sonarr) while the torrent still seeds remotely.
+
+        However, when a file has been absent from the model for longer than
+        _LIFECYCLE_ABSENCE_THRESHOLD_SECONDS and then RE-APPEARS remotely, that
+        is a new lifecycle: Sonarr/Radarr re-grabbed a release it had previously
+        imported (the torrent was re-added to the seedbox). The stale downloaded/
+        imported entries from the previous lifecycle would otherwise mark the file
+        DELETED and blacklist it from auto-queue forever (incident 2026-07-23:
+        re-grabbed release silently never synced). On re-appearance the stale
+        entries are cleared so the file syncs fresh.
+
+        The absence clock only advances on cycles with a successful remote scan,
+        so a seedbox outage (no successful scans) does not accrue absence. The
+        threshold guards against transient empty-scan flaps mass-clearing
+        tracking and causing a re-download storm.
+
         Must be called while holding the model lock.
         """
-        # No pruning needed - BoundedOrderedSet handles eviction automatically
-        pass
+        if latest_remote_scan is None or latest_remote_scan.failed:
+            return
+
+        now = time.time()
+        model_file_names = self._model.get_file_names()
+        absent_since = self._persist.absent_since
+
+        for file_name in list(self._persist.downloaded_file_names):
+            if file_name in model_file_names:
+                first_absent = absent_since.pop(file_name, None)
+                if first_absent is None:
+                    continue
+                file = self._model.get_file(file_name)
+                absence_duration = now - first_absent
+                if file.remote_size is not None and \
+                        absence_duration > _LIFECYCLE_ABSENCE_THRESHOLD_SECONDS:
+                    self.logger.info(
+                        "New lifecycle detected for '{}' (absent for {:.1f}h): "
+                        "clearing downloaded/imported tracking so it can sync".format(
+                            file_name, absence_duration / 3600.0
+                        )
+                    )
+                    self._persist.downloaded_file_names.discard(file_name)
+                    self._persist.imported_file_names.discard(file_name)
+                    self._persist.imported_children.pop(file_name, None)
+                    self._model_builder.set_downloaded_files(self._persist.downloaded_file_names)
+            else:
+                absent_since.setdefault(file_name, now)
+
+        # Drop absence records for names no longer tracked (evicted or cleared)
+        for file_name in list(absent_since.keys()):
+            if file_name not in self._persist.downloaded_file_names:
+                del absent_since[file_name]
 
     # =========================================================================
     # Diff application stage
@@ -259,7 +289,6 @@ class ModelPipeline:
             elif diff.change == ModelDiff.Change.UPDATED:
                 self._model.update_file(diff.new_file)
 
-            self.detect_and_track_queued(diff)
             self.detect_and_track_download(diff)
 
     # =========================================================================
