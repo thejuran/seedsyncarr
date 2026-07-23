@@ -21,12 +21,16 @@ const ENDPOINT = {
     deleteRemote: (n: string) => `/server/command/delete_remote/${encodeURIComponent(n)}`,
 };
 
-// Display labels rendered by transfer-row.component.ts:49-58. Seed helpers
-// poll for these strings in td.cell-status .status-badge — never raw enum names.
+// Display labels rendered by transfer-row.component.ts (BADGE_LABELS +
+// isSkippedRemote getter). Seed helpers poll for these strings in
+// td.cell-status .status-badge — never raw enum names.
+// DELETED seeds use local-delete only, so the file still exists remotely with
+// no local content — that state renders the "Skipped (remote)" badge, not the
+// plain "Deleted" badge (which requires the remote copy to be gone too).
 const LABEL = {
     DOWNLOADED:  'Synced',
     STOPPED:     'Failed',
-    DELETED:     'Deleted',
+    DELETED:     'Skipped (remote)',
     DOWNLOADING: 'Syncing',
     QUEUED:      'Queued',
 } as const;
