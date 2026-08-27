@@ -84,7 +84,11 @@ jobs:
           python-version: "3.12"
 
       - name: Install ruff
-        run: pip install ruff
+        # Pinned to the version in src/python/poetry.lock. Unpinned installs
+        # broke CI on 2026-08-27 when ruff 0.16 changed default rule selection
+        # (926 whole-tree errors unrelated to the pushed diff). Bump together
+        # with the poetry.lock ruff version.
+        run: pip install ruff==0.15.17
 
       - name: Python lint
         run: ruff check src/python/
