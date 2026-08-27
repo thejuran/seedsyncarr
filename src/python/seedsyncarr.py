@@ -315,20 +315,25 @@ class Seedsyncarr:
             logger.removeHandler(handler)
 
         logger.setLevel(logging.DEBUG if debug else logging.INFO)
+        # Always log to stdout; with a logdir ALSO log to a rotating file.
+        # File logging survives independently of the container log driver
+        # (incident 2026-08-22: Synology's db driver silently dropped all
+        # stdout past its size cap, leaving days of incidents unlogged),
+        # while stdout keeps `docker logs` usable.
+        handlers = [logging.StreamHandler(sys.stdout)]
         if logdir is not None:
-            # Output logs to a file in the given directory
-            handler = RotatingFileHandler(
-                        "{}/{}.log".format(logdir, name),
-                        maxBytes=Constants.MAX_LOG_SIZE_IN_BYTES,
-                        backupCount=Constants.LOG_BACKUP_COUNT
-                      )
-        else:
-            handler = logging.StreamHandler(sys.stdout)
+            os.makedirs(logdir, exist_ok=True)
+            handlers.append(RotatingFileHandler(
+                "{}/{}.log".format(logdir, name),
+                maxBytes=Constants.MAX_LOG_SIZE_IN_BYTES,
+                backupCount=Constants.LOG_BACKUP_COUNT
+            ))
         formatter = logging.Formatter(
             "%(asctime)s - %(levelname)s - %(name)s (%(processName)s/%(threadName)s) - %(message)s"
         )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        for handler in handlers:
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
         return logger
 
     @staticmethod

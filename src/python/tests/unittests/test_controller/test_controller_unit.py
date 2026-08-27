@@ -1078,8 +1078,10 @@ class TestControllerWebhookIntegration(BaseControllerTestCase):
         self.assertTrue(self.mock_webhook_manager.process.called)
 
     def test_webhook_imports_added_to_persist(self):
-        self._add_file_to_model("File.A", remote_size=5000)
-        self._add_file_to_model("File.B", remote_size=3000)
+        # Complete local copies: imports are only recorded for releases with
+        # download evidence (see TestWebhookImportEvidenceGate).
+        self._add_file_to_model("File.A", remote_size=5000, local_size=5000)
+        self._add_file_to_model("File.B", remote_size=3000, local_size=3000)
         self.mock_webhook_manager.process.return_value = [("File.A", "File.A"), ("File.B", "File.B")]
         self.controller.process()
         self.assertIn("File.A", self.persist.imported_file_names)
@@ -1169,9 +1171,11 @@ class TestControllerWebhookThreadSafety(BaseControllerTestCase):
     def test_check_webhook_imports_acquires_model_lock_for_model_mutation(self):
         """Verify model lock is held when calling update_file for import status."""
         lock_held_during_update = []
-        # Add a file to the model so an import can be processed
+        # Add a file to the model so an import can be processed. Complete
+        # local copy: the import evidence gate must accept it.
         f = ModelFile("test_file.mkv", False)
         f.remote_size = 1000
+        f.local_size = 1000
         self.controller._Controller__model.add_file(f)
         # Webhook manager reports this file was imported
         self.mock_webhook_manager.process.return_value = [("test_file.mkv", "test_file.mkv")]
@@ -1192,3 +1196,253 @@ class TestControllerWebhookThreadSafety(BaseControllerTestCase):
             lock_held_during_update[0],
             "Model lock must be held during update_file in webhook import"
         )
+
+
+class TestCommitDownloadedMembership(BaseControllerTestCase):
+    """Tests for ModelPipeline._commit_downloaded_membership().
+
+    Incident 2026-08-22: completed transfers repeatedly failed to reach
+    downloaded_file_names because the only writer (_detect_and_track_download)
+    is edge-triggered on an observed diff transition into DOWNLOADED. Restarts,
+    duplicate lftp jobs, and deletes-before-observation all skip the edge.
+    The commit must be level-triggered: any build where the file is complete
+    commits it, and imported-but-untracked files whose local copy is gone are
+    self-healed so the restart burst cannot re-queue them.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.pipeline = self.controller._Controller__model_pipeline
+
+    def test_downloaded_state_is_committed(self):
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DOWNLOADED, remote_size=1000, local_size=1000
+        )
+        self.pipeline._commit_downloaded_membership()
+        self.assertIn("file", self.persist.downloaded_file_names)
+
+    def test_extracted_state_is_committed(self):
+        self._add_file_to_model(
+            "file", state=ModelFile.State.EXTRACTED, remote_size=1000, local_size=1000
+        )
+        self.pipeline._commit_downloaded_membership()
+        self.assertIn("file", self.persist.downloaded_file_names)
+
+    def test_downloading_state_is_not_committed(self):
+        # Preserves incident 2026-07-23 protection: partial downloads must
+        # stay untracked so an interrupted transfer can re-queue.
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DOWNLOADING, remote_size=1000, local_size=400
+        )
+        self.pipeline._commit_downloaded_membership()
+        self.assertNotIn("file", self.persist.downloaded_file_names)
+
+    def test_imported_file_with_local_absent_is_self_healed(self):
+        # The 2026-08-22 loop cohort: imported by Sonarr, local copy deleted,
+        # never committed to downloaded. Must be recorded as downloaded so it
+        # is not re-queued at the next restart burst.
+        self.persist.imported_file_names.add("file")
+        self._add_file_to_model("file", state=ModelFile.State.DEFAULT, remote_size=1000)
+        self.pipeline._commit_downloaded_membership()
+        self.assertIn("file", self.persist.downloaded_file_names)
+
+    def test_unimported_remote_only_file_is_not_self_healed(self):
+        # A genuinely new remote release must remain queueable.
+        self._add_file_to_model("file", state=ModelFile.State.DEFAULT, remote_size=1000)
+        self.pipeline._commit_downloaded_membership()
+        self.assertNotIn("file", self.persist.downloaded_file_names)
+
+    def test_imported_local_only_file_is_not_self_healed(self):
+        # iplayer analog: a local-only dir that a webhook marked imported has
+        # no remote copy and was never downloaded by us; it must not enter
+        # downloaded (which would arm auto-delete for it).
+        self.persist.imported_file_names.add("iplayer")
+        self._add_file_to_model("iplayer", is_dir=True, local_size=1000)
+        self.pipeline._commit_downloaded_membership()
+        self.assertNotIn("iplayer", self.persist.downloaded_file_names)
+
+    def test_imported_file_with_local_present_is_committed(self):
+        # Imported and still on disk but missed the transition edge (e.g.
+        # restart mid-lifecycle): imported implies the transfer completed.
+        self.persist.imported_file_names.add("file")
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DEFAULT, remote_size=1000, local_size=1000
+        )
+        self.pipeline._commit_downloaded_membership()
+        self.assertIn("file", self.persist.downloaded_file_names)
+
+    def test_commit_updates_model_builder(self):
+        # The builder must see the updated set so the file can be marked
+        # DELETED (Skipped remote) on the next build.
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DOWNLOADED, remote_size=1000, local_size=1000
+        )
+        self.mock_model_builder.set_downloaded_files.reset_mock()
+        self.pipeline._commit_downloaded_membership()
+        self.mock_model_builder.set_downloaded_files.assert_called_once_with(
+            self.persist.downloaded_file_names
+        )
+
+    def test_no_change_does_not_update_model_builder(self):
+        self.persist.downloaded_file_names.add("file")
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DOWNLOADED, remote_size=1000, local_size=1000
+        )
+        self.mock_model_builder.set_downloaded_files.reset_mock()
+        self.pipeline._commit_downloaded_membership()
+        self.mock_model_builder.set_downloaded_files.assert_not_called()
+
+    def test_build_and_apply_model_runs_commit_pass(self):
+        # Wire-in: the commit pass must run as part of every model build.
+        new_model = Model()
+        f = ModelFile("file", False)
+        f.state = ModelFile.State.DOWNLOADED
+        f.remote_size = 1000
+        f.local_size = 1000
+        new_model.add_file(f)
+        self.mock_model_builder.has_changes.return_value = True
+        self.mock_model_builder.build_model.return_value = new_model
+        self.controller._build_and_apply_model(None)
+        self.assertIn("file", self.persist.downloaded_file_names)
+
+
+class TestRestartBurstRegression(BaseControllerTestCase):
+    """Regression for the 2026-08-22 restart burst.
+
+    Reproduction (from production logs, 15:02:32): app restarts, remote scan
+    lands, and AutoQueue mass-queues every release that is present remotely,
+    absent locally, and missing from downloaded/stopped — including releases
+    Sonarr had imported and auto-delete had removed. The persist showed these
+    in 'imported' only, with absent_since empty.
+    """
+
+    def _make_auto_queue(self):
+        from controller import AutoQueue, AutoQueuePersist
+        aq_context = MagicMock()
+        aq_context.logger = MagicMock()
+        aq_context.config.autoqueue.enabled = True
+        aq_context.config.autoqueue.patterns_only = False
+        aq_context.config.autoqueue.auto_extract = False
+        return AutoQueue(aq_context, AutoQueuePersist(), self.controller)
+
+    def _simulate_restart_build(self, model_files):
+        """Simulate the first model build after a restart: the builder emits
+        a fresh model and the pipeline applies it (firing file_added events)."""
+        new_model = Model()
+        for f in model_files:
+            new_model.add_file(f)
+        self.mock_model_builder.has_changes.return_value = True
+        self.mock_model_builder.build_model.return_value = new_model
+        self.controller._build_and_apply_model(None)
+
+    def test_imported_but_untracked_deleted_file_is_not_requeued(self):
+        # Persist state from the incident: imported only, downloaded empty,
+        # absent_since empty. Remote copy present, local copy absent.
+        self.persist.imported_file_names.add("file")
+        self.assertEqual({}, self.persist.absent_since)
+
+        auto_queue = self._make_auto_queue()
+        f = ModelFile("file", False)
+        f.remote_size = 1000
+        self._simulate_restart_build([f])
+        auto_queue.process()
+
+        self.assertEqual(
+            0, self.controller._Controller__command_queue.qsize(),
+            "restart burst must not re-queue an imported-and-deleted release"
+        )
+
+    def test_new_remote_release_is_still_queued(self):
+        # Control: a release we have never seen must still auto-queue.
+        auto_queue = self._make_auto_queue()
+        f = ModelFile("file", False)
+        f.remote_size = 1000
+        self._simulate_restart_build([f])
+        auto_queue.process()
+
+        self.assertEqual(1, self.controller._Controller__command_queue.qsize())
+
+
+class TestControllerCommandQueueOrigin(BaseControllerTestCase):
+    """Tests for QUEUE command origin: auto-queue commands re-check guards at
+    execution time; only user commands clear tracking for a fresh lifecycle.
+
+    Incident 2026-08-27: a user bulk Delete Local raced already-enqueued
+    auto-queue commands; the QUEUE executed after the delete, erasing the
+    stopped guard and re-downloading the release.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self._make_controller_started()
+
+    def _process_queue_command(self, origin):
+        cmd = Controller.Command(
+            Controller.Command.Action.QUEUE, "file", origin=origin
+        )
+        self.controller.queue_command(cmd)
+        self.controller.process()
+        return cmd
+
+    def test_command_default_origin_is_user(self):
+        cmd = Controller.Command(Controller.Command.Action.QUEUE, "file")
+        self.assertEqual(Controller.Command.Origin.USER, cmd.origin)
+
+    def test_auto_queue_skips_when_file_stopped_at_execution(self):
+        self._add_file_to_model("file", remote_size=1000)
+        self.persist.stopped_file_names.add("file")
+        self._process_queue_command(Controller.Command.Origin.AUTO)
+        self.mock_lftp_manager.queue.assert_not_called()
+        self.assertIn("file", self.persist.stopped_file_names)
+
+    def test_auto_queue_skips_when_file_downloaded_at_execution(self):
+        self._add_file_to_model("file", remote_size=1000)
+        self.persist.downloaded_file_names.add("file")
+        self._process_queue_command(Controller.Command.Origin.AUTO)
+        self.mock_lftp_manager.queue.assert_not_called()
+        self.assertIn("file", self.persist.downloaded_file_names)
+
+    def test_auto_queue_proceeds_when_unguarded(self):
+        self._add_file_to_model("file", remote_size=1000)
+        self._process_queue_command(Controller.Command.Origin.AUTO)
+        self.mock_lftp_manager.queue.assert_called_once_with("file", False)
+
+    def test_user_queue_clears_tracking_for_fresh_lifecycle(self):
+        # A user explicitly queueing a file is a deliberate re-download: all
+        # tracking that would suppress or misrepresent the new lifecycle is
+        # cleared (stopped, downloaded, imported, per-child imports).
+        self._add_file_to_model("file", remote_size=1000)
+        self.persist.stopped_file_names.add("file")
+        self.persist.downloaded_file_names.add("file")
+        self.persist.imported_file_names.add("file")
+        self.persist.add_imported_child("file", "child.mkv")
+        self._process_queue_command(Controller.Command.Origin.USER)
+        self.mock_lftp_manager.queue.assert_called_once_with("file", False)
+        self.assertNotIn("file", self.persist.stopped_file_names)
+        self.assertNotIn("file", self.persist.downloaded_file_names)
+        self.assertNotIn("file", self.persist.imported_file_names)
+        self.assertNotIn("file", self.persist.imported_children)
+
+
+class TestControllerCommandDeleteRecordsDownloaded(BaseControllerTestCase):
+    """DELETE_LOCAL must durably record the deletion so the release is never
+    re-queued while its remote copy persists (incident 2026-08-27: deleted
+    releases re-downloaded within the same minute)."""
+
+    def setUp(self):
+        super().setUp()
+        self._make_controller_started()
+
+    def test_delete_local_adds_to_downloaded(self):
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DOWNLOADED, remote_size=1000, local_size=1000
+        )
+        self._queue_and_process_command(Controller.Command.Action.DELETE_LOCAL, "file")
+        self.assertIn("file", self.persist.downloaded_file_names)
+
+    def test_delete_remote_does_not_add_to_downloaded(self):
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DOWNLOADED, remote_size=1000, local_size=1000
+        )
+        self._queue_and_process_command(Controller.Command.Action.DELETE_REMOTE, "file")
+        self.assertNotIn("file", self.persist.downloaded_file_names)

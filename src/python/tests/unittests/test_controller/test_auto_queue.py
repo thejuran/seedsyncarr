@@ -1707,3 +1707,31 @@ class TestAutoQueue(unittest.TestCase):
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.Two", command.filename)
+
+
+class TestAutoQueueCommandOrigin(unittest.TestCase):
+    """Auto-queue must mark its QUEUE commands with AUTO origin so the
+    controller re-checks stopped/downloaded guards at execution time."""
+
+    def setUp(self):
+        self.context = MagicMock()
+        self.context.logger = MagicMock()
+        self.context.config.autoqueue.enabled = True
+        self.context.config.autoqueue.patterns_only = False
+        self.context.config.autoqueue.auto_extract = False
+        self.controller = MagicMock()
+        self.controller.get_model_files_and_add_listener.return_value = []
+        self.controller.is_file_stopped.return_value = False
+        self.controller.is_file_downloaded.return_value = False
+
+    def test_queue_commands_have_auto_origin(self):
+        from controller import AutoQueue, AutoQueuePersist
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+        listener = self.controller.get_model_files_and_add_listener.call_args[0][0]
+        f = ModelFile("file", False)
+        f.remote_size = 1000
+        listener.file_added(f)
+        auto_queue.process()
+        self.controller.queue_command.assert_called_once()
+        command = self.controller.queue_command.call_args[0][0]
+        self.assertEqual(Controller.Command.Origin.AUTO, command.origin)

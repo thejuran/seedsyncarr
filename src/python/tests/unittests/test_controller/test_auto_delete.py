@@ -22,6 +22,14 @@ class BaseAutoDeleteTestCase(BaseControllerTestCase):
             persist=self.persist,
             webhook_manager=self.mock_webhook_manager,
         )
+        # Auto-delete refuses to act on entries SeedSyncarr never downloaded
+        # (evidence gate). Seed the canonical names used by these tests so
+        # they exercise the guards/locks/coverage logic behind the gate.
+        for name in ("test_file.mkv", "Pack.S01", "single_file.mkv",
+                     "toggle_file.mkv", "control_test.mkv", "shutdown_test.mkv",
+                     "midcallback_test.mkv", "exit_test.mkv",
+                     "model_lock_test.mkv", "lock_release_test.mkv"):
+            self.persist.downloaded_file_names.add(name)
 
     def tearDown(self):
         # Cancel pending timers before stopping patches
@@ -933,3 +941,108 @@ class TestAutoDeleteModelLockSerialization(BaseAutoDeleteTestCase):
             "__model_lock must NOT be held during delete_local (it spawns a subprocess; "
             "holding the lock would starve model updates on the controller thread)",
         )
+
+
+class TestAutoDeleteDownloadedGate(BaseAutoDeleteTestCase):
+    """Auto-delete must refuse to act on any entry SeedSyncarr never downloaded.
+
+    Incident 2026-08-21: Sonarr imports from /data/torrents/iplayer (a
+    directory owned by another application) matched model children under the
+    'iplayer' root; auto-delete then deleted the entire directory. Membership
+    in downloaded_file_names is the required evidence.
+    """
+
+    def _make_safe_mock_file(self, state=ModelFile.State.DOWNLOADED, is_dir=False, children=None):
+        mock_file = MagicMock(spec=ModelFile)
+        mock_file.state = state
+        mock_file.is_dir = is_dir
+        mock_file.get_children.return_value = children or []
+        return mock_file
+
+    def test_execute_refuses_when_not_downloaded(self):
+        mock_file = self._make_safe_mock_file()
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.assertNotIn("iplayer", self.persist.downloaded_file_names)
+
+        self.controller._Controller__execute_auto_delete("iplayer")
+
+        self.mock_file_op_manager.delete_local.assert_not_called()
+
+    def test_execute_proceeds_when_downloaded(self):
+        mock_file = self._make_safe_mock_file()
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.persist.downloaded_file_names.add("test_file.mkv")
+
+        self.controller._Controller__execute_auto_delete("test_file.mkv")
+
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+
+
+class TestWebhookImportEvidenceGate(BaseAutoDeleteTestCase):
+    """Webhook imports are only recorded (and auto-delete armed) for releases
+    with download evidence: either already in downloaded_file_names, or a
+    complete local copy of a remote release (which is then committed).
+
+    Incident 2026-08-21: an import matched under a root SeedSyncarr never
+    downloaded ('iplayer'); recording it armed auto-delete for a foreign dir.
+    """
+
+    def _process_with_import(self, root_name, matched_name=None):
+        self.controller._Controller__started = True
+        self.mock_scan_manager.pop_latest_results.return_value = (None, None, None)
+        self.mock_lftp_manager.status.return_value = None
+        self.mock_file_op_manager.pop_extract_statuses.return_value = None
+        self.mock_file_op_manager.pop_completed_extractions.return_value = []
+        self.mock_model_builder.has_changes.return_value = False
+        self.mock_webhook_manager.process.return_value = [
+            (root_name, matched_name or root_name)
+        ]
+        self.controller.process()
+
+    def test_import_refused_without_evidence(self):
+        # Local-only dir (iplayer analog): no remote copy, not downloaded.
+        f = ModelFile("iplayer", True)
+        f.local_size = 1000
+        self.controller._Controller__model.add_file(f)
+
+        self._process_with_import("iplayer")
+
+        self.assertNotIn("iplayer", self.persist.imported_file_names)
+        self.assertNotIn("iplayer", self.controller._Controller__pending_auto_deletes)
+
+    def test_import_refused_for_remote_only_file_not_downloaded(self):
+        # Remote-only file that was never transferred: no evidence.
+        f = ModelFile("release.mkv", False)
+        f.remote_size = 1000
+        self.controller._Controller__model.add_file(f)
+
+        self._process_with_import("release.mkv")
+
+        self.assertNotIn("release.mkv", self.persist.imported_file_names)
+        self.assertNotIn("release.mkv", self.controller._Controller__pending_auto_deletes)
+
+    def test_import_recorded_when_already_downloaded(self):
+        f = ModelFile("release.mkv", False)
+        f.remote_size = 1000
+        self.controller._Controller__model.add_file(f)
+        self.persist.downloaded_file_names.add("release.mkv")
+
+        self._process_with_import("release.mkv")
+
+        self.assertIn("release.mkv", self.persist.imported_file_names)
+        self.assertIn("release.mkv", self.controller._Controller__pending_auto_deletes)
+
+    def test_import_with_complete_local_copy_commits_and_records(self):
+        # Transfer evidence at import time: remote release fully present
+        # locally. Committed to downloaded and the import recorded, covering
+        # the race where Sonarr imports before the next model build commits.
+        f = ModelFile("release.mkv", False)
+        f.remote_size = 1000
+        f.local_size = 1000
+        self.controller._Controller__model.add_file(f)
+
+        self._process_with_import("release.mkv")
+
+        self.assertIn("release.mkv", self.persist.downloaded_file_names)
+        self.assertIn("release.mkv", self.persist.imported_file_names)
+        self.assertIn("release.mkv", self.controller._Controller__pending_auto_deletes)

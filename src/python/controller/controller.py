@@ -46,6 +46,13 @@ class Controller:
             DELETE_LOCAL = 3
             DELETE_REMOTE = 4
 
+        class Origin(Enum):
+            """Who requested the command. AUTO commands re-check the
+            stopped/downloaded guards at execution time and never clear them;
+            USER commands clear tracking to start a fresh lifecycle."""
+            USER = 0
+            AUTO = 1
+
         class ICallback(ABC):
             """Command callback interface"""
             @abstractmethod
@@ -68,9 +75,11 @@ class Controller:
                 """
                 pass
 
-        def __init__(self, action: Action, filename: str):
+        def __init__(self, action: Action, filename: str,
+                     origin: "Controller.Command.Origin" = None):
             self.action = action
             self.filename = filename
+            self.origin = origin if origin is not None else Controller.Command.Origin.USER
             self.callbacks = []
 
         def add_callback(self, callback: ICallback):
@@ -545,9 +554,46 @@ class Controller:
         newly_imported = self.__webhook_manager.process(name_to_root)
 
         if newly_imported:
+            # Roots that passed the evidence gate below; only these are
+            # recorded and scheduled for auto-delete.
+            accepted_roots = set()
             # Window 2: Update model import status for all newly imported files under single lock
             with self.__model_lock:
                 for root_name, matched_name in newly_imported:
+                    # Evidence gate: only record imports for releases with
+                    # download evidence — already committed to downloaded, or a
+                    # complete local copy of a remote release (committed here,
+                    # covering the race where the arr imports before the next
+                    # model build runs the commit pass). A match with no
+                    # evidence (incident 2026-08-21: a foreign local-only dir
+                    # like 'iplayer' matched via a child basename) is logged
+                    # and ignored so it can never arm auto-delete.
+                    if root_name not in self.__persist.downloaded_file_names:
+                        try:
+                            root_file = self.__model.get_file(root_name)
+                        except ModelError:
+                            root_file = None
+                        has_evidence = (
+                            root_file is not None and
+                            root_file.remote_size is not None and
+                            root_file.local_size is not None and
+                            root_file.local_size >= root_file.remote_size
+                        )
+                        if not has_evidence:
+                            self.logger.warning(
+                                "Ignoring webhook import for '{}': not downloaded "
+                                "by SeedSyncarr (no transfer evidence)".format(
+                                    sanitize_log_value(root_name)
+                                )
+                            )
+                            continue
+                        self.logger.info(
+                            "Committing '{}' to downloaded list on import evidence".format(
+                                sanitize_log_value(root_name)
+                            )
+                        )
+                        self.__persist.downloaded_file_names.add(root_name)
+                    accepted_roots.add(root_name)
                     # Backward-compat root tracking (D-05) -- drives UI badge + existing dedup
                     self.__persist.imported_file_names.add(root_name)
                     # Per-child tracking (D-07) -- lowercased basename for case-insensitive
@@ -576,11 +622,11 @@ class Controller:
                     self._set_import_status(self.__model, root_name)
 
             # Schedule auto-deletes outside lock -- Timer operations only.
-            # De-duplicate roots: two child webhooks in one cycle would otherwise
-            # schedule the same root twice (the second call cancels the first timer
-            # and rearms -- benign but wasteful). Iterate unique roots explicitly.
+            # Only roots that passed the evidence gate are scheduled; the set
+            # also de-duplicates roots (two child webhooks in one cycle would
+            # otherwise re-arm the same root's timer -- benign but wasteful).
             if self.__context.config.autodelete.enabled:
-                for root_name in {r for r, _ in newly_imported}:
+                for root_name in accepted_roots:
                     self.__schedule_auto_delete(root_name)
 
     def __schedule_auto_delete(self, file_name: str):
@@ -649,6 +695,19 @@ class Controller:
             except ModelError:
                 self.logger.debug(
                     "File '{}' no longer in model, skipping auto-delete".format(sanitize_log_value(file_name))
+                )
+                return
+
+            # Evidence gate: refuse to delete anything SeedSyncarr never
+            # downloaded. Membership in downloaded_file_names is the required
+            # evidence — without it a webhook child-match under a foreign
+            # directory (incident 2026-08-21: 'iplayer') would arm deletion of
+            # data this app does not own.
+            if file_name not in self.__persist.downloaded_file_names:
+                self.logger.warning(
+                    "Auto-delete refused for '{}': not downloaded by SeedSyncarr".format(
+                        sanitize_log_value(file_name)
+                    )
                 )
                 return
 

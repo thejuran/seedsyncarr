@@ -745,3 +745,47 @@ class TestSeedsyncarrAutoRestartWiring(unittest.TestCase):
             current_run_start=now, reset_secs=self.RESET_SECS, now=now)
         self.assertTrue(should)
         self.assertFalse(reset)
+
+
+class TestSeedsyncarrCreateLogger(unittest.TestCase):
+    """_create_logger with a logdir must create the directory and log to BOTH
+    the rotating file and stdout. Incident 2026-08-22: Synology's docker db
+    log driver silently dropped all stdout after its size cap, leaving five
+    days of incidents with zero logs; file logging in /config survives
+    independent of the container log driver, while stdout keeps `docker logs`
+    usable."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmpdir, ignore_errors=True)
+        self.logger_name = "test_create_logger_{}".format(id(self))
+
+    def _handlers(self, logger):
+        import logging
+        stream = [h for h in logger.handlers
+                  if type(h) is logging.StreamHandler]
+        rotating = [h for h in logger.handlers
+                    if h.__class__.__name__ == "RotatingFileHandler"]
+        return stream, rotating
+
+    def test_no_logdir_logs_to_stdout_only(self):
+        logger = Seedsyncarr._create_logger(self.logger_name, False, None)
+        stream, rotating = self._handlers(logger)
+        self.assertEqual(1, len(stream))
+        self.assertEqual(0, len(rotating))
+
+    def test_logdir_logs_to_file_and_stdout(self):
+        logdir = os.path.join(self.tmpdir, "log")
+        logger = Seedsyncarr._create_logger(self.logger_name, False, logdir)
+        stream, rotating = self._handlers(logger)
+        self.assertEqual(1, len(stream))
+        self.assertEqual(1, len(rotating))
+
+    def test_logdir_is_created_if_missing(self):
+        logdir = os.path.join(self.tmpdir, "nested", "log")
+        self.assertFalse(os.path.isdir(logdir))
+        Seedsyncarr._create_logger(self.logger_name, False, logdir)
+        self.assertTrue(os.path.isdir(logdir))
+        self.assertTrue(os.path.isfile(
+            os.path.join(logdir, "{}.log".format(self.logger_name))
+        ))

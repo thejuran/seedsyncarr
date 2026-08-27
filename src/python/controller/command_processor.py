@@ -85,13 +85,41 @@ class CommandProcessor:
         """
         Handle QUEUE command action.
         Returns (success, error_message, error_code) tuple.
+
+        Origin-aware (dispatched by origin.name string, mirroring the
+        action.name dispatch — Controller.Command is not imported here):
+        - AUTO: re-check the stopped/downloaded guards at execution time and
+          skip quietly if either holds. Auto-queue filters at enqueue time
+          only; a guard added between enqueue and execution (incident
+          2026-08-27: a user Delete Local racing an in-flight auto-queue
+          command) must win. Guards are never cleared by AUTO commands.
+        - USER: an explicit re-download; clear all tracking that would
+          suppress or misrepresent the fresh lifecycle (stopped, downloaded,
+          imported, per-child imports).
         """
         if file.remote_size is None:
             return False, "File '{}' does not exist remotely".format(command.filename), 404
+
+        is_auto = getattr(command, "origin", None) is not None and \
+            command.origin.name == 'AUTO'
+        if is_auto:
+            if file.name in self.__persist.stopped_file_names or \
+                    file.name in self.__persist.downloaded_file_names:
+                self.logger.info(
+                    "Skipping auto-queue of '{}': guarded at execution time".format(
+                        sanitize_log_value(file.name)
+                    )
+                )
+                return True, None, None
+
         try:
             self.__lftp_manager.queue(file.name, file.is_dir)
-            # Remove from stopped files - user explicitly wants to download this
-            self.__persist.stopped_file_names.discard(file.name)
+            if not is_auto:
+                # User explicitly wants a fresh download lifecycle
+                self.__persist.stopped_file_names.discard(file.name)
+                self.__persist.downloaded_file_names.discard(file.name)
+                self.__persist.imported_file_names.discard(file.name)
+                self.__persist.imported_children.pop(file.name, None)
             return True, None, None
         except LftpError as e:
             return False, "Lftp error: {}".format(str(e)), 500
@@ -154,6 +182,12 @@ class CommandProcessor:
                 self.__file_op_manager.delete_local(file)
                 # Track as stopped to prevent auto-queuing on restart
                 self.__persist.stopped_file_names.add(command.filename)
+                # Record the deletion durably: membership in downloaded means
+                # "completed and intentionally removed", which the auto-queue
+                # filter honors at every restart. Without this the release
+                # re-downloads at the next restart burst while its remote
+                # copy persists (incident 2026-08-27).
+                self.__persist.downloaded_file_names.add(command.filename)
                 return True, None, None
 
         elif command.action.name == 'DELETE_REMOTE':

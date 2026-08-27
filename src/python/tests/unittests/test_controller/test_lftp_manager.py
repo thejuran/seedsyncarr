@@ -229,3 +229,76 @@ class TestLftpManager(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestLftpManagerStatusCircuitBreaker(unittest.TestCase):
+    """A wedged lftp makes every status() call stall for the full pexpect
+    timeout (180s), starving the controller loop (incident 2026-08-27: bulk
+    delete commands executed hours late, UI worker pool exhausted). After a
+    stalled call, status polling must back off instead of stalling every
+    cycle."""
+
+    def setUp(self):
+        self.mock_context = MagicMock()
+        self.mock_context.logger = MagicMock()
+        self.mock_context.config.lftp.remote_address = "remote.server.com"
+        self.mock_context.config.lftp.remote_port = 22
+        self.mock_context.config.lftp.remote_username = "user"
+        self.mock_context.config.lftp.remote_password = "password"  # Test-only credential
+        self.mock_context.config.lftp.use_ssh_key = False
+        self.mock_context.config.lftp.remote_path = "/remote/path"
+        self.mock_context.config.lftp.local_path = "/local/path"
+        self.mock_context.config.lftp.num_max_parallel_downloads = 2
+        self.mock_context.config.lftp.num_max_parallel_files_per_download = 3
+        self.mock_context.config.lftp.num_max_connections_per_root_file = 4
+        self.mock_context.config.lftp.num_max_connections_per_dir_file = 2
+        self.mock_context.config.lftp.num_max_total_connections = 8
+        self.mock_context.config.lftp.use_temp_file = True
+        self.mock_context.config.lftp.rate_limit = 0
+        self.mock_context.config.general.verbose = False
+
+    @patch('controller.lftp_manager.time')
+    @patch('controller.lftp_manager.Lftp')
+    def test_stalled_status_triggers_backoff(self, mock_lftp_class, mock_time):
+        mock_lftp = mock_lftp_class.return_value
+        manager = LftpManager(self.mock_context)
+
+        # First call stalls (clock jumps past the stall threshold during it)
+        clock = [1000.0]
+
+        def fake_monotonic():
+            return clock[0]
+
+        def stalled_status():
+            clock[0] += LftpManager.STATUS_STALL_THRESHOLD_SECS + 1
+            return []
+
+        mock_time.monotonic.side_effect = fake_monotonic
+        mock_lftp.status.side_effect = stalled_status
+
+        manager.status()
+        self.assertEqual(1, mock_lftp.status.call_count)
+
+        # Within the backoff window: no lftp call, returns None
+        result = manager.status()
+        self.assertIsNone(result)
+        self.assertEqual(1, mock_lftp.status.call_count)
+
+        # After the backoff window expires, polling resumes
+        clock[0] += LftpManager.STATUS_BACKOFF_SECS + 1
+        mock_lftp.status.side_effect = lambda: []
+        manager.status()
+        self.assertEqual(2, mock_lftp.status.call_count)
+
+    @patch('controller.lftp_manager.time')
+    @patch('controller.lftp_manager.Lftp')
+    def test_fast_status_does_not_trigger_backoff(self, mock_lftp_class, mock_time):
+        mock_lftp = mock_lftp_class.return_value
+        manager = LftpManager(self.mock_context)
+        mock_time.monotonic.return_value = 1000.0
+        mock_lftp.status.return_value = []
+
+        manager.status()
+        manager.status()
+
+        self.assertEqual(2, mock_lftp.status.call_count)

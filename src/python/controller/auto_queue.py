@@ -310,7 +310,10 @@ class AutoQueue:
                 "Auto queueing '{}'".format(filename) +
                 (" for pattern '{}'".format(pattern.pattern) if pattern else "")
             )
-            command = Controller.Command(Controller.Command.Action.QUEUE, filename)
+            command = Controller.Command(
+                Controller.Command.Action.QUEUE, filename,
+                origin=Controller.Command.Origin.AUTO
+            )
             self.__controller.queue_command(command)
 
         # Send the extract commands

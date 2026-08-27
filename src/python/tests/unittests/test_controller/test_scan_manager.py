@@ -41,7 +41,9 @@ class TestScanManager(unittest.TestCase):
         manager = ScanManager(self.mock_context, self.mock_mp_logger)  # noqa: F841
 
         # Verify scanners were created with correct arguments
-        mock_active_scanner.assert_called_once_with("/local/path")
+        mock_active_scanner.assert_called_once_with(
+            "/local/path", use_temp_file=False
+        )
         mock_local_scanner.assert_called_once_with(
             local_path="/local/path",
             use_temp_file=False
@@ -319,3 +321,39 @@ class TestScanManager(unittest.TestCase):
         manager.propagate_exceptions()
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestScanManagerActiveScannerTempFile(unittest.TestCase):
+    """ScanManager must pass use_temp_file to ActiveScanner so active scans
+    resolve '<name>.lftp' files instead of warning once per second for the
+    whole transfer (incident 2026-08-22)."""
+
+    def setUp(self):
+        self.mock_context = MagicMock()
+        self.mock_context.logger = MagicMock()
+        self.mock_context.config.lftp.local_path = "/local/path"
+        self.mock_context.config.lftp.use_temp_file = True
+        self.mock_context.config.lftp.remote_address = "remote.server.com"
+        self.mock_context.config.lftp.remote_username = "user"
+        self.mock_context.config.lftp.remote_password = "password"
+        self.mock_context.config.lftp.use_ssh_key = False
+        self.mock_context.config.lftp.remote_port = 22
+        self.mock_context.config.lftp.remote_path = "/remote/path"
+        self.mock_context.config.lftp.remote_path_to_scan_script = "/usr/bin/scanfs"
+        self.mock_context.args.local_path_to_scanfs = "/local/bin/scanfs"
+        self.mock_context.config.controller.interval_ms_downloading_scan = 500
+        self.mock_context.config.controller.interval_ms_local_scan = 30000
+        self.mock_context.config.controller.interval_ms_remote_scan = 30000
+        self.mock_mp_logger = MagicMock()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_active_scanner_receives_use_temp_file(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        ScanManager(self.mock_context, self.mock_mp_logger)
+        mock_active_scanner.assert_called_once_with(
+            "/local/path", use_temp_file=True
+        )

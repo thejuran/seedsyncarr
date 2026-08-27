@@ -43,7 +43,10 @@ class ScanManager:
         password = context.config.lftp.remote_password if not context.config.lftp.use_ssh_key else None
 
         # Create the scanners
-        self.__active_scanner = ActiveScanner(context.config.lftp.local_path)
+        self.__active_scanner = ActiveScanner(
+            context.config.lftp.local_path,
+            use_temp_file=context.config.lftp.use_temp_file
+        )
         self.__local_scanner = LocalScanner(
             local_path=context.config.lftp.local_path,
             use_temp_file=context.config.lftp.use_temp_file

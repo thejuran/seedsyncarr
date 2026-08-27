@@ -165,12 +165,17 @@ ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]
 # The app is launched under tini (see entrypoint.sh) so that PID 1 reaps the
 # ssh/scp/lftp children the app spawns per scan cycle, instead of accumulating
 # zombies. This CMD is the command tini supervises.
+# --logdir: rotating file logs under /config survive independently of the
+# container log driver (incident 2026-08-22: Synology's db log driver silently
+# dropped all stdout after its size cap, leaving days of incidents unlogged).
+# Logging still goes to stdout as well, so `docker logs` keeps working.
 CMD [ \
     "python", \
     "/app/python/seedsyncarr.py", \
     "-c", "/config", \
     "--html", "/app/html", \
-    "--scanfs", "/app/scanfs" \
+    "--scanfs", "/app/scanfs", \
+    "--logdir", "/config/log" \
 ]
 
 EXPOSE 8800

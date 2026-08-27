@@ -184,10 +184,14 @@ class TestCheckWebhookImportsSanitization(unittest.TestCase):
         c._Controller__model.get_file_names.return_value = []
         c._Controller__model_lock = Lock()
 
-        # Persist: needs add_imported_child + imported_file_names (a set-like)
+        # Persist: needs add_imported_child + imported_file_names (a set-like).
+        # downloaded_file_names is a real set so the import evidence gate can
+        # be satisfied by seeding the root name (these tests target log
+        # sanitization, not the gate).
         mock_persist = MagicMock()
         mock_persist.imported_file_names = set()
         mock_persist.imported_children = {}
+        mock_persist.downloaded_file_names = set()
         c._Controller__persist = mock_persist
 
         # Webhook manager: returns our crafted tuple
@@ -209,6 +213,8 @@ class TestCheckWebhookImportsSanitization(unittest.TestCase):
         # Return an import whose root_name contains CRLF (remote-scanner-sourced)
         c._Controller__webhook_manager.process.return_value = [(crlf_root, matched_name)]
         c._Controller__persist.imported_file_names = set()
+        # Seed the evidence gate so the sanitization site under test is reached
+        c._Controller__persist.downloaded_file_names.add(crlf_root)
         c._set_import_status = MagicMock()
 
         c._Controller__check_webhook_imports()
@@ -237,6 +243,8 @@ class TestCheckWebhookImportsSanitization(unittest.TestCase):
         c = self._make_controller()
         c._Controller__webhook_manager.process.return_value = [(root_name, crlf_matched)]
         c._Controller__persist.imported_file_names = set()
+        # Seed the evidence gate so the persist-write site under test is reached
+        c._Controller__persist.downloaded_file_names.add(root_name)
         c._set_import_status = MagicMock()
 
         c._Controller__check_webhook_imports()

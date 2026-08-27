@@ -1,3 +1,4 @@
+import time
 from typing import List, Optional
 
 from common import Context, Constants
@@ -18,6 +19,16 @@ class LftpManager:
     underlying LFTP process communication. LftpManager methods can be
     called from any thread.
     """
+
+    # Status circuit breaker: a wedged lftp makes every status() call block
+    # for the full pexpect timeout (180s), starving the controller loop —
+    # commands drain at minutes per cycle and the web worker pool exhausts
+    # (incident 2026-08-27). A status() call that takes longer than the stall
+    # threshold opens the breaker: further calls return None immediately for
+    # the backoff window, keeping the controller responsive while lftp
+    # recovers (None is the existing "status unavailable" contract upstream).
+    STATUS_STALL_THRESHOLD_SECS = 30.0
+    STATUS_BACKOFF_SECS = 60.0
 
     def __init__(self, context: Context):
         """
@@ -60,6 +71,9 @@ class LftpManager:
         # Track the last-applied rate_limit so we only send the lftp command
         # when the config value actually changes at runtime.
         self.__applied_rate_limit = context.config.lftp.rate_limit
+
+        # Status circuit breaker state (monotonic deadline; 0 = closed)
+        self.__status_backoff_until = 0.0
 
     @property
     def lftp(self) -> Lftp:
@@ -128,13 +142,28 @@ class LftpManager:
         Get the current status of all LFTP jobs.
 
         Returns:
-            List of LftpJobStatus objects, or None if an error occurred.
+            List of LftpJobStatus objects, or None if an error occurred or
+            the stall circuit breaker is open (see class docstring constants).
         """
+        start = time.monotonic()
+        if start < self.__status_backoff_until:
+            return None
         try:
             return self.__lftp.status()
         except (LftpError, LftpJobStatusParserError) as e:
             self.logger.warning("Caught lftp error: {}".format(str(e)))
             return None
+        finally:
+            elapsed = time.monotonic() - start
+            if elapsed > LftpManager.STATUS_STALL_THRESHOLD_SECS:
+                self.__status_backoff_until = \
+                    time.monotonic() + LftpManager.STATUS_BACKOFF_SECS
+                self.logger.warning(
+                    "Lftp status call stalled for {:.1f}s; backing off status "
+                    "polling for {:.0f}s".format(
+                        elapsed, LftpManager.STATUS_BACKOFF_SECS
+                    )
+                )
 
     def exit(self) -> None:
         """
