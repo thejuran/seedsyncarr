@@ -2,7 +2,7 @@ import copy
 import time
 from typing import List, Optional, Tuple
 
-from common import Context
+from common import Context, sanitize_log_value
 from model import ModelError, ModelFile, Model, ModelDiff, ModelDiffUtil
 from lftp import LftpJobStatus
 from .extract import ExtractStatusResult, ExtractCompletedResult
@@ -274,6 +274,54 @@ class ModelPipeline:
             if file_name not in self._persist.downloaded_file_names:
                 del absent_since[file_name]
 
+    def _commit_downloaded_membership(self) -> None:
+        """Ensure downloaded_file_names reflects the evidence in the current model.
+
+        Level-triggered complement to detect_and_track_download (which is
+        edge-triggered on an observed diff transition into DOWNLOADED and
+        misses completions that happen across a restart, while duplicate lftp
+        jobs pin the state, or when the local copy is deleted before the
+        transition is observed — incident 2026-08-22, releases stuck in
+        'imported' and re-queued at every restart burst).
+
+        Two evidence rules, both idempotent:
+        - A file whose current state is DOWNLOADED or EXTRACTED is complete;
+          commit it. (DOWNLOADING/QUEUED stay untracked so an interrupted
+          transfer can re-queue — incident 2026-07-23.)
+        - A file in imported_file_names with a remote copy was really imported
+          by an arr from our staging area; commit it even if the local copy is
+          already gone, so the next restart burst cannot re-queue it. A file
+          with no remote copy (e.g. a foreign local-only dir matched by a
+          webhook) is never committed.
+
+        Must be called while holding the model lock.
+        """
+        changed = False
+        downloaded = self._persist.downloaded_file_names
+        for name in self._model.get_file_names():
+            if name in downloaded:
+                continue
+            file = self._model.get_file(name)
+            if file.state in (ModelFile.State.DOWNLOADED, ModelFile.State.EXTRACTED):
+                self.logger.info(
+                    "Committing completed download '{}' to downloaded list".format(sanitize_log_value(name))
+                )
+                downloaded.add(name)
+                changed = True
+            elif name in self._persist.imported_file_names and \
+                    file.remote_size is not None:
+                self.logger.info(
+                    "Committing imported release '{}' to downloaded list "
+                    "(import is download evidence; local copy {})".format(
+                        sanitize_log_value(name),
+                        "absent" if file.local_size is None else "present"
+                    )
+                )
+                downloaded.add(name)
+                changed = True
+        if changed:
+            self._model_builder.set_downloaded_files(downloaded)
+
     # =========================================================================
     # Diff application stage
     # =========================================================================
@@ -323,3 +371,6 @@ class ModelPipeline:
             self.apply_model_diff(model_diff)
             self.prune_extracted_files()
             self._prune_downloaded_files(latest_remote_scan)
+            # Runs after the lifecycle reset so a detected re-grab starts the
+            # new lifecycle untracked instead of being immediately re-committed.
+            self._commit_downloaded_membership()
