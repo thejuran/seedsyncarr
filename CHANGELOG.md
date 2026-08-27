@@ -4,6 +4,88 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.0] - 2026-08-27
+
+A reliability release closing the August incident cluster: releases that were
+downloaded, imported, and deliberately deleted kept re-downloading from the
+seedbox at every app restart; an auto-delete triggered by a Sonarr import
+deleted a directory SeedSyncarr never owned; the ActiveScanner logged one
+warning per second for entire transfers; and a wedged lftp could freeze the
+whole app for hours — invisibly, because the container's log driver had
+silently stopped recording. The root cause was one state-model gap with five
+faces: completed transfers frequently never reached the persisted `downloaded`
+list, and everything dangerous keyed off that list being right. Downloaded
+tracking is now evidence-based and self-healing, destructive actions require
+it, and existing persist files migrate themselves on first start with no
+manual step.
+
+### Fixed
+
+- Fixed deleted releases re-downloading at every restart (incidents
+  2026-08-22 and 2026-08-27). Completed-transfer tracking was edge-triggered:
+  a release was only committed to the `downloaded` list if a model rebuild
+  happened to observe the moment it finished, which restarts, duplicate lftp
+  jobs, and fast import-then-delete sequences routinely prevented. Releases
+  stuck in `imported`-but-not-`downloaded` were re-queued en masse seconds
+  after every app restart (verified in production logs: nine releases queued
+  in one millisecond after a restart). The commit is now level-triggered —
+  every model build records any complete or imported release — and existing
+  persist files self-heal on the first build after upgrade.
+- Fixed auto-delete acting on directories SeedSyncarr never downloaded
+  (incident 2026-08-21: a Sonarr import from an unrelated application's
+  directory under the staging root deleted that entire directory). Webhook
+  imports are only recorded — and auto-delete only armed — for releases with
+  download evidence: already tracked as downloaded, or a complete local copy
+  of a release that exists on the seedbox. Auto-delete additionally refuses
+  outright to delete anything not in the downloaded list.
+- Fixed the delete/re-queue race: auto-queue commands now re-check the
+  stopped/downloaded guards at execution time, so a Delete Local landing
+  between an auto-queue decision and its execution wins instead of being
+  overwritten. Auto-queue commands also no longer clear the stopped flag.
+- Fixed ActiveScanner logging "Path does not exist" once per second for the
+  entire duration of every temp-file download (~172k lines/day measured).
+  The active scanner now resolves `.lftp` temp names like the local scanner
+  always has, and any genuinely missing path warns once then backs off to
+  debug until it resolves.
+- Fixed a wedged lftp freezing the app for hours. Every controller cycle
+  called lftp status with a 180-second timeout; with lftp stuck, commands
+  drained at minutes per cycle and the web worker pool exhausted (port
+  accepted connections then reset). A circuit breaker now detects a stalled
+  status call (>30s) and backs off polling for 60s, keeping the app
+  responsive while lftp recovers.
+- Fixed e2e seed fixture to poll for the "Skipped (remote)" badge after a
+  local delete instead of racing the model update.
+
+### Changed
+
+- Delete Local is now a durable decision: a locally deleted release shows the
+  amber "Skipped (remote)" badge and will not re-download while its seedbox
+  copy remains. To deliberately re-download, press Queue — an explicit user
+  Queue now clears the release's tracking and starts a fresh lifecycle.
+  (Sonarr/Radarr re-grabs are unaffected: the 24-hour re-grab detection from
+  1.6.0 still clears tracking automatically.)
+- Logs are now written to rotating files under `/config/log` in addition to
+  stdout. During the August incidents, Synology's container log driver had
+  silently dropped all output for five days after hitting its size cap,
+  leaving the incidents undiagnosable; file logs survive independent of the
+  container log driver while `docker logs` keeps working.
+- CI pins ruff to the version in poetry.lock (an unpinned install pulled the
+  new ruff 0.16 release, whose changed defaults failed the whole tree with
+  926 errors unrelated to the change under test).
+
+### Security
+
+- Sanitized remote-scanner-derived file names in the two new downloaded-list
+  log calls (CWE-117 log injection), keeping the codebase-wide convention.
+- Resolved all 22 open Dependabot alerts across pip and npm, including:
+  cryptography 48.0.1 → 50.0.1 (2 high), pymdown-extensions → 11.0.2 (high +
+  medium), webob → 1.8.11, fast-uri → 3.1.6 (high), postcss → 8.5.26 (high +
+  medium), socket.io-parser → 4.2.7 (high), ip-address → 10.5.0 (high + 2
+  medium), @angular/common → 22.1.3 (high), hono → 4.13.3 and
+  @hono/node-server → 1.19.17 (4 medium/low), and removal of undici (1 high,
+  4 medium). Also setuptools → 83.0.0 (moderate) and assorted dev-dependency
+  updates (pytest, testfixtures, mkdocs-material, puppeteer, ruff 0.15.22).
+
 ## [1.6.0] - 2026-07-23
 
 A reliability release driven by a production incident: a completed seedbox

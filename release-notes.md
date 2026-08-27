@@ -1,17 +1,18 @@
-A reliability release driven by a real incident: a download that finished on the seedbox was silently never synced, because leftover tracking from an earlier download of the same release name blacklisted it — and the dashboard gave no hint anything was stuck.
+A reliability release driven by a cluster of real incidents: releases you deleted kept coming back, an auto-delete removed a folder that wasn't SeedSyncarr's to touch, and one bad afternoon the app froze for five hours with nothing in the logs to show why. All of it traced to a single gap — the app frequently failed to record that a download had finished, and every safety decision depended on that record being right.
 
-Existing config and persist files (including encrypted ones) load unchanged, with no migration step.
+Existing config and persist files load unchanged; the tracking state repairs itself automatically on first start.
 
 ### What changed for you
 
-- **Re-grabbing a release you've had before now works** — Previously, if Sonarr/Radarr re-grabbed a release that SeedSyncarr had already synced and imported in the past, the file was silently skipped forever. Now, a release that has been gone from both the seedbox and local storage for over 24 hours and then re-appears is treated as a fresh download and syncs automatically.
-- **Interrupted syncs recover** — A transfer killed mid-download (container restart, lftp crash) whose partial file disappeared used to be marked Deleted and never re-queued. It now simply re-queues.
-- **No more phantom "imported" marks** — Import detection now requires the actual imported-file path in the webhook payload. An event without it can no longer mark a file imported (and arm auto-delete) by title coincidence, and every import mark is logged with the exact webhook event that caused it.
-- **Stuck files are visible** — A file that exists on the seedbox but is intentionally not being downloaded now shows an amber "Skipped (remote)" badge instead of blending in with deleted files.
-- **Sturdier dashboard** — The initial file list loads as one snapshot instead of hundreds of individual events (much faster first render with large libraries), a single bad update can no longer silently freeze the file list, and the System Event Log no longer shows an endless spinner when there are simply no recent events.
+- **Deleting a local copy finally makes it stay deleted** — Previously there was no way to delete a downloaded release and have it stay gone: as long as the copy remained on the seedbox, the app would re-download it at the next restart (one 33 GB remux re-downloaded within an hour of being deleted). Deleted releases now show the amber "Skipped (remote)" badge and stay put. Want it back? Press Queue — that's now an explicit "download this fresh" instruction.
+- **Auto-delete can no longer touch what SeedSyncarr didn't download** — A Sonarr import from a folder belonging to a different app used to be able to trick auto-delete into wiping that entire folder. Auto-delete now demands proof the app itself downloaded a release before deleting anything, and imports without that evidence are logged and ignored.
+- **A stuck transfer no longer takes the whole app down** — When lftp wedged, every screen of the app went dead for hours while downloads sat frozen. The app now detects the stall, works around it, and stays responsive while the transfer layer recovers.
+- **Logs that survive** — The Synology container log had silently stopped recording for five days, which is why the incidents above were so hard to diagnose. Logs are now also written to rotating files in your config folder, so the next question of "what happened last Tuesday" has an answer.
+- **A much quieter log** — The scanner used to write a warning every single second for every in-progress download (about 172,000 lines a day). That noise is gone.
+- **Security updates** — All 22 open dependency alerts resolved, including high-severity updates to the encryption library and several web components.
 
 ### Should you update?
 
-Yes — especially if you use the Sonarr/Radarr webhook integration or ever re-download releases. The fixes remove a silent data-flow failure mode where a wanted download never arrives and nothing tells you.
+Yes. If you have ever deleted a release and watched it come back, or found the app frozen with an empty log, this release removes both failure modes at the root — and until you update, every app restart can still re-download previously deleted releases.
 
 **Full changelog:** https://github.com/thejuran/seedsyncarr/blob/v{{VERSION}}/CHANGELOG.md
