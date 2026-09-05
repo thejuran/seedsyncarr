@@ -293,6 +293,8 @@ class TestAutoQueue(unittest.TestCase):
         self.context.config.autoqueue.patterns_only = True
         self.context.config.autoqueue.auto_extract = True
         self.context.logger = self.logger
+        # No scan clock in this harness: sweep cooldown stays inactive
+        self.context.status.controller.latest_remote_scan_time = None
         self.controller = MagicMock()
         self.controller.get_model_files_and_add_listener = MagicMock()
         self.controller.queue_command = MagicMock()
@@ -306,8 +308,36 @@ class TestAutoQueue(unittest.TestCase):
         def get_model():
             return self.initial_model
 
+        harness = self
+
+        class ModelSyncingListener:
+            """
+            Wraps AutoQueue's model listener so that listener events fired by
+            tests also update the harness model list, mirroring the real
+            system where the Model is updated first and listeners notified
+            after. The level-triggered sweep reads the model via
+            get_model_files(), so the two must stay in sync.
+            """
+            def __init__(self, inner: IModelListener):
+                self.__inner = inner
+
+            def file_added(self, file: ModelFile):
+                harness.initial_model = \
+                    [f for f in harness.initial_model if f.name != file.name] + [file]
+                self.__inner.file_added(file)
+
+            def file_updated(self, old_file: ModelFile, new_file: ModelFile):
+                harness.initial_model = \
+                    [f for f in harness.initial_model if f.name != new_file.name] + [new_file]
+                self.__inner.file_updated(old_file, new_file)
+
+            def file_removed(self, file: ModelFile):
+                harness.initial_model = \
+                    [f for f in harness.initial_model if f.name != file.name]
+                self.__inner.file_removed(file)
+
         def get_model_and_capture_listener(listener: IModelListener):
-            self.model_listener = listener
+            self.model_listener = ModelSyncingListener(listener)
             return get_model()
 
         def is_file_stopped(filename: str) -> bool:
@@ -323,6 +353,18 @@ class TestAutoQueue(unittest.TestCase):
 
     def tearDown(self):
         self.logger.removeHandler(self._log_handler)
+
+    def _mark_queued(self, name):
+        """Simulate the real state transition after a QUEUE command is
+        processed (DEFAULT -> QUEUED), so the level-triggered sweep stops
+        seeing the file as a candidate -- as it would in the real system."""
+        for i, f in enumerate(self.initial_model):
+            if f.name == name:
+                nf = ModelFile(name, f.is_dir)
+                nf.remote_size = f.remote_size
+                nf.local_size = f.local_size
+                nf.state = ModelFile.State.QUEUED
+                self.initial_model[i] = nf
 
     def test_matching_new_files_are_queued(self):
         persist = AutoQueuePersist()
@@ -657,6 +699,9 @@ class TestAutoQueue(unittest.TestCase):
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.One", command.filename)
 
+        # User stops the download: the real STOP command records the name in
+        # stopped_file_names (command_processor._handle_stop) -- simulate that
+        self.stopped_files.add("File.One")
         file_one_updated = ModelFile("File.One", True)
         file_one_updated.remote_size = 100
         file_one_updated.local_size = 50
@@ -692,10 +737,14 @@ class TestAutoQueue(unittest.TestCase):
 
         self.initial_model = [file_one, file_two, file_three]
 
+        # The real STOP command records names in stopped_file_names; partial
+        # local content alone no longer blocks the sweep (postmortem v1.7.0)
+        self.stopped_files.update({"File.One", "File.Three"})
+
         auto_queue = AutoQueue(self.context, persist, self.controller)
         auto_queue.process()
 
-        # Only File.Two should be queued (no local_size)
+        # Only File.Two should be queued (File.One/Three are user-stopped)
         calls = self.controller.queue_command.call_args_list
         self.assertEqual(1, len(calls))
         command = calls[0][0][0]
@@ -735,10 +784,14 @@ class TestAutoQueue(unittest.TestCase):
 
         self.initial_model = [file_one, file_two, file_three, file_four]
 
+        # The real STOP command records names in stopped_file_names; partial
+        # local content alone no longer blocks the sweep (postmortem v1.7.0)
+        self.stopped_files.update({"File.One", "File.Four"})
+
         auto_queue = AutoQueue(self.context, persist, self.controller)
         auto_queue.process()
 
-        # Only File.Two and File.Three should be queued (no local content or local_size=0)
+        # Only File.Two and File.Three should be queued (File.One/Four are user-stopped)
         calls = self.controller.queue_command.call_args_list
         self.assertEqual(2, len(calls))
         commands = [calls[i][0][0] for i in range(2)]
@@ -783,29 +836,31 @@ class TestAutoQueue(unittest.TestCase):
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.Two", command.filename)
 
-    def test_partial_file_is_NOT_auto_queued_after_remote_discovery(self):
-        # Test that a partial local file is NOT auto-queued when discovered on remote
-        # This prevents STOPPED files from being re-queued on service restart
-        # when the remote scan completes after the local scan.
-        # Users who want to complete a partial download can manually queue the file.
+    def test_partial_file_is_queued_after_remote_discovery(self):
+        # Postmortem v1.7.0 spec change: a partial local file whose remote copy
+        # is bigger IS queued by the sweep once the remote is discovered.
+        # User-stopped files are excluded via stopped_file_names, not via the
+        # mere presence of local content (which also matches stranded partials).
         persist = AutoQueuePersist()
         persist.add_pattern(AutoQueuePattern(pattern="File.One"))
         auto_queue = AutoQueue(self.context, persist, self.controller)
 
-        # Local discovery
+        # Local discovery only -- no remote copy, nothing to queue
         file_one = ModelFile("File.One", True)
         file_one.local_size = 100
         self.model_listener.file_added(file_one)
         auto_queue.process()
         self.controller.queue_command.assert_not_called()
 
-        # Remote discovery - should NOT queue because local_size > 0 (partial/STOPPED file)
+        # Remote discovery -- partial local (100) < remote (200): queue it
         file_one_new = ModelFile("File.One", True)
         file_one_new.local_size = 100
         file_one_new.remote_size = 200
         self.model_listener.file_updated(file_one, file_one_new)
         auto_queue.process()
-        self.controller.queue_command.assert_not_called()
+        self.controller.queue_command.assert_called_once_with(ANY)
+        command = self.controller.queue_command.call_args[0][0]
+        self.assertEqual("File.One", command.filename)
 
     def test_new_matching_pattern_queues_existing_files(self):
         persist = AutoQueuePersist()
@@ -835,6 +890,7 @@ class TestAutoQueue(unittest.TestCase):
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.One", command.filename)
         self.controller.queue_command.reset_mock()
+        self._mark_queued("File.One")
 
         persist.add_pattern(AutoQueuePattern(pattern="File.Two"))
         auto_queue.process()
@@ -843,6 +899,7 @@ class TestAutoQueue(unittest.TestCase):
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.Two", command.filename)
         self.controller.queue_command.reset_mock()
+        self._mark_queued("File.Two")
 
         persist.add_pattern(AutoQueuePattern(pattern="File.Three"))
         auto_queue.process()
@@ -851,6 +908,7 @@ class TestAutoQueue(unittest.TestCase):
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.Three", command.filename)
         self.controller.queue_command.reset_mock()
+        self._mark_queued("File.Three")
 
         auto_queue.process()
         self.controller.queue_command.assert_not_called()
@@ -886,6 +944,7 @@ class TestAutoQueue(unittest.TestCase):
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.One", command.filename)
         self.controller.queue_command.reset_mock()
+        self._mark_queued("File.One")
 
         persist.remove_pattern(AutoQueuePattern(pattern="Two"))
 
@@ -1486,6 +1545,9 @@ class TestAutoQueue(unittest.TestCase):
         persist = AutoQueuePersist()
         persist.add_pattern(AutoQueuePattern(pattern="File"))
 
+        # The file was stopped by the user; the real STOP command records it
+        self.stopped_files.add("File.One")
+
         auto_queue = AutoQueue(self.context, persist, self.controller)
 
         # Step 1: Local scan finds a partial file (STOPPED file)
@@ -1547,12 +1609,12 @@ class TestAutoQueue(unittest.TestCase):
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
         self.assertEqual("File.One", command.filename)
 
-    def test_actual_remote_update_queues_stopped_file(self):
+    def test_partial_file_with_bigger_remote_is_queued_by_sweep(self):
         """
-        Test that when the remote file actually changes (remote_size changes
-        from one value to another), the file IS queued even if it has local content.
-
-        This is a legitimate scenario where the remote file was updated.
+        Postmortem v1.7.0 spec change: a DEFAULT file with partial local
+        content and a bigger remote copy IS a queue candidate (the sweep),
+        unless the user explicitly stopped it (stopped_file_names). With no
+        stability window configured, it queues immediately.
         """
         # Disable auto-extract for this test
         self.context.config.autoqueue.auto_extract = False
@@ -1569,17 +1631,7 @@ class TestAutoQueue(unittest.TestCase):
         file_one.state = ModelFile.State.DEFAULT
         self.model_listener.file_added(file_one)
         auto_queue.process()
-        # Should NOT queue (STOPPED file during initial scan)
-        self.controller.queue_command.assert_not_called()
-
-        # Remote file is updated (size changes from 100 to 200)
-        file_one_updated = ModelFile("File.One", True)
-        file_one_updated.remote_size = 200  # Remote file grew
-        file_one_updated.local_size = 50  # Still has partial local content
-        file_one_updated.state = ModelFile.State.DEFAULT
-        self.model_listener.file_updated(file_one, file_one_updated)
-        auto_queue.process()
-        # Should queue because the remote file actually changed (100 -> 200)
+        # Sweep queues the partial file (remote bigger than local, not stopped)
         self.controller.queue_command.assert_called_once_with(ANY)
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
@@ -1719,6 +1771,8 @@ class TestAutoQueueCommandOrigin(unittest.TestCase):
         self.context.config.autoqueue.enabled = True
         self.context.config.autoqueue.patterns_only = False
         self.context.config.autoqueue.auto_extract = False
+        self.context.config.autoqueue.remote_stability_seconds = 0
+        self.context.status.controller.latest_remote_scan_time = None
         self.controller = MagicMock()
         self.controller.get_model_files_and_add_listener.return_value = []
         self.controller.is_file_stopped.return_value = False
@@ -1731,7 +1785,358 @@ class TestAutoQueueCommandOrigin(unittest.TestCase):
         f = ModelFile("file", False)
         f.remote_size = 1000
         listener.file_added(f)
+        self.controller.get_model_files.return_value = [f]
         auto_queue.process()
         self.controller.queue_command.assert_called_once()
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Origin.AUTO, command.origin)
+
+
+class TestAutoQueueComposedPipeline(unittest.TestCase):
+    """
+    Composed repro for the 2026-09-05 postmortem (gate-log v1.7.0 001-postmortem):
+    a release queued while the seedbox torrent was still writing completes its
+    transfer at the snapshot size, the remote keeps growing, and the file must
+    be re-queued. Drives the REAL ModelBuilder -> ModelDiffUtil -> Model ->
+    listener chain instead of hand-crafted listener events, so any divergence
+    between builder-produced files and the unit-test fixtures shows up here.
+    """
+
+    FILE = "File.One"
+
+    def setUp(self):
+        from model import Model, ModelDiff, ModelDiffUtil
+        from controller.model_builder import ModelBuilder
+        self.ModelDiff = ModelDiff
+        self.ModelDiffUtil = ModelDiffUtil
+
+        self.logger = logging.getLogger(TestAutoQueueComposedPipeline.__name__)
+        self.logger.addHandler(logging.StreamHandler(sys.stdout))
+        self.logger.setLevel(logging.DEBUG)
+
+        self.context = MagicMock()
+        self.context.config = Config()
+        self.context.config.autoqueue.enabled = True
+        self.context.config.autoqueue.patterns_only = False
+        self.context.config.autoqueue.auto_extract = False
+        self.context.logger = self.logger
+        self.context.status.controller.latest_remote_scan_time = None
+
+        self.model = Model()
+        self.model.set_base_logger(self.logger)
+
+        self.builder = ModelBuilder()
+        self.builder.set_base_logger(self.logger)
+        self.builder.set_downloaded_files(set())
+
+        self.controller = MagicMock()
+        self.controller.queue_command = MagicMock()
+        self.controller.is_file_stopped.side_effect = lambda name: False
+        self.controller.is_file_downloaded.side_effect = lambda name: False
+
+        def add_listener_and_get(listener):
+            self.model.add_listener(listener)
+            return [self.model.get_file(n) for n in self.model.get_file_names()]
+
+        self.controller.get_model_files_and_add_listener.side_effect = add_listener_and_get
+        self.controller.get_model_files.side_effect = \
+            lambda: [self.model.get_file(n) for n in self.model.get_file_names()]
+
+    def _build_and_apply(self):
+        """Mirror ModelPipeline.build_and_apply_model's gate and diff/apply stages."""
+        if not self.builder.has_changes():
+            return
+        new_model = self.builder.build_model()
+        for diff in self.ModelDiffUtil.diff_models(self.model, new_model):
+            if diff.change == self.ModelDiff.Change.ADDED:
+                self.model.add_file(diff.new_file)
+            elif diff.change == self.ModelDiff.Change.REMOVED:
+                self.model.remove_file(diff.old_file.name)
+            elif diff.change == self.ModelDiff.Change.UPDATED:
+                self.model.update_file(diff.new_file)
+
+    def _queued_filenames(self):
+        return [c[0][0].filename for c in self.controller.queue_command.call_args_list]
+
+    def test_remote_growth_after_transfer_completion_requeues_file(self):
+        from system import SystemFile
+        from lftp import LftpJobStatus
+
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        # Frame 1: remote scan discovers the file (torrent still writing, 100 bytes so far)
+        self.builder.set_remote_files([SystemFile(self.FILE, 100, False)])
+        self._build_and_apply()
+        auto_queue.process()
+        self.assertEqual([self.FILE], self._queued_filenames(),
+                         "new remote file should be auto-queued")
+
+        # Frame 2: lftp job now queued
+        self.builder.set_lftp_statuses([LftpJobStatus(
+            1, LftpJobStatus.Type.PGET, LftpJobStatus.State.QUEUED, self.FILE, "")])
+        self._build_and_apply()
+        auto_queue.process()
+
+        # Frame 3: transfer running; remote grew; partial local appears via active scan
+        self.builder.set_remote_files([SystemFile(self.FILE, 110, False)])
+        self.builder.set_active_files([SystemFile(self.FILE, 50, False)])
+        self._build_and_apply()
+        auto_queue.process()
+
+        # Frame 4: transfer completed at the 100-byte snapshot; job gone from lftp;
+        # local scan confirms 100 bytes; remote has moved on to 120
+        self.builder.set_lftp_statuses([])
+        self.builder.set_local_files([SystemFile(self.FILE, 100, False)])
+        self.builder.set_remote_files([SystemFile(self.FILE, 120, False)])
+        self._build_and_apply()
+        auto_queue.process()
+
+        # Frame 5: next remote scan, still growing
+        self.builder.set_remote_files([SystemFile(self.FILE, 130, False)])
+        self._build_and_apply()
+        auto_queue.process()
+
+        # With no stability window configured the sweep may fire on every
+        # cycle while the file stays DEFAULT; the behavior under test is that
+        # at least one re-queue happened after the initial queue.
+        self.assertGreaterEqual(
+            self.controller.queue_command.call_count, 2,
+            "partial file whose remote grew after transfer completion "
+            "must be re-queued (got queue commands for: {})".format(
+                self._queued_filenames()))
+        for filename in self._queued_filenames():
+            self.assertEqual(self.FILE, filename)
+
+
+class TestAutoQueueStabilityAndSweep(unittest.TestCase):
+    """
+    Tests for the level-triggered auto-queue sweep (postmortem v1.7.0
+    001-postmortem): remote-size stability gating before the initial queue, and
+    recovery of stranded partial files whose remote finished growing while no
+    model events were delivered (restart / scanner outage / missed edge).
+
+    All timing is driven by the remote scan clock
+    (context.status.controller.latest_remote_scan_time), never wall-clock, so a
+    paused scanner can never fake stability.
+    """
+
+    FILE = "File.One"
+    STABILITY = 90
+
+    def setUp(self):
+        self.logger = logging.getLogger(TestAutoQueueStabilityAndSweep.__name__)
+        self.logger.addHandler(logging.StreamHandler(sys.stdout))
+        self.logger.setLevel(logging.DEBUG)
+
+        self.context = MagicMock()
+        self.context.config = Config()
+        self.context.config.autoqueue.enabled = True
+        self.context.config.autoqueue.patterns_only = False
+        self.context.config.autoqueue.auto_extract = False
+        self.context.config.autoqueue.remote_stability_seconds = self.STABILITY
+        self.context.logger = self.logger
+
+        self.scan_time = None
+
+        class _ControllerStatus:
+            pass
+
+        self.context.status.controller = _ControllerStatus()
+        self.context.status.controller.latest_remote_scan_time = None
+
+        self.controller = MagicMock()
+        self.controller.queue_command = MagicMock()
+        self.model_files = []
+        self.stopped_files = set()
+        self.downloaded_files = set()
+        self.model_listener = None
+
+        def add_listener_and_get(listener):
+            self.model_listener = listener
+            return list(self.model_files)
+
+        self.controller.get_model_files.side_effect = lambda: list(self.model_files)
+        self.controller.get_model_files_and_add_listener.side_effect = add_listener_and_get
+        self.controller.is_file_stopped.side_effect = lambda n: n in self.stopped_files
+        self.controller.is_file_downloaded.side_effect = lambda n: n in self.downloaded_files
+
+    def tearDown(self):
+        for h in list(self.logger.handlers):
+            self.logger.removeHandler(h)
+
+    def _set_scan(self, scan_time, remote_size, local_size=None,
+                  state=ModelFile.State.DEFAULT):
+        """Simulate a remote scan result landing in the model at scan_time."""
+        f = ModelFile(self.FILE, False)
+        f.remote_size = remote_size
+        f.local_size = local_size
+        f.state = state
+        old = self.model_files[0] if self.model_files else None
+        self.model_files = [f]
+        self.context.status.controller.latest_remote_scan_time = scan_time
+        if self.model_listener is not None:
+            if old is None:
+                self.model_listener.file_added(f)
+            elif old.remote_size != f.remote_size or old.local_size != f.local_size \
+                    or old.state != f.state:
+                self.model_listener.file_updated(old, f)
+
+    def _queued_count(self):
+        return self.controller.queue_command.call_count
+
+    def test_new_file_not_queued_until_remote_size_stable(self):
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        # Torrent still writing on the seedbox: size grows scan over scan
+        self._set_scan(1000, remote_size=100)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "file must not be queued on first sighting (size not yet stable)")
+
+        self._set_scan(1030, remote_size=110)
+        auto_queue.process()
+        self._set_scan(1060, remote_size=120)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "file must not be queued while remote size is changing")
+
+        # Size stops changing at t=1060; stability window not yet elapsed
+        self._set_scan(1149, remote_size=120)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "file must not be queued before the stability window elapses")
+
+        # Stability window elapsed
+        self._set_scan(1150, remote_size=120)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "file must be queued once remote size is stable")
+        command = self.controller.queue_command.call_args[0][0]
+        self.assertEqual(Controller.Command.Action.QUEUE, command.action)
+        self.assertEqual(self.FILE, command.filename)
+
+    def test_stranded_partial_with_stable_bigger_remote_is_requeued(self):
+        """
+        THE incident shape: after a restart (or any missed-event window) the
+        model baseline already contains the grown remote size and a partial
+        local copy in DEFAULT state. No size-change event will ever fire.
+        The file must still be re-queued once the remote is stable.
+        """
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._set_scan(1000, remote_size=36_161_824_826, local_size=35_643_195_392)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count())
+
+        # Scans keep landing; nothing about the file changes
+        self._set_scan(1050, remote_size=36_161_824_826, local_size=35_643_195_392)
+        auto_queue.process()
+        self._set_scan(1090, remote_size=36_161_824_826, local_size=35_643_195_392)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "stranded partial file with stable bigger remote must be re-queued")
+        command = self.controller.queue_command.call_args[0][0]
+        self.assertEqual(self.FILE, command.filename)
+
+    def test_user_stopped_partial_is_not_swept(self):
+        self.stopped_files.add(self.FILE)
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._set_scan(1000, remote_size=200, local_size=100)
+        auto_queue.process()
+        self._set_scan(1200, remote_size=200, local_size=100)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "user-stopped file must never be swept back into the queue")
+
+    def test_downloaded_file_is_not_swept(self):
+        self.downloaded_files.add(self.FILE)
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._set_scan(1000, remote_size=200, local_size=100)
+        auto_queue.process()
+        self._set_scan(1200, remote_size=200, local_size=100)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "file tracked as downloaded must not be swept")
+
+    def test_non_default_states_are_not_swept(self):
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._set_scan(1000, remote_size=200, local_size=100,
+                       state=ModelFile.State.DOWNLOADING)
+        auto_queue.process()
+        self._set_scan(1200, remote_size=200, local_size=100,
+                       state=ModelFile.State.DOWNLOADING)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "actively downloading file must not be swept")
+
+    def test_scan_time_as_datetime_is_supported(self):
+        """
+        Production contract: latest_remote_scan_time is a datetime
+        (Controller._update_controller_status stores remote_scan.timestamp,
+        which ScannerProcess populates with datetime.now(); the status
+        serializer calls .timestamp() on it). The sweep must accept datetime
+        scan times, not just numeric epochs (review pass-3 bugs-001: float()
+        on a datetime raises TypeError and kills ControllerJob).
+        """
+        from datetime import datetime as _dt
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        base = 1_700_000_000
+        self._set_scan(_dt.fromtimestamp(base), remote_size=120)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count())
+
+        self._set_scan(_dt.fromtimestamp(base + self.STABILITY), remote_size=120)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "datetime scan times must gate and queue exactly like epochs")
+
+    def test_disabled_stability_gate_still_applies_cooldown(self):
+        """
+        With remote_stability_seconds=0 (e2e config) the stability gate is off,
+        but the requeue cooldown must still apply while a scan clock exists —
+        otherwise the sweep re-queues the same DEFAULT file every process
+        cycle until lftp status catches up, stacking duplicate lftp jobs
+        (review pass-3 bugs-002).
+        """
+        self.context.config.autoqueue.remote_stability_seconds = 0
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._set_scan(1000, remote_size=200, local_size=None)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "gate disabled: first sighting queues immediately")
+
+        # Same cycle cadence, file still DEFAULT (lftp status not yet observed)
+        self._set_scan(1001, remote_size=200, local_size=None)
+        auto_queue.process()
+        self._set_scan(1002, remote_size=200, local_size=None)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "cooldown must suppress duplicate queue commands while DEFAULT")
+
+    def test_sweep_cooldown_prevents_requeue_spam(self):
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._set_scan(1000, remote_size=200, local_size=100)
+        auto_queue.process()
+        self._set_scan(1090, remote_size=200, local_size=100)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count())
+
+        # State never leaves DEFAULT (e.g. lftp error) -- scans keep landing
+        self._set_scan(1120, remote_size=200, local_size=100)
+        auto_queue.process()
+        self._set_scan(1200, remote_size=200, local_size=100)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "sweep must not re-queue the same file within the cooldown window")
+
+        # Cooldown elapsed (AutoQueue.REQUEUE_COOLDOWN_SECONDS past the attempt)
+        self._set_scan(1090 + AutoQueue.REQUEUE_COOLDOWN_SECONDS, remote_size=200, local_size=100)
+        auto_queue.process()
+        self.assertEqual(2, self._queued_count(),
+                         "sweep must retry after the cooldown window elapses")

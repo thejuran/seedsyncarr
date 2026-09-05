@@ -378,6 +378,7 @@ class Seedsyncarr:
         config.autoqueue.enabled = True
         config.autoqueue.patterns_only = False
         config.autoqueue.auto_extract = True
+        config.autoqueue.remote_stability_seconds = 90
 
         config.sonarr.enabled = False
         config.sonarr.sonarr_url = ""

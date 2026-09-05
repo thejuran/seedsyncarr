@@ -1,6 +1,7 @@
 import json
 import threading
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Set, List, Callable, Tuple
 import fnmatch
 
@@ -152,12 +153,30 @@ class AutoQueue:
     as matching files are discovered
     AutoQueue is in the same thread as Controller, so no synchronization is
     needed for now
+
+    Queueing is a level-triggered sweep over the current model, not an
+    edge-triggered reaction to model events (postmortem v1.7.0 001-postmortem:
+    a partial file whose remote finished growing across a restart or missed
+    event window was never re-queued, and in-progress seedbox torrents were
+    grabbed at a truncated snapshot size). Every cycle, any DEFAULT file whose
+    remote copy is bigger than its local copy (or has no local copy) is a
+    queue candidate once its remote size has been stable for
+    remote_stability_seconds of the remote-scan clock. Stability is measured
+    against latest_remote_scan_time, never wall-clock, so a paused scanner
+    cannot fake stability.
     """
+
+    # Minimum remote-scan-clock seconds between repeated sweep attempts for the
+    # same file, so a file stuck in DEFAULT (e.g. lftp errors) is retried
+    # instead of spammed every cycle.
+    REQUEUE_COOLDOWN_SECONDS = 300
+
     def __init__(self,
                  context: Context,
                  persist: AutoQueuePersist,
                  controller: Controller):
         self.logger = context.logger.getChild("AutoQueue")
+        self.__context = context
         self.__persist = persist
         self.__controller = controller
         self.__model_listener = AutoQueueModelListener()
@@ -165,6 +184,13 @@ class AutoQueue:
         self.__enabled = context.config.autoqueue.enabled
         self.__patterns_only = context.config.autoqueue.patterns_only
         self.__auto_extract_enabled = context.config.autoqueue.auto_extract
+        # None (unset, e.g. bare Config()) behaves as 0: no stability gating,
+        # no cooldown -- the sweep queues eligible files immediately.
+        self.__stability_seconds = context.config.autoqueue.remote_stability_seconds or 0
+        # name -> (remote_size, remote scan time when this size was first seen)
+        self.__remote_size_history = {}
+        # name -> remote scan time of the last sweep queue attempt
+        self.__last_queue_attempt = {}
 
         if self.__enabled:
             persist.add_listener(self.__persist_listener)
@@ -201,64 +227,51 @@ class AutoQueue:
         ###
         # Queue
         ###
-        # Process new files separately from modified files to apply different filtering:
-        # - New files: don't queue if local_size > 0 (STOPPED files shouldn't restart on app startup)
-        # - Modified files (remote_size changed): queue regardless of local_size (legitimate update)
+        # Level-triggered sweep over the whole model. A file is a candidate
+        # when it is DEFAULT with a remote copy bigger than its local copy (or
+        # no local copy at all), and its remote size has been stable for the
+        # configured window of the remote-scan clock. This covers new files,
+        # remote updates, AND partials stranded by any missed-event window
+        # (restart, scanner outage) with one rule -- the same edge-vs-level
+        # lesson as ModelPipeline._commit_downloaded_membership.
+        model_files = self.__controller.get_model_files()
+        # latest_remote_scan_time is a datetime in production
+        # (Controller._update_controller_status stores remote_scan.timestamp);
+        # tests may inject raw epoch numbers. Fetched regardless of the
+        # stability gate because the requeue cooldown below needs the scan
+        # clock even when stability gating is disabled.
+        scan_time = self.__context.status.controller.latest_remote_scan_time
+        if scan_time is not None:
+            scan_time = scan_time.timestamp() \
+                if isinstance(scan_time, datetime) else float(scan_time)
+        if self.__stability_seconds > 0 and scan_time is not None:
+            self.__update_remote_size_history(model_files, scan_time)
 
-        # Filter new files: only queue if no local content (prevents STOPPED files from being re-queued)
-        new_files_to_queue = self.__filter_candidates(
-            candidates=self.__model_listener.new_files,
-            accept=lambda f: (f.remote_size is not None and
-                              f.state == ModelFile.State.DEFAULT and
-                              (f.local_size is None or f.local_size == 0))
+        def sweep_accept(f: ModelFile) -> bool:
+            if f.remote_size is None or f.state != ModelFile.State.DEFAULT:
+                return False
+            if f.local_size is not None and f.local_size >= f.remote_size:
+                return False
+            if self.__stability_seconds <= 0:
+                return True
+            if scan_time is None:
+                # No remote scan yet -- stability cannot be established
+                return False
+            entry = self.__remote_size_history.get(f.name)
+            return entry is not None and \
+                scan_time - entry[1] >= self.__stability_seconds
+
+        sweep_matches = self.__filter_candidates(
+            candidates=model_files,
+            accept=sweep_accept
         )
 
-        # Filter modified files where remote size changed
-        # Two scenarios to handle differently:
-        # 1. ACTUAL UPDATE: old_remote_size was a real value that changed - queue regardless of local_size
-        # 2. REMOTE DISCOVERY: old_remote_size was None, now has a value (scan timing on startup)
-        #    - For remote discovery, apply same filter as new files to prevent STOPPED files
-        #      from being re-queued due to scan timing artifacts
-        modified_candidates_actual_update = []
-        modified_candidates_remote_discovery = []
-        for old_file, new_file in self.__model_listener.modified_files:
-            if old_file.remote_size != new_file.remote_size:
-                if old_file.remote_size is not None:
-                    # Actual remote file update (size changed from one value to another)
-                    modified_candidates_actual_update.append(new_file)
-                else:
-                    # Remote discovery (remote_size went from None to a value)
-                    modified_candidates_remote_discovery.append(new_file)
-
-        # For actual updates, queue regardless of local_size (legitimate update)
-        modified_files_actual_update = self.__filter_candidates(
-            candidates=modified_candidates_actual_update,
-            accept=lambda f: f.remote_size is not None and f.state == ModelFile.State.DEFAULT
-        )
-
-        # For remote discovery, apply same filter as new files
-        # This prevents STOPPED files (local_size > 0) from being re-queued on startup
-        modified_files_remote_discovery = self.__filter_candidates(
-            candidates=modified_candidates_remote_discovery,
-            accept=lambda f: (f.remote_size is not None and
-                              f.state == ModelFile.State.DEFAULT and
-                              (f.local_size is None or f.local_size == 0))
-        )
-
-        # Combine modified file results
-        modified_files_to_queue = modified_files_actual_update + modified_files_remote_discovery
-
-        # Combine results, avoiding duplicates by using dict keyed on filename
-        files_to_queue_dict = {name: pattern for name, pattern in new_files_to_queue}
-        for name, pattern in modified_files_to_queue:
-            if name not in files_to_queue_dict:
-                files_to_queue_dict[name] = pattern
-
-        # Filter out files that were explicitly stopped by user
-        # OR were already downloaded previously (prevents re-queueing files
-        # that were moved/deleted by external tools like Sonarr)
-        # DEBUG: Log filter decisions for each candidate
-        for name, pattern in files_to_queue_dict.items():
+        # Filter out files that were explicitly stopped by user, files already
+        # downloaded previously (prevents re-queueing files that were
+        # moved/deleted by external tools like Sonarr), and files attempted
+        # within the cooldown window.
+        files_to_queue = []
+        for name, pattern in sweep_matches:
             is_stopped = self.__controller.is_file_stopped(name)
             is_downloaded = self.__controller.is_file_downloaded(name)
             self.logger.debug(
@@ -266,11 +279,20 @@ class AutoQueue:
                     name, is_stopped, is_downloaded
                 )
             )
-        files_to_queue = [
-            (name, pattern) for name, pattern in files_to_queue_dict.items()
-            if not self.__controller.is_file_stopped(name)
-            and not self.__controller.is_file_downloaded(name)
-        ]
+            if is_stopped or is_downloaded:
+                continue
+            # Cooldown applies whenever a scan clock exists, INDEPENDENT of the
+            # stability gate: with the gate disabled the sweep would otherwise
+            # re-queue the same DEFAULT file every process cycle until lftp
+            # status is observed, stacking duplicate lftp jobs (the incident
+            # class the class docstring warns about).
+            if scan_time is not None:
+                last_attempt = self.__last_queue_attempt.get(name)
+                if last_attempt is not None and \
+                        scan_time - last_attempt < AutoQueue.REQUEUE_COOLDOWN_SECONDS:
+                    continue
+                self.__last_queue_attempt[name] = scan_time
+            files_to_queue.append((name, pattern))
 
         ###
         # Extract
@@ -330,6 +352,28 @@ class AutoQueue:
         self.__model_listener.modified_files.clear()
         # Clear the new patterns
         self.__persist_listener.new_patterns.clear()
+
+    def __update_remote_size_history(self,
+                                     model_files: List[ModelFile],
+                                     scan_time: float) -> None:
+        """
+        Track when each file's remote size was last observed to change, on the
+        remote-scan clock. A size change (or first sighting) resets the file's
+        stability window. Entries for files gone from the model are pruned.
+        """
+        current_names = set()
+        for f in model_files:
+            current_names.add(f.name)
+            if f.remote_size is None:
+                self.__remote_size_history.pop(f.name, None)
+                continue
+            entry = self.__remote_size_history.get(f.name)
+            if entry is None or entry[0] != f.remote_size:
+                self.__remote_size_history[f.name] = (f.remote_size, scan_time)
+        for name in list(self.__remote_size_history.keys()):
+            if name not in current_names:
+                del self.__remote_size_history[name]
+                self.__last_queue_attempt.pop(name, None)
 
     def __filter_candidates(self,
                             candidates: List[ModelFile],

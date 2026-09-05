@@ -52,6 +52,11 @@ curl -sSf -X POST -H 'Content-Type: application/json' \
   -d '{"section":"autoqueue","key":"enabled","value":"true"}' \
   "http://myapp:8800/server/config/set" \
   || { echo "ERROR: failed to set autoqueue/enabled" >&2; exit 1; }
+# Disable the remote-size stability gate so e2e autoqueue flows fire instantly
+curl -sSf -X POST -H 'Content-Type: application/json' \
+  -d '{"section":"autoqueue","key":"remote_stability_seconds","value":"0"}' \
+  "http://myapp:8800/server/config/set" \
+  || { echo "ERROR: failed to set autoqueue/remote_stability_seconds" >&2; exit 1; }
 
 curl -sSf -X POST "http://myapp:8800/server/command/restart" \
   || { echo "ERROR: failed to restart app" >&2; exit 1; }

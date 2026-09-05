@@ -353,7 +353,7 @@ class TestConfig(unittest.TestCase):
                 "use_local_path_as_extract_path": "True", "max_tracked_files": "10000",
             },
             "Web": {"port": "8800"},
-            "AutoQueue": {"enabled": "False", "patterns_only": "False", "auto_extract": "True"},
+            "AutoQueue": {"enabled": "False", "patterns_only": "False", "auto_extract": "True", "remote_stability_seconds": "90"},
         }
         # Must not raise — from_dict injects "False" default
         config = Config.from_dict(minimal_dict)
@@ -416,7 +416,7 @@ class TestConfig(unittest.TestCase):
                 "use_local_path_as_extract_path": "True", "max_tracked_files": "10000",
             },
             "Web": {"port": "8800"},
-            "AutoQueue": {"enabled": "False", "patterns_only": "False", "auto_extract": "True"},
+            "AutoQueue": {"enabled": "False", "patterns_only": "False", "auto_extract": "True", "remote_stability_seconds": "90"},
         }
         # Must not raise — from_dict must collapse None to "False"
         config = Config.from_dict(minimal_dict)
@@ -562,18 +562,21 @@ class TestConfig(unittest.TestCase):
         good_dict = {
             "enabled": "True",
             "patterns_only": "False",
-            "auto_extract": "True"
+            "auto_extract": "True",
+            "remote_stability_seconds": "90"
         }
         autoqueue = Config.AutoQueue.from_dict(good_dict)
         self.assertEqual(True, autoqueue.enabled)
         self.assertEqual(False, autoqueue.patterns_only)
+        self.assertEqual(90, autoqueue.remote_stability_seconds)
 
         self.check_common(Config.AutoQueue,
                           good_dict,
                           {
                               "enabled",
                               "patterns_only",
-                              "auto_extract"
+                              "auto_extract",
+                              "remote_stability_seconds"
                           })
 
         # bad values
@@ -583,6 +586,8 @@ class TestConfig(unittest.TestCase):
         self.check_bad_value_error(Config.AutoQueue, good_dict, "patterns_only", "-1")
         self.check_bad_value_error(Config.AutoQueue, good_dict, "auto_extract", "SomeString")
         self.check_bad_value_error(Config.AutoQueue, good_dict, "auto_extract", "-1")
+        self.check_bad_value_error(Config.AutoQueue, good_dict, "remote_stability_seconds", "SomeString")
+        self.check_bad_value_error(Config.AutoQueue, good_dict, "remote_stability_seconds", "-1")
 
     def test_from_file(self):
         # Create empty config file
@@ -711,6 +716,7 @@ class TestConfig(unittest.TestCase):
         config.autoqueue.enabled = True
         config.autoqueue.patterns_only = True
         config.autoqueue.auto_extract = False
+        config.autoqueue.remote_stability_seconds = 90
         config.sonarr.enabled = False
         config.sonarr.sonarr_url = "http://localhost:8989"
         config.sonarr.sonarr_api_key = "abc123"
@@ -767,6 +773,7 @@ class TestConfig(unittest.TestCase):
         enabled = True
         patterns_only = True
         auto_extract = False
+        remote_stability_seconds = 90
 
         [Sonarr]
         enabled = False

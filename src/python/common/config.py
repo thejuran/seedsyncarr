@@ -322,12 +322,15 @@ class Config(Persist):
         enabled = PROP("enabled", Checkers.null, Converters.bool)
         patterns_only = PROP("patterns_only", Checkers.null, Converters.bool)
         auto_extract = PROP("auto_extract", Checkers.null, Converters.bool)
+        remote_stability_seconds = PROP("remote_stability_seconds",
+                                        Checkers.int_non_negative, Converters.int)
 
         def __init__(self):
             super().__init__()
             self.enabled = None
             self.patterns_only = None
             self.auto_extract = None
+            self.remote_stability_seconds = None
 
     class Sonarr(IC):
         enabled = PROP("enabled", Checkers.null, Converters.bool)
@@ -549,7 +552,15 @@ class Config(Persist):
         config.lftp = Config.Lftp.from_dict(lftp_dict)
         config.controller = Config.Controller.from_dict(Config._check_section(config_dict, "Controller"))
         config.web = Config.Web.from_dict(Config._check_section(config_dict, "Web"))
-        config.autoqueue = Config.AutoQueue.from_dict(Config._check_section(config_dict, "AutoQueue"))
+        autoqueue_dict = Config._check_section(config_dict, "AutoQueue")
+        # Backward compatibility: remote_stability_seconds added for the
+        # in-progress-torrent stability gate (postmortem v1.7.0) -- default 90.
+        # The `is None` check also collapses a present-but-None value (same
+        # BLOCKER-1 hazard as webhook_require_secret above): a default Config
+        # serializes None, which would otherwise crash Converters.int on reload.
+        if autoqueue_dict.get("remote_stability_seconds") in (None, "None", ""):
+            autoqueue_dict["remote_stability_seconds"] = "90"
+        config.autoqueue = Config.AutoQueue.from_dict(autoqueue_dict)
 
         # Sonarr section is optional for backward compatibility with older config files
         if "Sonarr" in config_dict:
