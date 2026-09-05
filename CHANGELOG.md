@@ -4,6 +4,49 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.1] - 2026-09-05
+
+A hotfix for a defect the v1.7.0 postmortem confirmed in production three
+times in one week: releases grabbed while the seedbox torrent was still
+downloading were synced as truncated snapshots, imported truncated into the
+media library by Sonarr/Radarr, and never completed. The truncation escaped
+every v1.7.0 gate because auto-queue was edge-triggered: completing the
+partial transfer required a remote-size-change event to arrive at exactly
+the right moment, which the queue→transfer→complete window never allowed.
+
+### Fixed
+
+- Fixed in-progress seedbox torrents being synced as truncated snapshots and
+  never re-queued (incidents 2026-08-29 The Young Ones S02 at 69–99% per
+  episode, 2026-09-02 28 Days Later at 98.6%, 2026-09-03 Fawlty Towers S02
+  at 77–95%; all three imported truncated into the library). Auto-queue is
+  now a level-triggered sweep over the current model: any idle file whose
+  remote copy is bigger than its local copy is re-queued once its remote
+  size has been stable for `remote_stability_seconds` (default 90) of the
+  remote-scan clock — so a torrent still being written on the seedbox is
+  never grabbed mid-write, and a stranded partial recovers on the next scan
+  cycle without needing an event. User-stopped and already-downloaded files
+  stay excluded via the existing persist guards.
+
+### Added
+
+- New config `AutoQueue.remote_stability_seconds` (integer ≥ 0; 0 disables
+  the stability gate). Existing config files migrate automatically with the
+  default of 90. The one visible trade-off: brand-new downloads start about
+  90 seconds later than before — the price of never syncing a half-written
+  torrent.
+
+### Internal
+
+- A 300-second scan-clock cooldown between sweep attempts for the same file
+  prevents duplicate lftp queue commands while a just-queued file waits for
+  its transfer to appear (applied independent of the stability gate).
+- Auto-queue's stability clock consumes the remote scanner's `datetime`
+  timestamps directly; new tests pin the datetime contract, the stability
+  gate, the stranded-partial sweep, the disabled-gate cooldown, and a
+  composed ModelBuilder→diff→listener pipeline reproduction of the
+  postmortem incident shape.
+
 ## [1.7.0] - 2026-08-27
 
 A reliability release closing the August incident cluster: releases that were
