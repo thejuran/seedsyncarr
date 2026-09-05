@@ -4,6 +4,13 @@ updates:
     directory: "/src/angular"
     schedule:
       interval: "weekly"
+    ignore:
+      # Angular 22's compiler and typescript-eslint both reject TS 7.x
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # karma-jasmine 5 cannot patch jasmine 7 globals
+      - dependency-name: "jasmine-core"
+        update-types: ["version-update:semver-major"]
     groups:
       npm_and_yarn:
         patterns:
