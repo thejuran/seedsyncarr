@@ -4,6 +4,43 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.2] - 2026-09-05
+
+A hotfix for a regression introduced by v1.7.1's level-triggered auto-queue
+sweep: the moment a transfer finished, the sweep could re-queue it. The
+controller reads lftp job status synchronously but local folder scans arrive
+asynchronously, so the first cycle after lftp renamed the finished temp file
+could pair "no lftp job" with a scan that still showed the partial size —
+which is exactly the stranded-partial shape v1.7.1 was built to recover.
+Because the re-download started before the next scan, the app never saw the
+file as downloaded, the Radarr import that followed was rejected as having
+no transfer evidence, and a duplicate 33 GB copy was pulled from the seedbox
+(incident 2026-09-05, Road to Perdition).
+
+### Fixed
+
+- Fixed the auto-queue sweep re-queueing a transfer that had just completed
+  when the first post-completion cycle saw a stale local scan. A file is now
+  only a sweep candidate once it has been continuously idle with an
+  unchanged local size for `local_stability_seconds` (default 30) of the
+  local-scan clock; leaving the idle state restarts the window regardless
+  of size history, so a completed transfer is always re-read by a fresh scan
+  (and committed as downloaded) before the sweep may act on it. Stranded
+  partials still recover, about 30 seconds later than in v1.7.1.
+
+### Added
+
+- New config `AutoQueue.local_stability_seconds` (integer ≥ 0; 0 disables
+  the gate). Existing config files migrate automatically with the default
+  of 30; e2e disables it alongside the remote gate.
+
+### Internal
+
+- New `TestAutoQueueLocalStabilityGate` suite replays the incident on the
+  local scan clock: stale-scan completion, interrupted-transfer recovery,
+  window restart on leaving idle with an unchanged (sparse) local size,
+  datetime scan times, no-scan-yet blocking, and the disabled-gate path.
+
 ## [1.7.1] - 2026-09-05
 
 A hotfix for a defect the v1.7.0 postmortem confirmed in production three
