@@ -295,6 +295,7 @@ class TestAutoQueue(unittest.TestCase):
         self.context.logger = self.logger
         # No scan clock in this harness: sweep cooldown stays inactive
         self.context.status.controller.latest_remote_scan_time = None
+        self.context.status.controller.latest_local_scan_time = None
         self.controller = MagicMock()
         self.controller.get_model_files_and_add_listener = MagicMock()
         self.controller.queue_command = MagicMock()
@@ -1772,7 +1773,9 @@ class TestAutoQueueCommandOrigin(unittest.TestCase):
         self.context.config.autoqueue.patterns_only = False
         self.context.config.autoqueue.auto_extract = False
         self.context.config.autoqueue.remote_stability_seconds = 0
+        self.context.config.autoqueue.local_stability_seconds = 0
         self.context.status.controller.latest_remote_scan_time = None
+        self.context.status.controller.latest_local_scan_time = None
         self.controller = MagicMock()
         self.controller.get_model_files_and_add_listener.return_value = []
         self.controller.is_file_stopped.return_value = False
@@ -1821,6 +1824,7 @@ class TestAutoQueueComposedPipeline(unittest.TestCase):
         self.context.config.autoqueue.auto_extract = False
         self.context.logger = self.logger
         self.context.status.controller.latest_remote_scan_time = None
+        self.context.status.controller.latest_local_scan_time = None
 
         self.model = Model()
         self.model.set_base_logger(self.logger)
@@ -1943,6 +1947,7 @@ class TestAutoQueueStabilityAndSweep(unittest.TestCase):
 
         self.context.status.controller = _ControllerStatus()
         self.context.status.controller.latest_remote_scan_time = None
+        self.context.status.controller.latest_local_scan_time = None
 
         self.controller = MagicMock()
         self.controller.queue_command = MagicMock()
@@ -2103,6 +2108,7 @@ class TestAutoQueueStabilityAndSweep(unittest.TestCase):
         (review pass-3 bugs-002).
         """
         self.context.config.autoqueue.remote_stability_seconds = 0
+        self.context.config.autoqueue.local_stability_seconds = 0
         auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
 
         self._set_scan(1000, remote_size=200, local_size=None)
@@ -2140,3 +2146,241 @@ class TestAutoQueueStabilityAndSweep(unittest.TestCase):
         auto_queue.process()
         self.assertEqual(2, self._queued_count(),
                          "sweep must retry after the cooldown window elapses")
+
+
+class TestAutoQueueLocalStabilityGate(unittest.TestCase):
+    """
+    Tests for the local-size stability gate (incident 2026-09-05, Road to
+    Perdition): the controller polls lftp job status synchronously but local
+    scan results arrive asynchronously, so the first cycle after a transfer
+    completes can see "no lftp job" together with a stale scan that still
+    shows the partial temp-file size. Without this gate the level-triggered
+    sweep read that snapshot as a stranded partial and re-queued a file that
+    had just finished -- the model never observed DOWNLOADED, the file was
+    never committed to the downloaded list, and the arr import webhook that
+    followed was rejected for lack of transfer evidence.
+
+    A file is only a sweep candidate once it has been continuously DEFAULT
+    with an unchanged local size for local_stability_seconds of the LOCAL
+    scan clock (context.status.controller.latest_local_scan_time). Leaving
+    DEFAULT (QUEUED/DOWNLOADING/...) restarts the window, so a completed
+    transfer always gets a fresh scan -- which reads DOWNLOADED -- before the
+    sweep may act on it. The remote gate is disabled here to isolate the
+    behaviour under test.
+    """
+
+    FILE = "File.One"
+    LOCAL_STABILITY = 30
+
+    def setUp(self):
+        self.logger = logging.getLogger(TestAutoQueueLocalStabilityGate.__name__)
+        self.logger.addHandler(logging.StreamHandler(sys.stdout))
+        self.logger.setLevel(logging.DEBUG)
+
+        self.context = MagicMock()
+        self.context.config = Config()
+        self.context.config.autoqueue.enabled = True
+        self.context.config.autoqueue.patterns_only = False
+        self.context.config.autoqueue.auto_extract = False
+        self.context.config.autoqueue.remote_stability_seconds = 0
+        self.context.config.autoqueue.local_stability_seconds = self.LOCAL_STABILITY
+        self.context.logger = self.logger
+
+        class _ControllerStatus:
+            pass
+
+        self.context.status.controller = _ControllerStatus()
+        self.context.status.controller.latest_remote_scan_time = None
+        self.context.status.controller.latest_local_scan_time = None
+
+        self.controller = MagicMock()
+        self.controller.queue_command = MagicMock()
+        self.model_files = []
+        self.model_listener = None
+
+        def add_listener_and_get(listener):
+            self.model_listener = listener
+            return list(self.model_files)
+
+        self.controller.get_model_files.side_effect = lambda: list(self.model_files)
+        self.controller.get_model_files_and_add_listener.side_effect = add_listener_and_get
+        self.controller.is_file_stopped.side_effect = lambda n: False
+        self.controller.is_file_downloaded.side_effect = lambda n: False
+
+    def tearDown(self):
+        for h in list(self.logger.handlers):
+            self.logger.removeHandler(h)
+
+    def _cycle(self, local_scan_time, remote_size, local_size,
+               state=ModelFile.State.DEFAULT):
+        """
+        One controller cycle: the model reflects the given sizes/state and the
+        local scan clock reads local_scan_time (unchanged clock == the scan
+        result is the same stale one as last cycle). The remote gate is
+        disabled in this class so the remote side never gates anything.
+        """
+        f = ModelFile(self.FILE, False)
+        f.remote_size = remote_size
+        f.local_size = local_size
+        f.state = state
+        old = self.model_files[0] if self.model_files else None
+        self.model_files = [f]
+        self.context.status.controller.latest_local_scan_time = local_scan_time
+        # Remote clock tracks the local clock so the sweep cooldown (which
+        # runs on the remote clock) elapses in step with the local window.
+        if local_scan_time is None:
+            self.context.status.controller.latest_remote_scan_time = \
+                (self.context.status.controller.latest_remote_scan_time or 0) + 1
+        else:
+            self.context.status.controller.latest_remote_scan_time = local_scan_time
+        if self.model_listener is not None:
+            if old is None:
+                self.model_listener.file_added(f)
+            elif old.remote_size != f.remote_size or old.local_size != f.local_size \
+                    or old.state != f.state:
+                self.model_listener.file_updated(old, f)
+
+    def _queued_count(self):
+        return self.controller.queue_command.call_count
+
+    def test_completed_transfer_with_stale_local_scan_is_not_requeued(self):
+        """
+        THE incident shape (manual queue, so no sweep cooldown entry exists):
+        transfer running -> lftp job gone while the local scan is still the
+        pre-rename one showing the partial size -> fresh scan reads complete.
+        """
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        # Transfer in flight; local size is the growing temp file
+        self._cycle(1000, remote_size=200, local_size=150,
+                    state=ModelFile.State.DOWNLOADING)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count())
+
+        # lftp job finished and vanished from `jobs -v`; the local scan clock
+        # has NOT advanced -- the model still carries the stale partial size
+        self._cycle(1000, remote_size=200, local_size=150)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "a file that just left DOWNLOADING must not be re-queued "
+                         "on a stale local scan")
+
+        # Fresh local scan lands: the completed file is DOWNLOADED
+        self._cycle(1010, remote_size=200, local_size=200,
+                    state=ModelFile.State.DOWNLOADED)
+        auto_queue.process()
+        self._cycle(1040, remote_size=200, local_size=200,
+                    state=ModelFile.State.DOWNLOADED)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "a completed transfer must never be re-queued")
+
+    def test_interrupted_transfer_is_requeued_after_local_window(self):
+        """
+        The v1.7.1 recovery path must survive the gate: an lftp job that dies
+        leaves a partial whose size fresh scans keep confirming. Once the
+        local window elapses on the local scan clock, the sweep re-queues it.
+        """
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._cycle(1000, remote_size=200, local_size=150,
+                    state=ModelFile.State.DOWNLOADING)
+        auto_queue.process()
+        # Job gone, stale scan
+        self._cycle(1000, remote_size=200, local_size=150)
+        auto_queue.process()
+        # Fresh scans confirm the partial is not growing
+        self._cycle(1010, remote_size=200, local_size=150)
+        auto_queue.process()
+        self._cycle(1029, remote_size=200, local_size=150)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "partial must not be re-queued before the local window elapses")
+
+        self._cycle(1030, remote_size=200, local_size=150)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "stranded partial must be re-queued once the local window elapses")
+        command = self.controller.queue_command.call_args[0][0]
+        self.assertEqual(Controller.Command.Action.QUEUE, command.action)
+        self.assertEqual(self.FILE, command.filename)
+
+    def test_leaving_default_restarts_window_even_with_unchanged_local_size(self):
+        """
+        pget writes a sparse temp file whose apparent size can sit unchanged
+        for minutes before completion, so an unchanged local size is NOT
+        evidence of idleness. The window must restart whenever the file
+        leaves DEFAULT, independent of the size history and of the sweep
+        cooldown (which has elapsed here).
+        """
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._cycle(1000, remote_size=200, local_size=150)
+        auto_queue.process()
+        self._cycle(1030, remote_size=200, local_size=150)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(), "sweep queues the idle partial")
+
+        # lftp picks it up; apparent size never changes while it transfers
+        self._cycle(1031, remote_size=200, local_size=150,
+                    state=ModelFile.State.QUEUED)
+        auto_queue.process()
+        self._cycle(1040, remote_size=200, local_size=150,
+                    state=ModelFile.State.DOWNLOADING)
+        auto_queue.process()
+        # Cooldown elapsed while it transferred
+        self._cycle(1030 + AutoQueue.REQUEUE_COOLDOWN_SECONDS + 100, remote_size=200,
+                    local_size=150, state=ModelFile.State.DOWNLOADING)
+        auto_queue.process()
+
+        # Job gone, stale scan still says 150
+        self._cycle(1030 + AutoQueue.REQUEUE_COOLDOWN_SECONDS + 100, remote_size=200,
+                    local_size=150)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "window must restart on leaving DOWNLOADING even though the "
+                         "local size never changed")
+
+        self._cycle(1030 + AutoQueue.REQUEUE_COOLDOWN_SECONDS + 110, remote_size=200,
+                    local_size=200, state=ModelFile.State.DOWNLOADED)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count())
+
+    def test_local_scan_time_as_datetime_is_supported(self):
+        """
+        Production contract: latest_local_scan_time is a datetime
+        (Controller._update_controller_status stores local_scan.timestamp).
+        """
+        from datetime import datetime as _dt
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        base = 1_700_000_000
+        self._cycle(_dt.fromtimestamp(base), remote_size=200, local_size=150)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count())
+
+        self._cycle(_dt.fromtimestamp(base + self.LOCAL_STABILITY),
+                    remote_size=200, local_size=150)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "datetime local scan times must gate and queue exactly like epochs")
+
+    def test_no_local_scan_yet_blocks_sweep(self):
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._cycle(None, remote_size=200, local_size=None)
+        auto_queue.process()
+        self._cycle(None, remote_size=200, local_size=None)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "local stability cannot be established before any local scan")
+
+    def test_disabled_local_gate_queues_immediately(self):
+        """e2e config: both gates off, the sweep fires on first sighting."""
+        self.context.config.autoqueue.local_stability_seconds = 0
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._cycle(1000, remote_size=200, local_size=150)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "gate disabled: idle partial queues immediately")

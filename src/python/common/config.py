@@ -324,6 +324,8 @@ class Config(Persist):
         auto_extract = PROP("auto_extract", Checkers.null, Converters.bool)
         remote_stability_seconds = PROP("remote_stability_seconds",
                                         Checkers.int_non_negative, Converters.int)
+        local_stability_seconds = PROP("local_stability_seconds",
+                                       Checkers.int_non_negative, Converters.int)
 
         def __init__(self):
             super().__init__()
@@ -331,6 +333,7 @@ class Config(Persist):
             self.patterns_only = None
             self.auto_extract = None
             self.remote_stability_seconds = None
+            self.local_stability_seconds = None
 
     class Sonarr(IC):
         enabled = PROP("enabled", Checkers.null, Converters.bool)
@@ -560,6 +563,11 @@ class Config(Persist):
         # serializes None, which would otherwise crash Converters.int on reload.
         if autoqueue_dict.get("remote_stability_seconds") in (None, "None", ""):
             autoqueue_dict["remote_stability_seconds"] = "90"
+        # Backward compatibility: local_stability_seconds added for the
+        # completed-transfer stale-scan gate (incident 2026-09-05) -- default
+        # 30 (three default local-scan intervals).
+        if autoqueue_dict.get("local_stability_seconds") in (None, "None", ""):
+            autoqueue_dict["local_stability_seconds"] = "30"
         config.autoqueue = Config.AutoQueue.from_dict(autoqueue_dict)
 
         # Sonarr section is optional for backward compatibility with older config files

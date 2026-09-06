@@ -1324,7 +1324,9 @@ class TestRestartBurstRegression(BaseControllerTestCase):
         aq_context.config.autoqueue.patterns_only = False
         aq_context.config.autoqueue.auto_extract = False
         aq_context.config.autoqueue.remote_stability_seconds = 0
+        aq_context.config.autoqueue.local_stability_seconds = 0
         aq_context.status.controller.latest_remote_scan_time = None
+        aq_context.status.controller.latest_local_scan_time = None
         return AutoQueue(aq_context, AutoQueuePersist(), self.controller)
 
     def _simulate_restart_build(self, model_files):

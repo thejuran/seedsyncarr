@@ -2,7 +2,7 @@ import json
 import threading
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Set, List, Callable, Tuple
+from typing import Set, List, Callable, Tuple, Optional
 import fnmatch
 
 from common import overrides, Constants, Context, Persist, PersistError, Serializable
@@ -164,6 +164,19 @@ class AutoQueue:
     remote_stability_seconds of the remote-scan clock. Stability is measured
     against latest_remote_scan_time, never wall-clock, so a paused scanner
     cannot fake stability.
+
+    A second, local-side gate guards the sweep against its own input skew
+    (incident 2026-09-05, Road to Perdition): lftp job status is polled
+    synchronously each cycle while local scan results arrive asynchronously,
+    so the first cycle after a transfer completes can pair "no lftp job" with
+    a stale scan that still shows the partial temp-file size -- which reads
+    exactly like a stranded partial. A file is therefore only a candidate
+    once it has been continuously DEFAULT with an unchanged local size for
+    local_stability_seconds of the LOCAL scan clock
+    (latest_local_scan_time). Leaving DEFAULT restarts that window
+    regardless of size history (a sparse pget temp file can sit at an
+    unchanged apparent size for minutes), so a completed transfer is always
+    re-read by a fresh scan -- as DOWNLOADED -- before the sweep may act.
     """
 
     # Minimum remote-scan-clock seconds between repeated sweep attempts for the
@@ -187,8 +200,12 @@ class AutoQueue:
         # None (unset, e.g. bare Config()) behaves as 0: no stability gating,
         # no cooldown -- the sweep queues eligible files immediately.
         self.__stability_seconds = context.config.autoqueue.remote_stability_seconds or 0
+        self.__local_stability_seconds = context.config.autoqueue.local_stability_seconds or 0
         # name -> (remote_size, remote scan time when this size was first seen)
         self.__remote_size_history = {}
+        # name -> (local_size, local scan time when the file was first seen
+        # DEFAULT at this size); entries exist only while the file is DEFAULT
+        self.__local_idle_history = {}
         # name -> remote scan time of the last sweep queue attempt
         self.__last_queue_attempt = {}
 
@@ -240,26 +257,36 @@ class AutoQueue:
         # tests may inject raw epoch numbers. Fetched regardless of the
         # stability gate because the requeue cooldown below needs the scan
         # clock even when stability gating is disabled.
-        scan_time = self.__context.status.controller.latest_remote_scan_time
-        if scan_time is not None:
-            scan_time = scan_time.timestamp() \
-                if isinstance(scan_time, datetime) else float(scan_time)
+        scan_time = AutoQueue.__scan_clock(
+            self.__context.status.controller.latest_remote_scan_time)
+        local_scan_time = AutoQueue.__scan_clock(
+            self.__context.status.controller.latest_local_scan_time)
         if self.__stability_seconds > 0 and scan_time is not None:
             self.__update_remote_size_history(model_files, scan_time)
+        if self.__local_stability_seconds > 0 and local_scan_time is not None:
+            self.__update_local_idle_history(model_files, local_scan_time)
 
         def sweep_accept(f: ModelFile) -> bool:
             if f.remote_size is None or f.state != ModelFile.State.DEFAULT:
                 return False
             if f.local_size is not None and f.local_size >= f.remote_size:
                 return False
-            if self.__stability_seconds <= 0:
-                return True
-            if scan_time is None:
-                # No remote scan yet -- stability cannot be established
-                return False
-            entry = self.__remote_size_history.get(f.name)
-            return entry is not None and \
-                scan_time - entry[1] >= self.__stability_seconds
+            if self.__stability_seconds > 0:
+                if scan_time is None:
+                    # No remote scan yet -- stability cannot be established
+                    return False
+                entry = self.__remote_size_history.get(f.name)
+                if entry is None or scan_time - entry[1] < self.__stability_seconds:
+                    return False
+            if self.__local_stability_seconds > 0:
+                if local_scan_time is None:
+                    # No local scan yet -- the local copy has not been read
+                    return False
+                entry = self.__local_idle_history.get(f.name)
+                if entry is None or \
+                        local_scan_time - entry[1] < self.__local_stability_seconds:
+                    return False
+            return True
 
         sweep_matches = self.__filter_candidates(
             candidates=model_files,
@@ -352,6 +379,41 @@ class AutoQueue:
         self.__model_listener.modified_files.clear()
         # Clear the new patterns
         self.__persist_listener.new_patterns.clear()
+
+    @staticmethod
+    def __scan_clock(scan_time) -> Optional[float]:
+        """
+        Normalise a controller-status scan timestamp to epoch seconds.
+        Production stores datetimes (Controller._update_controller_status
+        stores ScannerResult.timestamp); tests may inject raw epoch numbers.
+        """
+        if scan_time is None:
+            return None
+        return scan_time.timestamp() \
+            if isinstance(scan_time, datetime) else float(scan_time)
+
+    def __update_local_idle_history(self,
+                                    model_files: List[ModelFile],
+                                    local_scan_time: float) -> None:
+        """
+        Track, on the local-scan clock, how long each file has been
+        continuously DEFAULT at an unchanged local size. Any non-DEFAULT
+        sighting drops the entry so the window restarts from the next DEFAULT
+        sighting; a local size change re-stamps it. Entries for files gone
+        from the model are pruned.
+        """
+        current_names = set()
+        for f in model_files:
+            current_names.add(f.name)
+            if f.state != ModelFile.State.DEFAULT:
+                self.__local_idle_history.pop(f.name, None)
+                continue
+            entry = self.__local_idle_history.get(f.name)
+            if entry is None or entry[0] != f.local_size:
+                self.__local_idle_history[f.name] = (f.local_size, local_scan_time)
+        for name in list(self.__local_idle_history.keys()):
+            if name not in current_names:
+                del self.__local_idle_history[name]
 
     def __update_remote_size_history(self,
                                      model_files: List[ModelFile],
