@@ -702,3 +702,14 @@ Plans:
 ---
 
 *Last updated: 2026-06-21 — Milestone v1.4.1 (Scanner Auto-Recovery) now has **2 phases**. Phase 114 (Scanner Auto-Recovery, SCAN-01/02/03 + RECOV-01) is the scanner/controller code change — one coherent change to the same error-handling path, reusing existing `src/python/` infrastructure (sshcp/remote_scanner/scanner_process/scan_manager/seedsyncarr/common.error); CI: Python suite green AND `ruff check src/python/` clean (ruff is a separate gate from pytest). Phase 115 (Dependency & Security Maintenance, DEPS-01/02) appended as a disjoint maintenance track — clear all 8 open Dependabot security alerts (3 HIGH hono/piscina/undici, 5 MEDIUM hono/undici) and merge all 7 open Dependabot PRs (#60–#66, incl. the 18-update npm group), each gated on CI green; separated from Phase 114 because verification differs (a code-path regression fix vs. CI-green-per-merge mechanical dependency maintenance with 0 open alerts after). No release/tag/version work in either phase — the single `v1.4.1` tag is a milestone-end action. 100% requirement coverage (6/6 mapped).*
+
+## Backlog
+
+### Phase 999.1: Webhook import evidence — accept a Sonarr/Radarr import whose payload file size equals the remote release size (BACKLOG)
+
+**Goal:** [Captured for future planning] Harden the webhook evidence gate so a rejected-import / no-auto-delete outcome cannot recur if the downloaded-list commit is ever missed again. Today `Controller.__check_webhook_imports` accepts an import only when the root is already in `downloaded_file_names` or the model shows `local_size >= remote_size` at webhook time; the 2026-09-05 incident (Road to Perdition, Jeanne Dielman — gate-log v1.7.0/_milestone/002-postmortem) hit neither, because the completed file was re-queued and then moved by Radarr before the model observed it. The arr payload carries `movieFile.size` / `episodeFile.size`; equality with the matched release's `remote_size` is independent proof the import came from a complete sync and should count as transfer evidence. Primary fix shipped in v1.7.2 (`AutoQueue.local_stability_seconds`); this is defense in depth. Touchpoints: the "no transfer evidence" branch in `src/python/controller/controller.py`, WebhookManager payload parsing.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
