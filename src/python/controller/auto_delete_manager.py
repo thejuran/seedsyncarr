@@ -20,7 +20,9 @@ _VIDEO_EXTENSIONS = frozenset({
 # collection at this many nodes to prevent a pathological pack (BD rip with
 # deep nesting, or a user-introduced symlink loop surfaced in the model) from
 # monopolizing the timer thread. If exceeded, the auto-delete is skipped with
-# a warning log; the next Timer-fire retries.
+# a warning log and is NOT re-armed (terminal skip -- unlike the unsafe_child
+# and partial_coverage skips, which Controller.__execute_auto_delete defers
+# and retries, bounded by _AUTO_DELETE_MAX_REARMS).
 _AUTO_DELETE_BFS_NODE_LIMIT = 10_000
 
 

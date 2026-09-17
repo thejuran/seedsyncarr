@@ -22,6 +22,22 @@ from model import ModelError, ModelFile, Model, ModelDiff, IModelListener
 from lftp import LftpJobStatus
 from .controller_persist import ControllerPersist
 
+# Upper bound on consecutive re-arms of one root's auto-delete Timer after a
+# retriable skip (root or a child still mid-lifecycle, pack not fully imported
+# yet). At the default 300 s delay this waits ~2 h for an extraction or the
+# rest of a pack's imports before giving up with a WARNING. Terminal skips
+# never re-arm. Incident 2026-09-16: the Timer fired once while the root was
+# EXTRACTING, was skipped, and nothing ever re-armed it -- a 77 GB local copy
+# was stranded for good.
+_AUTO_DELETE_MAX_REARMS = 24
+
+# Human-readable deferral reasons for AutoDeleteManager's retriable skip codes
+# (its own log line already carries the child name / missing basenames).
+_AUTO_DELETE_DEFER_REASONS = {
+    "unsafe_child": "a child is still in an active state",
+    "partial_coverage": "not every on-disk video child has been imported yet",
+}
+
 class ControllerError(AppError):
     """
     Exception indicating a controller error
@@ -181,6 +197,9 @@ class Controller:
 
         # Pending auto-delete timers: file_name -> Timer
         self.__pending_auto_deletes: Dict[str, threading.Timer] = {}
+        # Consecutive deferrals per root (see __defer_auto_delete); guarded by
+        # __auto_delete_lock like the Timer dict it shadows.
+        self.__auto_delete_rearms: Dict[str, int] = {}
         self.__auto_delete_lock = threading.Lock()
         # BUG-03 criterion #2: dedicated shutdown signal for the auto-delete path.
         # exit() sets this UNDER __auto_delete_lock (same lock window as the
@@ -279,6 +298,7 @@ class Controller:
                     timer.cancel()
                     self.logger.debug("Canceled pending auto-delete for '{}'".format(sanitize_log_value(file_name)))
                 self.__pending_auto_deletes.clear()
+                self.__auto_delete_rearms.clear()
 
             self.__lftp_manager.exit()
             self.__scan_manager.stop()
@@ -630,21 +650,74 @@ class Controller:
                     self.__schedule_auto_delete(root_name)
 
     def __schedule_auto_delete(self, file_name: str):
-        """Schedule auto-delete of local file after safety delay."""
-        with self.__auto_delete_lock:
-            # Cancel existing timer if file was re-detected
-            if file_name in self.__pending_auto_deletes:
-                self.__pending_auto_deletes[file_name].cancel()
-                del self.__pending_auto_deletes[file_name]
+        """Schedule auto-delete of local file after safety delay.
 
-            delay = self.__context.config.autodelete.delay_seconds
-            timer = threading.Timer(delay, self.__execute_auto_delete, args=[file_name])
-            timer.daemon = True  # Don't prevent process exit
-            self.__pending_auto_deletes[file_name] = timer
-            timer.start()
+        This is the fresh arm from a webhook import: it resets the deferral
+        counter so a new import cycle gets a full retry budget.
+        """
+        with self.__auto_delete_lock:
+            self.__auto_delete_rearms.pop(file_name, None)
+            delay = self.__arm_auto_delete_timer(file_name)
             self.logger.info(
                 "Scheduled auto-delete of '{}' in {} seconds".format(sanitize_log_value(file_name), delay)
             )
+
+    def __arm_auto_delete_timer(self, file_name: str) -> int:
+        """Start (or restart) the auto-delete Timer for file_name; returns the delay.
+
+        Caller MUST hold __auto_delete_lock.
+        """
+        # Cancel existing timer if file was re-detected
+        if file_name in self.__pending_auto_deletes:
+            self.__pending_auto_deletes[file_name].cancel()
+            del self.__pending_auto_deletes[file_name]
+
+        delay = self.__context.config.autodelete.delay_seconds
+        timer = threading.Timer(delay, self.__execute_auto_delete, args=[file_name])
+        timer.daemon = True  # Don't prevent process exit
+        self.__pending_auto_deletes[file_name] = timer
+        timer.start()
+        return delay
+
+    def __defer_auto_delete(self, file_name: str, reason: str):
+        """Re-arm the auto-delete Timer after a retriable skip.
+
+        Bounded by _AUTO_DELETE_MAX_REARMS consecutive deferrals per root; on
+        exhaustion logs one WARNING and drops the root (a later webhook import
+        arms it afresh). Called OUTSIDE __model_lock, same pattern as the
+        webhook path. Runs under __auto_delete_lock so it is ordered against
+        exit(): once the shutdown event is set no new Timer is ever armed
+        (BUG-03 criterion #1 holds for re-armed timers too).
+        """
+        with self.__auto_delete_lock:
+            if self.__shutdown_event.is_set():
+                return
+            attempt = self.__auto_delete_rearms.get(file_name, 0) + 1
+            if attempt > _AUTO_DELETE_MAX_REARMS:
+                self.__auto_delete_rearms.pop(file_name, None)
+                self.logger.warning(
+                    "Auto-delete given up for '{}' after {} deferrals; last reason: {}. "
+                    "Local copy left in place".format(
+                        sanitize_log_value(file_name), _AUTO_DELETE_MAX_REARMS, reason
+                    )
+                )
+                return
+            self.__auto_delete_rearms[file_name] = attempt
+            delay = self.__arm_auto_delete_timer(file_name)
+            self.logger.info(
+                "Auto-delete deferred for '{}' (attempt {}/{}): {}; retrying in {} s".format(
+                    sanitize_log_value(file_name), attempt, _AUTO_DELETE_MAX_REARMS, reason, delay
+                )
+            )
+
+    def __clear_auto_delete_rearms(self, file_name: str):
+        """Forget the deferral counter for file_name (success or terminal skip).
+
+        Safe to call while holding __model_lock: the lock order is __model_lock
+        THEN __auto_delete_lock, and exit() never takes __model_lock.
+        """
+        with self.__auto_delete_lock:
+            self.__auto_delete_rearms.pop(file_name, None)
 
     def __execute_auto_delete(self, file_name: str):
         """Execute auto-delete of local file (called by Timer after delay).
@@ -656,6 +729,12 @@ class Controller:
 
         ModelFile is frozen (immutable) after being added to the model, so
         the `file` reference is safe to use after releasing the lock.
+
+        Skip semantics: a skip for a retriable reason (root or a child still
+        mid-lifecycle, pack not fully imported yet) re-arms the Timer through
+        __defer_auto_delete, bounded by _AUTO_DELETE_MAX_REARMS. Terminal skips
+        (feature disabled, dry-run, file gone from the model, no download
+        evidence, BFS node limit) never re-arm and clear the deferral counter.
         """
         # Remove from tracking dict; entry guard for shutdown (BUG-03 criterion #2).
         # Checking __shutdown_event inside __auto_delete_lock is the fast-path:
@@ -671,6 +750,7 @@ class Controller:
             self.logger.info(
                 "Auto-delete skipped for '{}': feature was disabled".format(sanitize_log_value(file_name))
             )
+            self.__clear_auto_delete_rearms(file_name)
             return
 
         # Check dry-run mode
@@ -678,6 +758,7 @@ class Controller:
             self.logger.info(
                 "DRY-RUN: Would delete local file '{}'".format(sanitize_log_value(file_name))
             )
+            self.__clear_auto_delete_rearms(file_name)
             return
 
         # Get file from model under lock -- ensures file still exists in model
@@ -689,6 +770,9 @@ class Controller:
             ModelFile.State.DOWNLOADED,
             ModelFile.State.EXTRACTED,
         )
+        # Set to a human-readable reason when the delete must be retried later;
+        # the re-arm itself happens after __model_lock is released.
+        defer_reason = None
         with self.__model_lock:
             try:
                 file = self.__model.get_file(file_name)
@@ -696,6 +780,7 @@ class Controller:
                 self.logger.debug(
                     "File '{}' no longer in model, skipping auto-delete".format(sanitize_log_value(file_name))
                 )
+                self.__clear_auto_delete_rearms(file_name)
                 return
 
             # Evidence gate: refuse to delete anything SeedSyncarr never
@@ -709,19 +794,18 @@ class Controller:
                         sanitize_log_value(file_name)
                     )
                 )
+                self.__clear_auto_delete_rearms(file_name)
                 return
 
             # State guard: do not delete a file that is mid-lifecycle. Mirrors
             # __handle_delete_command so the Timer path cannot race an in-flight
             # sync, queue, or extract when a re-download arrives between
             # scheduling and firing (e.g., Deluge re-seed triggers a re-sync).
+            # Retriable: the root will become deletable once the transfer or
+            # extraction finishes (incident 2026-09-16: webhook accepted while
+            # the root was EXTRACTING; the one-shot skip stranded the copy).
             if file.state not in deletable_states:
-                self.logger.info(
-                    "Auto-delete skipped for '{}': file is in state {}".format(
-                        sanitize_log_value(file_name), str(file.state)
-                    )
-                )
-                return
+                defer_reason = "file is in state {}".format(str(file.state))
 
             # Pack guard + coverage-basename collection: delegated to AutoDeleteManager.
             # run_bfs_and_coverage performs BFS over descendants in a single pass:
@@ -731,18 +815,20 @@ class Controller:
             # (b) Coverage collection: gather lowercased basenames of all on-disk
             #     video children for the coverage guard (D-08, D-09).
             # Caller holds __model_lock; AutoDeleteManager acquires NO lock (D-03).
-            if file.is_dir:
+            elif file.is_dir:
                 skip, reason, _on_disk_videos = self.__auto_delete_mgr.run_bfs_and_coverage(
                     file, file_name, deletable_states
                 )
                 if skip:
                     if reason == "bfs_limit":
-                        # Terminal skip: Timer does not re-arm for this firing.
-                        # Clear the per-child entry so imported_children isn't
-                        # stranded on a permanently-oversized pack. All other
-                        # skip paths are retriable and leave the entry intact.
+                        # Terminal skip: Timer does not re-arm. Clear the
+                        # per-child entry so imported_children isn't stranded
+                        # on a permanently-oversized pack. All other skip paths
+                        # are retriable and leave the entry intact.
                         self.__persist.imported_children.pop(file_name, None)
-                    return
+                        self.__clear_auto_delete_rearms(file_name)
+                        return
+                    defer_reason = _AUTO_DELETE_DEFER_REASONS.get(reason, reason)
 
             # Final commit: serialize BOTH against exit()'s shutdown signal AND the
             # webhook path's add_imported_child. Lock order is __model_lock THEN
@@ -759,11 +845,20 @@ class Controller:
             # coverage guard and the pop is for a future import cycle. The pop here
             # is inside __model_lock so add_imported_child (also under __model_lock)
             # cannot race it — no TOCTOU window between guard and pop.
-            with self.__auto_delete_lock:
-                if self.__shutdown_event.is_set():
-                    return  # no pop, no dispatch (D-02: shutdown has committed)
-                # WR-02: clear the per-child entry before dispatching delete_local.
-                self.__persist.imported_children.pop(file_name, None)
+            if defer_reason is None:
+                with self.__auto_delete_lock:
+                    if self.__shutdown_event.is_set():
+                        return  # no pop, no dispatch (D-02: shutdown has committed)
+                    # WR-02: clear the per-child entry before dispatching delete_local.
+                    self.__persist.imported_children.pop(file_name, None)
+                    # Success: forget any deferrals from earlier firings.
+                    self.__auto_delete_rearms.pop(file_name, None)
+
+        if defer_reason is not None:
+            # Retriable skip: re-arm OUTSIDE __model_lock (Timer operations only,
+            # same pattern as the webhook path) so a later firing can retry.
+            self.__defer_auto_delete(file_name, defer_reason)
+            return
 
         # delete_local is safe outside lock -- it spawns a subprocess; holding
         # __model_lock across a blocking subprocess call would starve model updates.
