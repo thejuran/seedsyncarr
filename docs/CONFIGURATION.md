@@ -114,6 +114,8 @@ Settings marked **Required** contain the placeholder value `<replace me>` by def
 | `use_local_path_as_extract_path` | Optional | `True` | When `True`, archives are extracted into the same directory as the download (`local_path`). |
 | `max_tracked_files` | Optional | `10000` | Maximum number of file entries tracked in the controller's state. Must be ≥ 1. |
 
+Archives are never unpacked directly into their final directory. Each one is extracted into a staging directory on the same filesystem, `<extract root>/.seedsyncarr-extracting/<release>/…` (where the extract root is `local_path` when `use_local_path_as_extract_path` is `True`, otherwise `extract_path`), and the output is moved into place with an atomic rename once the extractor has finished. Symlinks inside an archive are never published; each is dropped with a warning naming its target. Sonarr/Radarr completed-download handling scans the release folder, so it can only ever see complete files. The staging directory is hidden from the local scan and from the UI; if one is left behind by an interrupted extraction it is deleted at the next startup with a warning, and the archives are still in place to be extracted again.
+
 ### [Web]
 
 | Setting | Required | Default | Description |
@@ -148,9 +150,9 @@ Settings marked **Required** contain the placeholder value `<replace me>` by def
 
 | Setting | Required | Default | Description |
 |---|---|---|---|
-| `enabled` | Optional | `False` | Automatically delete files from the remote server after a successful download. |
+| `enabled` | Optional | `False` | Automatically delete the **local** copy of a release after Sonarr/Radarr reports it imported (via webhook). Only releases SeedSyncarr itself downloaded are ever eligible; the remote copy is never touched. |
 | `dry_run` | Optional | `False` | When `True`, log what would be deleted without actually deleting. |
-| `delay_seconds` | Optional | `60` | Seconds to wait after a download completes before deleting the remote file. Must be ≥ 1. |
+| `delay_seconds` | Optional | `60` | Seconds to wait after the import webhook before deleting the local copy. If the release is still mid-lifecycle when the timer fires (still extracting, a pack sibling still downloading, or not every video in a pack imported yet), the delete is deferred and retried every `delay_seconds`, up to 24 times, after which it is abandoned with a warning until the next import webhook. Must be ≥ 1. |
 
 ### [Encryption]
 
