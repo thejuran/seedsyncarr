@@ -4,6 +4,67 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.3] - Unreleased
+
+Two defects from one incident (2026-09-16, a 96-volume rar'd 2160p release
+with a 38.5 GB mkv inside). Archives were unpacked straight into the release
+folder, so Radarr's completed-download handling — which watches that same
+folder through the download-client path mapping — saw the mkv appear next to
+the rars and imported a ~6 GB partial of it 90 seconds into a 12-minute
+extraction, deleting the previous 68.8 GB library file as an "Upgrade" on the
+way. The outcome was only benign because Radarr hardlinked on the same volume
+and unrar kept writing into the shared inode; a copy fallback would have left
+a truncated library file. The import webhook then armed auto-delete, whose
+timer fired while the root was still extracting, logged a skip, and was never
+re-armed — the 77 GB local copy (rars plus mkv) would have sat forever. Same
+family as the v1.7.1 truncated-snapshot incidents, on the extract side
+instead of the transfer side.
+
+### Fixed
+
+- Fixed extraction output being visible to Sonarr/Radarr while it was still
+  being written. Each archive is now unpacked into a staging directory on the
+  same filesystem, `<extract root>/.seedsyncarr-extracting/<release>/…`, and
+  its output is moved into the release folder with an atomic rename only
+  after the extractor returns successfully — so the arrs can only ever see a
+  complete file. A failed extraction leaves the release folder untouched and
+  discards the staging output; an extracted file or directory whose target
+  already exists (e.g. a truncated copy from a pre-fix extraction) replaces
+  it, whatever the existing entry's type; any symlink an archive carries is
+  dropped with a warning naming its target and is never published into the
+  release folder. The staging
+  directory is excluded from the local scan so it never appears in the UI,
+  and a stale one left by an interrupted extraction is removed at startup
+  with a warning. A release still reports extraction complete only after
+  every one of its archives has been extracted and moved.
+- Fixed an auto-delete that was skipped for a retriable reason never being
+  retried. The code called these skips "retriable", but the timer was only
+  ever armed by the webhook path, so a root still extracting (or a pack with
+  a sibling still downloading, or not every episode imported yet) at
+  timer-fire time was silently abandoned. Those skips now re-arm the timer
+  for another `delay_seconds`, logging
+  `Auto-delete deferred for '<root>' (attempt n/24): <reason>; retrying in <delay> s`
+  each time, and give up with a single warning after 24 deferrals (about two
+  hours at a 300 s delay). Terminal skips — feature disabled, dry-run, file
+  gone from the model, no download evidence, BFS node limit — still never
+  re-arm; a fresh webhook import resets the budget; shutdown cancels re-armed
+  timers like any other.
+
+### Internal
+
+- `Constants.EXTRACT_STAGING_DIR_NAME` is shared by the extract dispatcher
+  (writer) and the local scanner (exclusion) so the two cannot disagree.
+- New `test_dispatch_staging.py` proves the release folder does not change
+  while a patched extractor is mid-write, that the final file has its full
+  size when `extract_completed` fires, that a failed extraction leaves no
+  residue, existing-target replacement, directory merge, stale-staging
+  startup cleanup, and one real zip round trip through patool. New
+  `test_auto_delete_rearm.py` replays the incident timeline and covers the
+  unsafe-child and partial-coverage deferrals, every terminal skip, the
+  give-up path, counter reset on success and on a fresh webhook, and
+  shutdown cancellation of a re-armed timer. The existing extract dispatch
+  tests now expect the staging path as the extractor's output directory.
+
 ## [1.7.2] - 2026-09-05
 
 A hotfix for a regression introduced by v1.7.1's level-triggered auto-queue

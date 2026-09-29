@@ -13,6 +13,10 @@ class LocalScanner(IScanner):
     def __init__(self, local_path: str, use_temp_file: bool):
         self.__local_path = local_path
         self.__scanner = SystemScanner(local_path)
+        # Never model the extraction staging dir: its contents are partial by
+        # definition (see ExtractDispatch) and it would otherwise show up in the
+        # UI as a root entry, the way .DS_Store and @eaDir already do.
+        self.__scanner.add_exclude_prefix(Constants.EXTRACT_STAGING_DIR_NAME)
         if use_temp_file:
             self.__scanner.set_lftp_temp_suffix(Constants.LFTP_TEMP_FILE_SUFFIX)
         self.logger = logging.getLogger("LocalScanner")

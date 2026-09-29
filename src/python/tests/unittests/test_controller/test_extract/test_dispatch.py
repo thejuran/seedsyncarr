@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from common import overrides
+from common import overrides, Constants
 from model import ModelFile
 from controller.extract import ExtractDispatch, ExtractDispatchError, ExtractListener, \
                                 ExtractError, ExtractStatus
@@ -34,6 +34,10 @@ class TestExtractDispatch(unittest.TestCase):
 
         self.out_dir_path = os.path.join("out", "dir")
         self.local_path = os.path.join("local", "path")
+        # Archives are unpacked into <out dir>/.seedsyncarr-extracting/<root>/...
+        # and moved into <out dir>/... afterwards; the Extract mock sees the
+        # staging path (see TestExtractDispatchStaging for the move itself).
+        self.staging_root = os.path.join(self.out_dir_path, Constants.EXTRACT_STAGING_DIR_NAME)
         self.dispatch = ExtractDispatch(
             out_dir_path=self.out_dir_path,
             local_path=self.local_path
@@ -94,7 +98,7 @@ class TestExtractDispatch(unittest.TestCase):
             pass
         self.mock_extract_archive.assert_called_once_with(
             archive_path=os.path.join(self.local_path, "aaa"),
-            out_dir_path=self.out_dir_path
+            out_dir_path=os.path.join(self.staging_root, "aaa")
         )
 
     @pytest.mark.timeout(2)
@@ -119,15 +123,15 @@ class TestExtractDispatch(unittest.TestCase):
         self.assertEqual(args_list, [
             call(
                 archive_path=os.path.join(self.local_path, "aaa"),
-                out_dir_path=self.out_dir_path
+                out_dir_path=os.path.join(self.staging_root, "aaa")
             ),
             call(
                 archive_path=os.path.join(self.local_path, "bbb"),
-                out_dir_path=self.out_dir_path
+                out_dir_path=os.path.join(self.staging_root, "bbb")
             ),
             call(
                 archive_path=os.path.join(self.local_path, "ccc"),
-                out_dir_path=self.out_dir_path
+                out_dir_path=os.path.join(self.staging_root, "ccc")
             )
         ])
 
@@ -336,23 +340,23 @@ class TestExtractDispatch(unittest.TestCase):
         golden_calls = {
             (
                 os.path.join(self.local_path, "a", "aa", "aaa"),
-                os.path.join(self.out_dir_path, "a", "aa")
+                os.path.join(self.staging_root, "a", "aa")
             ),
             (
                 os.path.join(self.local_path, "a", "aa", "aab"),
-                os.path.join(self.out_dir_path, "a", "aa")
+                os.path.join(self.staging_root, "a", "aa")
             ),
             (
                 os.path.join(self.local_path, "a", "aa", "aac", "aaca"),
-                os.path.join(self.out_dir_path, "a", "aa", "aac")
+                os.path.join(self.staging_root, "a", "aa", "aac")
             ),
             (
                 os.path.join(self.local_path, "a", "ab", "aba"),
-                os.path.join(self.out_dir_path, "a", "ab")
+                os.path.join(self.staging_root, "a", "ab")
             ),
             (
                 os.path.join(self.local_path, "a", "ac"),
-                os.path.join(self.out_dir_path, "a")
+                os.path.join(self.staging_root, "a")
             ),
         }
         self.assertEqual(5, self.mock_extract_archive.call_count)
@@ -403,15 +407,15 @@ class TestExtractDispatch(unittest.TestCase):
         golden_calls = {
             (
                 os.path.join(self.local_path, "a", "aa", "aaa"),
-                os.path.join(self.out_dir_path, "a", "aa")
+                os.path.join(self.staging_root, "a", "aa")
             ),
             (
                 os.path.join(self.local_path, "a", "aa", "aac", "aaca"),
-                os.path.join(self.out_dir_path, "a", "aa", "aac")
+                os.path.join(self.staging_root, "a", "aa", "aac")
             ),
             (
                 os.path.join(self.local_path, "a", "ab", "aba"),
-                os.path.join(self.out_dir_path, "a", "ab")
+                os.path.join(self.staging_root, "a", "ab")
             ),
         }
         self.assertEqual(3, self.mock_extract_archive.call_count)
@@ -468,15 +472,15 @@ class TestExtractDispatch(unittest.TestCase):
         golden_calls = {
             (
                 os.path.join(self.local_path, "a", "aa", "aaa"),
-                os.path.join(self.out_dir_path, "a", "aa")
+                os.path.join(self.staging_root, "a", "aa")
             ),
             (
                 os.path.join(self.local_path, "a", "aa", "aac", "aaca"),
-                os.path.join(self.out_dir_path, "a", "aa", "aac")
+                os.path.join(self.staging_root, "a", "aa", "aac")
             ),
             (
                 os.path.join(self.local_path, "a", "ab", "aba"),
-                os.path.join(self.out_dir_path, "a", "ab")
+                os.path.join(self.staging_root, "a", "ab")
             ),
         }
         self.assertEqual(3, self.mock_extract_archive.call_count)
@@ -539,15 +543,15 @@ class TestExtractDispatch(unittest.TestCase):
         golden_calls = {
             (
                 os.path.join(self.local_path, "a", "aa.rar"),
-                os.path.join(self.out_dir_path, "a")
+                os.path.join(self.staging_root, "a")
             ),
             (
                 os.path.join(self.local_path, "a", "ab.rar"),
-                os.path.join(self.out_dir_path, "a")
+                os.path.join(self.staging_root, "a")
             ),
             (
                 os.path.join(self.local_path, "a", "ac", "aca", "acaa.rar"),
-                os.path.join(self.out_dir_path, "a", "ac", "aca")
+                os.path.join(self.staging_root, "a", "ac", "aca")
             ),
         }
         self.assertEqual(3, self.mock_extract_archive.call_count)

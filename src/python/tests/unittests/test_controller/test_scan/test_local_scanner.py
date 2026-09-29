@@ -1,7 +1,11 @@
 import logging
+import os
+import shutil
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
+from common import Constants
 from controller.scan import LocalScanner
 from system import SystemFile
 
@@ -104,6 +108,43 @@ class TestLocalScannerCapacityCollection(unittest.TestCase):
         # Same object returned by the stubbed SystemScanner both times.
         self.assertIs(self.sample_files, files_fail)
         self.assertIs(self.sample_files, files_ok)
+
+
+class TestLocalScannerExcludesExtractStaging(unittest.TestCase):
+    """
+    Incident 2026-09-16: archives are now unpacked into
+    <local_path>/.seedsyncarr-extracting/ before being moved into place. The
+    local scan must never model that directory, or the UI would show a
+    partial-output root entry the way it already shows .DS_Store / @eaDir.
+    """
+
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp(prefix="test_local_scanner_staging")
+        self.addCleanup(shutil.rmtree, self.temp_dir, True)
+
+    def _touch(self, *parts, size=16):
+        path = os.path.join(self.temp_dir, *parts)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(bytearray([0xff] * size))
+
+    def test_staging_dir_is_not_modelled(self):
+        self._touch("Release.2026", "release.rar")
+        self._touch(Constants.EXTRACT_STAGING_DIR_NAME, "Release.2026", "movie.mkv", size=4096)
+
+        scanner = LocalScanner(local_path=self.temp_dir, use_temp_file=False)
+        files, _, _ = scanner.scan()
+
+        self.assertEqual(["Release.2026"], [f.name for f in files])
+        self.assertEqual(16, files[0].size)
+
+    @patch("controller.scan.local_scanner.SystemScanner")
+    def test_exclude_prefix_is_wired_from_constants(self, mock_scanner_cls):
+        LocalScanner(local_path="/mock/local/path", use_temp_file=True)
+
+        mock_scanner_cls.return_value.add_exclude_prefix.assert_called_once_with(
+            Constants.EXTRACT_STAGING_DIR_NAME
+        )
 
 
 if __name__ == "__main__":
