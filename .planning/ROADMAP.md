@@ -708,7 +708,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 116-02-PLAN.md — GREEN import side: multi-path `name_to_paths` lookup + `WebhookManager.process` ambiguity rejection with sanitized warning
+- [x] 116-02-PLAN.md — GREEN import side: multi-path `name_to_paths` lookup + `WebhookManager.process` ambiguity rejection with sanitized warning
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -786,7 +786,7 @@ Plans:
 | 113. Presentation & Launch Readiness | v1.4.0 | 4/4 | Complete   | 2026-06-03 |
 | 114. Scanner Auto-Recovery | v1.4.1 | 2/2 | Complete   | 2026-06-21 |
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
-| 116. Import Safety | v1.7.4 | 1/3 | In Progress|  |
+| 116. Import Safety | v1.7.4 | 2/3 | In Progress|  |
 | 117. Transfer-State Safety | v1.7.4 | 0/? | Not started | - |
 | 118. Durable State | v1.7.4 | 0/? | Not started | - |
 
