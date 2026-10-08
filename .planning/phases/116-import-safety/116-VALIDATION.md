@@ -1,9 +1,9 @@
 ---
 phase: 116
 slug: import-safety
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-10-08
 ---
 
@@ -39,18 +39,18 @@ created: 2026-10-08
 
 | Behavior | Requirement | Test Type | Fails on main? | Status |
 |----------|-------------|-----------|----------------|--------|
-| Two releases each with `sample.mkv` → no persist change, no timer, badges unchanged, one warning naming both roots | IMPORT-01 | e2e controller | YES | ⬜ pending |
-| Roots differing only by case → rejected | IMPORT-01 | e2e controller | YES | ⬜ pending |
-| Root `sample.mkv` + `Rel.A/sample.mkv` → rejected | IMPORT-01 | e2e controller | YES | ⬜ pending |
-| `Pack/Disc1/movie.mkv` + `Pack/Disc2/movie.mkv` → rejected; no `imported_children["Pack"]`; warning lists both relative paths | IMPORT-01 | e2e controller | YES | ⬜ pending |
-| Delete-time: duplicate video basenames + legacy "fully covered" `imported_children` → not deleted (seed `AutoDeleteManager._persist`, not just controller copy) | IMPORT-01 | unit | YES | ⬜ pending |
-| Delete-time: duplicate video basenames, no `imported_children` entry (D-14) → not deleted | IMPORT-01 | unit | YES | ⬜ pending |
-| Duplicate-basename skip is terminal: no re-arm, counter cleared, one WARNING | IMPORT-01 | unit | YES | ⬜ pending |
-| Duplicate subtitle/metadata basenames alone (`Subs/E01/English.srt` ×2, `.nfo` per disc) do NOT block deletion | IMPORT-01 (D-05a) | unit | passes both | ⬜ pending |
-| Ambiguous warning sanitizes CR/LF in name, roots, paths | IMPORT-01 | unit | new | ⬜ pending |
-| Unique child → recorded, badge, timer exactly as before | IMPORT-02 | e2e controller | passes both | ⬜ pending |
-| Same name enqueued twice → one accepted root, one timer, no ambiguity warning | IMPORT-02 | e2e controller | passes both | ⬜ pending |
-| Existing WebhookManager / Window-1 lookup tests migrated to new shape, assertions intact | IMPORT-02 | unit | n/a | ⬜ pending |
+| Two releases each with `sample.mkv` → no persist change, no timer, badges unchanged, one warning naming both roots | IMPORT-01 | e2e controller | YES | ✅ green |
+| Roots differing only by case → rejected | IMPORT-01 | e2e controller | YES | ✅ green |
+| Root `sample.mkv` + `Rel.A/sample.mkv` → rejected | IMPORT-01 | e2e controller | YES | ✅ green |
+| `Pack/Disc1/movie.mkv` + `Pack/Disc2/movie.mkv` → rejected; no `imported_children["Pack"]`; warning lists both relative paths | IMPORT-01 | e2e controller | YES | ✅ green |
+| Delete-time: duplicate video basenames + legacy "fully covered" `imported_children` → not deleted (seed `AutoDeleteManager._persist`, not just controller copy) | IMPORT-01 | unit | YES | ✅ green |
+| Delete-time: duplicate video basenames, no `imported_children` entry (D-14) → not deleted | IMPORT-01 | unit | YES | ✅ green |
+| Duplicate-basename skip is terminal: no re-arm, counter cleared, one WARNING | IMPORT-01 | unit | YES | ✅ green |
+| Duplicate subtitle/metadata basenames alone (`Subs/E01/English.srt` ×2, `.nfo` per disc) do NOT block deletion | IMPORT-01 (D-05a) | unit | passes both | ✅ green |
+| Ambiguous warning sanitizes CR/LF in name, roots, paths | IMPORT-01 | unit | new | ✅ green |
+| Unique child → recorded, badge, timer exactly as before | IMPORT-02 | e2e controller | passes both | ✅ green |
+| Same name enqueued twice → one accepted root, one timer, no ambiguity warning | IMPORT-02 | e2e controller | passes both | ✅ green |
+| Existing WebhookManager / Window-1 lookup tests migrated to new shape, assertions intact | IMPORT-02 | unit | n/a | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -58,9 +58,9 @@ created: 2026-10-08
 
 ## Wave 0 Requirements
 
-- [ ] New e2e test class with real `WebhookManager` + real `Model` trees (helpers for leaf/pack construction) under `src/python/tests/unittests/test_controller/`
-- [ ] Legacy-persist fixture seeding the SAME persist instance held by `AutoDeleteManager._persist`
-- [ ] RED evidence: targeted regressions committed first and shown failing (assertion failures) against pre-fix code
+- [x] New e2e test class with real `WebhookManager` + real `Model` trees (helpers for leaf/pack construction) under `src/python/tests/unittests/test_controller/`
+- [x] Legacy-persist fixture seeding the SAME persist instance held by `AutoDeleteManager._persist`
+- [x] RED evidence: targeted regressions committed first and shown failing (assertion failures) against pre-fix code
 
 ---
 
@@ -72,11 +72,13 @@ All phase behaviors have automated verification. Release-image smoke test and NA
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 80s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 80s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-10-08 (Plan 116-03). Host quick run, full host suite vs baseline, and whole-tree ruff verified; see `116-REL01-EVIDENCE.md` for RED/GREEN evidence.
+
+CI (`unittests-python` + `lint-python`) is the authoritative final gate and runs on push.

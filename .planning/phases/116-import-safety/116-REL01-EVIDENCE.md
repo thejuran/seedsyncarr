@@ -52,4 +52,32 @@ The import-side diffs show the pre-fix code writing a release into the persisted
 
 ## GREEN (post-fix) — Plan 116-03
 
-pending
+Post-fix commit: `905746d` (branch built on `bd2e21f`). The import-side fix landed in Plan 116-02 (`604aba8`). The delete-side guard landed in `d6abe63` and its terminal-skip routing in `905746d`.
+
+**Targeted regressions** (`-v -k "<the 8 names joined by ' or '>"` over `test_auto_delete.py`, `test_auto_delete_rearm.py`, `test_import_ambiguity.py`):
+
+```
+tests/unittests/test_controller/test_auto_delete.py::TestAutoDeleteDuplicateBasenameGuard::test_duplicate_video_basenames_block_delete_despite_legacy_full_coverage PASSED [ 12%]
+tests/unittests/test_controller/test_auto_delete.py::TestAutoDeleteDuplicateBasenameGuard::test_duplicate_video_basenames_block_delete_without_imported_children_entry PASSED [ 25%]
+tests/unittests/test_controller/test_auto_delete.py::TestAutoDeleteDuplicateBasenameGuard::test_duplicate_video_basenames_case_insensitive PASSED [ 37%]
+tests/unittests/test_controller/test_auto_delete_rearm.py::TestAutoDeleteTerminalSkipsDoNotRearm::test_duplicate_basename_is_terminal_and_does_not_rearm PASSED [ 50%]
+tests/unittests/test_controller/test_import_ambiguity.py::TestAmbiguousWebhookImport::test_duplicate_basename_within_one_pack_is_rejected PASSED [ 62%]
+tests/unittests/test_controller/test_import_ambiguity.py::TestAmbiguousWebhookImport::test_root_name_equal_to_child_basename_elsewhere_is_rejected PASSED [ 75%]
+tests/unittests/test_controller/test_import_ambiguity.py::TestAmbiguousWebhookImport::test_roots_differing_only_by_case_are_rejected PASSED [ 87%]
+tests/unittests/test_controller/test_import_ambiguity.py::TestAmbiguousWebhookImport::test_two_releases_sharing_sample_mkv_are_untouched PASSED [100%]
+================ 8 passed, 146 deselected, 12 warnings in 0.07s ================
+```
+
+**Quick run** (the same six-file command as RED): `337 passed, 12 warnings in 1.05s`. RED was 8 failed + 323 passed = 331. The 6 extra tests are the WebhookManager tests that Plan 116-02 added.
+
+**Full host suite.** On this host, `poetry run pytest` resolves to the pipx pytest 9.0.3, which has no pytest-timeout. The configured 60 s per-test timeout therefore never fires, and the single-command run hung on `test_controller/test_extract/test_extract_process.py::TestExtractProcess::test_calls_start_dispatch`, test #631 of 1442. I killed it after more than 10 min. The gate was run in two parts instead:
+
+- Every file except the four baseline files (`--ignore` on each): `1401 passed, 57 warnings in 42.27s`. 0 failed, 0 errors.
+- Baseline files, run separately:
+  - `test_ssh/test_sshcp.py`: `11 failed`
+  - `test_controller/test_scan/test_scanner_process.py`: `3 failed, 1 passed, 3 errors`
+  - `test_system/test_scanner.py`: `1 failed, 19 passed` (`test_scan_file_with_latin_chars`)
+  - `test_controller/test_extract/test_extract_process.py`: all 6 tests hang. Each one was killed by a 60 s external alarm (rc 142). Under pytest-timeout they would be 6 timeout failures.
+- Total: 21 failed / 3 errors, all in the four pre-existing baseline files. That equals the 21 failed / 3 errors baseline, with no new failures.
+
+**Ruff** (`poetry run ruff check <worktree>/src/python/`, whole tree): `All checks passed!`
