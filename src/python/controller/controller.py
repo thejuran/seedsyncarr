@@ -546,32 +546,44 @@ class Controller:
 
         Thread safety: model reads and mutations are protected by __model_lock.
         Two lock windows are used to keep critical sections minimal:
-          Window 1 (read): build name_to_root dict
+          Window 1 (read): build name_to_paths (lowercased basename ->
+            {case-preserving path -> root})
           Window 2 (mutate): update model import_status per imported file
+        webhook_manager.process() returns only unambiguous matches: a name
+        that resolves to two or more distinct model paths is rejected there,
+        so nothing in Window 2 can record, badge or arm auto-delete for it.
         The webhook_manager.process() call and auto-delete scheduling run
         outside the lock (thread-safe Queue and Timer operations respectively).
         """
-        # Window 1: Build name-to-root lookup under lock
-        # lowercased name -> root model file name
-        # Includes both root names and all child file names
-        name_to_root = {}
+        # Window 1: Build the basename lookup under lock
+        # lowercased basename -> {case-preserving relative path -> root model file name}
+        # Includes both root names and all child file names. Keeping every
+        # path per basename (instead of last-writer-wins) lets process()
+        # detect a name that is ambiguous across or within releases. Only
+        # the key is lowercased, so case-distinct paths stay distinct.
+        name_to_paths: Dict[str, Dict[str, str]] = {}
         with self.__model_lock:
             for root_name in self.__model.get_file_names():
-                name_to_root[root_name.lower()] = root_name
+                name_to_paths.setdefault(root_name.lower(), {})[root_name] = root_name
                 try:
                     root_file = self.__model.get_file(root_name)
                     if root_file.is_dir:
-                        # BFS over children to collect all child names
-                        frontier = collections.deque(root_file.get_children())
+                        # BFS over children carrying each child's parent path.
+                        # Paths are '/'-joined identity keys built from names,
+                        # not filesystem paths.
+                        frontier = collections.deque(
+                            (c, root_name) for c in root_file.get_children()
+                        )
                         while frontier:
-                            child = frontier.popleft()
-                            name_to_root[child.name.lower()] = root_name
-                            frontier.extend(child.get_children())
+                            child, parent_path = frontier.popleft()
+                            child_path = parent_path + "/" + child.name
+                            name_to_paths.setdefault(child.name.lower(), {})[child_path] = root_name
+                            frontier.extend((g, child_path) for g in child.get_children())
                 except ModelError:
                     self.logger.debug("ModelError looking up '{}' for webhook mapping".format(sanitize_log_value(root_name)))
 
         # Process outside lock -- webhook_manager only touches its own thread-safe Queue
-        newly_imported = self.__webhook_manager.process(name_to_root)
+        newly_imported = self.__webhook_manager.process(name_to_paths)
 
         if newly_imported:
             # Roots that passed the evidence gate below; only these are
