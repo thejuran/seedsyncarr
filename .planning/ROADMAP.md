@@ -391,7 +391,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 **CI gate every phase must hold:** full Python suite green AND `ruff check src/python/` clean whole-tree (CI runs ruff as a **separate gate from pytest**); Python `fail_under` ≥ 88 holds. Each targeted regression test must be shown to fail against the old behavior before its fix lands (REL-01 gate 1). No version bump or tag inside Phases 116-117 — the release gate (REL-01) is Phase 118's closing criterion and the milestone close.
 
-- [ ] **Phase 116: Import Safety** - `name_to_root` keeps every distinct model path per lowercased basename; a webhook import resolving to two or more distinct paths (across releases, case-only root differences, root-equals-child-basename, or repeated basenames inside one release) is rejected with no import record, no coverage credit, no badge, no auto-delete timer, and one sanitized warning naming the candidate roots; a unique match (including repeated references to the same path) behaves exactly as before (IMPORT-01, IMPORT-02)
+- [x] **Phase 116: Import Safety** - `name_to_root` keeps every distinct model path per lowercased basename; a webhook import resolving to two or more distinct paths (across releases, case-only root differences, root-equals-child-basename, or repeated basenames inside one release) is rejected with no import record, no coverage credit, no badge, no auto-delete timer, and one sanitized warning naming the candidate roots; a unique match (including repeated references to the same path) behaves exactly as before (IMPORT-01, IMPORT-02) (completed 2026-10-08)
 - [ ] **Phase 117: Transfer-State Safety** - LFTP parser never consumes the next job's header (other next-line-consuming sites audited); unparseable status is reported as *unavailable* (`None`), never `[]`, with the existing `MAX_CONSECUTIVE_STATUS_ERRORS` boundary pinned exactly and no downstream consumer collapsing unavailable into "no jobs"; remote and local stability clocks advance only on successful scans while the UI "last scan" timestamp keeps its meaning (XFER-01, XFER-02, XFER-03, XFER-04, XFER-05)
 - [ ] **Phase 118: Durable State** - `Persist.to_file` writes atomically (serialize first → 0600 temp in target dir → write/flush/fsync → `os.replace` commit point → best-effort directory fsync) so any pre-replace failure leaves the original byte-for-byte intact with no temp file left behind; then the 1.7.4 release gate — regressions fail-before/pass-after, full suite + ruff, release-image smoke test, `:1.7.4` NAS deploy with scanner recovery confirmed by a subsequent successful scan (PERSIST-01, PERSIST-02, REL-01)
 
@@ -712,7 +712,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 116-03-PLAN.md — GREEN delete side: video-only `duplicate_basename` guard (terminal skip) + full-suite baseline check + GREEN evidence
+- [x] 116-03-PLAN.md — GREEN delete side: video-only `duplicate_basename` guard (terminal skip) + full-suite baseline check + GREEN evidence
 
 ### Phase 117: Transfer-State Safety
 
@@ -786,7 +786,7 @@ Plans:
 | 113. Presentation & Launch Readiness | v1.4.0 | 4/4 | Complete   | 2026-06-03 |
 | 114. Scanner Auto-Recovery | v1.4.1 | 2/2 | Complete   | 2026-06-21 |
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
-| 116. Import Safety | v1.7.4 | 2/3 | In Progress|  |
+| 116. Import Safety | v1.7.4 | 3/3 | Complete   | 2026-10-08 |
 | 117. Transfer-State Safety | v1.7.4 | 0/? | Not started | - |
 | 118. Durable State | v1.7.4 | 0/? | Not started | - |
 
