@@ -38,6 +38,12 @@ _AUTO_DELETE_DEFER_REASONS = {
     "partial_coverage": "not every on-disk video child has been imported yet",
 }
 
+# AutoDeleteManager skip codes that never re-arm. The per-child
+# imported_children entry is popped so a stale or poisoned record is not
+# stranded; safety does not depend on that record because the guard runs
+# before coverage on every firing.
+_AUTO_DELETE_TERMINAL_SKIPS = frozenset({"bfs_limit", "duplicate_basename"})
+
 class ControllerError(AppError):
     """
     Exception indicating a controller error
@@ -746,7 +752,8 @@ class Controller:
         mid-lifecycle, pack not fully imported yet) re-arms the Timer through
         __defer_auto_delete, bounded by _AUTO_DELETE_MAX_REARMS. Terminal skips
         (feature disabled, dry-run, file gone from the model, no download
-        evidence, BFS node limit) never re-arm and clear the deferral counter.
+        evidence, BFS node limit, duplicate video basenames) never re-arm and
+        clear the deferral counter.
         """
         # Remove from tracking dict; entry guard for shutdown (BUG-03 criterion #2).
         # Checking __shutdown_event inside __auto_delete_lock is the fast-path:
@@ -832,11 +839,12 @@ class Controller:
                     file, file_name, deletable_states
                 )
                 if skip:
-                    if reason == "bfs_limit":
+                    if reason in _AUTO_DELETE_TERMINAL_SKIPS:
                         # Terminal skip: Timer does not re-arm. Clear the
                         # per-child entry so imported_children isn't stranded
-                        # on a permanently-oversized pack. All other skip paths
-                        # are retriable and leave the entry intact.
+                        # on a permanently-oversized pack or a pack with
+                        # duplicate video basenames. All other skip paths are
+                        # retriable and leave the entry intact.
                         self.__persist.imported_children.pop(file_name, None)
                         self.__clear_auto_delete_rearms(file_name)
                         return
