@@ -295,6 +295,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Targeted regression tests for 2 Low Python gaps: auto-delete enabled/dry-run toggle flipped during a live `threading.Timer` window; BoundedOrderedSet eviction-after-touch ordering — v1.3.0
 - ✓ Targeted regression tests for 2 Low Angular gaps: SSE heartbeat-vs-timeout reconnection race (+ positive control); auth interceptor token-rotation via `_resetAuthInterceptorCache` seam — v1.3.0
 - ✓ CI coverage ratchet: Python `fail_under` 84→88 (container-inclusive 89.27%), net-new Karma `check.global` (83/68/79/83) + Angular Dockerfile `--code-coverage` so the gate bites; before/after recorded in ROADMAP + RETROSPECTIVE — v1.3.0
+- ✓ Ambiguous webhook import matches rejected (no credit/badge/auto-delete) and delete-time duplicate-video-basename guard that legacy coverage records cannot bypass; unique matches unchanged (IMPORT-01/02) — Validated in Phase 116: Import Safety (v1.7.4)
 
 ## Current Milestone: v1.7.4 Safety Patch
 
@@ -481,4 +482,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-08 after starting milestone v1.7.4 (Safety Patch)*
+*Last updated: 2026-10-08 after Phase 116 (Import Safety)*
