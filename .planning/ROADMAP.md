@@ -688,7 +688,12 @@ Plans:
 
 **Owner planning notes (2026-10-08)**: Deduplicate on the complete, case-preserving model path; lowercase only the lookup key, so case-distinct files (e.g. `Movie.mkv` vs `movie.mkv` at different paths) remain ambiguous. If 116 ships independently as 1.7.4 it must still pass the applicable REL-01 release checks; 117/118 would then ship under a subsequent patch version.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 116-01-PLAN.md — RED: shape-independent e2e ambiguity regressions + delete-guard tests, shown failing on pre-fix code (REL-01 gate 1)
+- [ ] 116-02-PLAN.md — GREEN import side: multi-path `name_to_paths` lookup + `WebhookManager.process` ambiguity rejection with sanitized warning
+- [ ] 116-03-PLAN.md — GREEN delete side: video-only `duplicate_basename` guard (terminal skip) + full-suite baseline check + GREEN evidence
 
 ### Phase 117: Transfer-State Safety
 
