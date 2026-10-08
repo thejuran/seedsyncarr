@@ -19,7 +19,7 @@ created: 2026-10-08
 |----------|-------|
 | **Framework** | pytest 9.1.1 + unittest.TestCase classes; pytest-timeout 60 s |
 | **Config file** | `src/python/pyproject.toml` `[tool.pytest.ini_options]` |
-| **Quick run command** | `cd src/python && poetry run pytest tests/unittests/test_controller/test_webhook_manager.py tests/unittests/test_controller/test_auto_delete.py tests/unittests/test_controller/test_auto_delete_rearm.py tests/unittests/test_controller/test_controller_unit.py tests/unittests/test_controller/test_controller.py -q -p no:cacheprovider` |
+| **Quick run command** | `cd src/python && poetry run pytest tests/unittests/test_controller/test_webhook_manager.py tests/unittests/test_controller/test_auto_delete.py tests/unittests/test_controller/test_auto_delete_rearm.py tests/unittests/test_controller/test_controller_unit.py tests/unittests/test_controller/test_controller.py tests/unittests/test_controller/test_import_ambiguity.py -q -p no:cacheprovider` |
 | **Full suite command** | Host: `cd src/python && poetry run pytest tests/unittests -q -p no:cacheprovider` (compare against host baseline: 21 failed / 3 errors pre-existing, unrelated); CI: `make run-tests-python` |
 | **Lint gate** | `cd src/python && poetry run ruff check /Users/julianamacbook/seedsyncarr/src/python/` (whole tree) |
 | **Estimated runtime** | ~2 s quick; ~76 s full host |

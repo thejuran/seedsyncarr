@@ -362,13 +362,13 @@ self.mock_file_op_manager.delete_local.assert_not_called()
 | A2 | Terminal (not retriable) is the right consequence for `duplicate_basename` | Pattern 4 | If retriable is chosen instead: same safety, about 2 h of repeated BFS and around 50 extra log lines per pack, then a give-up warning |
 | A3 | Duplicate video basenames inside a settled pack do not resolve on their own over time | Pattern 4 | If they could (for example a transient extraction artifact), terminal would leave a pack that a retry would have deleted. Disk-space cost only, and a later webhook re-arms |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Guard scope: video files only or all files?** (product decision, needs owner confirmation)
+1. **Guard scope: video files only or all files?** (RESOLVED: video-only per D-05a, owner 2026-10-08)
    - What we know: D-05 says "two or more distinct file paths whose basenames are equal". Coverage only considers `.mkv/.mp4/.avi/.m4v/.mov/.ts/.wmv/.flv/.webm`.
    - Plain-terms tradeoff: "all files" also blocks auto-delete for common season packs that have a subtitle folder per episode with identically named `.srt` files, and for multi-disc Blu-ray rips. That is extra disk the user cleans up by hand, and no added safety, because those files can't fool the coverage check. "Video only" blocks exactly the packs where the defect can occur.
    - Recommendation: video only. The planner should note it as a decision the owner confirms, or treat it as already within D-05's intent ("the collapse that lets one import cover two discs").
-2. **Terminal vs retriable (D-06):** research recommends terminal (Pattern 4). This is the planner's call per D-06.
+2. **Terminal vs retriable (D-06):** (RESOLVED: terminal per Plan 03 Task 2) research recommends terminal (Pattern 4). This is the planner's call per D-06.
 
 ## Environment Availability
 
