@@ -270,6 +270,30 @@ class TestAutoDeleteTerminalSkipsDoNotRearm(BaseAutoDeleteRearmTestCase):
         self._fire("foreign.mkv")  # never added to downloaded_file_names
         self._assert_terminal("foreign.mkv")
 
+    def test_duplicate_basename_is_terminal_and_does_not_rearm(self):
+        """Duplicate video basenames (Disc1/movie.mkv + Disc2/movie.mkv) are a
+        structural property of a settled pack and do not clear with time, so
+        re-arming the Timer up to the deferral budget would only add log noise.
+        The skip is terminal: no re-arm, counter cleared, per-child entry
+        popped, one WARNING. A later webhook still re-arms and the guard runs
+        again on that firing."""
+        disc1 = self._make_child("Disc1", children=[self._make_child("movie.mkv")])
+        disc2 = self._make_child("Disc2", children=[self._make_child("movie.mkv")])
+        self._set_model_file(self._make_file(is_dir=True, children=[disc1, disc2]))
+        self.persist.add_imported_child("Pack.S01", "movie.mkv")
+        self._rearms()["Pack.S01"] = 3
+
+        self._fire("Pack.S01")
+
+        self._assert_terminal("Pack.S01")
+        self.assertNotIn("Pack.S01", self.persist.imported_children)
+        skipped = [
+            m for m in self._warning_messages()
+            if m.startswith("Auto-delete skipped for 'Pack.S01'") and "more than one path" in m
+        ]
+        self.assertEqual(1, len(skipped), "expected one duplicate-basename WARNING, got {}".format(
+            self._warning_messages()))
+
 
 class TestAutoDeleteDeferralShutdown(BaseAutoDeleteRearmTestCase):
     """BUG-03 criteria hold for re-armed timers: exit() cancels them and
