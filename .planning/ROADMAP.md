@@ -383,7 +383,6 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   - **Plans:** 1 plan (1 wave)
   - [x] 115-01-PLAN.md — Re-verify live PR/alert state, then squash-merge all 7 Dependabot PRs CI-green-gated one-at-a-time in security-first order (#64→#65→#66→#60→#61→#62→#63), then end-state gate: 0 open alerts + 7 MERGED + local whole-tree ruff 0.15.17 clean (wave 1)
 
-
 🔨 v1.7.4 — Safety Patch (Phases 116-118) — IN PROGRESS
 
 **Milestone Goal:** Protect users from incorrect deletion and transfer-state decisions, shipped promptly as patch release 1.7.4. Five confirmed defects, grouped into three phases ordered by risk: (1) **deletion safety** — `Controller.__check_webhook_imports` builds `name_to_root` last-writer-wins, so a webhook import whose basename matches more than one model path can be credited to the wrong release or satisfy per-child coverage for a file that was never imported, arming auto-delete wrongly; the patch conservatively rejects ambiguous matches. (2) **transfer-state safety** — `PgetJobParser.parse_header` pops the line after `sftp` unconditionally (a pget with no data line swallows the next job's header), `Lftp.status()` returns `[]` on tolerated parse errors (active transfers lose protection), and `latest_remote_scan_time` / `latest_local_scan_time` advance on failed scans (stability "established" with no fresh evidence). (3) **durable state** — `Persist.to_file` truncates in place, so a failed save corrupts `settings.cfg`, the controller persist, or the auto-queue persist; writes become temp-file + fsync + `os.replace` + directory fsync. All three are Python-only, behavior-narrowing fixes with no on-disk format change and no UI work.
@@ -412,6 +411,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   5. **Cross-cutting (COMPAT):** no breaking changes on upgrade — existing config files load unchanged (no new required fields), and status codes/response shapes for already-supported paths are unchanged. CI green on amd64 + arm64 (Python + Angular + E2E); Python `fail_under` ≥ 88 holds or rises; security fixes log no sensitive data and return generic client errors with detail logged server-side. No release/tag/version work in this phase.
 
 **Plans**: 6 plans (3 waves)
+
 - [x] 101-01-PLAN.md — SEC-01: shared `sanitize_log_value()` CWE-117 helper in `common/types.py` (CR/LF + control chars) + unit tests (wave 1, leaf dependency)
 - [x] 101-02-PLAN.md — BUG-02 + SEC-03: opt-in `webhook_require_secret` fail-closed 503 (guard outside rate_limit, before body parse) + first-run default, per-route rate-limit (60/60s → 429), startup warning (wave 1)
 - [x] 101-03-PLAN.md — SEC-02: config GET response always serializes secret value fields as `""` on both auth paths (wave 1)
@@ -433,6 +433,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 > **INFRA-01 deferred (decision 2026-05-31).** Adversarial review (codex, confirmed by a live repro) found the MP-logger spawn-safe fix cannot be done test-only: the `MultiprocessingLogger` queue is created in the default (fork) context, and handing a fork-context queue to a `spawn` child raises `RuntimeError: A SemLock created in a fork context is being shared with a process in a spawn context`. A correct fix requires creating the queue from a shared `spawn` context — a **production-module change** that violates INFRA-01's "lowest priority; include only if it does not expand the milestone" constraint (REQUIREMENTS.md) and the test-only intent (D-08). INFRA-01 is therefore deferred to a later v1.3.0 slice where a production change to `MultiprocessingLogger` is in scope. Phase 102 still delivers its primary requirement, BUG-03.
 
 **Plans**: 1 plan (1 wave)
+
 - [x] 102-01-PLAN.md — BUG-03: add a dedicated `threading.Event` in-flight shutdown guard to `__execute_auto_delete`, with the final guard + persist-pop + `delete_local` serialized under `__auto_delete_lock` and the event set under the same lock in `exit()` (test-first red→green, reusing the real-Timer Event-gated harness); criterion #1 timer-cancel-on-exit verified by test only (already shipped) (wave 1)
 
 ### Phase 103: Angular Defects
@@ -465,6 +466,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   5. CI is green on amd64 + arm64 (Angular unit + E2E; Python unaffected but stays green); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; Python `fail_under` ≥ 88 unchanged. No release/tag/version work in this phase.
 
 **Plans**: 2 plans (2 waves)
+
 - [x] 104-01-PLAN.md — DEPS-01a + DEPS-01c: audit zero-usage + capture pre-removal bundle baseline, then drop jquery and css-element-queries from package.json as two atomic commits (D-03), regenerating package-lock.json (wave 1)
 - [x] 104-02-PLAN.md — DEPS-01a + DEPS-01c: production build + before/after bundle delta (D-02) + dist residual-string grep + Karma floors + manual Bootstrap-interaction smoke test (D-01) (wave 2, depends on 104-01)
 
@@ -484,6 +486,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   5. CI is green on amd64 + arm64 (Angular unit + E2E); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; Python `fail_under` ≥ 88 unchanged; production bundle size is equal to or smaller than the Phase 104 baseline. No release/tag/version work in this phase.
 
 **Plans**: 4 plans (3 waves)
+
 - [x] 105-01-PLAN.md — D-01: complete 39-class fa→ph mapping table + 8-ambiguous-icon user sign-off checkpoint (gates ambiguous-icon code) + D-07 BEFORE bundle baseline (wave 1, leaf, autonomous:false) — completed 2026-06-01
 - [x] 105-02-PLAN.md — DEPS-01b: migrate the files cluster (dashboard-log-pane/stats-strip/transfer-row/transfer-table/bulk-actions-bar) incl. the net-new .ph-spin CSS rule + corrected ph-prohibit + 3 specs (wave 2, depends 105-01)
 - [x] 105-03-PLAN.md — DEPS-01b: migrate the settings/logs/main clusters across all 5 edit layers, keeping coordinated dynamic-binding edits (options-list.ts + {{icon}} prefix; NAV_ICONS + [ngClass]) together, incl. corrected ph-computer-tower + notification-bell spec (wave 2, depends 105-01)
@@ -505,6 +508,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   5. CI is green on amd64 + arm64 (Angular unit + E2E); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; Python `fail_under` ≥ 88 unchanged; production bundle size is measurably smaller than the Phase 105 baseline (mock data removed). No release/tag/version work in this phase.
 
 **Plans**: 2 plans (2 waves)
+
 - [x] 106-01-PLAN.md — DEPS-02 mechanism + autonomous proof: add `useMockModel` env flag (both env files), repoint `view-file.service.ts` to `environment.useMockModel`, `git mv` `mock-model-files.ts` → `tests/fixtures/`, add empty prod stub, second `angular.json` production `fileReplacements` entry, delete dead `screenshot-model-files.ts`; then AFTER prod build + bundle delta + dist absence-grep (`A Really Cool Video About Cats`) + Karma floors (wave 1)
 - [x] 106-02-PLAN.md — DEPS-02 COMPAT half: dev-mode smoke-test checkpoint — `ng serve` with `useMockModel: true` renders mock rows from the relocated fixture (wave 2, depends 106-01, autonomous:false)
 
@@ -523,6 +527,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   4. **Cross-cutting (COMPAT):** no change to observable logging output, log levels, log destinations, or any public `MultiprocessingLogger` API. CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises (3 previously-uncounted tests now counted; coverage holds or increases); Angular and E2E suites unaffected. No release/tag/version work in this phase.
 
 **Plans**: 1 plan (1 wave)
+
 - [x] 107-01-PLAN.md — INFRA-01: create the MultiprocessingLogger queue from a stored spawn-compatible context (get_context("spawn").Queue) and promote the three analog tests' process_1 closures to module-scope spawn targets launched via that context (wave 1, autonomous)
 
 ### Phase 108: Config + Handler Refactors
@@ -543,6 +548,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   5. Every single-action and bulk-action endpoint (`/server/command/queue`, `/stop`, `/extract`, `/delete_local`, `/delete_remote`, and their `/bulk` equivalents) returns the same success/partial-failure HTTP response shapes and status codes as before the refactor — confirmed by the existing integration test suite staying green (ARCH-03, COMPAT). CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises; no test deleted. No release/tag/version work in this phase.
 
 **Plans**: 2 plans (1 wave — independent, disjoint files, both autonomous)
+
 - [x] 108-01-PLAN.md — ARCH-02: extend `InnerConfig.PropMetadata` with a `secret` flag, mark the five secret PROPs `secret=True`, build a dynamic `secret_fields()` discovery API (3-tuple `(attr, field, ini_section)`, section derived structurally from the owning subclass), repoint config.py encrypt/decrypt loops + seedsyncarr.py startup hook, delete `_SECRET_FIELD_PATHS` (no alias); new auto-discovery test + Fernet round-trip suite stays green (wave 1, autonomous)
 - [x] 108-02-PLAN.md — ARCH-03: extract `_dispatch_command(action, file_name, success_msg, *, guard=False)` in `web/handler/controller.py`, collapse the five `__handle_action_*` scaffolds to one-line delegates (guard=True for extract/delete_local/delete_remote), leave the bulk path byte-identical; existing single-action + integration suites pass unmodified (wave 1, autonomous)
 
@@ -560,6 +566,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   5. **Cross-cutting (COMPAT):** no user-observable behavior change, no HTTP-contract change, no on-disk config/persist format change. CI green on amd64 + arm64 (Python primary; Angular + E2E unaffected but must stay green); Python `fail_under` ≥ 88 holds or rises; no test deleted. No release/tag/version work in this phase — the single `v1.3.0` tag is a milestone-end action for the orchestrator after the batched pre-release walkthrough.
 
 **Plans**: 3 plans (3 waves — sequential per D-06; all touch controller.py)
+
 - [x] 109-01-PLAN.md — ARCH-01: extract `command_processor.py` (the four `__handle_*_command` bodies → `CommandProcessor.handle()`); `__process_commands` stays on Controller and delegates after releasing `__model_lock` (wave 1, autonomous)
 - [x] 109-02-PLAN.md — ARCH-01: extract `auto_delete_manager.py` (BFS pack-guard + coverage logic → `run_bfs_and_coverage`); `__schedule_auto_delete` + `__execute_auto_delete` stay on Controller as the lock harness, WR-02 ordering preserved verbatim (wave 2, depends_on 109-01, autonomous)
 - [x] 109-03-PLAN.md — ARCH-01: extract `model_pipeline.py` (scan→build→diff→apply stages → `ModelPipeline.update_model`); `__update_model` thins to a delegate, accessors + `_should_update_capacity` + `_update_controller_status` + `__check_webhook_imports` stay on Controller; coordinator thinned toward ~350 lines (wave 3, depends_on 109-02, autonomous)
@@ -577,6 +584,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   4. The artifact's fold-in list is reconciled against the already-scoped GUARD/CFG requirements: any high-visibility finding not already covered by a v1.4.0 requirement is surfaced to the maintainer as a scope decision (add to a fix phase, or park) before Phases 111-112 are planned (SCAN-02).
 
 **Plans**: 1 plan (1 wave)
+
 - [x] 110-01-PLAN.md — SCAN-01 + SCAN-02: run the read-only audit tool suite (ruff whole-tree, Semgrep/Shield + gitleaks, pip-audit, npm audit) + the AppProcess red test, read entry points/high-traffic files/README under launch framing, confirm the six pre-named fix items, and synthesize `110-FINDINGS.md` (severity rollup + per-finding FOLD/PARK disposition); maintainer findings checkpoint (autonomous:false)
 
 > **Gating note:** This phase has a findings checkpoint (autonomous:false is appropriate) — the maintainer reviews the triaged artifact and confirms the fold-in vs parked dispositions before Phases 111-112 are planned in detail. No production code changes land in this phase; it produces the discovery artifact only.
@@ -597,6 +605,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 **Plans**: 3 plans (2 waves)
 
 Plans:
+
 - [x] 111-01-PLAN.md — Backend contract: POST /server/config/set handler + GET route removal + migrated Python tests (wave 1; CFG-01/02/04)
 - [x] 111-02-PLAN.md — Angular client: RestService.post body + ConfigService.set POST + migrated spec (wave 2; CFG-01/03)
 - [x] 111-03-PLAN.md — E2E: setup-script curls + Playwright page objects/fixtures to POST (wave 2; CFG-01/03)
@@ -618,6 +627,7 @@ Plans:
   6. **Cross-cutting (COMPAT + CI):** no default-behavior change beyond added warnings/logging and the test fix; existing config files and on-disk persist formats load unchanged. CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises (GUARD-04 brings a previously-failing test green; coverage holds or increases); no test deleted or skipped. No release/tag/version work in this phase.
 
 **Plans**: 3 plans (1 wave — all file-disjoint, fully parallel)
+
 - [x] 112-01-PLAN.md — GUARD-04 (AppProcess `__getstate__`/`__setstate__` spawn-safe pickling; red test goes green under spawn + fork) + GUARD-05 (`.gitignore` `.orchestrator.json` + `.playwright-mcp/`) (wave 1)
 - [x] 112-02-PLAN.md — GUARD-01 (`[SECURITY]` prominence prefix) + GUARD-02 (accept-any-caller warning suppressed in fail-closed `require_secret=True` state) + GUARD-06 (legacy `~/.seedsync` fallback warning emitted through the configured logger via Option A flag-threading), test-first (wave 1)
 - [x] 112-03-PLAN.md — GUARD-03 (replace `ignore_errors=True` with `try/except OSError` + `logger.exception` + `sanitize_log_value`, best-effort preserved; new `TestDeleteLocalProcess` failure-path test), test-first (wave 1)
@@ -636,6 +646,7 @@ Plans:
   5. **Walkthrough-deferred (LAUNCH-03):** the README/docs screenshots showing the redesigned UI are captured via Playwright **at the milestone-end walkthrough against the NAS-deployed branch build** — not during phase execution — and any staged state is flagged so nothing misrepresents real behavior. **Manual maintainer actions outside phase execution:** applying the drafted repo-metadata (part of LAUNCH-06) and the actual git push / publish are done by the maintainer, not inside this phase.
 
 **Plans**: 4 plans (3 waves)
+
 - [x] 113-01-PLAN.md — First-draft README/SECURITY/CONTRIBUTING/CoC/CHANGELOG (claim-accurate to shipped code) + mechanical LICENSE.txt→LICENSE rename + README badge/link fix (wave 1)
 - [x] 113-02-PLAN.md — Cynical-reader teardown artifact (113-TEARDOWN.md) of the current presentation (wave 1, parallel)
 - [x] 113-03-PLAN.md — Codex adversarial content pass over the drafts (113-CODEX-PASS.md) (wave 2, depends on 113-01)
@@ -691,8 +702,16 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 116-01-PLAN.md — RED: shape-independent e2e ambiguity regressions + delete-guard tests, shown failing on pre-fix code (REL-01 gate 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 116-02-PLAN.md — GREEN import side: multi-path `name_to_paths` lookup + `WebhookManager.process` ambiguity rejection with sanitized warning
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 116-03-PLAN.md — GREEN delete side: video-only `duplicate_basename` guard (terminal skip) + full-suite baseline check + GREEN evidence
 
 ### Phase 117: Transfer-State Safety
@@ -784,4 +803,5 @@ Plans:
 **Plans:** 0 plans
 
 Plans:
+
 - [ ] TBD (promote with /gsd:review-backlog when ready)
