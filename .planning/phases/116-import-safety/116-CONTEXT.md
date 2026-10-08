@@ -22,6 +22,7 @@ A Sonarr/Radarr webhook import can never be credited to the wrong release or sat
 ### Delete-time duplicate-basename guard (AutoDeleteManager.run_bfs_and_coverage)
 - **D-05:** Add a guard at deletion time: if a root's BFS finds two or more distinct file paths whose basenames are equal case-insensitively, auto-delete is skipped (pack left untouched) with a log line explaining why. This applies regardless of persisted state — including legacy (pre-1.7.4) `imported_children` records that would otherwise read as "fully covered", and the D-14 grandfather path (no per-root entry).
 - **D-06:** The guard's skip is retriable/non-terminal in the same way as the existing `partial_coverage` skip unless research finds the deferral/re-arm budget makes a terminal reason more appropriate — planner's call, but it must never delete.
+- **D-05a (owner, 2026-10-08):** Guard scope is VIDEO FILES ONLY — use the same `_VIDEO_EXTENSIONS` allowlist as the existing coverage check, comparing basenames case-insensitively across distinct paths. Required tests: duplicate video basenames block deletion despite legacy coverage; duplicate subtitle/metadata basenames alone (e.g. per-episode `Subs/English.srt`, multi-disc `.nfo`) do NOT block deletion.
 - **D-07:** Mandatory regression test: a legacy persist where `imported_children[root]` already contains the duplicated basename (i.e. "fully covered") must NOT override the guard — the pack is not deleted.
 
 ### Logging (no UI)
