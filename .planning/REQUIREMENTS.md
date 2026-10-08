@@ -8,8 +8,8 @@
 
 ### Import Safety (deletion path)
 
-- [ ] **IMPORT-01**: A webhook import whose file name matches more than one distinct model path — across releases, roots differing only by case, a root name equal to a child basename elsewhere, or repeated basenames within one release (e.g. `Pack/Disc1/movie.mkv` + `Pack/Disc2/movie.mkv`) — is rejected: no imported record, no per-child coverage credit, no import badge, no auto-delete timer, and one sanitized warning naming the candidate roots.
-- [ ] **IMPORT-02**: A webhook import whose file name matches exactly one distinct model path (including repeated references to that same path) behaves exactly as before: recorded, badged, and armed for auto-delete when evidence allows.
+- [x] **IMPORT-01**: A webhook import whose file name matches more than one distinct model path — across releases, roots differing only by case, a root name equal to a child basename elsewhere, or repeated basenames within one release (e.g. `Pack/Disc1/movie.mkv` + `Pack/Disc2/movie.mkv`) — is rejected: no imported record, no per-child coverage credit, no import badge, no auto-delete timer, and one sanitized warning naming the candidate roots.
+- [x] **IMPORT-02**: A webhook import whose file name matches exactly one distinct model path (including repeated references to that same path) behaves exactly as before: recorded, badged, and armed for auto-delete when evidence allows.
 
 ### Transfer-State Safety
 
@@ -44,8 +44,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IMPORT-01 | Phase 116 | Pending |
-| IMPORT-02 | Phase 116 | Pending |
+| IMPORT-01 | Phase 116 | Complete |
+| IMPORT-02 | Phase 116 | Complete |
 | XFER-01 | Phase 117 | Pending |
 | XFER-02 | Phase 117 | Pending |
 | XFER-03 | Phase 117 | Pending |
