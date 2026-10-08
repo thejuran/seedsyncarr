@@ -296,7 +296,18 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Targeted regression tests for 2 Low Angular gaps: SSE heartbeat-vs-timeout reconnection race (+ positive control); auth interceptor token-rotation via `_resetAuthInterceptorCache` seam — v1.3.0
 - ✓ CI coverage ratchet: Python `fail_under` 84→88 (container-inclusive 89.27%), net-new Karma `check.global` (83/68/79/83) + Angular Dockerfile `--code-coverage` so the gate bites; before/after recorded in ROADMAP + RETROSPECTIVE — v1.3.0
 
-## Current Milestone: v1.4.1 Scanner Auto-Recovery
+## Current Milestone: v1.7.4 Safety Patch
+
+**Goal:** Protect users from incorrect deletion and transfer-state decisions. Ship promptly as patch release 1.7.4.
+
+**Target features:**
+- Deletion safety: a webhook import whose file name matches more than one distinct model path (across releases, case-only differences, or repeated basenames within one release) is rejected — no import record, no coverage credit, no auto-delete.
+- Transfer-state safety: the LFTP status parser never consumes the next job's header; an unparseable status is reported as *unavailable* (last-known transfer state preserved, existing error boundary unchanged) rather than "no jobs"; remote and local stability clocks advance only on successful scans.
+- Durable state: `Persist.to_file` (settings.cfg, controller persist, auto-queue persist) writes atomically — temp file, fsync, `os.replace` commit point, directory fsync — so a failed save never corrupts the previous valid file.
+
+**Key context:** Root causes confirmed in code during brainstorming (design spec `docs/superpowers/specs/2026-10-08-safety-patch-design.md`). `name_to_root` in `Controller.__check_webhook_imports` is last-writer-wins; `PgetJobParser.parse_header` pops the line after `sftp` unconditionally; `Lftp.status()` returns `[]` on tolerated parse errors; `latest_remote_scan_time`/`latest_local_scan_time` advance on failed scans; `Persist.to_file` truncates in place. Release gate: each regression fails before and passes after its fix, full suite + ruff, release-image smoke test, NAS deploy of `:1.7.4` with scanner recovery confirmed by a subsequent successful scan.
+
+## Previous Milestone: v1.4.1 Scanner Auto-Recovery (Shipped 2026-06-22, tagged v1.5.0)
 
 **Goal:** The seedbox scanner survives transient DNS/network blips and recovers from controller death on its own, instead of silently freezing the file list for days until a manual container restart.
 
@@ -335,7 +346,11 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-<!-- v1.4.1 — Scanner Auto-Recovery. One Python phase, regression fix reusing existing infrastructure. -->
+<!-- v1.7.4 — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
+
+v1.7.4 closes five defects that can cause incorrect deletion or transfer-state decisions: ambiguous webhook import matches, the LFTP parser consuming the next job's header, status-unavailable collapsing to "no jobs", stability established from failed scans, and non-atomic state/config writes. See `.planning/REQUIREMENTS.md`.
+
+<!-- v1.4.1 (shipped 2026-06-22) — Scanner Auto-Recovery. -->
 
 v1.4.1 makes the seedbox scanner self-heal instead of silently freezing the file list for days. Three behaviors: (1) reclassify transient name-resolution failures (`Could not resolve hostname` / `Name or service not known` / a momentary `Bad hostname`) as recoverable so the scanner retries with backoff rather than dying; (2) a bounded-retry guard so a genuinely wrong/persistently-unresolvable hostname or bad credentials still stops and surfaces to the user after a capped number of retries — never an infinite-retry loop that masks real config errors; (3) a controller auto-restart safety net so a permanent-class controller death recovers via the existing `ServiceRestart` path instead of staying down (`server.up=False`) forever. Reuses infrastructure already present in `src/python/` — no new mechanisms. See `.planning/REQUIREMENTS.md`.
 
@@ -354,6 +369,8 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 - Shutdown-readiness Event (replace fixed `time.sleep` in `seedsyncarr.py` shutdown) — real robustness gain but invisible to a launch reader; deferred (v1.4.0 scope decision)
 - `StreamQueue.put` non-atomic drop-oldest — latent, well-mitigated, documented edge-case; deferred (v1.4.0 scope decision)
 - Test-hardening backlog (`.planning/backlog/TEST-HARDENING-REVIEW.md`, A-01..A-06) — test-infra niceties invisible to a launch reader; deferred (v1.4.0 scope decision)
+- Path-mapping redesign for webhook imports — v1.7.4 conservatively rejects ambiguous matches instead (Safety Patch scope decision)
+- Persistence migration / backup system / load-side recovery changes — v1.7.4 only makes writes atomic (Safety Patch scope decision)
 - NAS local-build QEMU issue — deploy-environment limitation, not a code defect; CI multi-arch publish works
 
 ## Context
@@ -464,4 +481,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-21 after starting milestone v1.4.1 (Scanner Auto-Recovery)*
+*Last updated: 2026-10-08 after starting milestone v1.7.4 (Safety Patch)*

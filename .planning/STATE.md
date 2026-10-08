@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4.1
-milestone_name: Scanner Auto-Recovery
-status: Awaiting next milestone
-stopped_at: "Completed 115-01 + follow-on piscina override PR #67 — alert #37 closed, 0 open Dependabot alerts, DEPS-01 fully met"
-last_updated: "2026-06-22T16:22:40.555Z"
-last_activity: 2026-06-22 — Milestone v1.4.1 completed and archived
+milestone: v1.7.4
+milestone_name: Safety Patch
+status: planning
+last_updated: "2026-10-08T22:08:20.985Z"
+last_activity: 2026-10-08
 progress:
-  total_phases: 15
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
-  percent: 13
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-21)
 
 ## Current Position
 
-Phase: Milestone v1.4.1 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-22 — Milestone v1.4.1 completed and archived
+Status: Defining requirements
+Last activity: 2026-10-08 — Milestone v1.7.4 started
 
 ## Accumulated Context
 
