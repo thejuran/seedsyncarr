@@ -37,6 +37,7 @@
 - ✅ v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra - Phases 107-109 (shipped 2026-06-02; v1.3.0 tag cut)
 - ✅ v1.4.0 — Launch-Hardening for Public Release - Phases 110-113 (shipped 2026-06-03; merged to `main`, `v1.4.0` tag)
 - ✅ v1.4.1 — Scanner Auto-Recovery - Phases 114-115 (shipped 2026-06-22; tagged `v1.5.0`)
+- 🔨 v1.7.4 Safety Patch - Phases 116-118 (in progress)
 
 ## Phases
 
@@ -383,6 +384,18 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   - [x] 115-01-PLAN.md — Re-verify live PR/alert state, then squash-merge all 7 Dependabot PRs CI-green-gated one-at-a-time in security-first order (#64→#65→#66→#60→#61→#62→#63), then end-state gate: 0 open alerts + 7 MERGED + local whole-tree ruff 0.15.17 clean (wave 1)
 
 
+🔨 v1.7.4 — Safety Patch (Phases 116-118) — IN PROGRESS
+
+**Milestone Goal:** Protect users from incorrect deletion and transfer-state decisions, shipped promptly as patch release 1.7.4. Five confirmed defects, grouped into three phases ordered by risk: (1) **deletion safety** — `Controller.__check_webhook_imports` builds `name_to_root` last-writer-wins, so a webhook import whose basename matches more than one model path can be credited to the wrong release or satisfy per-child coverage for a file that was never imported, arming auto-delete wrongly; the patch conservatively rejects ambiguous matches. (2) **transfer-state safety** — `PgetJobParser.parse_header` pops the line after `sftp` unconditionally (a pget with no data line swallows the next job's header), `Lftp.status()` returns `[]` on tolerated parse errors (active transfers lose protection), and `latest_remote_scan_time` / `latest_local_scan_time` advance on failed scans (stability "established" with no fresh evidence). (3) **durable state** — `Persist.to_file` truncates in place, so a failed save corrupts `settings.cfg`, the controller persist, or the auto-queue persist; writes become temp-file + fsync + `os.replace` + directory fsync. All three are Python-only, behavior-narrowing fixes with no on-disk format change and no UI work.
+
+**GSD internal label:** `v1.7.4`. Source: approved design spec `docs/superpowers/specs/2026-10-08-safety-patch-design.md` (authoritative for phase split, fix contracts, and regression tests) + `.planning/REQUIREMENTS.md`. Phase A (116) lands first; per the spec it may ship alone if 117/118 slip, otherwise all three ship as one patch.
+
+**CI gate every phase must hold:** full Python suite green AND `ruff check src/python/` clean whole-tree (CI runs ruff as a **separate gate from pytest**); Python `fail_under` ≥ 88 holds. Each targeted regression test must be shown to fail against the old behavior before its fix lands (REL-01 gate 1). No version bump or tag inside Phases 116-117 — the release gate (REL-01) is Phase 118's closing criterion and the milestone close.
+
+- [ ] **Phase 116: Import Safety** - `name_to_root` keeps every distinct model path per lowercased basename; a webhook import resolving to two or more distinct paths (across releases, case-only root differences, root-equals-child-basename, or repeated basenames inside one release) is rejected with no import record, no coverage credit, no badge, no auto-delete timer, and one sanitized warning naming the candidate roots; a unique match (including repeated references to the same path) behaves exactly as before (IMPORT-01, IMPORT-02)
+- [ ] **Phase 117: Transfer-State Safety** - LFTP parser never consumes the next job's header (other next-line-consuming sites audited); unparseable status is reported as *unavailable* (`None`), never `[]`, with the existing `MAX_CONSECUTIVE_STATUS_ERRORS` boundary pinned exactly and no downstream consumer collapsing unavailable into "no jobs"; remote and local stability clocks advance only on successful scans while the UI "last scan" timestamp keeps its meaning (XFER-01, XFER-02, XFER-03, XFER-04, XFER-05)
+- [ ] **Phase 118: Durable State** - `Persist.to_file` writes atomically (serialize first → 0600 temp in target dir → write/flush/fsync → `os.replace` commit point → best-effort directory fsync) so any pre-replace failure leaves the original byte-for-byte intact with no temp file left behind; then the 1.7.4 release gate — regressions fail-before/pass-after, full suite + ruff, release-image smoke test, `:1.7.4` NAS deploy with scanner recovery confirmed by a subsequent successful scan (PERSIST-01, PERSIST-02, REL-01)
+
 ## Phase Details
 
 ### Phase 101: Webhook + Log-Injection Security Cluster
@@ -660,6 +673,57 @@ Plans:
 
 **Plans**: 1 plan (1 wave)
 
+### Phase 116: Import Safety
+
+**Goal**: A Sonarr/Radarr webhook import can never be credited to the wrong release or satisfy per-child coverage for a file that was not imported — so auto-delete is only ever armed by an unambiguous match — while every unambiguous import keeps today's exact behavior. The fix is contained to the `name_to_root` lookup in `Controller.__check_webhook_imports` (`src/python/controller/controller.py`): the lookup keeps every distinct model path per lowercased basename; a resolution to exactly one distinct path proceeds as before; a resolution to two or more distinct paths is rejected (no `imported_file_names` entry, no `add_imported_child` record, no import badge, no auto-delete timer) with one CWE-117-sanitized warning naming the candidate roots. Ambiguity applies both across releases and within a single release; repeated references to the same path are deduplicated and are not ambiguous.
+**Depends on**: Phase 115 (last GSD phase; `main` currently at release 1.7.3)
+**Requirements**: IMPORT-01, IMPORT-02
+**Success Criteria** (what must be TRUE):
+
+  1. Two releases each containing `sample.mkv`, webhook for `sample.mkv` → **both releases untouched**: no imported record, no per-child coverage credit, no import badge, no auto-delete timer, no persist change — and exactly one sanitized warning naming both candidate roots (IMPORT-01).
+  2. Two roots differing only by case, or a root name equal to a child basename in another release → rejected the same way (IMPORT-01).
+  3. `Pack/Disc1/movie.mkv` + `Pack/Disc2/movie.mkv` inside one release, webhook `movie.mkv` → rejected; per-child coverage is **not** satisfied for either file, so the pack is not armed for auto-delete (IMPORT-01).
+  4. A webhook name matching exactly one distinct model path → recorded, badged, and armed for auto-delete exactly as before when evidence allows (IMPORT-02).
+  5. The same model path referenced twice (the same file seen more than once) → treated as one match, not ambiguous — imports normally (IMPORT-02).
+
+**Owner planning notes (2026-10-08)**: Deduplicate on the complete, case-preserving model path; lowercase only the lookup key, so case-distinct files (e.g. `Movie.mkv` vs `movie.mkv` at different paths) remain ambiguous. If 116 ships independently as 1.7.4 it must still pass the applicable REL-01 release checks; 117/118 would then ship under a subsequent patch version.
+
+**Plans**: TBD
+
+### Phase 117: Transfer-State Safety
+
+**Goal**: SeedSyncarr never makes a re-queue, auto-queue, or delete decision from a transfer state it did not actually observe. Three fixes on the LFTP status → model → auto-queue path: **(B1)** `PgetJobParser.parse_header` (`src/python/lftp/job_status_parser.py`) pops the following line only when it matches a chunk/data pattern (`CHUNK_AT`, `CHUNK_AT2`, `CHUNK_GOT`), and the parser's other next-line-consuming sites (e.g. `CHUNK_HEADER`, mirror-empty handling) are audited and fixed for the same flaw; **(B2)** an unparseable status is reported as *unavailable* (`None` at the `LftpManager.status()` contract), never `[]`, with the existing consecutive-error counter and escalation threshold kept unchanged, and every downstream consumer (`ModelPipeline`, `ModelBuilder`, `Controller._update_active_file_tracking`, auto-queue, auto-delete) verified to keep unavailable distinct from empty; **(B3)** remote and local size-stability are measured only on the clock of successful scans (a separate successful-scan time may be added so the UI-facing "last scan" field keeps its meaning).
+**Depends on**: Phase 116 (sequencing only — disjoint code paths: webhook import matching vs. `lftp/` parser, status contract, and scan clocks)
+**Requirements**: XFER-01, XFER-02, XFER-03, XFER-04, XFER-05
+**Success Criteria** (what must be TRUE):
+
+  1. `jobs -v` output in which a pget job has no data line yet and is immediately followed by another job header (pget and mirror variants) → **every job** appears in the parsed status with its correct name and state; no header is swallowed (XFER-01).
+  2. An isolated parse failure during an active download → the file stays active/protected, the active-downloading list is unchanged, and nothing is re-queued or deleted; the status is reported as unavailable (`None`), never as an empty job list, and no downstream consumer converts it back into "no jobs" (XFER-02).
+  3. The status-error boundary is pinned exactly: failures 1..`MAX_CONSECUTIVE_STATUS_ERRORS` are each tolerated and reported unavailable, failure `MAX_CONSECUTIVE_STATUS_ERRORS + 1` raises, a successful parse resets the counter, and a genuinely empty status still clears active state as today (XFER-03).
+  4. Failed remote scans spanning the full remote-stability window → the file is **not** considered stable and is **not** auto-queued; the UI "last scan" timestamp keeps its current meaning (XFER-04).
+  5. Failed local scans spanning the local-stability window → the local gate does not pass; with successful scans, remote and local gating behave exactly as before (XFER-05).
+
+**Owner planning notes (2026-10-08)**: Test downstream behavior, not just the `None` return: active transfers remain protected with no unintended re-queue, extraction, or deletion while status is unavailable.
+
+**Plans**: TBD
+
+### Phase 118: Durable State
+
+**Goal**: A failed save can never destroy a previously valid `settings.cfg`, controller persist, or auto-queue persist — so users never lose the downloaded/imported lists that drive re-download and auto-delete — and release 1.7.4 ships only once every fix in the milestone is proven on the real image and the NAS. The fix is contained to `Persist.to_file` (`src/python/common/persist.py`), the sole writer for all three files: serialize (`to_str()`) before touching the filesystem → create a `0600` temp file in the target's directory → write, flush, fsync → `os.replace(temp, target)` as **the commit point** → best-effort directory fsync (logged, not raised). Failure contract: any failure before or during `os.replace` leaves the original byte-for-byte intact, removes the temp file, and raises; after the replace the new file is committed. On-disk format, load-side behavior, and the existing corrupt-file backup-and-reset path are unchanged. This phase closes with the REL-01 release gate because it is the milestone's final code phase.
+**Depends on**: Phase 117 (sequencing — REL-01's gate covers every regression from Phases 116-118, so all prior phases must be complete)
+**Requirements**: PERSIST-01, PERSIST-02, REL-01
+**Success Criteria** (what must be TRUE):
+
+  1. For **each** failure point tested separately — serialization, write, file fsync, replace — the original file is byte-for-byte unchanged, no temp file remains in the directory, and the failure raises (PERSIST-01).
+  2. A successful save of each of the three persist files produces the correct content with `0600` permissions (PERSIST-02).
+  3. A directory-fsync failure after `os.replace` leaves the new file committed with its new content, is logged, and does not raise (PERSIST-02).
+  4. Release gate, code side: every targeted regression from Phases 116-118 is shown to fail against the old behavior and pass with its fix; the full Python suite passes and `ruff check src/python/` is clean whole-tree; the built release image passes a smoke test of startup, transfer status, settings persistence, and restart (REL-01).
+  5. Release gate, deploy side: the `:1.7.4` tag (never `:dev`) is deployed to the NAS with startup and config loading verified; a post-deploy scanner error is accepted as the known warm-up condition **only after** a subsequent successful scan confirms recovery (REL-01).
+
+**Owner planning notes (2026-10-08)**: Run the REL-01 release gates against the combined changes from all three phases, and deploy to the NAS the exact image that passed testing (same tag/digest).
+
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -698,10 +762,13 @@ Plans:
 | 113. Presentation & Launch Readiness | v1.4.0 | 4/4 | Complete   | 2026-06-03 |
 | 114. Scanner Auto-Recovery | v1.4.1 | 2/2 | Complete   | 2026-06-21 |
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
+| 116. Import Safety | v1.7.4 | 0/? | Not started | - |
+| 117. Transfer-State Safety | v1.7.4 | 0/? | Not started | - |
+| 118. Durable State | v1.7.4 | 0/? | Not started | - |
 
 ---
 
-*Last updated: 2026-06-21 — Milestone v1.4.1 (Scanner Auto-Recovery) now has **2 phases**. Phase 114 (Scanner Auto-Recovery, SCAN-01/02/03 + RECOV-01) is the scanner/controller code change — one coherent change to the same error-handling path, reusing existing `src/python/` infrastructure (sshcp/remote_scanner/scanner_process/scan_manager/seedsyncarr/common.error); CI: Python suite green AND `ruff check src/python/` clean (ruff is a separate gate from pytest). Phase 115 (Dependency & Security Maintenance, DEPS-01/02) appended as a disjoint maintenance track — clear all 8 open Dependabot security alerts (3 HIGH hono/piscina/undici, 5 MEDIUM hono/undici) and merge all 7 open Dependabot PRs (#60–#66, incl. the 18-update npm group), each gated on CI green; separated from Phase 114 because verification differs (a code-path regression fix vs. CI-green-per-merge mechanical dependency maintenance with 0 open alerts after). No release/tag/version work in either phase — the single `v1.4.1` tag is a milestone-end action. 100% requirement coverage (6/6 mapped).*
+*Last updated: 2026-10-08 — Milestone v1.7.4 (Safety Patch) added with **3 phases** (116-118), continuing from v1.4.1's last phase (115). Owner-approved split from the design spec, ordered by risk: Phase 116 Import Safety (IMPORT-01/02 — reject ambiguous webhook import matches in `Controller.__check_webhook_imports`), Phase 117 Transfer-State Safety (XFER-01..05 — parser header consumption, status-unavailable ≠ empty with the error boundary pinned, success-only stability clocks), Phase 118 Durable State (PERSIST-01/02 — atomic `Persist.to_file`; plus REL-01, the 1.7.4 release gate, mapped to the final phase as the milestone close). Phases are sequenced 116→117→118 but touch disjoint code paths; per the spec, 116 may ship alone if 117/118 slip. CI gate per phase: full Python suite green AND `ruff check src/python/` clean whole-tree (separate CI gate from pytest). 100% requirement coverage (10/10 mapped, no orphans, no duplicates).*
 
 ## Backlog
 

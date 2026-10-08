@@ -44,21 +44,24 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IMPORT-01 | — | Pending |
-| IMPORT-02 | — | Pending |
-| XFER-01 | — | Pending |
-| XFER-02 | — | Pending |
-| XFER-03 | — | Pending |
-| XFER-04 | — | Pending |
-| XFER-05 | — | Pending |
-| PERSIST-01 | — | Pending |
-| PERSIST-02 | — | Pending |
-| REL-01 | — | Pending |
+| IMPORT-01 | Phase 116 | Pending |
+| IMPORT-02 | Phase 116 | Pending |
+| XFER-01 | Phase 117 | Pending |
+| XFER-02 | Phase 117 | Pending |
+| XFER-03 | Phase 117 | Pending |
+| XFER-04 | Phase 117 | Pending |
+| XFER-05 | Phase 117 | Pending |
+| PERSIST-01 | Phase 118 | Pending |
+| PERSIST-02 | Phase 118 | Pending |
+| REL-01 | Phase 118 | Pending |
 
 **Coverage:**
 - v1 requirements: 10 total
-- Mapped to phases: 0 (filled by roadmap)
+- Mapped to phases: 10 (100% — no orphans, no duplicates)
+- Phase 116 Import Safety: IMPORT-01, IMPORT-02
+- Phase 117 Transfer-State Safety: XFER-01, XFER-02, XFER-03, XFER-04, XFER-05
+- Phase 118 Durable State: PERSIST-01, PERSIST-02, REL-01 (release gate = milestone close)
 
 ---
 *Requirements defined: 2026-10-08*
-*Last updated: 2026-10-08 after initial definition*
+*Last updated: 2026-10-08 after roadmap creation (traceability mapped to Phases 116-118)*

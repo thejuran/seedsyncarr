@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.7.4
 milestone_name: Safety Patch
-status: planning
-last_updated: "2026-10-08T22:08:20.985Z"
+status: roadmap_created
+last_updated: "2026-10-08T22:30:00.000Z"
 last_activity: 2026-10-08
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-21)
+See: .planning/PROJECT.md (updated 2026-10-08)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 115 — dependency-security-maintenance
+**Current focus:** Phase 116 — Import Safety (deletion path)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 116 — Import Safety (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-10-08 — Milestone v1.7.4 started
+Status: Roadmap created; Phase 116 ready to plan
+Last activity: 2026-10-08 — Milestone v1.7.4 roadmap written (Phases 116-118)
+
+Progress: [░░░░░░░░░░] 0% (0/3 phases)
 
 ## Accumulated Context
 
@@ -35,31 +37,15 @@ Last activity: 2026-10-08 — Milestone v1.7.4 started
 
 Decisions are logged in PROJECT.md Key Decisions table.
 
-Roadmap shape (v1.4.1): **two phases**. Phase 114 (Scanner Auto-Recovery), derived from the 4 scanner/controller requirements (SCAN-01, SCAN-02, SCAN-03, RECOV-01) — one coherent change to the same controller/scanner error-handling path (transient-error reclassification + bounded retry + surface-on-exhaustion + controller auto-restart); over-decomposition explicitly avoided, a tightly-scoped regression fix. Phase 115 (Dependency & Security Maintenance), derived from DEPS-01/DEPS-02 — a disjoint dependency/security-maintenance track (clear the 8 open Dependabot security alerts + merge the 7 open Dependabot PRs, each gated on CI green). The two are separate phases because their verification differs: a code-path regression fix (114) vs. CI-green-per-merge mechanical dependency maintenance with 0 open alerts after (115). **Current position is unchanged — Phase 114 is still the next phase to plan;** Phase 115 was appended after 114, not inserted before it.
+**Roadmap shape (v1.7.4): three phases, owner-approved split from the design spec (`docs/superpowers/specs/2026-10-08-safety-patch-design.md`), ordered by risk — deletion safety first.** Numbering continues from v1.4.1's last phase (115). All three are Python-only, behavior-narrowing fixes with no on-disk format change and no UI work. Sequenced 116→117→118 but they touch disjoint code paths; per the spec, Phase 116 may ship alone as 1.7.4 if 117/118 slip, otherwise all three ship as one patch.
 
-- **Phase 114 (Scanner Auto-Recovery — SCAN-01/02/03, RECOV-01)** wires together infrastructure that **already exists** in `src/python/` — no new mechanisms:
-  - `sshcp.py` — `PERMANENT_ERROR_PATTERNS`, `TRANSIENT_ERROR_PATTERNS`, `_is_transient_ssh_error`
-  - `remote_scanner.py` — `scan()` recoverable classification, `_is_permanent_ssh_error`, `first_run` strictness
-  - `scanner_process.py` — `ScannerError` recoverable flag
-  - `scan_manager.py` — `propagate_exceptions` / `_check_process_health` / `ScannerProcessDiedError`
-  - `seedsyncarr.py` `run()` `AppError` catch (~lines 182-190), gated on `args.exit`
-  - `common/error.py` — `ServiceRestart` (~lines 14-18)
-- **SCAN-01** (reclassify transient name-resolution failures: `Could not resolve hostname` / `Name or service not known` / momentary `Bad hostname` → recoverable so the scan retries instead of dying) and **SCAN-02** (bounded backoff — capped attempts, never infinite) are the recovery half.
-- **SCAN-03** (retries exhausted → surface to the user exactly as today: controller reports failure / `server.up=False` with the error message) is the safety half — the retry path must never silently mask a real permanent config error.
-- **RECOV-01** (permanent-class controller death → auto-restart via the existing `ServiceRestart` path instead of staying down; recovery itself bounded so an unrecoverable condition doesn't become a restart loop) is the controller-level safety net.
+- **Phase 116 (Import Safety — IMPORT-01, IMPORT-02):** `Controller.__check_webhook_imports` (`src/python/controller/controller.py`) builds `name_to_root` last-writer-wins. Fix: keep every distinct model path per lowercased basename; exactly one distinct path → today's behavior; two or more → **reject** (no `imported_file_names` entry, no `add_imported_child` record, no badge, no auto-delete timer, one CWE-117-sanitized warning naming the candidate roots). Ambiguity applies across releases and within one release; repeated references to the same path are deduplicated (not ambiguous). Path-mapping redesign is explicitly out of scope — conservative rejection only.
+- **Phase 117 (Transfer-State Safety — XFER-01..05):** three fixes on the LFTP status → model → auto-queue path. **B1** `PgetJobParser.parse_header` pops the next line only when it matches `CHUNK_AT`/`CHUNK_AT2`/`CHUNK_GOT`; audit the other next-line-consuming sites (`CHUNK_HEADER`, mirror-empty). **B2** unparseable status → *unavailable* (`None` at the `LftpManager.status()` contract), never `[]`; keep `MAX_CONSECUTIVE_STATUS_ERRORS` counter/escalation exactly as is; verify `ModelPipeline`, `ModelBuilder`, `Controller._update_active_file_tracking`, auto-queue, auto-delete never convert `None` back into empty; genuine empty still clears active state. **B3** remote and local stability measured only on the clock of successful scans; the UI "last scan" field keeps its meaning (a separate successful-scan time is the allowed implementation).
+- **Phase 118 (Durable State — PERSIST-01, PERSIST-02, REL-01):** `Persist.to_file` (`src/python/common/persist.py`, sole writer for `settings.cfg`, controller persist, auto-queue persist) truncates in place. Fix contained to that function: serialize first → `0600` temp in the target dir → write/flush/fsync → `os.replace` (**commit point**) → best-effort directory fsync (logged, not raised). Failure contract: any failure before/during the replace leaves the original byte-for-byte intact, removes the temp, raises; after the replace the new file is committed. No migration, no backup system, no load-side change. **REL-01 (release gate) is mapped here** because it is the milestone's final phase: regressions fail-before/pass-after, full suite + ruff, release-image smoke test (startup, transfer status, settings persistence, restart), `:1.7.4` NAS deploy with startup + config loading verified and scanner recovery confirmed by a subsequent successful scan.
 
-- **Phase 115 (Dependency & Security Maintenance — DEPS-01, DEPS-02)** is the dependency/security-maintenance track, disjoint from Phase 114's code path (manifests/lockfiles vs. `src/python/`):
-  - **DEPS-01** — clear all **8** open Dependabot security alerts: 3 HIGH (`hono` CORS-credentials reflection → 4.12.25, `piscina` prototype-pollution→RCE → 5.2.0, `undici` TLS-cert-validation bypass → 7.28.0) + 5 MEDIUM (4× `hono`, 1× `undici` cross-user info disclosure). All are remediated by the open PRs.
-  - **DEPS-02** — merge all **7** open Dependabot PRs, each gated on CI green: #60 pyinstaller, #61 ruff, #62 testfixtures, #63 pytest (Python dev-deps); #64 npm_and_yarn group (18 updates, incl. `piscina`); #65 hono; #66 undici (JS). Decision (2026-06-21): merge **all 7** for a full cleanup.
-  - Watch-outs: #64 (18-update npm group) must not regress the Angular build or Karma/Playwright gates; #61 bumps `ruff` itself and CI runs `ruff check src/python/` as a **separate gate from pytest**, so verify ruff whole-tree with the new version. No release/tag/version work in-phase.
+**CI gate (every phase):** full Python suite green AND `ruff check src/python/` clean whole-tree — CI runs ruff as a **separate gate from pytest**, so build-verify must run ruff on the whole tree, not just touched files. Python `fail_under` ≥ 88 holds. Each targeted regression must be shown to fail against old behavior before its fix (REL-01 gate 1) — plan tasks should run the new test red first.
 
-**Root cause (incident 2026-06-19, debug session `seedbox-files-not-showing`; prior variant `hold-the-dream-not-syncing`):** A transient DNS failure resolving `moon.usbx.me` raised `SshcpError('Bad hostname')`, classified as permanent/non-recoverable; it propagated to `seedsyncarr.py run()` (caught as `AppError` with `args.exit=False`), marking the controller down **without** restarting it. The web server stayed up so the UI looked fine, but the file list was frozen ~2 days until a manual container restart.
-
-**CI gate:** Python full suite green AND `ruff check src/python/` clean. CI runs `ruff check src/python/` as a **separate gate from pytest** — build-verify must run ruff whole-tree (not just the touched files), not only the test suite. No release/tag/version work happens inside the phase.
-
-**Dependency edges:** Phase 114 depends on Phase 113 (v1.4.0 shipped on `main`). No intra-milestone edges (single phase).
-
-- [Phase ?]: Phase 115: merged all 7 Dependabot PRs #60-#66 SHA-pinned via --match-head-commit in locked order #64->#65->#66->#60->#61->#62->#63; cleared 7 of 8 alerts (2/3 HIGH + all 5 MEDIUM); whole-tree ruff 0.15.17 clean. Follow-on: piscina HIGH #37 (transitive pin via @angular/build) closed via npm override `piscina >=5.2.0` in PR #67 — CI-gated (Angular build/Karma/E2E all green), SHA-pin-merged to main (39133ff), alert #37 auto-closed. **8 of 8 alerts cleared, 0 open; DEPS-01 fully met.**
+**Dependency edges:** 116 → Phase 115 (last GSD phase; `main` currently at release 1.7.3). 117 → 116 and 118 → 117 are sequencing only (disjoint code paths); 118's REL-01 gate requires 116 and 117 complete.
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -73,7 +59,7 @@ None.
 
 ### Blockers/Concerns
 
-- None. (RESOLVED 2026-06-22) Dependabot alert #37 (piscina HIGH RCE, GHSA-x9g3-xrwr-cwfg) is CLOSED: npm override `piscina >=5.2.0` added to `src/angular/package.json` lifted the transitively-pinned 5.1.4 to patched 5.2.0; PR #67 CI-gated (Angular build/Karma/E2E all green — the @angular/build pin tolerated 5.2.0), SHA-pin-merged to main (39133ff). Alert #37 auto-closed (state `fixed`); 0 open Dependabot alerts.
+- None at roadmap creation. Watch-out for Phase 118's deploy gate: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — deploy the CI-published multi-arch `:1.7.4` tag, never a local build and never `:dev`.
 
 ### Quick Tasks Completed
 
@@ -92,6 +78,7 @@ None.
 | todo | streamqueue-atomic-drop-oldest | robustness (DEFER-STREAMQUEUE — latent, well-mitigated; deferred v1.4.0) |
 | todo | test-hardening-backlog A-01..A-06 | test-infra (DEFER-TESTHARDEN — deferred v1.4.0) |
 | quick_task | 260528-khw-triage-and-merge-dependabot-prs | housekeeping (prior session, SUMMARY missing; acknowledged + deferred at v1.4.0 close) |
+| backlog | 999.1 webhook import evidence (payload size == remote size) | v2 requirement IMPORT-F1; defense in depth, not in v1.7.4 scope |
 
 > Acknowledged + deferred at v1.4.0 milestone close (2026-06-03): webob-cgi-upstream-unblock (still blocked on upstream webob 2.0) and the 260528-khw dependabot quick-task (prior-session housekeeping).
 
@@ -118,13 +105,14 @@ None.
 | v1.3.0 Slice 3 (Frontend Deps + Dead Code) | Phases 104-106 | 2026-06-01 |
 | v1.3.0 Slice 4 (Backend Arch Refactor + Test Infra) | Phases 107-109 | 2026-06-01 to 2026-06-02 (v1.3.0 tag cut) |
 | v1.4.0 Launch-Hardening for Public Release | Phases 110-113 | 2026-06-02 to 2026-06-03 (v1.4.0 tag cut) |
+| v1.4.1 Scanner Auto-Recovery | Phases 114-115 | 2026-06-19 to 2026-06-22 (tagged v1.5.0) |
 
 ## Session Continuity
 
-Last session: 2026-06-22T16:01:00.000Z
-Stopped at: Completed 115-01 + follow-on piscina override PR #67 — alert #37 closed, 0 open Dependabot alerts, DEPS-01 fully met
-Next action: Phase 115 is complete (DEPS-01 + DEPS-02 met, 0 open alerts). Run the Phase 115 verifier when ready, then proceed toward the v1.4.1 milestone close.
+Last session: 2026-10-08T22:30:00.000Z
+Stopped at: v1.7.4 roadmap written — Phases 116-118 defined, 10/10 requirements mapped, traceability updated
+Next action: Plan Phase 116 (Import Safety) — `/bm:plan-phase 116`
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- `/bm:plan-phase 116` — Import Safety (IMPORT-01, IMPORT-02); design spec Phase A is the planning source
