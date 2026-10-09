@@ -128,12 +128,12 @@ Phase 117's evidence made a point that no RED failure was an ImportError, Attrib
 |---|---|---|
 | Serialization | `DummyPersist.to_str` raises `ValueError` | Old code truncates first → `b'' != b'ORIGINAL'` |
 | Write | Content containing a lone surrogate `"ok \udc80 tail"` → real `UnicodeEncodeError` from the UTF-8 encoder, no mocks | Old code truncates, then the write raises → file is `''` [VERIFIED: local probe on Python 3.12] |
-| File fsync | `patch("common.persist.os.fsync", side_effect=fsync_fail_if_regular_file)` (raise only when `stat.S_ISREG(os.fstat(fd).st_mode)`) | Old code never fsyncs → "OSError not raised" |
-| Replace | `patch("common.persist.os.replace", side_effect=OSError(errno.EACCES, ...))` | Old code never replaces → "OSError not raised" |
-| Temp creation (spec lists it in the contract; add as a 5th) | `patch("common.persist.tempfile.mkstemp", side_effect=OSError(errno.ENOSPC, ...))` | "OSError not raised" |
-| Dir fsync after replace | `patch("common.persist.os.fsync", side_effect=fsync_fail_if_directory)` (real fsync for regular files) + `assertLogs("seedsyncarr.Persist", "WARNING")` | Old code never logs → "no logs of level WARNING or higher triggered" |
+| File fsync | `patch("os.fsync", side_effect=fsync_fail_if_regular_file)` (raise only when `stat.S_ISREG(os.fstat(fd).st_mode)`) | Old code never fsyncs → "OSError not raised" |
+| Replace | `patch("os.replace", side_effect=OSError(errno.EACCES, ...))` | Old code never replaces → "OSError not raised" |
+| Temp creation (spec lists it in the contract; add as a 5th) | `patch("tempfile.mkstemp", side_effect=OSError(errno.ENOSPC, ...))` | "OSError not raised" |
+| Dir fsync after replace | `patch("os.fsync", side_effect=fsync_fail_if_directory)` (real fsync for regular files) + `assertLogs("seedsyncarr.Persist", "WARNING")` | Old code never logs → "no logs of level WARNING or higher triggered" |
 
-Do **not** patch `common.persist._fsync_directory` for RED: on old code that attribute does not exist, so it fails with AttributeError (a harness error). Use the `S_ISDIR` side_effect on `os.fsync` instead. The same `os.fsync` patch works on old and new code.
+Patch targets MUST be the **global** module attributes `"os.fsync"`, `"os.replace"`, `"tempfile.mkstemp"`. Do **not** patch `common.persist.tempfile.mkstemp`: pre-fix `persist.py` does not import `tempfile`, so that target raises `ModuleNotFoundError`/`AttributeError` from `unittest.mock` (a harness error, not a behavioral RED). Do **not** patch `common.persist._fsync_directory` for the same reason (the symbol does not exist on old code). `common.persist.os.replace` happens to resolve on old code (persist.py imports `os`) but is the same object as the global `os.replace`; use the global form everywhere for consistency with 118-01-PLAN.md. Use the `S_ISDIR` side_effect on `os.fsync` to inject the directory-fsync failure. The same global patches work on old and new code because persist.py calls them as module attributes at call time.
 
 Every failure test asserts all three: (a) `assertRaises` with the specific type, (b) original bytes unchanged (read `"rb"`), (c) `sorted(os.listdir(temp_dir)) == ["persist"]` (no temp left). Add a variant with no pre-existing target: after a failure, the directory is empty.
 
@@ -288,9 +288,9 @@ def _fail_on_directory(fd):
     if stat.S_ISDIR(os.fstat(fd).st_mode):
         raise OSError(errno.EINVAL, "injected dir fsync failure")
     return _real_fsync(fd)
-# with patch("common.persist.os.fsync", side_effect=_fail_on_directory): ...
+# with patch("os.fsync", side_effect=_fail_on_directory): ...
 ```
-Capture `_real_fsync` at module import, before patching. Because `persist.py` does `import os`, patching `common.persist.os.fsync` patches the global `os.fsync` for the duration. That is fine for an isolated unit test.
+Capture `_real_fsync` at module import, before patching. Patch the global `"os.fsync"` (persist.py does `import os` and calls `os.fsync(...)` as a module attribute, so the global patch is what it resolves). Likewise use `patch("os.replace", ...)` and `patch("tempfile.mkstemp", ...)` — never `common.persist.tempfile.*`, which does not exist pre-fix. That is fine for an isolated unit test.
 
 ## Release Pipeline Facts (verified this session)
 
@@ -373,14 +373,17 @@ ssh nas 'ls -la /volume1/docker/seedsync/'
 | A7 | Synology ACL inheritance won't add ACL entries to mkstemp-created files (current files show no `+`) | Runtime State | Low — explicit `fchmod 0600` plus the post-deploy `ls -la` check catch it |
 | A8 | btrfs fsync latency under heavy download writes is negligible for 3 small files/30s | Pattern 1 | Low — persist runs on the main thread; a stall delays the loop briefly |
 
-## Open Questions
+## Open Questions (RESOLVED — routed to Plan 118-04 owner checkpoint)
 
-1. **Rollback target wording (D-06 says `:1.7.3`, which does not exist).**
+Each item below is presented to the owner as a decision item in the Plan 118-04 Task 1 `checkpoint:decision` packet, with the recommendation shown. None blocks planning or execution of Plans 118-01..03.
+
+1. **Rollback target wording (D-06 says `:1.7.3`, which does not exist).** → checkpoint item **(a)**
    - Known: the last published release is v1.7.2; the NAS runs staging `:357` (1.7.3 code).
    - Recommendation: public runbook → `:1.7.2`; NAS-specific note → `:357@sha256:87ca6695…`. Confirm at the D-02 checkpoint.
-2. **CHANGELOG handling of the unreleased `[1.7.3]` block.** Recommendation: fold it into `[1.7.4]` with a "1.7.3 was not tagged" note. Owner sees it at the checkpoint.
-3. **Coverage gate.** CI does not enforce `fail_under`. Recommendation: run `poetry run pytest --cov` on host part 1 for information only; do not block on a number CI never enforced unless the owner wants it.
-4. **wud tag filter.** Raise at the checkpoint (A6).
+2. **CHANGELOG handling of the unreleased `[1.7.3]` block.** → checkpoint item **(b)**. Recommendation: fold it into `[1.7.4]` with a "1.7.3 was not tagged" note. Owner sees it at the checkpoint.
+3. **Coverage gate.** → checkpoint item **(c)**. CI does not enforce `fail_under`. Recommendation: run `poetry run pytest --cov` on host part 1 for information only; do not block on a number CI never enforced unless the owner wants it.
+4. **wud tag filter.** → checkpoint item **(d)**. Raise at the checkpoint (A6); recommendation is label `wud.tag.include=^\d+\.\d+\.\d+$` on the seedsyncarr service when deploying in 118-05.
+5. **Compose-file edit method on the NAS.** → checkpoint item **(e)**. wud bind-mounts the compose file rw; `sed -i` replaces the inode (A5). Recommendation: edit in place preserving the inode and verify `ls -i` before/after.
 
 ## Environment Availability
 
@@ -418,7 +421,7 @@ ssh nas 'ls -la /volume1/docker/seedsync/'
 | PERSIST-02 | Success → content + `0600` + no `.tmp` | unit (preservation + new) | existing `test_to_file_*` + `-k no_temp_after_success` | partial ✅ |
 | PERSIST-02 | Dir fsync failure → committed, logged on `seedsyncarr.Persist`, no raise | unit (RED) | `-k directory_fsync` | ❌ Wave 0 |
 | PERSIST-02 | Temp created in target dir | unit (new-contract) | `-k same_directory` | ❌ Wave 0 |
-| PERSIST-01/02 | Three real persist types round-trip via new `to_file` | unit (preservation) | `test_config.py::test_to_file`, `test_seedsyncarr.py` re-encrypt tests, controller/auto-queue persist tests | ✅ |
+| PERSIST-01/02 | Three real persist types round-trip via new `to_file` | unit (preservation) | ControllerPersist/AutoQueuePersist inherit `to_file` unmodified from `Persist` (no subclass override), so the base-class RED/GREEN tests in `test_persist.py` cover all three file types; `Config.to_file` is additionally exercised end-to-end by `test_config.py::test_to_file` and the `test_seedsyncarr.py` re-encrypt tests | ✅ |
 | REL-01 g1 | All 116 (8) + 117 (26) + 118 RED regressions pass on release SHA | regression | one `pytest -v -k "<names>"` over the listed files; evidence → `118-REL01-EVIDENCE.md` | ✅ (116/117 RED already SHA-pinned) |
 | REL-01 g2 | Full suite + whole-tree ruff | suite | above; CI green on the merge/tag commit | ✅ |
 | REL-01 g3 | Image smoke: startup, status, settings persist, restart | manual-scripted | Smoke Test Recipe | n/a |

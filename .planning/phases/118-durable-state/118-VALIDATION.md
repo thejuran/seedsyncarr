@@ -51,7 +51,7 @@ Task IDs are filled in by the planner; requirement → command mapping is fixed.
 | PERSIST-02 | Success → content + `0600` + no temp left | unit | existing `test_to_file_*` + `-k no_temp_after_success` | partial ✅ | ⬜ pending |
 | PERSIST-02 | Dir fsync failure → committed, logged on `seedsyncarr.Persist`, no raise | unit (RED) | `-k directory_fsync` | ❌ W0 | ⬜ pending |
 | PERSIST-02 | Temp created in target dir | unit | `-k same_directory` | ❌ W0 | ⬜ pending |
-| PERSIST-01/02 | Three real persist types round-trip via new `to_file` | unit (preservation) | `test_config.py::test_to_file`, `test_seedsyncarr.py` re-encrypt tests, controller/auto-queue persist tests | ✅ | ⬜ pending |
+| PERSIST-01/02 | Three real persist types round-trip via new `to_file` | unit (preservation) | ControllerPersist/AutoQueuePersist inherit `to_file` unmodified from `Persist` (no subclass override), so the base-class RED/GREEN tests in `test_persist.py` cover all three file types; `Config.to_file` is additionally exercised end-to-end by `test_config.py::test_to_file` and the `test_seedsyncarr.py` re-encrypt tests | ✅ | ⬜ pending |
 | REL-01 g1 | All 116 + 117 + 118 RED regressions fail-before/pass-after on release SHA | regression | `pytest -v -k "<names>"`; evidence → `118-REL01-EVIDENCE.md` | ✅ | ⬜ pending |
 | REL-01 g2 | Full suite + whole-tree ruff | suite | above; CI green on merge/tag commit | ✅ | ⬜ pending |
 | REL-01 g3 | Image smoke: startup, status, settings persist, restart | manual-scripted | RESEARCH Smoke Test Recipe | n/a | ⬜ pending |

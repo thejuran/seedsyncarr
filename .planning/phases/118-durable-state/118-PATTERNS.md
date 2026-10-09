@@ -147,7 +147,7 @@ Existing success-path assertion style (lines 70-76), which the new `no_temp_afte
         self.addCleanup(rename_patcher.stop)
         rename_patcher.start()
 ```
-Apply for the file-vs-directory `os.fsync` discriminators (RESEARCH Code Example 3): capture `_real_fsync = os.fsync` at module import, then patch `"common.persist.os.fsync"` with an `S_ISREG` or `S_ISDIR` side effect. Use the same `patch("common.persist.os.replace", ...)` and `patch("common.persist.tempfile.mkstemp", ...)` targets for the replace and temp-creation failures. Never patch `common.persist._fsync_directory`: on pre-fix code that is an AttributeError (a harness error, not a behavioral RED).
+Apply for the file-vs-directory `os.fsync` discriminators (RESEARCH Code Example 3): capture `_real_fsync = os.fsync` at module import, then patch the **global** `"os.fsync"` with an `S_ISREG` or `S_ISDIR` side effect. Use the global `patch("os.replace", ...)` and `patch("tempfile.mkstemp", ...)` targets for the replace and temp-creation failures (the dispatch analog above patches a module-qualified path, but that does not transfer here). Never patch `common.persist.tempfile.mkstemp`: pre-fix `persist.py` does not import `tempfile`, so that target is a `ModuleNotFoundError`/`AttributeError` harness error, not a behavioral RED. Never patch `common.persist._fsync_directory` for the same reason. The global attributes are what `persist.py` resolves at call time on both pre- and post-fix code; 118-01-PLAN.md mandates this and gates it with `grep -n 'patch("common.persist'` returning nothing.
 
 **Log assertion.** Analog: `tests/unittests/test_lftp/test_lftp_status_contract.py:247-252`:
 ```python
