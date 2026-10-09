@@ -407,3 +407,56 @@ b652e57 docs(118-04): record owner approval for 1.7.4
 ```
 
 wud re-checked after the tag push: `exited`.
+
+## Tag and CI (Plan 118-04)
+
+**Run:** `37937393805`, https://github.com/thejuran/seedsyncarr/actions/runs/37937393805 (`refs/tags/v1.7.4`, event `push`). **Conclusion: `failure`**, in the PyPI publish job only.
+
+| Job | Conclusion |
+|-----|------------|
+| Release metadata verifier tests | success |
+| Python unit tests | success |
+| Angular unit tests | success |
+| Lint (Python) | success |
+| Lint (Angular) | success |
+| Build Docker Image | success |
+| End-to-end tests on Docker Image (amd64) | success |
+| End-to-end tests on Docker Image (arm64) | success |
+| Verify release metadata | success |
+| Publish Docker Image | success (`:1.7.4` and `:latest` pushed to GHCR) |
+| Publish GitHub Release | success |
+| Publish Documentation | success |
+| **Publish to PyPI** | **failure** |
+| Publish Docker Image (:dev) | skipped (tag run) |
+
+GitHub Release: `gh release view v1.7.4` → https://github.com/thejuran/seedsyncarr/releases/tag/v1.7.4, `isDraft=false`, body contains `blob/v1.7.4/CHANGELOG.md`.
+
+### PyPI failure (`gh run view 37937393805 --log-failed`, excerpt)
+
+```
+Uploading distributions to https://upload.pypi.org/legacy/
+INFO  src/python/dist/seedsyncarr-1.7.4-py3-none-any.whl (772.4 KB)
+INFO  src/python/dist/seedsyncarr-1.7.4.tar.gz (693.1 KB)
+Uploading seedsyncarr-1.7.4-py3-none-any.whl
+INFO  Response from https://upload.pypi.org/legacy/:
+      400 Bad Request
+      400 Invalid distribution file. Archive member path is not normalized: './.gitignore'
+ERROR HTTPError: 400 Bad Request from https://upload.pypi.org/legacy/
+```
+
+PyPI rejected the very first file, so nothing for 1.7.4 was accepted: `https://pypi.org/pypi/seedsyncarr/json` still lists releases up to `1.7.2` only. The version number 1.7.4 is therefore not burned on PyPI.
+
+Cause (diagnosis, not yet fixed): the PyPI job runs `pip install build && python -m build` with no version pins. Nothing in `src/python/pyproject.toml` or `.github/workflows/ci.yml` changed between `v1.7.2` (PyPI publish succeeded, run `34002932571`) and `v1.7.4`, apart from the two version lines. So the `./.gitignore` member comes from a newer unpinned build backend or a newer PyPI upload check, not from Phase 116-118 code. Fixing it needs a commit (packaging exclude or pinned builder). Per the plan the tag was **not** moved or deleted: whether to ship 1.7.5 or re-publish 1.7.4 to PyPI is the owner's call.
+
+Image digest / NAS_IMAGE_ID: **not recorded yet**. The plan stops on a CI failure, so `:1.7.4` has not been pulled onto the NAS.
+
+### wud status at the failure stop
+
+```
+$ ssh nas "sudo /usr/local/bin/docker inspect wud --format '{{.State.Status}}'"
+exited
+$ ssh nas "sudo /usr/local/bin/docker inspect seedsyncarr --format '{{.Config.Image}} {{.State.Status}}'"
+ghcr.io/thejuran/seedsyncarr:357 running
+```
+
+wud remains stopped. Owner decision on restoring it: **pending** (asked in the failure report).
