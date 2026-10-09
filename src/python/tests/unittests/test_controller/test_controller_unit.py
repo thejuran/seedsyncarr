@@ -1452,3 +1452,68 @@ class TestControllerCommandDeleteRecordsDownloaded(BaseControllerTestCase):
         )
         self._queue_and_process_command(Controller.Command.Action.DELETE_REMOTE, "file")
         self.assertNotIn("file", self.persist.downloaded_file_names)
+
+
+class TestControllerCommandSubmittedUnobservedGuard(BaseControllerTestCase):
+    """XFER-02 (codex pass-2 command-ordering finding): commands are handled
+    against the ModelFile frozen at the last build, before the model is
+    rebuilt, so a QUEUE accepted by lftp earlier in the same batch is invisible
+    in file.state. The handlers must consult the LftpManager's set of
+    submitted-but-unobserved names and refuse to act on them."""
+
+    def setUp(self):
+        super().setUp()
+        self._make_controller_started()
+        self.mock_lftp_manager.submitted_unobserved_file_names.return_value = ["file"]
+
+    def test_extract_rejected_while_submitted_unobserved(self):
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DEFAULT, local_size=5000, remote_size=5000
+        )
+        mock_cb = MagicMock(spec=Controller.Command.ICallback)
+        self._queue_and_process_command(
+            Controller.Command.Action.EXTRACT, "file", [mock_cb]
+        )
+        self.mock_file_op_manager.extract.assert_not_called()
+        mock_cb.on_failure.assert_called_once()
+        self.assertEqual(409, mock_cb.on_failure.call_args[0][1])
+
+    def test_delete_local_rejected_while_submitted_unobserved(self):
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DEFAULT, local_size=5000, remote_size=5000
+        )
+        mock_cb = MagicMock(spec=Controller.Command.ICallback)
+        self._queue_and_process_command(
+            Controller.Command.Action.DELETE_LOCAL, "file", [mock_cb]
+        )
+        self.mock_file_op_manager.delete_local.assert_not_called()
+        mock_cb.on_failure.assert_called_once()
+        self.assertEqual(409, mock_cb.on_failure.call_args[0][1])
+        self.assertNotIn("file", self.persist.stopped_file_names)
+        self.assertNotIn("file", self.persist.downloaded_file_names)
+
+    def test_delete_remote_rejected_while_submitted_unobserved(self):
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DEFAULT, local_size=5000, remote_size=5000
+        )
+        mock_cb = MagicMock(spec=Controller.Command.ICallback)
+        self._queue_and_process_command(
+            Controller.Command.Action.DELETE_REMOTE, "file", [mock_cb]
+        )
+        self.mock_file_op_manager.delete_remote.assert_not_called()
+        mock_cb.on_failure.assert_called_once()
+        self.assertEqual(409, mock_cb.on_failure.call_args[0][1])
+
+    def test_queue_not_resubmitted_while_submitted_unobserved(self):
+        self.persist.stopped_file_names.add("file")
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DEFAULT, local_size=5000, remote_size=5000
+        )
+        mock_cb = MagicMock(spec=Controller.Command.ICallback)
+        self._queue_and_process_command(
+            Controller.Command.Action.QUEUE, "file", [mock_cb]
+        )
+        self.mock_lftp_manager.queue.assert_not_called()
+        mock_cb.on_success.assert_called_once()
+        mock_cb.on_failure.assert_not_called()
+        self.assertNotIn("file", self.persist.stopped_file_names)

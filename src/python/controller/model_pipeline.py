@@ -153,7 +153,9 @@ class ModelPipeline:
                            extracted_results: List) -> None:
         """Feed the model builder with all collected data.
         Updates builder state with scan results, LFTP statuses, and extract info.
-        Also updates persist state for completed extractions."""
+        Also updates persist state for completed extractions.
+        Syncs the LftpManager's submitted-but-unobserved names every cycle so
+        those transfers build as QUEUED until their first successful status."""
         if remote_scan is not None and not remote_scan.failed:
             self._model_builder.set_remote_files(remote_scan.files)
         if local_scan is not None and not local_scan.failed:
@@ -162,6 +164,10 @@ class ModelPipeline:
             self._model_builder.set_active_files(active_scan.files)
         if lftp_statuses is not None:
             self._model_builder.set_lftp_statuses(lftp_statuses)
+        # Synced every cycle; LftpManager has already cleared the set if this
+        # cycle's status was a list, so only names still awaiting their first
+        # successful status are marked QUEUED (XFER-02).
+        self._model_builder.set_submitted_files(self._lftp_manager.submitted_unobserved_file_names())
         if extract_statuses is not None:
             self._model_builder.set_extract_statuses(extract_statuses.statuses)
         if extracted_results:

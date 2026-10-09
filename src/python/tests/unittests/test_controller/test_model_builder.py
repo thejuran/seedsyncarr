@@ -1469,3 +1469,101 @@ class TestModelBuilder(unittest.TestCase):
         # Invalidate on different
         self.model_builder.set_extracted_files({"a", "c"})
         self.assertTrue(self.model_builder.has_changes())
+
+    def test_submitted_file_without_status_is_queued(self):
+        """New-contract (XFER-02): a file submitted to lftp but not yet
+        observed in a successful status builds as QUEUED."""
+        self.model_builder.set_remote_files([SystemFile("a.rar", 1000, False)])
+        self.model_builder.set_local_files([SystemFile("a.rar", 400, False)])
+        self.model_builder.set_submitted_files(["a.rar"])
+        model = self.model_builder.build_model()
+        m_a = model.get_file("a.rar")
+        self.assertEqual(ModelFile.State.QUEUED, m_a.state)
+        self.assertEqual(1000, m_a.remote_size)
+        self.assertEqual(400, m_a.local_size)
+
+    def test_submitted_file_with_preallocated_local_size_is_not_downloaded(self):
+        """New-contract (XFER-02): a preallocated local size must not mark a
+        submitted-but-unobserved transfer DOWNLOADED."""
+        self.model_builder.set_remote_files([SystemFile("a.rar", 1000, False)])
+        self.model_builder.set_local_files([SystemFile("a.rar", 1000, False)])
+        self.model_builder.set_submitted_files(["a.rar"])
+        model = self.model_builder.build_model()
+        self.assertEqual(ModelFile.State.QUEUED, model.get_file("a.rar").state)
+
+        # Control: the same sizes without a pending submission are DOWNLOADED
+        self.model_builder.set_submitted_files([])
+        model = self.model_builder.build_model()
+        self.assertEqual(ModelFile.State.DOWNLOADED, model.get_file("a.rar").state)
+
+    def test_lftp_status_takes_precedence_over_submitted(self):
+        """New-contract (XFER-02): an observed lftp status always wins over
+        the submitted set."""
+        self.model_builder.set_remote_files([SystemFile("a.rar", 1000, False)])
+        self.model_builder.set_submitted_files(["a.rar"])
+
+        s_running = LftpJobStatus(0, LftpJobStatus.Type.PGET, LftpJobStatus.State.RUNNING, "a.rar", "")
+        s_running.total_transfer_state = LftpJobStatus.TransferState(100, 1000, 10, 50, 90)
+        self.model_builder.set_lftp_statuses([s_running])
+        model = self.model_builder.build_model()
+        self.assertEqual(ModelFile.State.DOWNLOADING, model.get_file("a.rar").state)
+        self.assertEqual(50, model.get_file("a.rar").downloading_speed)
+
+        s_queued = LftpJobStatus(0, LftpJobStatus.Type.PGET, LftpJobStatus.State.QUEUED, "a.rar", "")
+        self.model_builder.set_lftp_statuses([s_queued])
+        model = self.model_builder.build_model()
+        m_a = model.get_file("a.rar")
+        self.assertEqual(ModelFile.State.QUEUED, m_a.state)
+        self.assertEqual(1000, m_a.remote_size)
+        self.assertIsNone(m_a.downloading_speed)
+
+    def test_submitted_name_with_no_other_source_is_ignored(self):
+        """New-contract (XFER-02): a submitted name with no remote, local or
+        status source is ignored rather than raising ModelError."""
+        self.model_builder.set_remote_files([SystemFile("a.rar", 1000, False)])
+        self.model_builder.set_local_files([SystemFile("a.rar", 400, False)])
+        self.model_builder.set_submitted_files(["ghost.rar"])
+        model = self.model_builder.build_model()
+        self.assertEqual(["a.rar"], sorted(model.get_file_names()))
+        self.assertEqual(ModelFile.State.DEFAULT, model.get_file("a.rar").state)
+
+    def test_submitted_directory_children_are_queued(self):
+        """New-contract (XFER-02): a submitted directory builds as QUEUED and
+        its remote children follow the existing queued-root rule."""
+        r_d = SystemFile("d", 100, True)
+        r_dx = SystemFile("x", 100, False)
+        r_d.add_child(r_dx)
+        self.model_builder.set_remote_files([r_d])
+        self.model_builder.set_submitted_files(["d"])
+        model = self.model_builder.build_model()
+        m_d = model.get_file("d")
+        self.assertEqual(ModelFile.State.QUEUED, m_d.state)
+        m_dx = m_d.get_children()[0]
+        self.assertEqual("x", m_dx.name)
+        self.assertEqual(ModelFile.State.QUEUED, m_dx.state)
+
+    def test_set_submitted_files_invalidates_cache_only_on_change(self):
+        """New-contract (XFER-02): the cached model is invalidated only when
+        submitted membership actually changes."""
+        self.model_builder.set_remote_files([SystemFile("a.rar", 1000, False)])
+        self.model_builder.build_model()
+        self.assertFalse(self.model_builder.has_changes())
+
+        self.model_builder.set_submitted_files(["a.rar"])
+        self.assertTrue(self.model_builder.has_changes())
+        self.model_builder.build_model()
+
+        self.model_builder.set_submitted_files(["a.rar"])
+        self.assertFalse(self.model_builder.has_changes())
+
+        self.model_builder.set_submitted_files([])
+        self.assertTrue(self.model_builder.has_changes())
+
+    def test_clear_resets_submitted_files(self):
+        """New-contract (XFER-02): clear() drops the submitted set."""
+        self.model_builder.set_submitted_files(["a.rar"])
+        self.model_builder.clear()
+        self.model_builder.set_remote_files([SystemFile("a.rar", 1000, False)])
+        self.model_builder.set_local_files([SystemFile("a.rar", 400, False)])
+        model = self.model_builder.build_model()
+        self.assertEqual(ModelFile.State.DEFAULT, model.get_file("a.rar").state)

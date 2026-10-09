@@ -21,6 +21,13 @@ class CommandProcessor:
     The injected managers are themselves thread-safe; CommandProcessor adds no
     synchronization of its own.
 
+    Ordering: Controller.__process_commands drains every pending command
+    against the ModelFile frozen at the last model build, before the model is
+    rebuilt. A QUEUE that lftp accepted earlier in the same batch is therefore
+    invisible in file.state, so extract, delete and queue also consult the
+    LftpManager's submitted-but-unobserved names at execution time and refuse
+    to act on a transfer whose state has not yet been observed (XFER-02).
+
     Construction: All manager instances (lftp_manager, file_op_manager, persist)
     are constructed in Controller.__init__ and injected here already-built.
     CommandProcessor constructs none of them (D-05: mock.patch binding must
@@ -81,6 +88,19 @@ class CommandProcessor:
             )
             return False, "Unknown action", 500
 
+    def _is_submitted_unobserved(self, file: ModelFile) -> bool:
+        """
+        True if lftp accepted a QUEUE for this file but no successful status
+        has observed the job yet.
+
+        The model state is not enough here: Controller.__process_commands
+        handles every pending command against the ModelFile frozen at the last
+        build and runs before the model is rebuilt, so a QUEUE accepted by lftp
+        earlier in the same batch does not show in file.state. The LftpManager
+        set is the only synchronous evidence of that submission (XFER-02).
+        """
+        return file.name in self.__lftp_manager.submitted_unobserved_file_names()
+
     def _handle_queue(self, file: ModelFile, command) -> Tuple[bool, Optional[str], Optional[int]]:
         """
         Handle QUEUE command action.
@@ -113,7 +133,11 @@ class CommandProcessor:
                 return True, None, None
 
         try:
-            self.__lftp_manager.queue(file.name, file.is_dir)
+            # Already submitted and awaiting its first status: do not hand lftp
+            # a duplicate job. The next successful status clears the set, after
+            # which a re-queue is admissible.
+            if not self._is_submitted_unobserved(file):
+                self.__lftp_manager.queue(file.name, file.is_dir)
             if not is_auto:
                 # User explicitly wants a fresh download lifecycle
                 self.__persist.stopped_file_names.discard(file.name)
@@ -153,6 +177,10 @@ class CommandProcessor:
             return False, "File '{}' in state {} cannot be extracted".format(
                 command.filename, str(file.state)
             ), 409
+        elif self._is_submitted_unobserved(file):
+            return False, "File '{}' is queued (transfer submitted, awaiting lftp status) and cannot be extracted".format(
+                command.filename
+            ), 409
         elif file.local_size is None:
             return False, "File '{}' does not exist locally".format(command.filename), 404
         else:
@@ -176,6 +204,9 @@ class CommandProcessor:
                 return False, "Local file '{}' cannot be deleted in state {}".format(
                     command.filename, str(file.state)
                 ), 409
+            elif self._is_submitted_unobserved(file):
+                return False, ("Local file '{}' cannot be deleted while its transfer is queued "
+                               "(submitted, awaiting lftp status)").format(command.filename), 409
             elif file.local_size is None:
                 return False, "File '{}' does not exist locally".format(command.filename), 404
             else:
@@ -200,6 +231,9 @@ class CommandProcessor:
                 return False, "Remote file '{}' cannot be deleted in state {}".format(
                     command.filename, str(file.state)
                 ), 409
+            elif self._is_submitted_unobserved(file):
+                return False, ("Remote file '{}' cannot be deleted while its transfer is queued "
+                               "(submitted, awaiting lftp status)").format(command.filename), 409
             elif file.remote_size is None:
                 return False, "File '{}' does not exist remotely".format(command.filename), 404
             else:
