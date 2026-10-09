@@ -1,5 +1,5 @@
 import time
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from common import Context, Constants
 from lftp import Lftp, LftpError, LftpJobStatus, LftpJobStatusParserError
@@ -18,6 +18,17 @@ class LftpManager:
     Thread-safety: The Lftp class handles its own thread safety for the
     underlying LFTP process communication. LftpManager methods can be
     called from any thread.
+
+    Submitted-but-unobserved tracking: a name whose QUEUE lftp accepted is
+    held in an in-process set until a successful status observes the job
+    table. Any list-returning status() clears the whole set (the job is either
+    listed, finished, or never started — all observed); an unavailable status
+    (None) leaves it untouched. kill() also reconciles the killed name once
+    Lftp.kill returns, because Lftp.kill polls the lftp status directly and
+    never passes through status(). Consumers treat membership as "transfer
+    state not yet observed" and must not re-queue, mark downloaded, extract or
+    delete such a file. The set is never persisted and is only touched from
+    the controller thread.
     """
 
     # Status circuit breaker: a wedged lftp makes every status() call block
@@ -75,6 +86,13 @@ class LftpManager:
         # Status circuit breaker state (monotonic deadline; 0 = closed)
         self.__status_backoff_until = 0.0
 
+        # Names whose QUEUE lftp accepted but which have not yet been seen by a
+        # successful status. While status is unavailable these must stay
+        # protected (XFER-02): an unobserved transfer is neither absent nor
+        # complete. In-process only, never persisted; accessed only on the
+        # controller thread.
+        self.__submitted_unobserved: Set[str] = set()
+
     @property
     def lftp(self) -> Lftp:
         """
@@ -123,6 +141,7 @@ class LftpManager:
         """
         self.__sync_rate_limit()
         self.__lftp.queue(file_name, is_dir)
+        self.__submitted_unobserved.add(file_name)
 
     def kill(self, file_name: str) -> None:
         """
@@ -136,6 +155,14 @@ class LftpManager:
             LftpJobStatusParserError: If status parsing fails
         """
         self.__lftp.kill(file_name)
+        # Lftp.kill polls the lftp status directly, bypassing status() below,
+        # so its successful observation would not clear the submitted set. A
+        # Stop issued while the name is still tracked (submitted, then status
+        # unavailable) would otherwise leave it tracked and turn the user's
+        # next QUEUE into a silent no-op. Reached only when Lftp.kill returned
+        # (True or False); if it raised, nothing was observed and the name
+        # keeps its protection.
+        self.__submitted_unobserved.discard(file_name)
 
     def status(self) -> Optional[List[LftpJobStatus]]:
         """
@@ -149,7 +176,12 @@ class LftpManager:
         if start < self.__status_backoff_until:
             return None
         try:
-            return self.__lftp.status()
+            statuses = self.__lftp.status()
+            if statuses is not None:
+                # A successful status (including a genuinely empty one) has
+                # observed every submitted job: listed, finished or dropped.
+                self.__submitted_unobserved.clear()
+            return statuses
         except (LftpError, LftpJobStatusParserError) as e:
             self.logger.warning("Caught lftp error: {}".format(str(e)))
             return None
@@ -164,6 +196,20 @@ class LftpManager:
                         elapsed, LftpManager.STATUS_BACKOFF_SECS
                     )
                 )
+
+    def submitted_unobserved_file_names(self) -> List[str]:
+        """
+        Names submitted to lftp whose job has not yet been observed by a
+        successful status.
+
+        Cleared by any successful status, including a genuinely empty one;
+        unchanged by an unavailable one. Consumers must treat membership as
+        "transfer state not yet observed", never as "no job".
+
+        Returns:
+            A new sorted list; mutating it does not affect the tracked set.
+        """
+        return sorted(self.__submitted_unobserved)
 
     def exit(self) -> None:
         """
