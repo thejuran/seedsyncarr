@@ -773,10 +773,24 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 118-01-PLAN.md — RED atomic-write regressions for Persist.to_file + fail-before evidence (PERSIST-01, PERSIST-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 118-02-PLAN.md — Atomic to_file fix (mkstemp → fsync → os.replace → dir fsync) + GREEN and combined 116-118 regression evidence (PERSIST-01, PERSIST-02, REL-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 118-03-PLAN.md — 1.7.4 release commit: version bumps, CHANGELOG fold, release notes with rollback runbook, metadata gate (REL-01)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 118-04-PLAN.md — Owner approval checkpoint, push main, history-preserving merge, annotated v1.7.4 tag, CI green, image digest (REL-01)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 118-05-PLAN.md — NAS smoke test of :1.7.4, deploy approval, same-digest NAS deploy with scanner-recovery gate (REL-01)
 
 ## Progress
