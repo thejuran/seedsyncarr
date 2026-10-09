@@ -109,6 +109,9 @@ class RegexPatterns:
                 RegexPatterns.CHUNK_AT2.search(line) is not None or
                 RegexPatterns.CHUNK_GOT.search(line) is not None)
 
+    # Any job header line ('[N] ...'); used to stop follower-line consumption
+    JOB_HEADER = re.compile(r"^\[\d+\]\s")
+
     # Chunk header pattern
     CHUNK_HEADER = re.compile(
         r"\\chunk\s"
@@ -656,7 +659,9 @@ class ActiveJobsParser:
         result = RegexPatterns.MIRROR_EMPTY.search(line)
         if result:
             name = result.group("name")
-            if lines:
+            # Never consume a job header, even one whose path contains
+            # "Getting file list" (XFER-01).
+            if lines and not RegexPatterns.JOB_HEADER.match(lines[0]):
                 if ("Getting file list" in lines[0] or
                         lines[0].startswith("cd ") or
                         lines[0] == "{}:".format(name) or
