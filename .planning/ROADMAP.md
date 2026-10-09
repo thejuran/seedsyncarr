@@ -749,7 +749,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 117-08-PLAN.md — Fix B2 (codex finding): hold transfers submitted to lftp but not yet observed by a successful status as QUEUED (LftpManager set -> ModelPipeline sync -> ModelBuilder derivation) so no re-queue / DOWNLOADED / extract / delete decision is made on them
+- [ ] 117-08-PLAN.md — Fix B2 (codex findings): hold transfers submitted to lftp but not yet observed by a successful status as QUEUED (LftpManager set -> ModelPipeline sync -> ModelBuilder derivation) and guard CommandProcessor extract/delete/queue handlers against the same set at execution time (same-tick QUEUE-then-destructive ordering) so no re-queue / DOWNLOADED / extract / delete decision is made on them
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
