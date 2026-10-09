@@ -343,3 +343,30 @@ Scratch dir removed afterwards (`ls -d` → `No such file or directory`).
 No amendments requested; release text stays at `eece2e3` (`npm run verify:release-metadata -- 1.7.4` re-run at the checkpoint: exit 0).
 
 **NAS rollback reference for Plan 118-05:** `ghcr.io/thejuran/seedsyncarr:357` @ `sha256:87ca66959391846d11fa1d0539601f18faba2294d880934041f8fc040a6d4e9f` (staging tag carrying 1.7.3 code; the true pre-upgrade rollback point for the NAS, not published in the public notes).
+
+## wud suspension (Plan 118-04, codex pass-2 finding 1)
+
+Done before any `git push` in Phase 118.
+
+Pre-check (production not yet moved):
+
+```
+$ ssh nas "sudo /usr/local/bin/docker inspect seedsyncarr --format '{{.Config.Image}} {{.State.Status}}'"
+ghcr.io/thejuran/seedsyncarr:357 running
+```
+
+WUD_STOP_TIME: `2026-10-09 08:30:13 -0500` (NAS `date`)
+
+```
+$ ssh nas 'cd /volume1/docker && sudo /usr/local/bin/docker compose stop wud'
+ Container wud  Stopping
+ Container wud  Stopped
+$ ssh nas "sudo /usr/local/bin/docker inspect wud --format '{{.State.Status}} {{.State.FinishedAt}}'"
+exited 2026-10-09T13:30:24.980056336Z
+# re-check after 10 s
+exited 2026-10-09T13:30:24.980056336Z
+```
+
+Production re-checked after the stop: `ghcr.io/thejuran/seedsyncarr:357 running` (untouched).
+
+wud remains stopped until Plan 118-05 restores it after the deploy is verified or a rollback completes; all NAS auto-updates are paused meanwhile.
