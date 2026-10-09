@@ -194,6 +194,32 @@ class TestLftpManager(unittest.TestCase):
         self.assertIsNone(result)
 
     @patch('controller.lftp_manager.Lftp')
+    def test_status_passes_none_through_unchanged(self, mock_lftp_class):
+        """New-contract (XFER-02): an unavailable Lftp status (None) is passed
+        through as None; no consumer converts unavailable into "no jobs"."""
+        mock_lftp = MagicMock()
+        mock_lftp.status.return_value = None
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+
+        self.assertIsNone(manager.status())
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_status_passes_empty_list_through_unchanged(self, mock_lftp_class):
+        """New-contract (XFER-02): a genuinely empty Lftp status ([]) is passed
+        through as [], never turned into unavailable (None)."""
+        mock_lftp = MagicMock()
+        mock_lftp.status.return_value = []
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        result = manager.status()
+
+        self.assertIsNot(None, result)
+        self.assertEqual([], result)
+
+    @patch('controller.lftp_manager.Lftp')
     def test_exit_delegates_to_lftp(self, mock_lftp_class):
         """Test that exit() delegates to Lftp.exit()."""
         mock_lftp = MagicMock()
