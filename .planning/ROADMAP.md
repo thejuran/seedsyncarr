@@ -775,7 +775,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 118-01-PLAN.md — RED atomic-write regressions for Persist.to_file + fail-before evidence (PERSIST-01, PERSIST-02)
+- [x] 118-01-PLAN.md — RED atomic-write regressions for Persist.to_file + fail-before evidence (PERSIST-01, PERSIST-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -833,7 +833,7 @@ Plans:
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
 | 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
-| 118. Durable State | v1.7.4 | 0/? | Not started | - |
+| 118. Durable State | v1.7.4 | 1/5 | In Progress|  |
 
 ---
 

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.7.4
 milestone_name: Safety Patch
-status: planning
-stopped_at: Phase 118 context gathered
-last_updated: "2026-10-09T03:49:42.727Z"
-last_activity: 2026-10-09 -- Phase 118 planning complete
+status: executing
+stopped_at: Completed 118-01-PLAN.md
+last_updated: "2026-10-09T13:12:54.079Z"
+last_activity: 2026-10-09 -- Completed 118-01 (RED atomic-write regressions)
 progress:
   total_phases: 20
   completed_phases: 4
   total_plans: 19
-  completed_plans: 14
+  completed_plans: 15
   percent: 20
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-08)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 118 — durable state
+**Current focus:** Phase 118 — durable-state
 
 ## Current Position
 
-Phase: 118
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-09 -- Phase 118 planning complete
+Phase: 118 (durable-state) — EXECUTING
+Plan: 2 of 5
+Status: Executing Phase 118
+Last activity: 2026-10-09 -- Completed 118-01 (RED atomic-write regressions)
 
-Progress: [░░░░░░░░░░] 0% (0/3 phases)
+Progress: [████████░░] 79%
 
 ## Accumulated Context
 
@@ -47,6 +47,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 **CI gate (every phase):** full Python suite green AND `ruff check src/python/` clean whole-tree — CI runs ruff as a **separate gate from pytest**, so build-verify must run ruff on the whole tree, not just touched files. Python `fail_under` ≥ 88 holds. Each targeted regression must be shown to fail against old behavior before its fix (REL-01 gate 1) — plan tasks should run the new test red first.
 
 **Dependency edges:** 116 → Phase 115 (last GSD phase; `main` currently at release 1.7.3). 117 → 116 and 118 → 117 are sequencing only (disjoint code paths); 118's REL-01 gate requires 116 and 117 complete.
+
+- [Phase 118]: 118-01: RED tests patch only global os.fsync/os.replace/tempfile.mkstemp so pre-fix failures are behavioral AssertionErrors; PERSIST-01/02 stay unchecked until 118-02 lands the fix
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -110,9 +112,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-10-09T02:57:38.840Z
-Stopped at: Phase 118 context gathered
-Next action: Plan Phase 116 (Import Safety) — `/bm:plan-phase 116`
+Last session: 2026-10-09T13:12:51.031Z
+Stopped at: Completed 118-01-PLAN.md
+Next action: Execute Plan 118-02 (atomic Persist.to_file fix; turn the 9 RED tests GREEN)
 
 ## Operator Next Steps
 
