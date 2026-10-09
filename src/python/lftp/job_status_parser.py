@@ -98,6 +98,17 @@ class RegexPatterns:
         r"(\seta:(?P<eta>{eta}))?".format(sz=SIZE_UNITS, eta=TIME_UNITS)
     )
 
+    @staticmethod
+    def is_chunk_data(line: str) -> bool:
+        """True when the line is a chunk status line ('at' or 'got' format).
+
+        All chunk patterns are anchored on a quoted filename, so a job
+        header line ('[N] ...') can never match.
+        """
+        return (RegexPatterns.CHUNK_AT.search(line) is not None or
+                RegexPatterns.CHUNK_AT2.search(line) is not None or
+                RegexPatterns.CHUNK_GOT.search(line) is not None)
+
     # Chunk header pattern
     CHUNK_HEADER = re.compile(
         r"\\chunk\s"
@@ -270,11 +281,13 @@ class PgetJobParser(BaseJobParser):
             raise ValueError("Missing the 'sftp' line for pget header '{}'".format(line))
         lines.pop(0)  # pop the 'sftp' line
 
-        # Data line may not exist
+        # Data line may not exist: a pget whose copy is Done/Error prints no
+        # status line, so the next line may be another job's header. Only
+        # consume it when it is chunk data (XFER-01).
         result_at = None
         result_at2 = None
         result_got = None
-        if lines:
+        if lines and RegexPatterns.is_chunk_data(lines[0]):
             data_line = lines.pop(0)
             result_at = RegexPatterns.CHUNK_AT.search(data_line)
             result_at2 = RegexPatterns.CHUNK_AT2.search(data_line)
@@ -651,12 +664,12 @@ class ActiveJobsParser:
                     lines.pop(0)
             return True
 
-        # Chunk header line (ignore with next line)
+        # Chunk header line (ignore with its data line, if present). A chunk
+        # with no data line must not consume the next job's header (XFER-01).
         result = RegexPatterns.CHUNK_HEADER.search(line)
         if result:
-            if not lines:
-                raise ValueError("Missing data line for chunk '{}'".format(line))
-            lines.pop(0)
+            if lines and RegexPatterns.is_chunk_data(lines[0]):
+                lines.pop(0)
             return True
 
         # Chmod line
