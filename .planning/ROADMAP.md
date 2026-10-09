@@ -770,7 +770,14 @@ Plans:
 
 **Owner planning notes (2026-10-08)**: Run the REL-01 release gates against the combined changes from all three phases, and deploy to the NAS the exact image that passed testing (same tag/digest).
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 118-01-PLAN.md — RED atomic-write regressions for Persist.to_file + fail-before evidence (PERSIST-01, PERSIST-02)
+- [ ] 118-02-PLAN.md — Atomic to_file fix (mkstemp → fsync → os.replace → dir fsync) + GREEN and combined 116-118 regression evidence (PERSIST-01, PERSIST-02, REL-01)
+- [ ] 118-03-PLAN.md — 1.7.4 release commit: version bumps, CHANGELOG fold, release notes with rollback runbook, metadata gate (REL-01)
+- [ ] 118-04-PLAN.md — Owner approval checkpoint, push main, history-preserving merge, annotated v1.7.4 tag, CI green, image digest (REL-01)
+- [ ] 118-05-PLAN.md — NAS smoke test of :1.7.4, deploy approval, same-digest NAS deploy with scanner-recovery gate (REL-01)
 
 ## Progress
 
