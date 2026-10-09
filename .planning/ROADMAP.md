@@ -732,12 +732,23 @@ Plans:
 **Plans**: 7 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 117-01-PLAN.md — RED: B1 parser header-swallowing regressions, Lftp status-boundary contract, composed B2 downstream protection tests
 - [ ] 117-02-PLAN.md — RED: B3 stability-clock regressions (AutoQueue unit D-03/D-04/D-05 + composed Controller→Status→AutoQueue), harness init
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 117-03-PLAN.md — RED evidence: quick run against unfixed tree recorded in 117-REL01-EVIDENCE.md
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 117-04-PLAN.md — Fix B1: peek-before-pop at pget data line, \chunk follower, mirror-empty header guard (job_status_parser.py)
 - [ ] 117-05-PLAN.md — Fix B2: Lftp.status None on tolerated errors, kill() None guard, integration flips, LftpManager pass-through tests
 - [ ] 117-06-PLAN.md — Fix B3: successful-scan clocks on ControllerStatus, controller writes, AutoQueue stability reads; serializer keys guard
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 117-07-PLAN.md — GREEN evidence, full host suite vs baseline, whole-tree ruff, validation sign-off, deferred/accepted items record
 
 ### Phase 118: Durable State
