@@ -325,3 +325,21 @@ exit 1
 ```
 
 Scratch dir removed afterwards (`ls -d` → `No such file or directory`).
+
+## Owner approval (Plan 118-04, D-02)
+
+**Recorded:** 2026-10-09, owner reply relayed by the orchestrator (via AskUserQuestion) after the Plan 118-04 decision packet was shown.
+
+**Owner reply (verbatim option):** `approve-as-drafted`
+
+| Item | Decision | Status |
+|------|----------|--------|
+| (a) Public rollback target in release notes | `ghcr.io/thejuran/seedsyncarr:1.7.2` (plus "re-pin whatever you ran before") | confirmed |
+| (b) CHANGELOG fold of the never-tagged `[1.7.3]` block into `[1.7.4]` | keep the fold with the "never tagged" line | confirmed |
+| (c) Coverage 86.36% vs `fail_under = 88` | informational only, not blocking (CI does not enforce it) | confirmed |
+| (d) wud semver tag filter | apply label `wud.tag.include=^\d+\.\d+\.\d+$` to the seedsyncarr service during the Plan 118-05 deploy, before wud is restarted | confirmed |
+| (e) Compose-file edit method | inode-preserving in-place edit (write a copy, `cat` it over the original), `ls -i` verified before/after | confirmed |
+
+No amendments requested; release text stays at `eece2e3` (`npm run verify:release-metadata -- 1.7.4` re-run at the checkpoint: exit 0).
+
+**NAS rollback reference for Plan 118-05:** `ghcr.io/thejuran/seedsyncarr:357` @ `sha256:87ca66959391846d11fa1d0539601f18faba2294d880934041f8fc040a6d4e9f` (staging tag carrying 1.7.3 code; the true pre-upgrade rollback point for the NAS, not published in the public notes).
