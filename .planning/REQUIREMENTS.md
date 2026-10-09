@@ -13,11 +13,11 @@
 
 ### Transfer-State Safety
 
-- [ ] **XFER-01**: A pget job with no data line yet never consumes the following job's header; every job in `jobs -v` output appears in the parsed status with its correct name and state (the parser's other next-line-consuming sites are audited for the same flaw).
-- [ ] **XFER-02**: When LFTP status cannot be parsed, it is reported as *unavailable* (never as an empty job list) and actively transferring files keep their last-known state and protection — nothing is re-queued or deleted because of the failure; no downstream consumer converts unavailable back into "no jobs".
-- [ ] **XFER-03**: The existing status-error boundary is preserved exactly: failures 1..`MAX_CONSECUTIVE_STATUS_ERRORS` are tolerated (each reported unavailable) and the next failure raises; a successful parse resets the counter; a genuinely empty status still clears active state.
-- [ ] **XFER-04**: A file's remote size is considered stable only on the clock of successful remote scans — failed scans spanning the stability window never make a file auto-queue eligible; the UI "last scan" timestamp keeps its current meaning.
-- [ ] **XFER-05**: The local-size stability gate likewise advances only on successful local scans.
+- [x] **XFER-01**: A pget job with no data line yet never consumes the following job's header; every job in `jobs -v` output appears in the parsed status with its correct name and state (the parser's other next-line-consuming sites are audited for the same flaw).
+- [x] **XFER-02**: When LFTP status cannot be parsed, it is reported as *unavailable* (never as an empty job list) and actively transferring files keep their last-known state and protection — nothing is re-queued or deleted because of the failure; no downstream consumer converts unavailable back into "no jobs".
+- [x] **XFER-03**: The existing status-error boundary is preserved exactly: failures 1..`MAX_CONSECUTIVE_STATUS_ERRORS` are tolerated (each reported unavailable) and the next failure raises; a successful parse resets the counter; a genuinely empty status still clears active state.
+- [x] **XFER-04**: A file's remote size is considered stable only on the clock of successful remote scans — failed scans spanning the stability window never make a file auto-queue eligible; the UI "last scan" timestamp keeps its current meaning.
+- [x] **XFER-05**: The local-size stability gate likewise advances only on successful local scans.
 
 ### Durable State
 
@@ -46,11 +46,11 @@
 |-------------|-------|--------|
 | IMPORT-01 | Phase 116 | Complete |
 | IMPORT-02 | Phase 116 | Complete |
-| XFER-01 | Phase 117 | Pending |
-| XFER-02 | Phase 117 | Pending |
-| XFER-03 | Phase 117 | Pending |
-| XFER-04 | Phase 117 | Pending |
-| XFER-05 | Phase 117 | Pending |
+| XFER-01 | Phase 117 | Complete |
+| XFER-02 | Phase 117 | Complete |
+| XFER-03 | Phase 117 | Complete |
+| XFER-04 | Phase 117 | Complete |
+| XFER-05 | Phase 117 | Complete |
 | PERSIST-01 | Phase 118 | Pending |
 | PERSIST-02 | Phase 118 | Pending |
 | REL-01 | Phase 118 | Pending |
