@@ -739,7 +739,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 117-03-PLAN.md — RED evidence: quick run against unfixed tree recorded in 117-REL01-EVIDENCE.md
+- [x] 117-03-PLAN.md — RED evidence: quick run against unfixed tree recorded in 117-REL01-EVIDENCE.md
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -811,7 +811,7 @@ Plans:
 | 114. Scanner Auto-Recovery | v1.4.1 | 2/2 | Complete   | 2026-06-21 |
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
-| 117. Transfer-State Safety | v1.7.4 | 2/8 | In Progress|  |
+| 117. Transfer-State Safety | v1.7.4 | 3/8 | In Progress|  |
 | 118. Durable State | v1.7.4 | 0/? | Not started | - |
 
 ---
