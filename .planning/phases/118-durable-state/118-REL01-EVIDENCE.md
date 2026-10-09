@@ -811,3 +811,13 @@ End state at 2026-10-09 09:05:39 -0500: wud `exited`; production `ghcr.io/thejur
 | Checker self-test (both images, SELFTEST_OK) | PASS |
 
 **Overall: PASS** on `:1.7.4@sha256:682d129d…1595`, platform image `sha256:0e33b030…6d45`.
+
+## Owner go-ahead (Plan 118-05 Task 2)
+
+The owner reviewed the smoke PASS summary, the deploy steps 1-7, the LEAVE_STOPPED and NO-GO rules, the rollback ordering, the wud restore as the last step, and decision item (f). The reply, relayed by the orchestrator and recorded 2026-10-09 via AskUserQuestion:
+
+> "deploy keep pin"
+
+Item (f) = **keep pin**. The compose image line stays `ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595` after wud restarts.
+
+Orchestrator instruction for stop classification: classify by exit code, timing and OOMKilled. The known `Scanner process(es) died unexpectedly` shutdown traceback (present on `:357` stops since 2026-09) is recorded separately and does not on its own make a stop FORCED_STOP. Any LEAVE_STOPPED, NO-GO or rollback path stops the plan and returns a report.
