@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7.4
 milestone_name: Safety Patch
-status: milestone_complete
-stopped_at: Milestone complete (Phase 118 was final phase)
-last_updated: 2026-10-09T14:23:18.620Z
-last_activity: 2026-10-09 -- Completed 118-01 (RED atomic-write regressions)
+status: Awaiting next milestone
+stopped_at: Milestone v1.7.4 archived
+last_updated: "2026-10-09T14:45:33.706Z"
+last_activity: 2026-10-09 — Milestone v1.7.4 completed and archived
 progress:
-  total_phases: 20
+  total_phases: 21
   completed_phases: 5
   total_plans: 19
   completed_plans: 19
-  percent: 25
+  percent: 24
 ---
 
 # Project State
@@ -25,12 +25,10 @@ See: .planning/PROJECT.md (updated 2026-10-08)
 
 ## Current Position
 
-Phase: 118
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-10-09
-
-Progress: [██████████] 100%
+Phase: Milestone v1.7.4 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-09 — Milestone v1.7.4 completed and archived
 
 ## Accumulated Context
 
@@ -89,7 +87,12 @@ None.
 | todo | test-hardening-backlog A-01..A-06 | test-infra (DEFER-TESTHARDEN — deferred v1.4.0) |
 | quick_task | 260528-khw-triage-and-merge-dependabot-prs | housekeeping (prior session, SUMMARY missing; acknowledged + deferred at v1.4.0 close) |
 | backlog | 999.1 webhook import evidence (payload size == remote size) | v2 requirement IMPORT-F1; defense in depth, not in v1.7.4 scope |
+| backlog | 999.2 LFTP command-stream resync after timeout | deferred from Phase 117 codex pass 4 |
+| backlog | 999.3 auto-delete timer explicit submitted-unobserved guard | v1.7.4 audit integration warning; target 1.7.5 |
+| debug | extract-staging-autodel-rearm | awaiting_human_verify (fixes applied + self-verified 2026-09-16; acknowledged + deferred at v1.7.4 close) |
 
+> Acknowledged + deferred at v1.7.4 milestone close (2026-10-09): debug session extract-staging-autodel-rearm and todo webob-cgi-upstream-unblock (both pre-existing, outside v1.7.4 scope).
+>
 > Acknowledged + deferred at v1.4.0 milestone close (2026-06-03): webob-cgi-upstream-unblock (still blocked on upstream webob 2.0) and the 260528-khw dependabot quick-task (prior-session housekeeping).
 
 ## Tech Debt
@@ -116,13 +119,14 @@ None.
 | v1.3.0 Slice 4 (Backend Arch Refactor + Test Infra) | Phases 107-109 | 2026-06-01 to 2026-06-02 (v1.3.0 tag cut) |
 | v1.4.0 Launch-Hardening for Public Release | Phases 110-113 | 2026-06-02 to 2026-06-03 (v1.4.0 tag cut) |
 | v1.4.1 Scanner Auto-Recovery | Phases 114-115 | 2026-06-19 to 2026-06-22 (tagged v1.5.0) |
+| v1.7.4 Safety Patch | Phases 116-118 | 2026-10-08 to 2026-10-09 (tagged v1.7.4) |
 
 ## Session Continuity
 
 Last session: 2026-10-09T14:14:07.192Z
-Stopped at: Completed 118-01-PLAN.md
-Next action: Execute Plan 118-02 (atomic Persist.to_file fix; turn the 9 RED tests GREEN)
+Stopped at: Milestone v1.7.4 completed and archived
+Next action: Scope the next milestone (likely 1.7.5: PyPI packaging fix + Dependabot #93, backlog 999.3)
 
 ## Operator Next Steps
 
-- `/bm:plan-phase 116` — Import Safety (IMPORT-01, IMPORT-02); design spec Phase A is the planning source
+- `/bm:new-milestone` — scope the next milestone (candidate 1.7.5: PyPI packaging fix + Dependabot #93, backlog 999.3 auto-delete guard)

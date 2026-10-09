@@ -37,7 +37,7 @@
 - ✅ v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra - Phases 107-109 (shipped 2026-06-02; v1.3.0 tag cut)
 - ✅ v1.4.0 — Launch-Hardening for Public Release - Phases 110-113 (shipped 2026-06-03; merged to `main`, `v1.4.0` tag)
 - ✅ v1.4.1 — Scanner Auto-Recovery - Phases 114-115 (shipped 2026-06-22; tagged `v1.5.0`)
-- 🔨 v1.7.4 Safety Patch - Phases 116-118 (in progress)
+- ✅ v1.7.4 Safety Patch - Phases 116-118 (shipped 2026-10-09; tagged `v1.7.4`; archive: `milestones/v1.7.4-ROADMAP.md`)
 
 ## Phases
 
@@ -383,7 +383,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   - **Plans:** 1 plan (1 wave)
   - [x] 115-01-PLAN.md — Re-verify live PR/alert state, then squash-merge all 7 Dependabot PRs CI-green-gated one-at-a-time in security-first order (#64→#65→#66→#60→#61→#62→#63), then end-state gate: 0 open alerts + 7 MERGED + local whole-tree ruff 0.15.17 clean (wave 1)
 
-🔨 v1.7.4 — Safety Patch (Phases 116-118) — IN PROGRESS
+✅ v1.7.4 — Safety Patch (Phases 116-118) — SHIPPED 2026-10-09 (tagged `v1.7.4`)
 
 **Milestone Goal:** Protect users from incorrect deletion and transfer-state decisions, shipped promptly as patch release 1.7.4. Five confirmed defects, grouped into three phases ordered by risk: (1) **deletion safety** — `Controller.__check_webhook_imports` builds `name_to_root` last-writer-wins, so a webhook import whose basename matches more than one model path can be credited to the wrong release or satisfy per-child coverage for a file that was never imported, arming auto-delete wrongly; the patch conservatively rejects ambiguous matches. (2) **transfer-state safety** — `PgetJobParser.parse_header` pops the line after `sftp` unconditionally (a pget with no data line swallows the next job's header), `Lftp.status()` returns `[]` on tolerated parse errors (active transfers lose protection), and `latest_remote_scan_time` / `latest_local_scan_time` advance on failed scans (stability "established" with no fresh evidence). (3) **durable state** — `Persist.to_file` truncates in place, so a failed save corrupts `settings.cfg`, the controller persist, or the auto-queue persist; writes become temp-file + fsync + `os.replace` + directory fsync. All three are Python-only, behavior-narrowing fixes with no on-disk format change and no UI work.
 
@@ -837,7 +837,7 @@ Plans:
 
 ---
 
-*Last updated: 2026-10-08 — Milestone v1.7.4 (Safety Patch) added with **3 phases** (116-118), continuing from v1.4.1's last phase (115). Owner-approved split from the design spec, ordered by risk: Phase 116 Import Safety (IMPORT-01/02 — reject ambiguous webhook import matches in `Controller.__check_webhook_imports`), Phase 117 Transfer-State Safety (XFER-01..05 — parser header consumption, status-unavailable ≠ empty with the error boundary pinned, success-only stability clocks), Phase 118 Durable State (PERSIST-01/02 — atomic `Persist.to_file`; plus REL-01, the 1.7.4 release gate, mapped to the final phase as the milestone close). Phases are sequenced 116→117→118 but touch disjoint code paths; per the spec, 116 may ship alone if 117/118 slip. CI gate per phase: full Python suite green AND `ruff check src/python/` clean whole-tree (separate CI gate from pytest). 100% requirement coverage (10/10 mapped, no orphans, no duplicates).*
+*Last updated: 2026-10-09 — Milestone v1.7.4 (Safety Patch, Phases 116-118) shipped and archived (tagged `v1.7.4`; `:1.7.4` deployed to NAS). Full details: `.planning/milestones/v1.7.4-ROADMAP.md`; audit: `.planning/milestones/v1.7.4-MILESTONE-AUDIT.md` (10/10 requirements, tech debt only). Backlog 999.3 added from the audit.*
 
 ## Backlog
 

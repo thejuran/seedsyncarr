@@ -299,7 +299,11 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ LFTP parser never swallows another job's header; unparseable or timed-out status reported as unavailable (never "no jobs") with the error boundary unchanged; transfers submitted but not yet observed stay Queued and protected (incl. same-cycle command guard, Stop reconcile); remote/local stability measured only on successful-scan clocks with the UI "last scan" unchanged (XFER-01..05) — Validated in Phase 117: Transfer-State Safety (v1.7.4)
 - ✓ Settings, controller persist and auto-queue persist written atomically (serialize first, same-dir 0600 temp, fsync, `os.replace` commit point, best-effort logged directory fsync) so a failed save leaves the previous file byte-for-byte intact (PERSIST-01/02); 1.7.4 release gate met — 42 regressions fail-before/pass-after, full suite + whole-tree ruff, digest-pinned smoke test with a real transfer, NAS deployed at `:1.7.4@sha256:682d…` with clean post-deploy scan (REL-01; PyPI publish deferred to 1.7.5 by owner) — Validated in Phase 118: Durable State (v1.7.4)
 
-## Current Milestone: v1.7.4 Safety Patch
+## Current State
+
+v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seedsyncarr:1.7.4` running on the NAS by digest). No milestone in progress. Next-milestone candidates (1.7.5): fix the PyPI wheel packaging (`./`-prefixed archive paths) + Dependabot #93; backlog 999.3 (explicit submitted-unobserved guard in the auto-delete timer, from the v1.7.4 audit); backlog 999.2 (LFTP command-stream resync after timeout); backlog 999.1 (webhook payload-size import evidence).
+
+## Previous Milestone: v1.7.4 Safety Patch (Shipped 2026-10-09, tagged v1.7.4)
 
 **Goal:** Protect users from incorrect deletion and transfer-state decisions. Ship promptly as patch release 1.7.4.
 
@@ -349,9 +353,11 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-<!-- v1.7.4 — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
+<!-- No active milestone. Candidates for the next one: see Current State above (1.7.5: PyPI packaging fix + Dependabot #93, backlog 999.1–999.3). -->
 
-v1.7.4 closes five defects that can cause incorrect deletion or transfer-state decisions: ambiguous webhook import matches, the LFTP parser consuming the next job's header, status-unavailable collapsing to "no jobs", stability established from failed scans, and non-atomic state/config writes. See `.planning/REQUIREMENTS.md`.
+<!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
+
+v1.7.4 closes five defects that can cause incorrect deletion or transfer-state decisions: ambiguous webhook import matches, the LFTP parser consuming the next job's header, status-unavailable collapsing to "no jobs", stability established from failed scans, and non-atomic state/config writes. All 10 requirements validated (see Validated above; archive `.planning/milestones/v1.7.4-REQUIREMENTS.md`).
 
 <!-- v1.4.1 (shipped 2026-06-22) — Scanner Auto-Recovery. -->
 
@@ -419,6 +425,10 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| Reject ambiguous webhook import matches instead of path-mapping (v1.7.4) | Conservative: a basename matching 2+ distinct model paths can never arm auto-delete; full path mapping is a larger change | ✓ Good |
+| LFTP status unavailable = `None`, never `[]` (v1.7.4) | "No jobs" and "couldn't tell" must be distinct so protection survives parse failures; error boundary kept exactly | ✓ Good |
+| Atomic `Persist.to_file` via same-dir temp + `os.replace` (v1.7.4) | A failed save must never destroy the last valid settings/persist; relies on `/config` being a directory mount (documented setup) | ✓ Good |
+| Ship 1.7.4 via Docker/GitHub despite PyPI publish failure (v1.7.4) | Safety fixes reach NAS users promptly; packaging fix deferred to 1.7.5 | — Pending (1.7.5) |
 | Use teal (secondary) for all selections | Teal is more distinctive than blue, already used in bulk selection | ✓ Good |
 | Migrate to Bootstrap `btn` classes | Reduces custom CSS, leverages Bootstrap's states | ✓ Good |
 | Keep @import for Bootstrap SCSS | Mixing @use/@import creates namespace conflicts | ✓ Good |
@@ -462,7 +472,7 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 
 ## Project Status
 
-**Status:** v1.2.0 shipped (2026-04-28). Test & quality hardening — 68 items across 10 phases.
+**Status:** v1.7.4 Safety Patch shipped (2026-10-09). Deletion, transfer-state and durable-state safety fixes; deployed to NAS at `:1.7.4`.
 
 31 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit + v1.2.0 test hardening as SeedSyncarr).
 
@@ -484,4 +494,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-09 after Phase 118 (Durable State)*
+*Last updated: 2026-10-09 after v1.7.4 milestone*
