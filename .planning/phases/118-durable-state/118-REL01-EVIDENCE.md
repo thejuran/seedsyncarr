@@ -370,3 +370,40 @@ exited 2026-10-09T13:30:24.980056336Z
 Production re-checked after the stop: `ghcr.io/thejuran/seedsyncarr:357 running` (untouched).
 
 wud remains stopped until Plan 118-05 restores it after the deploy is verified or a rollback completes; all NAS auto-updates are paused meanwhile.
+
+## Merge and tag (Plan 118-04)
+
+Run after the owner approval and the verified wud suspension above (both committed on `safety-patch-1.7.4` before the first push: `b652e57`, `e86d7df`).
+
+```
+$ git fetch origin && git rev-parse origin/main
+f8c94e9dfd7057af47300fc7906ac333ea591780        # unchanged since planning
+$ git checkout main && git push origin main
+   f8c94e9..c734c10  main -> main                # planning commits first (D-05)
+$ git merge --no-ff safety-patch-1.7.4 -m "Merge safety-patch-1.7.4: release v1.7.4 (Phases 116-118)"
+$ git push origin main
+   c734c10..f6ff78a  main -> main
+$ git tag -a v1.7.4 -m "v1.7.4 — safety patch: import ambiguity, transfer-state safety, durable state"
+$ git push origin v1.7.4
+ * [new tag]         v1.7.4 -> v1.7.4
+```
+
+| Item | Value |
+|------|-------|
+| `origin/main` before | `f8c94e9dfd7057af47300fc7906ac333ea591780` |
+| `origin/main` after planning push | `c734c10` |
+| Merge commit / `origin/main` after | `f6ff78ac5c599d5fb05f567906d56227b1c268f1` |
+| `git rev-parse v1.7.4` (tag object) | `8ef7a225034c9b1eda1a0491468d82832d8c8174` |
+| `git rev-parse v1.7.4^{}` | `f6ff78ac5c599d5fb05f567906d56227b1c268f1` (== `origin/main`) |
+| `git cat-file -t v1.7.4` | `tag` (annotated) |
+| `git log --oneline origin/main \| wc -l` | 1427 → 1547 (+120, history preserved, no squash) |
+| `git log --oneline f8c94e9..origin/main -- .planning/ \| wc -l` | 87 |
+
+```
+$ git log --oneline -3 main
+f6ff78a Merge safety-patch-1.7.4: release v1.7.4 (Phases 116-118)
+e86d7df docs(118-04): record wud suspension for the release window
+b652e57 docs(118-04): record owner approval for 1.7.4
+```
+
+wud re-checked after the tag push: `exited`.
