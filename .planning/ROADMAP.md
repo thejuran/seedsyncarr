@@ -393,7 +393,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 - [x] **Phase 116: Import Safety** - `name_to_root` keeps every distinct model path per lowercased basename; a webhook import resolving to two or more distinct paths (across releases, case-only root differences, root-equals-child-basename, or repeated basenames inside one release) is rejected with no import record, no coverage credit, no badge, no auto-delete timer, and one sanitized warning naming the candidate roots; a unique match (including repeated references to the same path) behaves exactly as before (IMPORT-01, IMPORT-02) (completed 2026-10-08)
 - [x] **Phase 117: Transfer-State Safety** - LFTP parser never consumes the next job's header (other next-line-consuming sites audited); unparseable status is reported as *unavailable* (`None`), never `[]`, with the existing `MAX_CONSECUTIVE_STATUS_ERRORS` boundary pinned exactly and no downstream consumer collapsing unavailable into "no jobs"; remote and local stability clocks advance only on successful scans while the UI "last scan" timestamp keeps its meaning (XFER-01, XFER-02, XFER-03, XFER-04, XFER-05) (completed 2026-10-09)
-- [ ] **Phase 118: Durable State** - `Persist.to_file` writes atomically (serialize first → 0600 temp in target dir → write/flush/fsync → `os.replace` commit point → best-effort directory fsync) so any pre-replace failure leaves the original byte-for-byte intact with no temp file left behind; then the 1.7.4 release gate — regressions fail-before/pass-after, full suite + ruff, release-image smoke test, `:1.7.4` NAS deploy with scanner recovery confirmed by a subsequent successful scan (PERSIST-01, PERSIST-02, REL-01)
+- [x] **Phase 118: Durable State** - `Persist.to_file` writes atomically (serialize first → 0600 temp in target dir → write/flush/fsync → `os.replace` commit point → best-effort directory fsync) so any pre-replace failure leaves the original byte-for-byte intact with no temp file left behind; then the 1.7.4 release gate — regressions fail-before/pass-after, full suite + ruff, release-image smoke test, `:1.7.4` NAS deploy with scanner recovery confirmed by a subsequent successful scan (PERSIST-01, PERSIST-02, REL-01) (completed 2026-10-09)
 
 ## Phase Details
 
@@ -791,7 +791,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 118-05-PLAN.md — NAS smoke test of :1.7.4, deploy approval, same-digest NAS deploy with scanner-recovery gate (REL-01)
+- [x] 118-05-PLAN.md — NAS smoke test of :1.7.4, deploy approval, same-digest NAS deploy with scanner-recovery gate (REL-01)
 
 ## Progress
 
@@ -833,7 +833,7 @@ Plans:
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
 | 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
-| 118. Durable State | v1.7.4 | 4/5 | In Progress|  |
+| 118. Durable State | v1.7.4 | 5/5 | Complete   | 2026-10-09 |
 
 ---
 

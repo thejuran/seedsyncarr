@@ -26,7 +26,7 @@
 
 ### Release
 
-- [ ] **REL-01**: Release 1.7.4 ships only after: each targeted regression fails against the old behavior and passes with its fix; the full Python suite and `ruff check src/python/` pass; the built release image passes a smoke test (startup, transfer status, settings persistence, restart); and the `:1.7.4` tag is deployed to the NAS with startup and config loading verified — a post-deploy scanner error is accepted as the known warm-up condition only after a subsequent successful scan confirms recovery.
+- [x] **REL-01**: Release 1.7.4 ships only after: each targeted regression fails against the old behavior and passes with its fix; the full Python suite and `ruff check src/python/` pass; the built release image passes a smoke test (startup, transfer status, settings persistence, restart); and the `:1.7.4` tag is deployed to the NAS with startup and config loading verified — a post-deploy scanner error is accepted as the known warm-up condition only after a subsequent successful scan confirms recovery.
 
 ## v2 Requirements
 
@@ -53,7 +53,7 @@
 | XFER-05 | Phase 117 | Complete |
 | PERSIST-01 | Phase 118 | Complete |
 | PERSIST-02 | Phase 118 | Complete |
-| REL-01 | Phase 118 | Pending |
+| REL-01 | Phase 118 | Complete |
 
 **Coverage:**
 - v1 requirements: 10 total
