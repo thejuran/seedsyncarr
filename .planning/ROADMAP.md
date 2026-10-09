@@ -729,12 +729,12 @@ Plans:
 
 **Owner planning notes (2026-10-08)**: Test downstream behavior, not just the `None` return: active transfers remain protected with no unintended re-queue, extraction, or deletion while status is unavailable.
 
-**Plans**: 7 plans
+**Plans**: 8 plans
 
 Plans:
 **Wave 1**
 
-- [ ] 117-01-PLAN.md — RED: B1 parser header-swallowing regressions, Lftp status-boundary contract, composed B2 downstream protection tests
+- [ ] 117-01-PLAN.md — RED: B1 parser header-swallowing regressions, Lftp status-boundary contract, composed B2 downstream protection tests (observed and submitted-but-unobserved transfers)
 - [ ] 117-02-PLAN.md — RED: B3 stability-clock regressions (AutoQueue unit D-03/D-04/D-05 + composed Controller→Status→AutoQueue), harness init
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -748,6 +748,10 @@ Plans:
 - [ ] 117-06-PLAN.md — Fix B3: successful-scan clocks on ControllerStatus, controller writes, AutoQueue stability reads; serializer keys guard
 
 **Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 117-08-PLAN.md — Fix B2 (codex finding): hold transfers submitted to lftp but not yet observed by a successful status as QUEUED (LftpManager set -> ModelPipeline sync -> ModelBuilder derivation) so no re-queue / DOWNLOADED / extract / delete decision is made on them
+
+**Wave 5** *(blocked on Wave 4 completion)*
 
 - [ ] 117-07-PLAN.md — GREEN evidence, full host suite vs baseline, whole-tree ruff, validation sign-off, deferred/accepted items record
 
