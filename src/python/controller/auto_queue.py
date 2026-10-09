@@ -162,8 +162,11 @@ class AutoQueue:
     remote copy is bigger than its local copy (or has no local copy) is a
     queue candidate once its remote size has been stable for
     remote_stability_seconds of the remote-scan clock. Stability is measured
-    against latest_remote_scan_time, never wall-clock, so a paused scanner
-    cannot fake stability.
+    against latest_successful_remote_scan_time, never wall-clock and never the
+    clock of a failed scan, so a paused or failing scanner cannot fake
+    stability: failed scans neither advance nor reset a stability window, and
+    because model sizes only change on successful scans, a size that changed
+    during an outage is re-stamped at the first successful scan after it.
 
     A second, local-side gate guards the sweep against its own input skew
     (incident 2026-09-05, Road to Perdition): lftp job status is polled
@@ -172,8 +175,9 @@ class AutoQueue:
     a stale scan that still shows the partial temp-file size -- which reads
     exactly like a stranded partial. A file is therefore only a candidate
     once it has been continuously DEFAULT with an unchanged local size for
-    local_stability_seconds of the LOCAL scan clock
-    (latest_local_scan_time). Leaving DEFAULT restarts that window
+    local_stability_seconds of the successful LOCAL scan clock
+    (latest_successful_local_scan_time; same failed-scan rule as the remote
+    side). Leaving DEFAULT restarts that window
     regardless of size history (a sparse pget temp file can sit at an
     unchanged apparent size for minutes), so a completed transfer is always
     re-read by a fresh scan -- as DOWNLOADED -- before the sweep may act.
@@ -247,24 +251,34 @@ class AutoQueue:
         # Level-triggered sweep over the whole model. A file is a candidate
         # when it is DEFAULT with a remote copy bigger than its local copy (or
         # no local copy at all), and its remote size has been stable for the
-        # configured window of the remote-scan clock. This covers new files,
+        # configured window of the successful-remote-scan clock. This covers new files,
         # remote updates, AND partials stranded by any missed-event window
         # (restart, scanner outage) with one rule -- the same edge-vs-level
         # lesson as ModelPipeline._commit_downloaded_membership.
         model_files = self.__controller.get_model_files()
-        # latest_remote_scan_time is a datetime in production
-        # (Controller._update_controller_status stores remote_scan.timestamp);
-        # tests may inject raw epoch numbers. Fetched regardless of the
-        # stability gate because the requeue cooldown below needs the scan
-        # clock even when stability gating is disabled.
+        # Scan clocks are datetimes in production
+        # (Controller._update_controller_status stores ScannerResult.timestamp);
+        # tests may inject raw epoch numbers.
+        #
+        # scan_time is the UI remote clock (advances on every scan, failed or
+        # not). It drives only the requeue cooldown below, which is a retry
+        # throttle rather than a safety gate, and is fetched regardless of the
+        # stability gate because the cooldown needs it even when stability
+        # gating is disabled.
+        #
+        # Stability is measured exclusively on the successful-scan clocks:
+        # failed scans leave model sizes stale, so they must neither advance
+        # nor reset a stability window.
         scan_time = AutoQueue.__scan_clock(
             self.__context.status.controller.latest_remote_scan_time)
-        local_scan_time = AutoQueue.__scan_clock(
-            self.__context.status.controller.latest_local_scan_time)
-        if self.__stability_seconds > 0 and scan_time is not None:
-            self.__update_remote_size_history(model_files, scan_time)
-        if self.__local_stability_seconds > 0 and local_scan_time is not None:
-            self.__update_local_idle_history(model_files, local_scan_time)
+        remote_stable_time = AutoQueue.__scan_clock(
+            self.__context.status.controller.latest_successful_remote_scan_time)
+        local_stable_time = AutoQueue.__scan_clock(
+            self.__context.status.controller.latest_successful_local_scan_time)
+        if self.__stability_seconds > 0 and remote_stable_time is not None:
+            self.__update_remote_size_history(model_files, remote_stable_time)
+        if self.__local_stability_seconds > 0 and local_stable_time is not None:
+            self.__update_local_idle_history(model_files, local_stable_time)
 
         def sweep_accept(f: ModelFile) -> bool:
             if f.remote_size is None or f.state != ModelFile.State.DEFAULT:
@@ -272,19 +286,20 @@ class AutoQueue:
             if f.local_size is not None and f.local_size >= f.remote_size:
                 return False
             if self.__stability_seconds > 0:
-                if scan_time is None:
-                    # No remote scan yet -- stability cannot be established
+                if remote_stable_time is None:
+                    # No successful remote scan yet -- stability cannot be established
                     return False
                 entry = self.__remote_size_history.get(f.name)
-                if entry is None or scan_time - entry[1] < self.__stability_seconds:
+                if entry is None or \
+                        remote_stable_time - entry[1] < self.__stability_seconds:
                     return False
             if self.__local_stability_seconds > 0:
-                if local_scan_time is None:
-                    # No local scan yet -- the local copy has not been read
+                if local_stable_time is None:
+                    # No successful local scan yet -- the local copy has not been read
                     return False
                 entry = self.__local_idle_history.get(f.name)
                 if entry is None or \
-                        local_scan_time - entry[1] < self.__local_stability_seconds:
+                        local_stable_time - entry[1] < self.__local_stability_seconds:
                     return False
             return True
 

@@ -143,3 +143,28 @@ class TestSerializeStatus(unittest.TestCase):
         out = parse_stream(serialize.status(status))
         data = json.loads(out["data"])
         self.assertEqual(1_300_000_000_000, data["storage"]["remote_used"])
+
+    def test_controller_status_keys_unchanged_by_success_clocks(self):
+        """
+        D-06 / XFER-04: the UI "last scan" keeps its meaning and the
+        successful-scan clocks that drive AutoQueue stability are not exposed
+        in the SSE payload.
+        """
+        serialize = SerializeStatus()
+        status = Status()
+        timestamp = datetime(2018, 11, 9, 21, 40, 18, tzinfo=timezone('UTC'))
+        status.controller.latest_successful_remote_scan_time = timestamp
+        status.controller.latest_successful_local_scan_time = timestamp
+        status.controller.latest_remote_scan_time = timestamp
+        out = parse_stream(serialize.status(status))
+        data = json.loads(out["data"])
+        self.assertEqual(
+            {
+                "latest_local_scan_time",
+                "latest_remote_scan_time",
+                "latest_remote_scan_failed",
+                "latest_remote_scan_error",
+            },
+            set(data["controller"].keys())
+        )
+        self.assertNotIn("latest_successful", out["data"])

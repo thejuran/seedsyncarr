@@ -495,11 +495,18 @@ class Controller:
         Writes storage capacity (Phase 74) gated by the >1% change rule
         (D-12/D-13) per-side independently (D-15). A None total/used pair
         leaves that side untouched (silent fallback per D-16).
+
+        The UI scan fields are written from every scan; the successful-scan
+        clocks (latest_successful_*_scan_time) only advance when the scan did
+        not fail, so AutoQueue stability is never measured across a failed scan.
         """
         if remote_scan is not None:
             self.__context.status.controller.latest_remote_scan_time = remote_scan.timestamp
             self.__context.status.controller.latest_remote_scan_failed = remote_scan.failed
             self.__context.status.controller.latest_remote_scan_error = remote_scan.error_message
+            if not remote_scan.failed:
+                self.__context.status.controller.latest_successful_remote_scan_time = \
+                    remote_scan.timestamp
             if remote_scan.total_bytes is not None and remote_scan.used_bytes is not None:
                 # Per-field gate: total and used are independent under D-12/D-15 so
                 # a sub-1% change on one must not drag the other into a write.
@@ -511,6 +518,9 @@ class Controller:
                     self.__context.status.storage.remote_used = remote_scan.used_bytes
         if local_scan is not None:
             self.__context.status.controller.latest_local_scan_time = local_scan.timestamp
+            if not local_scan.failed:
+                self.__context.status.controller.latest_successful_local_scan_time = \
+                    local_scan.timestamp
             if local_scan.total_bytes is not None and local_scan.used_bytes is not None:
                 if Controller._should_update_capacity(
                         self.__context.status.storage.local_total, local_scan.total_bytes):
