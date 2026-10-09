@@ -264,4 +264,18 @@ A `jobs -v` whose pexpect expect timed out is an incomplete observation. `Lftp.s
 
 Four codex passes reviewed the phase plans. Passes 1-3 produced findings that plan revisions fixed: submitted-but-unobserved protection, the same-cycle command guard, and timeout-as-unavailable plus Stop-path reconciliation. The owner accepted the pass-4 finding as a known follow-up: after a timeout, the LFTP command stream needs to resync, because a delayed prompt can make the next status look like "no jobs". It is recorded as backlog Phase 999.2 (`.planning/phases/999.2-lftp-command-stream-resync-after-timeout/`) and is not fixed in this phase.
 
+### Full host suite
+
+**Full host suite.** Run in two parts, as in Phase 116, at `d7c76bc` with the main checkout's Poetry interpreter. That interpreter has pytest-timeout, so the extract-process tests now fail on the 60 s per-test timeout (or the 2 s in-test timeout) instead of hanging the run.
+
+- Part 1, every file except the four baseline files (`--ignore` on each): `1471 passed, 2 warnings in 40.88s`. 0 failed, 0 errors. The Phase 116 figure was 1401; the 70 extra are the tests Phase 117 added.
+- Part 2, the baseline files run one at a time under a 60 s external alarm (`perl -e 'alarm 60; exec @ARGV'`):
+  - `test_ssh/test_sshcp.py`: `11 failed` (needs a local sshd)
+  - `test_controller/test_scan/test_scanner_process.py`: `3 failed, 1 passed, 3 errors`
+  - `test_system/test_scanner.py`: `1 failed, 19 passed` (`test_scan_file_with_latin_chars`)
+  - `test_controller/test_extract/test_extract_process.py`: `6 failed in 32.93s` (pytest-timeout fired on each; no alarm needed)
+- Total: 21 failed / 3 errors, all in the four pre-existing baseline files. This equals the Phase 116 baseline of 21 failed / 3 errors: **no new failures** vs baseline.
+
+The four macOS-only failures that Plan 117-08 logged in `deferred-items.md` (3 in `test_scanner_process.py` and `test_extract_process.py::test_calls_start_dispatch`, from `spawn` pickling a MagicMock or a 2 s timeout) are part of these baseline files. The same files fail with the same counts in the Phase 116 baseline, which predates every Phase 117 production change. They are pre-existing and environmental (macOS `spawn` vs Linux `fork` in CI), not caused by this phase.
+
 **Ruff** (`ruff check <worktree>/src/python/`, whole tree, ruff 0.15.9 on PATH): `All checks passed!`
