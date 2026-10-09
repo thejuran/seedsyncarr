@@ -734,8 +734,8 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 117-01-PLAN.md — RED: B1 parser header-swallowing regressions, Lftp status-boundary contract, composed B2 downstream protection tests (observed and submitted-but-unobserved transfers)
-- [ ] 117-02-PLAN.md — RED: B3 stability-clock regressions (AutoQueue unit D-03/D-04/D-05 + composed Controller→Status→AutoQueue), harness init
+- [x] 117-01-PLAN.md — RED: B1 parser header-swallowing regressions, Lftp status-boundary contract, composed B2 downstream protection tests (observed and submitted-but-unobserved transfers)
+- [x] 117-02-PLAN.md — RED: B3 stability-clock regressions (AutoQueue unit D-03/D-04/D-05 + composed Controller→Status→AutoQueue), harness init
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -811,7 +811,7 @@ Plans:
 | 114. Scanner Auto-Recovery | v1.4.1 | 2/2 | Complete   | 2026-06-21 |
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
-| 117. Transfer-State Safety | v1.7.4 | 0/? | Not started | - |
+| 117. Transfer-State Safety | v1.7.4 | 2/8 | In Progress|  |
 | 118. Durable State | v1.7.4 | 0/? | Not started | - |
 
 ---
