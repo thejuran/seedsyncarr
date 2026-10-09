@@ -116,19 +116,19 @@ Rows 12-18 sit under XFER-02 (downstream consumers must not collapse unavailable
 
 ### New-contract tests (added with the fixes; not regressions)
 
-These pin new contracts introduced by the fixes. They have no pre-fix behavior to fail against, so they are not part of the RED evidence. Each is `pending` until its plan lands:
+These pin new contracts introduced by the fixes. They have no pre-fix behavior to fail against, so they are not part of the RED evidence. Status was updated by the Plan 117-07 GREEN run (names listed in the GREEN section below):
 
 | Plan | Tests | Status |
 |------|-------|--------|
-| 117-05 | `Lftp.kill` on unavailable status raises (x3) | pending |
-| 117-05 | Lftp timeout neither counts toward nor resets the parser-error counter; timeout logs no raw output (x2) | pending |
-| 117-05 | `LftpManager.status()` passes `None` / `[]` through unchanged (x2) | pending |
-| 117-06 | `ControllerStatus` successful-scan clock defaults | pending |
-| 117-06 | Successful-scan clock set only on not-failed scans (x4) | pending |
-| 117-06 | Status serializer keys unchanged (D-06) | pending |
-| 117-08 | `LftpManager` submitted-but-unobserved tracking (x6) + kill-path reconciliation (x3) | pending |
-| 117-08 | `ModelBuilder` submitted -> QUEUED derivation (x7) | pending |
-| 117-08 | `CommandProcessor` submitted-but-unobserved guard (x4) | pending |
+| 117-05 | `Lftp.kill` on unavailable status raises (x3) | passed (Plan 117-07) |
+| 117-05 | Lftp timeout neither counts toward nor resets the parser-error counter; timeout logs no raw output (x2) | passed (Plan 117-07) |
+| 117-05 | `LftpManager.status()` passes `None` / `[]` through unchanged (x2) | passed (Plan 117-07) |
+| 117-06 | `ControllerStatus` successful-scan clock defaults | passed (Plan 117-07) |
+| 117-06 | Successful-scan clock set only on not-failed scans (x4; landed as x6) | passed (Plan 117-07) |
+| 117-06 | Status serializer keys unchanged (D-06) | passed (Plan 117-07) |
+| 117-08 | `LftpManager` submitted-but-unobserved tracking (x6) + kill-path reconciliation (x3) | passed (Plan 117-07) |
+| 117-08 | `ModelBuilder` submitted -> QUEUED derivation (x7) | passed (Plan 117-07) |
+| 117-08 | `CommandProcessor` submitted-but-unobserved guard (x4) | passed (Plan 117-07) |
 
 ### CI-only: integration counter tests flip `[]` -> `None`
 
@@ -136,4 +136,132 @@ Four integration tests in `src/python/tests/integration/test_lftp/test_lftp_prot
 
 ## GREEN (post-fix) — Plan 117-07
 
-pending
+Run on the merged phase tree at post-fix SHA **`d7c76bc`** (branch `safety-patch-1.7.4`, after all four fix plans were merged). The run used a git worktree checked out at that SHA with the main checkout's Poetry interpreter (`/Users/julianamacbook/Library/Caches/pypoetry/virtualenvs/seedsyncarr-5QbP0KwB-py3.12/bin/python -m pytest`), for the same reason as the RED run.
+
+**Fix commits** (production code; test-only commits omitted):
+
+| Plan | Fix | Commits |
+|------|-----|---------|
+| 117-04 | B1 parser peek-before-pop (XFER-01) | `eaa4847`, `292c496` |
+| 117-05 | B2 `Lftp.status()` None-vs-empty, timeout as unavailable, `kill` refuses on None (XFER-02, XFER-03) | `d313ff3` (test pin `e8907d8`) |
+| 117-06 | B3 successful-scan stability clock (XFER-04, XFER-05) | `7cfa98f` |
+| 117-08 | B2 submitted-but-unobserved protection (XFER-02) | `4bc2b79`, `0d5b1b8`, `a96e160` |
+
+`git diff --stat 7da18e0 d7c76bc -- src/python/lftp src/python/common src/python/controller ':!src/python/tests'` lists exactly nine production files: `common/status.py`, `controller/auto_queue.py`, `controller/command_processor.py`, `controller/controller.py`, `controller/lftp_manager.py`, `controller/model_builder.py`, `controller/model_pipeline.py`, `lftp/job_status_parser.py`, `lftp/lftp.py` (220 insertions, 40 deletions).
+
+### Targeted regressions (the 26 RED tests)
+
+**Command:**
+
+```
+cd src/python && <poetry python> -m pytest \
+  tests/unittests/test_lftp/test_job_status_parser.py \
+  tests/unittests/test_lftp/test_lftp_status_contract.py \
+  tests/unittests/test_controller/test_transfer_state_safety.py \
+  tests/unittests/test_controller/test_auto_queue.py \
+  tests/unittests/test_controller/test_scan_clock_safety.py \
+  -v -p no:cacheprovider -k "<the 26 RED names joined by ' or '>"
+```
+
+```
+tests/unittests/test_lftp/test_job_status_parser.py::TestLftpJobStatusParser::test_jobs_chunk_without_data_line_followed_by_chunk PASSED
+tests/unittests/test_lftp/test_job_status_parser.py::TestLftpJobStatusParser::test_jobs_chunk_without_data_line_followed_by_mirror_header PASSED
+tests/unittests/test_lftp/test_job_status_parser.py::TestLftpJobStatusParser::test_jobs_mirror_empty_followed_by_header_containing_getting_file_list PASSED
+tests/unittests/test_lftp/test_job_status_parser.py::TestLftpJobStatusParser::test_jobs_pget_no_data_line_followed_by_mirror_header PASSED
+tests/unittests/test_lftp/test_job_status_parser.py::TestLftpJobStatusParser::test_jobs_pget_no_data_line_followed_by_pget_header PASSED
+tests/unittests/test_lftp/test_lftp_status_contract.py::TestLftpStatusBoundary::test_boundary_sequence_pinned_exactly PASSED
+tests/unittests/test_lftp/test_lftp_status_contract.py::TestLftpStatusBoundary::test_timed_out_status_with_empty_buffer_is_unavailable PASSED
+tests/unittests/test_lftp/test_lftp_status_contract.py::TestLftpStatusBoundary::test_timed_out_status_with_partial_parseable_buffer_is_unavailable PASSED
+tests/unittests/test_lftp/test_lftp_status_contract.py::TestLftpStatusBoundary::test_tolerated_parse_failures_report_unavailable_not_empty PASSED
+tests/unittests/test_controller/test_transfer_state_safety.py::TestStatusUnavailableKeepsTransferProtection::test_isolated_parse_failure_keeps_downloading_state_and_issues_no_commands PASSED
+tests/unittests/test_controller/test_transfer_state_safety.py::TestStatusUnavailableKeepsTransferProtection::test_submitted_but_unobserved_file_is_not_marked_downloaded_by_preallocated_local_size PASSED
+tests/unittests/test_controller/test_transfer_state_safety.py::TestStatusUnavailableKeepsTransferProtection::test_submitted_but_unobserved_file_is_not_requeued_after_cooldown_expiry PASSED
+tests/unittests/test_controller/test_transfer_state_safety.py::TestStatusUnavailableKeepsTransferProtection::test_timed_out_status_with_empty_buffer_keeps_protection PASSED
+tests/unittests/test_controller/test_transfer_state_safety.py::TestStatusUnavailableKeepsTransferProtection::test_timed_out_status_with_partial_parseable_buffer_keeps_protection PASSED
+tests/unittests/test_controller/test_transfer_state_safety.py::TestControllerActiveListFrozenWhileStatusUnavailable::test_active_downloading_list_and_scanner_feed_unchanged_on_parse_failure PASSED
+tests/unittests/test_controller/test_transfer_state_safety.py::TestSameCycleCommandOrderingProtectsSubmittedTransfers::test_queue_then_delete_local_in_one_process_does_not_delete PASSED
+tests/unittests/test_controller/test_transfer_state_safety.py::TestSameCycleCommandOrderingProtectsSubmittedTransfers::test_queue_then_delete_remote_in_one_process_does_not_delete PASSED
+tests/unittests/test_controller/test_transfer_state_safety.py::TestSameCycleCommandOrderingProtectsSubmittedTransfers::test_queue_then_extract_in_one_process_does_not_extract PASSED
+tests/unittests/test_controller/test_auto_queue.py::TestAutoQueueStabilityAndSweep::test_changed_size_after_remote_outage_restarts_window PASSED
+tests/unittests/test_controller/test_auto_queue.py::TestAutoQueueStabilityAndSweep::test_failed_remote_scans_spanning_window_do_not_establish_stability PASSED
+tests/unittests/test_controller/test_auto_queue.py::TestAutoQueueLocalStabilityGate::test_changed_local_size_after_outage_restarts_window PASSED
+tests/unittests/test_controller/test_auto_queue.py::TestAutoQueueLocalStabilityGate::test_failed_local_scans_spanning_window_do_not_establish_local_idle PASSED
+tests/unittests/test_controller/test_scan_clock_safety.py::TestStabilityOnSuccessfulScanClock::test_failed_local_scans_spanning_window_do_not_queue PASSED
+tests/unittests/test_controller/test_scan_clock_safety.py::TestStabilityOnSuccessfulScanClock::test_failed_remote_scans_spanning_window_do_not_queue PASSED
+tests/unittests/test_controller/test_scan_clock_safety.py::TestStabilityOnSuccessfulScanClock::test_local_recovery_with_changed_size_restarts_window PASSED
+tests/unittests/test_controller/test_scan_clock_safety.py::TestStabilityOnSuccessfulScanClock::test_remote_recovery_with_changed_size_restarts_window PASSED
+```
+
+**Summary line:** `26 passed, 133 deselected, 1 warning in 0.14s`
+
+All 26 RED rows in the table above now pass, with 0 failures.
+
+### Phase quick run
+
+Same ten paths as the RED command, without `-rf --junitxml`: `524 passed, 1 warning in 0.77s`. 0 failed.
+
+**Delta vs RED.** The RED run was `26 failed, 464 passed`, so 490 tests were collected.
+
+- The 26 RED tests now pass: 464 + 26 = 490 passing.
+- The fix plans added 34 new test functions, all passing: 490 + 34 = **524**, which matches the observed total.
+  - 117-05: 7 (`Lftp.kill` x3, timeout semantics x2, `LftpManager` pass-through x2)
+  - 117-06: 7 (success-clock writes x6 plus serializer keys x1). The plan asked for 4 success-clock tests; Plan 06 added 2 extra cases. The status-defaults check extends the existing `test_default_values` and is not a new function.
+  - 117-08: 20 (`LftpManager` tracking x6 + kill-path reconciliation x3, `ModelBuilder` x7, `CommandProcessor` guard x4)
+  - 7 + 7 + 20 = 34. The plan estimated 32 before execution. The extra 2 are the success-clock cases recorded in the 117-06 SUMMARY.
+
+### New-contract tests (pass after fix; not regressions)
+
+All 34 new functions pass in the quick run. A separate `-v` run selecting these classes and names gave `34 passed`. That selection covered 33 of the new functions plus the extended `test_default_values`. The `-k` filter missed `test_queue_failure_does_not_record_submission`, but the quick run covers it.
+
+- 117-05, `test_lftp_status_contract.py`:
+  - `TestLftpKillWhenStatusUnavailable::test_kill_raises_when_status_unavailable`
+  - `TestLftpKillWhenStatusUnavailable::test_kill_still_returns_false_when_job_absent_from_available_status`
+  - `TestLftpKillWhenStatusUnavailable::test_kill_error_message_does_not_echo_job_name`
+  - `TestLftpStatusTimeoutSemantics::test_timeout_does_not_count_toward_or_reset_parser_error_counter`
+  - `TestLftpStatusTimeoutSemantics::test_timed_out_status_logs_no_raw_output`
+- 117-05, `test_lftp_manager.py`: `test_status_passes_none_through_unchanged`, `test_status_passes_empty_list_through_unchanged`
+- 117-06, `test_status.py`: `TestStatus::test_default_values` (extended to cover both success clocks; not a new function)
+- 117-06, `test_controller.py::TestUpdateControllerStatusSuccessClocks`: `test_remote_success_advances_success_clock`, `test_remote_failure_does_not_advance_success_clock`, `test_local_success_advances_success_clock`, `test_local_failure_does_not_advance_success_clock`, `test_failed_first_scans_leave_success_clocks_none`, `test_none_scan_results_leave_success_clocks_none`
+- 117-06, `test_serialize_status.py`: `test_controller_status_keys_unchanged_by_success_clocks`
+- 117-08, `test_lftp_manager.py` (tracking x6): `test_queue_records_submitted_unobserved_file`, `test_queue_failure_does_not_record_submission`, `test_successful_status_clears_submitted_set`, `test_genuinely_empty_status_clears_submitted_set`, `test_unavailable_status_keeps_submitted_set`, `test_submitted_unobserved_file_names_returns_copy`
+- 117-08, `test_lftp_manager.py` (kill-path reconciliation x3): `test_successful_kill_reconciles_submitted_name`, `test_kill_not_found_still_reconciles_submitted_name`, `test_failed_kill_keeps_submitted_name`
+- 117-08, `test_model_builder.py` (x7): `test_submitted_file_without_status_is_queued`, `test_submitted_file_with_preallocated_local_size_is_not_downloaded`, `test_lftp_status_takes_precedence_over_submitted`, `test_submitted_name_with_no_other_source_is_ignored`, `test_submitted_directory_children_are_queued`, `test_set_submitted_files_invalidates_cache_only_on_change`, `test_clear_resets_submitted_files`
+- 117-08, `test_controller_unit.py::TestControllerCommandSubmittedUnobservedGuard` (x4): `test_extract_rejected_while_submitted_unobserved`, `test_delete_local_rejected_while_submitted_unobserved`, `test_delete_remote_rejected_while_submitted_unobserved`, `test_queue_not_resubmitted_while_submitted_unobserved`
+
+**Preservation tests.** These passed before the fix and still pass after it. They are the ten tests listed in the RED section, including the four in the safety module: `test_genuinely_empty_status_clears_downloading_state`, `test_genuinely_empty_status_clears_active_list`, `test_delete_local_of_unsubmitted_file_in_same_process_still_dispatches` and `test_stop_then_user_queue_after_unavailable_status_resubmits_to_lftp`. A `-k` run of the ten names on `d7c76bc` gave `10 passed, 102 deselected`.
+
+### CI-only: integration counter tests
+
+Four counter tests in `src/python/tests/integration/test_lftp/test_lftp_protocol.py` were not run on this host: `test_status_real_parser_raises_on_malformed_output`, `test_status_parser_error_increments_and_swallows`, `test_status_parser_error_exceeds_max_reraises` and `test_status_parser_error_counter_resets_on_success`. They need the Docker sshd / `testgroup` fixture and the lftp binary.
+
+Plan 117-05 flipped **10** tolerated-error assertions in these tests to `assertIsNone(self.lftp.status())`. Its action text said 8, but its own acceptance criterion and line list gave 10, and 10 were flipped. The one genuine-empty success line stays `assertEqual([], ...)`. CI `unittests-python` verifies these tests.
+
+### Deferred parser sites (D-09)
+
+These sites are recorded in the 117-04 SUMMARY and deliberately left unchanged:
+
+- **#1 pget sftp-line check** (`"sftp" in lines[0]` in `PgetJobParser.parse_header`). When it misfires, a later parse step almost always raises loudly, so it does not cause a silent job loss.
+- **#6 QueueParser line-3 unconditional pop.** This assumes lftp always prints "Now executing:" or "Queue is stopped." when a job is active.
+- **#8 `\transfer` with no data line** (`_handle_file_transfer`, consume-then-raise). After B2 this shows up as "status unavailable", never as a lost job. Revisit if NAS logs show "Missing chunk data for filename".
+
+### Accepted behavior change: Stop during a status failure
+
+`Lftp.kill` now raises `LftpJobStatusParserError` when status is unavailable, which happens after a tolerated parse error or a timed-out `jobs -v`. `CommandProcessor._handle_stop` already maps that error to the generic "Lftp error" 500 response, and nothing is added to the stopped set. Before the fix, the empty list made kill report "not found", so Stop could report success while lftp kept downloading. The owner accepted this change. The user can retry Stop once status recovers.
+
+### Timeout semantics
+
+A `jobs -v` whose pexpect expect timed out is an incomplete observation. `Lftp.status()` returns `None` without parsing the buffer, even if the partial buffer would parse. The timeout neither counts toward nor resets `MAX_CONSECUTIVE_STATUS_ERRORS`, which is still 2. Stalls remain `LftpManager`'s stall-backoff concern. Timeout handling for every other command (setters, queue, kill, kill_all) is unchanged. This came from the codex pass-3 finding and is pinned by `test_timeout_does_not_count_toward_or_reset_parser_error_counter`.
+
+### Submitted-unobserved protection (Plan 08, codex finding)
+
+- `LftpManager` owns an in-process set of names that lftp accepted a QUEUE for but that no successful status has observed yet. `ModelBuilder` shows them as the existing **Queued** state until the first successful status, with no new UI indicator (D-01). An observed lftp status always wins.
+- Any status that returns a list, including a genuine `[]`, clears the whole set. `None`, an exception or the stall backoff leave it in place. While status stays unavailable, the file stays Queued. This is the D-02 freeze and mirrors the frozen DOWNLOADING state for observed transfers. The file is never re-queued after the cooldown, never marked DOWNLOADED from a preallocated local size and never auto-extracted. The set lives in process memory only and is not persisted.
+- `CommandProcessor` also checks the set when it executes a command. Extract, delete-local and delete-remote of a submitted-but-unobserved name return 409. A repeated QUEUE returns success without submitting the job to lftp again. This closes the same-cycle QUEUE-then-destructive ordering gap from the codex pass-2 finding: commands in one batch are handled against the model as it was frozen at the last build.
+- The STOP handler is unchanged. `LftpManager.kill` removes the stopped name from the set after `Lftp.kill` returns, whether it returned True or False. If kill raises, the name stays protected. A Stop followed by a user re-queue therefore really re-submits the job (codex pass-3). This is pinned by the Plan 01 preservation test `test_stop_then_user_queue_after_unavailable_status_resubmits_to_lftp` and the three kill-path `LftpManager` unit tests.
+- Discretion rationale (from the 117-08 SUMMARY): the set lives in `LftpManager` because it is the only object that knows a queue command was actually sent and whether the next status was available. A synchronous model rebuild per command was rejected in favour of a cheap membership test.
+
+### Codex adversarial review
+
+Four codex passes reviewed the phase plans. Passes 1-3 produced findings that plan revisions fixed: submitted-but-unobserved protection, the same-cycle command guard, and timeout-as-unavailable plus Stop-path reconciliation. The owner accepted the pass-4 finding as a known follow-up: after a timeout, the LFTP command stream needs to resync, because a delayed prompt can make the next status look like "no jobs". It is recorded as backlog Phase 999.2 (`.planning/phases/999.2-lftp-command-stream-resync-after-timeout/`) and is not fixed in this phase.
+
+**Ruff** (`ruff check <worktree>/src/python/`, whole tree, ruff 0.15.9 on PATH): `All checks passed!`
