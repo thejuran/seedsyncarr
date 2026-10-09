@@ -749,7 +749,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 117-08-PLAN.md — Fix B2 (codex findings): hold transfers submitted to lftp but not yet observed by a successful status as QUEUED (LftpManager set -> ModelPipeline sync -> ModelBuilder derivation) and guard CommandProcessor extract/delete/queue handlers against the same set at execution time (same-tick QUEUE-then-destructive ordering) so no re-queue / DOWNLOADED / extract / delete decision is made on them
+- [x] 117-08-PLAN.md — Fix B2 (codex findings): hold transfers submitted to lftp but not yet observed by a successful status as QUEUED (LftpManager set -> ModelPipeline sync -> ModelBuilder derivation) and guard CommandProcessor extract/delete/queue handlers against the same set at execution time (same-tick QUEUE-then-destructive ordering) so no re-queue / DOWNLOADED / extract / delete decision is made on them
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -811,7 +811,7 @@ Plans:
 | 114. Scanner Auto-Recovery | v1.4.1 | 2/2 | Complete   | 2026-06-21 |
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
-| 117. Transfer-State Safety | v1.7.4 | 6/8 | In Progress|  |
+| 117. Transfer-State Safety | v1.7.4 | 7/8 | In Progress|  |
 | 118. Durable State | v1.7.4 | 0/? | Not started | - |
 
 ---
