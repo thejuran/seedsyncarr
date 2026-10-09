@@ -779,7 +779,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 118-02-PLAN.md — Atomic to_file fix (mkstemp → fsync → os.replace → dir fsync) + GREEN and combined 116-118 regression evidence (PERSIST-01, PERSIST-02, REL-01)
+- [x] 118-02-PLAN.md — Atomic to_file fix (mkstemp → fsync → os.replace → dir fsync) + GREEN and combined 116-118 regression evidence (PERSIST-01, PERSIST-02, REL-01)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -833,7 +833,7 @@ Plans:
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
 | 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
-| 118. Durable State | v1.7.4 | 1/5 | In Progress|  |
+| 118. Durable State | v1.7.4 | 2/5 | In Progress|  |
 
 ---
 

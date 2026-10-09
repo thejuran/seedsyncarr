@@ -21,8 +21,8 @@
 
 ### Durable State
 
-- [ ] **PERSIST-01**: Saving settings.cfg, the controller persist, or the auto-queue persist never leaves a truncated or partial file: any failure before the atomic replace (serialization, temp creation, write, fsync, replace) leaves the original byte-for-byte intact and removes the temp file.
-- [ ] **PERSIST-02**: A successful save produces the correct content with `0600` permissions; after the `os.replace` commit point the new file is committed and the containing directory is fsynced best-effort (a directory-fsync failure is logged, not raised).
+- [x] **PERSIST-01**: Saving settings.cfg, the controller persist, or the auto-queue persist never leaves a truncated or partial file: any failure before the atomic replace (serialization, temp creation, write, fsync, replace) leaves the original byte-for-byte intact and removes the temp file.
+- [x] **PERSIST-02**: A successful save produces the correct content with `0600` permissions; after the `os.replace` commit point the new file is committed and the containing directory is fsynced best-effort (a directory-fsync failure is logged, not raised).
 
 ### Release
 
@@ -51,8 +51,8 @@
 | XFER-03 | Phase 117 | Complete |
 | XFER-04 | Phase 117 | Complete |
 | XFER-05 | Phase 117 | Complete |
-| PERSIST-01 | Phase 118 | Pending |
-| PERSIST-02 | Phase 118 | Pending |
+| PERSIST-01 | Phase 118 | Complete |
+| PERSIST-02 | Phase 118 | Complete |
 | REL-01 | Phase 118 | Pending |
 
 **Coverage:**
