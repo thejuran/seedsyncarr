@@ -829,3 +829,13 @@ Plans:
 Plans:
 
 - [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.2: LFTP command-stream resync after timeout — a delayed prompt from a timed-out command must not make the next status look like "no jobs" (BACKLOG)
+
+**Goal:** [Captured for future planning] After any pexpect TIMEOUT in `Lftp.__run_command` (180 s, `src/python/lftp/lftp.py`), a delayed prompt from the timed-out command can satisfy the next command's `expect`, so the next `jobs -v` looks successful with empty/stale output and could clear observed or submitted-transfer protection. Fix: mark the stream unsynchronized after a timeout and re-establish a verified command boundary (e.g. sentinel echo) before trusting another status result; return `None` (unavailable) until then. Add a regression with a delayed previous-command prompt followed by the real jobs output, asserting stale output cannot clear observed or submitted-transfer protection. Source: codex adversarial pass 4 on Phase 117 (`.orchestrator/codex/v1.7.4/117/pass-4.out`), accepted by owner 2026-10-08 as a known follow-up to keep the 1.7.4 safety patch scoped. Pre-existing in the lftp wrapper (affects all commands, not just status).
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (promote with /bm:review-backlog when ready)
