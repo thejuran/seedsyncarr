@@ -821,3 +821,290 @@ The owner reviewed the smoke PASS summary, the deploy steps 1-7, the LEAVE_STOPP
 Item (f) = **keep pin**. The compose image line stays `ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595` after wud restarts.
 
 Orchestrator instruction for stop classification: classify by exit code, timing and OOMKilled. The known `Scanner process(es) died unexpectedly` shutdown traceback (present on `:357` stops since 2026-09) is recorded separately and does not on its own make a stop FORCED_STOP. Any LEAVE_STOPPED, NO-GO or rollback path stops the plan and returns a report.
+
+## NAS deploy (Plan 118-05, REL-01 gate 4)
+
+Owner go-ahead: "deploy keep pin" (see §Owner go-ahead). Every docker call uses `sudo /usr/local/bin/docker` over `ssh nas`. Times are NAS host time (-0500); the app log clock is host + 1h.
+
+| Marker | Value |
+|--------|-------|
+| DEPLOY_START | `2026-10-09 09:08:19 -0500` |
+| TS (backup suffix) | `20261009-0908` |
+| PRE_STOP_ID_MATCH time | `2026-10-09 09:08:42 -0500` |
+| STOP_TIME | `1791554936` = `2026-10-09 09:08:56 -0500` |
+| UP_TIME | `1791555015` = `2026-10-09 09:10:15 -0500` |
+| **Downtime** | **79 s (about 1.3 minutes)** |
+| First successful remote scan after deploy | `1791555030.738808` = `2026-10-09 09:10:30 -0500` |
+| WUD_START_TIME | `2026-10-09 09:10:57 -0500` |
+
+### Step 0: wud still suspended, rollback point
+
+```
+$ ssh nas "sudo /usr/local/bin/docker inspect wud --format '{{.State.Status}}'"
+exited
+$ ssh nas "sudo /usr/local/bin/docker inspect seedsyncarr --format '{{.Config.Image}} {{.Image}} {{.State.Status}}'"
+ghcr.io/thejuran/seedsyncarr:357 sha256:812bed5980adf41f76b81a8ac6f657c349f0fa4d87061528c89dd23e20bdf694 running
+$ ssh nas "sudo /usr/local/bin/docker image inspect ghcr.io/thejuran/seedsyncarr:357 --format '{{.Id}} {{json .RepoDigests}}'"
+sha256:812bed5980adf41f76b81a8ac6f657c349f0fa4d87061528c89dd23e20bdf694 ["ghcr.io/thejuran/seedsyncarr@sha256:87ca66959391846d11fa1d0539601f18faba2294d880934041f8fc040a6d4e9f"]
+```
+
+ROLLBACK_IMAGE_ID=sha256:812bed5980adf41f76b81a8ac6f657c349f0fa4d87061528c89dd23e20bdf694 (`:357` @ `sha256:87ca6695…4e9f`)
+
+### Step 1: pin, pull and verify before any downtime (production still running `:357`)
+
+```
+$ cp -p /volume1/docker/docker-compose.yml /volume1/docker/docker-compose.yml.pre-1.7.4-20261009-0908 && echo COMPOSE_BACKUP_OK
+COMPOSE_BACKUP_OK
+$ ls -i docker-compose.yml && grep -n 'seedsyncarr:357' docker-compose.yml
+100893229 docker-compose.yml
+78:    image: ghcr.io/thejuran/seedsyncarr:357
+$ sed 's|ghcr.io/thejuran/seedsyncarr:357|ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595|' docker-compose.yml > /tmp/dc.new && cat /tmp/dc.new > docker-compose.yml && rm /tmp/dc.new
+$ ls -i docker-compose.yml && grep -n 'seedsyncarr:' docker-compose.yml && sudo /usr/local/bin/docker compose config --services
+100893229 docker-compose.yml
+77:  seedsyncarr:
+78:    image: ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595
+compose config exit=0 services=32 (seedsyncarr present)
+INODE before=100893229 after=100893229
+$ sudo /usr/local/bin/docker compose pull seedsyncarr
+ seedsyncarr Pulling
+ seedsyncarr Pulled
+$ sudo /usr/local/bin/docker image inspect ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595 --format '{{.Id}} {{json .RepoDigests}}'
+sha256:0e33b030b41004f077d05742286b5599506f27e171b624b6c5122d59811c6d45 ["ghcr.io/thejuran/seedsyncarr@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595"]
+production still: ghcr.io/thejuran/seedsyncarr:357 running
+```
+
+PRE_STOP_ID_MATCH: pulled .Id == SMOKE_IMAGE_ID (sha256:0e33b030b41004f077d05742286b5599506f27e171b624b6c5122d59811c6d45) at 2026-10-09 09:08:42 -0500. RepoDigests contains DIGEST.
+
+### Step 1a: quiesce and classify the stop
+
+```
+STOP_TIME: 1791554936 2026-10-09 09:08:56 -0500
+$ sudo /usr/local/bin/docker compose stop seedsyncarr
+ Container seedsyncarr  Stopping
+ Container seedsyncarr  Stopped
+after stop: 1791554943  duration=7s
+$ sudo /usr/local/bin/docker inspect seedsyncarr --format '{{.State.Status}} {{.State.ExitCode}} {{.State.OOMKilled}} {{.State.FinishedAt}}'
+exited 0 false 2026-10-09T14:08:59.713120369Z
+$ tail -20 /volume1/docker/seedsync/log/seedsyncarr.log   (abridged to the shutdown lines)
+2026-10-09 10:08:57,266 - INFO - seedsyncarr (MainProcess/MainThread) - Caught signal SIGTERM
+2026-10-09 10:08:57,267 - INFO - seedsyncarr (MainProcess/MainThread) - Exiting Seedsyncarr
+2026-10-09 10:08:57,636 - ERROR - seedsyncarr.ScanManager (MainProcess/ControllerJob) - Scanner process(es) died unexpectedly: RemoteScanner, LocalScanner, ActiveScanner
+2026-10-09 10:08:57,637 - ERROR - seedsyncarr.ControllerJob (MainProcess/ControllerJob) - Caught exception in job ControllerJob
+Traceback (most recent call last):
+  ... controller/scan_manager.py, line 201, in _check_process_health
+controller.scan_manager.ScannerProcessDiedError: A scanner process stopped unexpectedly. Please check server logs for details.
+2026-10-09 10:08:58,362 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Exited controller
+2026-10-09 10:08:58,726 - INFO - seedsyncarr (MainProcess/MainThread) - Exited successfully
+```
+
+STOP_CLASS: CLEAN_STOP (ExitCode=0, OOMKilled=false, FinishedAt=2026-10-09T14:08:59.713120369Z, duration 7 s < 10 s grace, `Caught signal SIGTERM` through `Exited successfully`).
+
+Known shutdown message, recorded separately per the orchestrator instruction: the `ScannerProcessDiedError` traceback above is the shutdown race that `:357` has logged on every stop since 2026-09 (see §Smoke test step 8). It occurred after `Exiting Seedsyncarr`, and the process still ended with `Exited successfully`, exit code 0. `exited` was confirmed before any copy.
+
+### Step 1b: backups
+
+```
+$ cp -p settings.cfg settings.cfg.pre-1.7.4-20261009-0908 && cp -p controller.persist controller.persist.pre-1.7.4-20261009-0908 && cp -p autoqueue.persist autoqueue.persist.pre-1.7.4-20261009-0908 && echo COPIES_OK
+COPIES_OK
+$ ls -l *.pre-1.7.4-20261009-0908
+-rw------- 1 jule1651 users    22 Oct  9 09:08 autoqueue.persist.pre-1.7.4-20261009-0908
+-rw------- 1 jule1651 users 24734 Oct  9 09:08 controller.persist.pre-1.7.4-20261009-0908
+-rw------- 1 jule1651 users  1264 Oct  9 09:08 settings.cfg.pre-1.7.4-20261009-0908
+(no EMPTY line)
+```
+
+### Step 1c: loader check in both images (read-only)
+
+PARSE_CHECK_SHA_MATCH: 920363ac3693d1528ece37114e870cf00cb8b75b718663bc2ef5d446b3f5dd53 (== PARSE_CHECK_SHA; script `118-05-parse_check.py`). The flags are the ones proven in the step 8b self-test, including `--user 1026:100`.
+
+```
+$ sudo /usr/local/bin/docker run --rm -i --read-only --user 1026:100 --network none --cap-drop ALL --entrypoint python3 -w /app/python -v /volume1/docker/seedsync:/c:ro ghcr.io/thejuran/seedsyncarr:357 - settings.cfg.pre-1.7.4-20261009-0908 controller.persist.pre-1.7.4-20261009-0908 autoqueue.persist.pre-1.7.4-20261009-0908 < parse_check.py
+PASS settings.cfg.pre-1.7.4-20261009-0908 loader=Config
+AutoDelete.enabled=True
+PASS controller.persist.pre-1.7.4-20261009-0908 loader=ControllerPersist
+PASS autoqueue.persist.pre-1.7.4-20261009-0908 loader=AutoQueuePersist
+PARSE_OK
+EXIT=0
+$ sudo /usr/local/bin/docker run --rm -i --read-only --user 1026:100 --network none --cap-drop ALL --entrypoint python3 -w /app/python -v /volume1/docker/seedsync:/c:ro ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595 - settings.cfg.pre-1.7.4-20261009-0908 controller.persist.pre-1.7.4-20261009-0908 autoqueue.persist.pre-1.7.4-20261009-0908 < parse_check.py
+PASS settings.cfg.pre-1.7.4-20261009-0908 loader=Config
+AutoDelete.enabled=True
+PASS controller.persist.pre-1.7.4-20261009-0908 loader=ControllerPersist
+PASS autoqueue.persist.pre-1.7.4-20261009-0908 loader=AutoQueuePersist
+PARSE_OK
+EXIT=0
+```
+
+Recorded `AutoDelete.enabled=True`: a rollback restore of this backup would re-arm auto-delete, so rollback step (iii) applies.
+
+### Step 1d: checksums
+
+```
+$ sha256sum settings.cfg.pre-1.7.4-20261009-0908 controller.persist.pre-1.7.4-20261009-0908 autoqueue.persist.pre-1.7.4-20261009-0908 /volume1/docker/docker-compose.yml.pre-1.7.4-20261009-0908
+9edbf04167128d5ec6605c42fbf35664e61493f682cb68c32682f226dc710954  settings.cfg.pre-1.7.4-20261009-0908
+8c7c8e826180b0403d05c9b8a5e0cdfb9fdaba867365737f5b806e4dd1e2c284  controller.persist.pre-1.7.4-20261009-0908
+53ba66394d6c25515c760efbcde45b4d0917b778b2b883bc1833618b53e6c4df  autoqueue.persist.pre-1.7.4-20261009-0908
+e76273fa85322309dea2e5cd2d86240c93ed8c547de992db3b66bdd14831f876  /volume1/docker/docker-compose.yml.pre-1.7.4-20261009-0908
+$ cmp originals vs backups
+IDENTICAL settings.cfg == backup
+IDENTICAL controller.persist == backup
+IDENTICAL autoqueue.persist == backup
+```
+
+### Step 2: wud tag filter (item d)
+
+The label was inserted after the seedsyncarr service's `wud.watch.digest=true` line (file line 90), using the same write-through edit. In the compose file it is written `$$`, compose's escape for a literal `$`. The effective container label is `^\d+\.\d+\.\d+$`.
+
+```
+INODE before=100893229 after=100893229
+$ sed -n '77,92p' docker-compose.yml
+  seedsyncarr:
+    image: ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595
+    container_name: seedsyncarr
+    environment:
+      - PUID=1026
+      - PGID=100
+      - TZ=America/New_York
+    volumes:
+      - /volume1/docker/seedsync:/config
+      - /volume1/data/torrents:/downloads
+    ports:
+      - 8800:8800
+    labels:
+      - wud.watch.digest=true
+      - wud.tag.include=^\d+\.\d+\.\d+$$
+    restart: unless-stopped
+compose config exit=0 services=32
+grep -c 'seedsyncarr:1.7.4@sha256:' = 1
+grep -c 'seedsyncarr:dev' = 0
+grep -c 'wud.tag.include' = 1
+```
+
+### Step 3: deploy
+
+```
+$ sudo /usr/local/bin/docker compose up -d seedsyncarr
+ Container seedsyncarr  Recreate
+ Container seedsyncarr  Recreated
+ Container seedsyncarr  Starting
+ Container seedsyncarr  Started
+UP_TIME: 1791555015 2026-10-09 09:10:15 -0500
+```
+
+There was no pull inside the window. Downtime was 79 s.
+
+### Step 4: same image as the smoke test
+
+```
+$ sudo /usr/local/bin/docker inspect seedsyncarr --format '{{.Config.Image}} {{.Image}} {{.State.Status}}'
+ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595 sha256:0e33b030b41004f077d05742286b5599506f27e171b624b6c5122d59811c6d45 running
+$ sudo /usr/local/bin/docker image inspect ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d…1595 --format '{{json .RepoDigests}}'
+["ghcr.io/thejuran/seedsyncarr@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595"]
+$ sudo /usr/local/bin/docker inspect seedsyncarr --format '{{json .Config.Labels}}'   (wud labels)
+"wud.tag.include":"^\\d+\\.\\d+\\.\\d+$"
+"wud.watch.digest":"true"
+```
+
+IMAGE_ID_MATCH: running .Image == SMOKE_IMAGE_ID (sha256:0e33b030b41004f077d05742286b5599506f27e171b624b6c5122d59811c6d45). RepoDigests contains DIGEST.
+
+### Step 5: startup and config loading
+
+These are the app log lines after the last `Exited successfully` (10:08:58 app clock):
+
+```
+2026-10-09 10:10:30,062 - INFO - seedsyncarr (MainProcess/MainThread) - Debug mode is disabled.
+2026-10-09 10:10:30,083 - INFO - seedsyncarr (MainProcess/MainThread) - Starting SeedSyncarr
+2026-10-09 10:10:30,084 - INFO - seedsyncarr (MainProcess/MainThread) - Platform: x86_64
+2026-10-09 10:10:30,084 - WARNING - ... [SECURITY] webhook_secret is not configured. ...
+2026-10-09 10:10:30,084 - WARNING - ... [SECURITY] No API token configured. ...
+2026-10-09 10:10:30,084 - WARNING - ... [SECURITY] Application is bound to 0.0.0.0 without an API token. ...
+2026-10-09 10:10:30,703 - INFO - seedsyncarr.WebApp (MainProcess/MainThread) - Html path set to: /app/html
+2026-10-09 10:10:30,792 - INFO - seedsyncarr.Controller.MemoryMonitor (MainProcess/ControllerJob) - Memory stats: process=46.7MB, downloaded_files=83, extracted_files=0, model_files=0, lftp_statuses=0
+2026-10-09 10:10:32,716 - INFO - RemoteScanner.RemoteScanner (RemoteScanner/RemoteScanner) - Installing local:/app/scanfs to remote:/home/jules1651/.local/scanfs
+Backing up: 0  Traceback: 0  ERROR: 0  WARNING: 3 (the three standing [SECURITY] config notices)
+```
+
+`downloaded_files=83` shows that controller.persist loaded with its contents and was not reset. `/server/status` returns `"up": true`.
+
+### Step 6: scanner recovery gate
+
+```
+SCAN_GATE=1 at 2026-10-09 09:10:45 -0500 after 20s polling
+$ curl -s -m 5 http://localhost:8800/server/status
+{"server": {"up": true, "error_msg": null}, "controller": {"latest_local_scan_time": "1791555040.736629", "latest_remote_scan_time": "1791555030.738808", "latest_remote_scan_failed": false, "latest_remote_scan_error": null}, "storage": {"local_total": 76780498186240, "local_used": 36174019506176, "remote_total": 11992269488128, "remote_used": 5887021068288}}
+latest_remote_scan_time=1791555030.738808 (2026-10-09 09:10:30 -0500) vs UP_TIME 1791555015 (2026-10-09 09:10:15 -0500), DEPLOY_START 09:08:19
+```
+
+Timeline: deploy 09:10:15. No scanner error was logged after the deploy. The first successful remote scan was at 09:10:30, with `latest_remote_scan_failed: false`. Gate passed.
+
+### Step 7: persist files (uptime > 30 s)
+
+```
+$ ls -la /volume1/docker/seedsync/   (the three live files)
+-rw-------  1 jule1651 users     22 Oct  9 09:10 autoqueue.persist
+-rw-------  1 jule1651 users  24734 Oct  9 09:10 controller.persist
+-rw-------  1 jule1651 users   1264 Oct  9 09:10 settings.cfg
+tmp count: 0
+```
+
+All three are `-rw-------`, owned by jule1651, with no `+` ACL marker, and there are no `.tmp` files. The three `.pre-1.7.4-20261009-0908` backups and the older app and manual `.bak*` copies remain in the directory.
+
+### Step 8: item (f) keep pin, then restore wud (last production action)
+
+```
+$ ls -i docker-compose.yml; grep -n 'seedsyncarr:' docker-compose.yml
+100893229 docker-compose.yml
+77:  seedsyncarr:
+78:    image: ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595
+WUD_START_TIME: 2026-10-09 09:10:57 -0500
+$ sudo /usr/local/bin/docker compose start wud
+ Container wud  Starting
+ Container wud  Started
+$ sudo /usr/local/bin/docker inspect wud --format '{{.State.Status}} {{.State.StartedAt}}'
+running 2026-10-09T14:11:05.31202607Z
+health=healthy at 2026-10-09 09:11:38 -0500
+$ sudo /usr/local/bin/docker logs --since 4m wud   (excerpt; registry credential line omitted)
+10:11:10.882  INFO whats-up-docker: WUD is starting (version = 8.2.2)
+10:11:11.720  INFO whats-up-docker/trigger.dockercompose.local: Register with configuration {"dryrun":"false","prune":"true","file":"/wud/docker-compose.yml"}
+10:11:11.726  INFO whats-up-docker/trigger.dockercompose.local: Registering for auto execution
+10:11:15.579  INFO whats-up-docker/watcher.docker.local: Register with configuration {"watchbydefault":"true","cron":"0 */6 * * *"}
+10:11:15.580  INFO whats-up-docker/watcher.docker.local: Cron scheduled (0 */6 * * *)
+10:11:15.682  INFO whats-up-docker/api: Server listening on port 3000 (HTTP)
+10:11:16.661  INFO whats-up-docker/watcher.docker.local: Listening to docker events
+```
+
+| wud restore record | Value |
+|--------------------|-------|
+| WUD_STOP_TIME | `2026-10-09 08:30:13 -0500` (§wud suspension) |
+| WUD_START_TIME | `2026-10-09 09:10:57 -0500` (container StartedAt 14:11:05Z) |
+| Total suspension | about 40 min 44 s |
+| Item (d) `wud.tag.include=^\d+\.\d+\.\d+$` applied before restart | yes (step 2, also on the recreated container's labels) |
+| Item (f) | keep pin; final line `image: ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595` |
+| Compose inode | 100893229 before the first edit, after the pin, after the label (unchanged) |
+| wud on seedsyncarr | Not yet observed. There were 0 log mentions in the first minutes, and the first watch cycle is the next `0 */6 * * *` cron. The digest-pin behaviour stays [ASSUMED] until that cycle is observed |
+
+The dockercompose trigger is live (`dryrun: false`) and reads `/wud/docker-compose.yml`, the same inode that was edited above.
+
+### Rollback reference and ordered instructions (not executed)
+
+There was no rollback trigger: no `Backing up` line, the image ID matched, and the owner raised no rollback. The rollback target is `ghcr.io/thejuran/seedsyncarr:357@sha256:87ca66959391846d11fa1d0539601f18faba2294d880934041f8fc040a6d4e9f`, ROLLBACK_IMAGE_ID `sha256:812bed5980adf41f76b81a8ac6f657c349f0fa4d87061528c89dd23e20bdf694`, TS `20261009-0908`. Run these in this exact order:
+
+1. (i) `ssh nas 'cd /volume1/docker && sudo /usr/local/bin/docker compose stop seedsyncarr'` and confirm `sudo /usr/local/bin/docker inspect seedsyncarr --format '{{.State.Status}} {{.State.ExitCode}} {{.State.OOMKilled}} {{.State.FinishedAt}}'` starts with `exited`. Record the stop duration and classify CLEAN_STOP or FORCED_STOP as in step 1a.
+2. (ii) Restore: `cd /volume1/docker/seedsync && cp -p settings.cfg.pre-1.7.4-20261009-0908 settings.cfg && cp -p controller.persist.pre-1.7.4-20261009-0908 controller.persist && cp -p autoqueue.persist.pre-1.7.4-20261009-0908 autoqueue.persist`. Then `sha256sum settings.cfg controller.persist autoqueue.persist` must print `9edbf041…0954`, `8c7c8e82…2c284` and `53ba6639…c4df`, matching step 1d. If step 1c had never passed for this TS, run `118-05-parse_check.py` in the `:357` image with the step 1c flags (`--user 1026:100`, `:ro`) against the restored names first. **Any checksum mismatch or loader FAIL means LEAVE_STOPPED**: no image is started, and the owner chooses the recovery.
+3. (iii) Disable auto-delete in the RESTORED file before any image starts (this backup has `AutoDelete.enabled=True`): `sed -i '/^\[AutoDelete\]/,/^\[/ s/^enabled = .*/enabled = False/' /volume1/docker/seedsync/settings.cfg`
+4. (iv) Verify: `grep -A3 '^\[AutoDelete\]' /volume1/docker/seedsync/settings.cfg` prints `enabled = False`. Do not proceed until it does.
+5. (v) Re-pin compose to `ghcr.io/thejuran/seedsyncarr:357@sha256:87ca66959391846d11fa1d0539601f18faba2294d880934041f8fc040a6d4e9f` with the inode-preserving write-through (`sed … > /tmp/dc.new && cat /tmp/dc.new > docker-compose.yml`, `ls -i` unchanged). Alternatively use `cat docker-compose.yml.pre-1.7.4-20261009-0908 > docker-compose.yml`, which restores the bare `:357` line and drops the item (d) label. Confirm that `sudo /usr/local/bin/docker image inspect ghcr.io/thejuran/seedsyncarr:357 --format '{{.Id}} {{json .RepoDigests}}'` prints `sha256:812bed59…f694` and `sha256:87ca6695…4e9f`.
+6. (vi) `ssh nas 'cd /volume1/docker && sudo /usr/local/bin/docker compose up -d seedsyncarr'`. Then `sudo /usr/local/bin/docker inspect seedsyncarr --format '{{.Image}} {{.State.Status}}'` must print `sha256:812bed5980adf41f76b81a8ac6f657c349f0fa4d87061528c89dd23e20bdf694 running`.
+7. (vii) Keep auto-delete off until the owner confirms in the UI that every expected import shows as imported.
+8. (viii) Only after the rollback is verified (`running`, `.Image` == ROLLBACK_IMAGE_ID, `server.up` true, no `Backing up` line), make sure wud is running (`sudo /usr/local/bin/docker compose start wud`; verify `running`). wud must not act during a rollback. Because wud is now running, stop it first (`sudo /usr/local/bin/docker compose stop wud`) before step (i) of any future rollback. If the NAS is left on `:357` with wud running, wud may move it to a newer numeric tag unless the item (d) label is present.
+
+The settings.cfg sed replaces that file's inode. That is fine, because the app opens it by path and the directory is what is bind-mounted.
+
+### Verdict
+
+REL-01 gate 4: **PASS**.
+- The NAS runs `:1.7.4@sha256:682d…1595`, and the running `.Image` equals SMOKE_IMAGE_ID. This was verified before the stop and after the start.
+- The stop was CLEAN_STOP. The backups loaded with the app's own loaders in both images, and their checksums are recorded.
+- The config loaded without a reset, and a clean remote scan ran 15 s after start.
+- The persist files are 0600, with no `.tmp` files.
+- Downtime was 79 s.
+- wud was restored last with the semver filter and the kept pin.
