@@ -2,7 +2,7 @@ import collections
 import os
 import logging
 import time
-from typing import List, Optional
+from typing import Iterable, List, Optional, Set
 import math
 
 from system import SystemFile
@@ -31,6 +31,7 @@ class ModelBuilder:
         self.__downloaded_files: Optional[BoundedOrderedSet] = None
         self.__extract_statuses = dict()
         self.__extracted_files = set()
+        self.__submitted_files: Set[str] = set()
         self.__cached_model = None
         self.__cache_timestamp = None
 
@@ -87,6 +88,18 @@ class ModelBuilder:
         if self.__extracted_files != prev_extracted_files:
             self.__cached_model = None
 
+    def set_submitted_files(self, submitted_files: Iterable[str]) -> None:
+        """
+        Names submitted to lftp whose job has not yet been observed by a
+        successful status. Such files are reported QUEUED so no gate (auto-queue
+        sweep, DOWNLOADED derivation, extract, delete) acts on an unobserved
+        transfer (XFER-02).
+        """
+        new_submitted_files = set(submitted_files)
+        if new_submitted_files != self.__submitted_files:
+            self.__submitted_files = new_submitted_files
+            self.__cached_model = None
+
     def clear(self):
         self.__local_files.clear()
         self.__remote_files.clear()
@@ -94,6 +107,7 @@ class ModelBuilder:
         self.__downloaded_files = None
         self.__extract_statuses.clear()
         self.__extracted_files.clear()
+        self.__submitted_files.clear()
         self.__cached_model = None
         self.__cache_timestamp = None
 
@@ -215,7 +229,8 @@ class ModelBuilder:
                            model_file: ModelFile,
                            status: Optional[LftpJobStatus]) -> None:
         """
-        Set the initial state for a root file based on LFTP status.
+        Set the initial state for a root file based on LFTP status, or QUEUED
+        if it was submitted to lftp but not yet observed in a status.
 
         Only sets QUEUED or DOWNLOADING; final state is determined later.
         """
@@ -223,6 +238,9 @@ class ModelBuilder:
             model_file.state = (ModelFile.State.QUEUED
                                 if status.state == LftpJobStatus.State.QUEUED
                                 else ModelFile.State.DOWNLOADING)
+        # An observed lftp status always wins over a pending submission
+        elif model_file.name in self.__submitted_files:
+            model_file.state = ModelFile.State.QUEUED
 
     def _fill_model_file(self,
                          model_file: ModelFile,
