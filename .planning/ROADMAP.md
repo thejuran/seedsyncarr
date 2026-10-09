@@ -783,7 +783,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 118-03-PLAN.md — 1.7.4 release commit: version bumps, CHANGELOG fold, release notes with rollback runbook, metadata gate (REL-01)
+- [x] 118-03-PLAN.md — 1.7.4 release commit: version bumps, CHANGELOG fold, release notes with rollback runbook, metadata gate (REL-01)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -833,7 +833,7 @@ Plans:
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
 | 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
-| 118. Durable State | v1.7.4 | 2/5 | In Progress|  |
+| 118. Durable State | v1.7.4 | 3/5 | In Progress|  |
 
 ---
 

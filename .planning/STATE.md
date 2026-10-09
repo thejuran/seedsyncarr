@@ -4,13 +4,13 @@ milestone: v1.7.4
 milestone_name: Safety Patch
 status: executing
 stopped_at: Completed 118-01-PLAN.md
-last_updated: "2026-10-09T13:22:27.887Z"
+last_updated: "2026-10-09T13:26:50.254Z"
 last_activity: 2026-10-09 -- Completed 118-01 (RED atomic-write regressions)
 progress:
   total_phases: 20
   completed_phases: 4
   total_plans: 19
-  completed_plans: 16
+  completed_plans: 17
   percent: 20
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-08)
 ## Current Position
 
 Phase: 118 (durable-state) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Executing Phase 118
 Last activity: 2026-10-09 -- Completed 118-01 (RED atomic-write regressions)
 
-Progress: [████████░░] 84%
+Progress: [█████████░] 89%
 
 ## Accumulated Context
 
@@ -51,6 +51,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 118]: 118-01: RED tests patch only global os.fsync/os.replace/tempfile.mkstemp so pre-fix failures are behavioral AssertionErrors; PERSIST-01/02 stay unchecked until 118-02 lands the fix
 - [Phase 118]: Persist.to_file re-raises the original exception unwrapped (never PersistError) so caller handlers and ServiceExit keep working and save failures never trigger the load-side corrupt-file reset
 - [Phase 118]: Host coverage 86.36% vs fail_under 88 is informational only (CI runs no --cov); surfaced at 118-04 checkpoint
+- [Phase 118]: Owner (2026-10-09): 1.7.4 public release notes are plain English (stop, copy 3 files, upgrade; rollback sets [AutoDelete] enabled = False in restored settings.cfg); loader-based backup check lives only in 118-05
+- [Phase 118]: Public rollback target is :1.7.2 (1.7.3 never published); owner confirms at 118-04
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -114,7 +116,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-10-09T13:22:22.924Z
+Last session: 2026-10-09T13:26:41.468Z
 Stopped at: Completed 118-01-PLAN.md
 Next action: Execute Plan 118-02 (atomic Persist.to_file fix; turn the 9 RED tests GREEN)
 
