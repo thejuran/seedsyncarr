@@ -448,17 +448,17 @@ assert ctx.status.controller.latest_remote_scan_time == last failed t and latest
 | A3 | Keeping the REQUEUE cooldown on the UI clock is the right call (not specified by owner) | B3 / Anti-patterns | Low. The two choices differ only during scanner outages, in retry cadence, not in safety. |
 | A4 | Raising from `Lftp.kill()` on unavailable status is acceptable UX: Stop shows an "Lftp error" instead of silently "succeeding" | B2 trace | Low to medium. It is product-visible. See Open Question 1. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Stop button during a transient status failure (product-visible, small).**
+1. **RESOLVED: Plan 05 ships the kill-on-None raise (recommendation accepted; FYI noted for the phase summary).** Stop button during a transient status failure (product-visible, small).
    - What we know: today a Stop clicked during parse failures 1..2 *reports success* and marks the file "stopped", while lftp keeps downloading. After the fix, the Stop returns an error ("Lftp error: …") and nothing is marked, so the user can retry.
    - Recommendation: ship the raise. Returning "not found" would be exactly the "unavailable → no jobs" conversion that XFER-02 forbids. Mention it to the owner in the phase summary as an FYI. Not blocking.
 
-2. **Should site #8 (`\transfer` with no data line → whole-status parse failure) be tolerated in this patch?**
+2. **RESOLVED: deferred per D-09; Plan 04 records it in the summary/backlog.** Should site #8 (`\transfer` with no data line → whole-status parse failure) be tolerated in this patch?
    - What we know: it never loses a job silently. After B2 it means "status unavailable", so progress freezes until the next clean poll.
    - Recommendation: defer per D-09 and record it in the summary/backlog. Revisit if NAS logs show "Missing chunk data for filename" warnings.
 
-3. **Should site #9 (mirror-empty substring) be fixed, given it needs a pathological filename?**
+3. **RESOLVED: Plan 04 Task 2 adds the JOB_HEADER guard (fixed in scope).** Should site #9 (mirror-empty substring) be fixed, given it needs a pathological filename?
    - Recommendation: yes. It is one guard line plus one regression, it is a genuine silent job loss, and it fits "prevent lost jobs". The planner can drop it if scope must shrink. Sites #2 and #10 are mandatory.
 
 ## Environment Availability
