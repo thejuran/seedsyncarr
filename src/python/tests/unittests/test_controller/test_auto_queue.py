@@ -296,6 +296,8 @@ class TestAutoQueue(unittest.TestCase):
         # No scan clock in this harness: sweep cooldown stays inactive
         self.context.status.controller.latest_remote_scan_time = None
         self.context.status.controller.latest_local_scan_time = None
+        self.context.status.controller.latest_successful_remote_scan_time = None
+        self.context.status.controller.latest_successful_local_scan_time = None
         self.controller = MagicMock()
         self.controller.get_model_files_and_add_listener = MagicMock()
         self.controller.queue_command = MagicMock()
@@ -1776,6 +1778,8 @@ class TestAutoQueueCommandOrigin(unittest.TestCase):
         self.context.config.autoqueue.local_stability_seconds = 0
         self.context.status.controller.latest_remote_scan_time = None
         self.context.status.controller.latest_local_scan_time = None
+        self.context.status.controller.latest_successful_remote_scan_time = None
+        self.context.status.controller.latest_successful_local_scan_time = None
         self.controller = MagicMock()
         self.controller.get_model_files_and_add_listener.return_value = []
         self.controller.is_file_stopped.return_value = False
@@ -1825,6 +1829,8 @@ class TestAutoQueueComposedPipeline(unittest.TestCase):
         self.context.logger = self.logger
         self.context.status.controller.latest_remote_scan_time = None
         self.context.status.controller.latest_local_scan_time = None
+        self.context.status.controller.latest_successful_remote_scan_time = None
+        self.context.status.controller.latest_successful_local_scan_time = None
 
         self.model = Model()
         self.model.set_base_logger(self.logger)
@@ -1948,6 +1954,8 @@ class TestAutoQueueStabilityAndSweep(unittest.TestCase):
         self.context.status.controller = _ControllerStatus()
         self.context.status.controller.latest_remote_scan_time = None
         self.context.status.controller.latest_local_scan_time = None
+        self.context.status.controller.latest_successful_remote_scan_time = None
+        self.context.status.controller.latest_successful_local_scan_time = None
 
         self.controller = MagicMock()
         self.controller.queue_command = MagicMock()
@@ -1970,15 +1978,26 @@ class TestAutoQueueStabilityAndSweep(unittest.TestCase):
             self.logger.removeHandler(h)
 
     def _set_scan(self, scan_time, remote_size, local_size=None,
-                  state=ModelFile.State.DEFAULT):
-        """Simulate a remote scan result landing in the model at scan_time."""
+                  state=ModelFile.State.DEFAULT, failed=False):
+        """
+        Simulate a remote scan result landing at scan_time.
+
+        A successful scan updates the model and both remote clocks (the UI
+        clock latest_remote_scan_time and latest_successful_remote_scan_time).
+        A failed scan advances ONLY the UI clock: the model pipeline does not
+        apply failed results, so the model keeps its stale sizes and no
+        listener event fires.
+        """
+        self.context.status.controller.latest_remote_scan_time = scan_time
+        if failed:
+            return
+        self.context.status.controller.latest_successful_remote_scan_time = scan_time
         f = ModelFile(self.FILE, False)
         f.remote_size = remote_size
         f.local_size = local_size
         f.state = state
         old = self.model_files[0] if self.model_files else None
         self.model_files = [f]
-        self.context.status.controller.latest_remote_scan_time = scan_time
         if self.model_listener is not None:
             if old is None:
                 self.model_listener.file_added(f)
@@ -2192,6 +2211,8 @@ class TestAutoQueueLocalStabilityGate(unittest.TestCase):
         self.context.status.controller = _ControllerStatus()
         self.context.status.controller.latest_remote_scan_time = None
         self.context.status.controller.latest_local_scan_time = None
+        self.context.status.controller.latest_successful_remote_scan_time = None
+        self.context.status.controller.latest_successful_local_scan_time = None
 
         self.controller = MagicMock()
         self.controller.queue_command = MagicMock()
@@ -2212,20 +2233,21 @@ class TestAutoQueueLocalStabilityGate(unittest.TestCase):
             self.logger.removeHandler(h)
 
     def _cycle(self, local_scan_time, remote_size, local_size,
-               state=ModelFile.State.DEFAULT):
+               state=ModelFile.State.DEFAULT, failed=False):
         """
         One controller cycle: the model reflects the given sizes/state and the
         local scan clock reads local_scan_time (unchanged clock == the scan
         result is the same stale one as last cycle). The remote gate is
         disabled in this class so the remote side never gates anything.
+
+        With failed=True the local scan failed: only the UI clock
+        latest_local_scan_time advances (plus the remote clock lockstep the
+        cooldown depends on); the model keeps its stale sizes and no listener
+        event fires, because the model pipeline does not apply failed results.
         """
-        f = ModelFile(self.FILE, False)
-        f.remote_size = remote_size
-        f.local_size = local_size
-        f.state = state
-        old = self.model_files[0] if self.model_files else None
-        self.model_files = [f]
         self.context.status.controller.latest_local_scan_time = local_scan_time
+        if not failed:
+            self.context.status.controller.latest_successful_local_scan_time = local_scan_time
         # Remote clock tracks the local clock so the sweep cooldown (which
         # runs on the remote clock) elapses in step with the local window.
         if local_scan_time is None:
@@ -2233,6 +2255,14 @@ class TestAutoQueueLocalStabilityGate(unittest.TestCase):
                 (self.context.status.controller.latest_remote_scan_time or 0) + 1
         else:
             self.context.status.controller.latest_remote_scan_time = local_scan_time
+        if failed:
+            return
+        f = ModelFile(self.FILE, False)
+        f.remote_size = remote_size
+        f.local_size = local_size
+        f.state = state
+        old = self.model_files[0] if self.model_files else None
+        self.model_files = [f]
         if self.model_listener is not None:
             if old is None:
                 self.model_listener.file_added(f)
