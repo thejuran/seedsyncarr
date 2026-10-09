@@ -1,9 +1,9 @@
 ---
 phase: 118
 slug: durable-state
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-10-08
 ---
 
@@ -41,29 +41,29 @@ Task IDs are filled in by the planner; requirement → command mapping is fixed.
 
 | Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
 |-------------|----------|-----------|-------------------|-------------|--------|
-| PERSIST-01 | Serialization failure → original intact, no temp, raises | unit (RED) | `pytest tests/unittests/test_common/test_persist.py -q -k serialization` | ❌ W0 | ⬜ pending |
-| PERSIST-01 | Write failure (lone surrogate) → same | unit (RED) | `-k write_failure` | ❌ W0 | ⬜ pending |
-| PERSIST-01 | File fsync failure → same | unit (RED) | `-k file_fsync` | ❌ W0 | ⬜ pending |
-| PERSIST-01 | Replace failure → same | unit (RED) | `-k replace_failure` | ❌ W0 | ⬜ pending |
-| PERSIST-01 | Temp-creation failure → same | unit (RED) | `-k temp_creation` | ❌ W0 | ⬜ pending |
-| PERSIST-01 | Failure with no pre-existing target → dir empty | unit | `-k no_existing_target` | ❌ W0 | ⬜ pending |
-| PERSIST-01 | Interrupt (`ServiceExit`) mid-write cleans up, original intact | unit | `-k interrupt` | ❌ W0 | ⬜ pending |
-| PERSIST-02 | Success → content + `0600` + no temp left | unit | existing `test_to_file_*` + `-k no_temp_after_success` | partial ✅ | ⬜ pending |
-| PERSIST-02 | Dir fsync failure → committed, logged on `seedsyncarr.Persist`, no raise | unit (RED) | `-k directory_fsync` | ❌ W0 | ⬜ pending |
-| PERSIST-02 | Temp created in target dir | unit | `-k same_directory` | ❌ W0 | ⬜ pending |
-| PERSIST-01/02 | Three real persist types round-trip via new `to_file` | unit (preservation) | ControllerPersist/AutoQueuePersist inherit `to_file` unmodified from `Persist` (no subclass override), so the base-class RED/GREEN tests in `test_persist.py` cover all three file types; `Config.to_file` is additionally exercised end-to-end by `test_config.py::test_to_file` and the `test_seedsyncarr.py` re-encrypt tests | ✅ | ⬜ pending |
-| REL-01 g1 | All 116 + 117 + 118 RED regressions fail-before/pass-after on release SHA | regression | `pytest -v -k "<names>"`; evidence → `118-REL01-EVIDENCE.md` | ✅ | ⬜ pending |
-| REL-01 g2 | Full suite + whole-tree ruff | suite | above; CI green on merge/tag commit | ✅ | ⬜ pending |
-| REL-01 g3 | Image smoke: startup, status, settings persist, restart | manual-scripted | RESEARCH Smoke Test Recipe | n/a | ⬜ pending |
-| REL-01 g4 | NAS `:1.7.4` same digest, config loads, clean scan after any error | manual-scripted | RESEARCH NAS Deploy Recipe steps 3–5 | n/a | ⬜ pending |
+| PERSIST-01 | Serialization failure → original intact, no temp, raises | unit (RED) | `pytest tests/unittests/test_common/test_persist.py -q -k serialization` | ❌ W0 | ✅ green |
+| PERSIST-01 | Write failure (lone surrogate) → same | unit (RED) | `-k write_failure` | ❌ W0 | ✅ green |
+| PERSIST-01 | File fsync failure → same | unit (RED) | `-k file_fsync` | ❌ W0 | ✅ green |
+| PERSIST-01 | Replace failure → same | unit (RED) | `-k replace_failure` | ❌ W0 | ✅ green |
+| PERSIST-01 | Temp-creation failure → same | unit (RED) | `-k temp_creation` | ❌ W0 | ✅ green |
+| PERSIST-01 | Failure with no pre-existing target → dir empty | unit | `-k no_existing_target` | ❌ W0 | ✅ green |
+| PERSIST-01 | Interrupt (`ServiceExit`) mid-write cleans up, original intact | unit | `-k interrupt` | ❌ W0 | ✅ green |
+| PERSIST-02 | Success → content + `0600` + no temp left | unit | existing `test_to_file_*` + `-k no_temp_after_success` | partial ✅ | ✅ green |
+| PERSIST-02 | Dir fsync failure → committed, logged on `seedsyncarr.Persist`, no raise | unit (RED) | `-k directory_fsync` | ❌ W0 | ✅ green |
+| PERSIST-02 | Temp created in target dir | unit | `-k same_directory` | ❌ W0 | ✅ green |
+| PERSIST-01/02 | Three real persist types round-trip via new `to_file` | unit (preservation) | ControllerPersist/AutoQueuePersist inherit `to_file` unmodified from `Persist` (no subclass override), so the base-class RED/GREEN tests in `test_persist.py` cover all three file types; `Config.to_file` is additionally exercised end-to-end by `test_config.py::test_to_file` and the `test_seedsyncarr.py` re-encrypt tests | ✅ | ✅ green |
+| REL-01 g1 | All 116 + 117 + 118 RED regressions fail-before/pass-after on release SHA | regression | `pytest -v -k "<names>"`; evidence → `118-REL01-EVIDENCE.md` | ✅ | ✅ green |
+| REL-01 g2 | Full suite + whole-tree ruff | suite | above; CI green on merge/tag commit | ✅ | ✅ green |
+| REL-01 g3 | Image smoke: startup, status, settings persist, restart | manual-scripted | RESEARCH Smoke Test Recipe | n/a | ✅ green |
+| REL-01 g4 | NAS `:1.7.4` same digest, config loads, clean scan after any error | manual-scripted | RESEARCH NAS Deploy Recipe steps 3–5 | n/a | ✅ green |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: ✅ green · ✅ green · ❌ red · ⚠️ flaky*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] RED tests in `src/python/tests/unittests/test_common/test_persist.py` (new class, e.g. `TestPersistAtomicWrite`), committed **before** the fix; RED run recorded against the pre-fix SHA in `118-REL01-EVIDENCE.md`
+- [x] RED tests in `src/python/tests/unittests/test_common/test_persist.py` (new class, e.g. `TestPersistAtomicWrite`), committed **before** the fix; RED run recorded against the pre-fix SHA in `118-REL01-EVIDENCE.md`
 - No framework install needed
 
 ---
@@ -79,11 +79,11 @@ Task IDs are filled in by the planner; requirement → command mapping is fixed.
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 10s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** verified 2026-10-09 (118-VERIFICATION.md passed 9/9)
