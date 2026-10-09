@@ -220,3 +220,72 @@ class TestLftpStatusBoundary(unittest.TestCase):
         """
         lftp = _make_lftp_with_scripted_process([_TimedOut(_PARTIAL_PARSEABLE_OUTPUT)])
         self.assertIsNone(lftp.status(), "a timed-out jobs -v must not yield a truncated job list")
+
+
+class TestLftpStatusTimeoutSemantics(unittest.TestCase):
+
+    def test_timeout_does_not_count_toward_or_reset_parser_error_counter(self):
+        """
+        A timed-out `jobs -v` neither increments nor resets the parse-error
+        counter. If it counted, the raise would arrive one call early; if it
+        reset, the final call would return None instead of raising.
+        """
+        n = lftp_mod.MAX_CONSECUTIVE_STATUS_ERRORS
+        script = ([_MALFORMED_JOBS_OUTPUT]
+                  + [_TimedOut("")]
+                  + [_MALFORMED_JOBS_OUTPUT] * (n - 1)
+                  + [_MALFORMED_JOBS_OUTPUT])
+        lftp = _make_lftp_with_scripted_process(script)
+        for i in range(n + 1):
+            self.assertIsNone(lftp.status(), f"call {i+1} must be unavailable (None)")
+        with self.assertRaises(LftpJobStatusParserError):
+            lftp.status()
+
+    def test_timed_out_status_logs_no_raw_output(self):
+        """CWE-117: the timeout path logs fixed strings, never the captured buffer."""
+        lftp = _make_lftp_with_scripted_process([_TimedOut("secret-path\r\nforged line")])
+        with self.assertLogs("Lftp", level="WARNING") as cm:
+            self.assertIsNone(lftp.status())
+        for line in cm.output:
+            self.assertNotIn("secret-path", line)
+            self.assertNotIn("\r", line)
+            self.assertNotIn("\n", line)
+
+
+class TestLftpKillWhenStatusUnavailable(unittest.TestCase):
+
+    @staticmethod
+    def _sent_kill_commands(mock_run) -> List[str]:
+        return [c.args[0] for c in mock_run.call_args_list
+                if c.args and (c.args[0].startswith("kill ") or c.args[0].startswith("queue --delete"))]
+
+    def test_kill_raises_when_status_unavailable(self):
+        """
+        XFER-02: unavailable status is not "job absent"; kill must raise so the
+        Stop handler reports an error instead of a false success.
+        """
+        lftp = _make_lftp_with_mocked_process()
+        lftp.status = MagicMock(return_value=None)
+        with patch.object(lftp, "_Lftp__run_command", return_value="") as mock_run:
+            with self.assertRaises(LftpJobStatusParserError):
+                lftp.kill("some.file")
+            self.assertEqual([], self._sent_kill_commands(mock_run))
+
+    def test_kill_still_returns_false_when_job_absent_from_available_status(self):
+        """Preservation: an available, empty status still means the job is absent."""
+        lftp = _make_lftp_with_mocked_process()
+        lftp.status = MagicMock(return_value=[])
+        with patch.object(lftp, "_Lftp__run_command", return_value="") as mock_run:
+            self.assertFalse(lftp.kill("some.file"))
+            self.assertEqual([], self._sent_kill_commands(mock_run))
+
+    def test_kill_error_message_does_not_echo_job_name(self):
+        """CWE-117: the raised message is fixed and never carries the job name."""
+        lftp = _make_lftp_with_mocked_process()
+        lftp.status = MagicMock(return_value=None)
+        name = "evil\r\nINJECTED log line"
+        with patch.object(lftp, "_Lftp__run_command", return_value=""):
+            with self.assertRaises(LftpJobStatusParserError) as ctx:
+                lftp.kill(name)
+        self.assertNotIn(name, str(ctx.exception))
+        self.assertNotIn("INJECTED", str(ctx.exception))

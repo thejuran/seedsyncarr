@@ -764,14 +764,14 @@ class TestLftpProtocol(unittest.TestCase):
         LftpJobStatusParser.parse() and raises LftpJobStatusParserError. Proven
         WITHOUT stubbing parse(): __run_command returns the malformed fixture so
         the real parser runs. Counter starts at 0, so the 1st and 2nd consecutive
-        real-parser failures are swallowed (return []) and the 3rd re-raises --
+        real-parser failures are reported unavailable (None) and the 3rd re-raises --
         confirming both that the real parser raised and the >MAX re-raise path."""
         with patch.object(self.lftp, "_Lftp__run_command",
                           return_value=_MALFORMED_JOBS_OUTPUT):
-            # 1st real-parser failure: counter -> 1 (<= MAX), swallowed
-            self.assertEqual([], self.lftp.status())
-            # 2nd real-parser failure: counter -> 2 (== MAX), swallowed
-            self.assertEqual([], self.lftp.status())
+            # 1st real-parser failure: counter -> 1 (<= MAX), unavailable
+            self.assertIsNone(self.lftp.status())
+            # 2nd real-parser failure: counter -> 2 (== MAX), unavailable
+            self.assertIsNone(self.lftp.status())
             # 3rd real-parser failure: counter -> 3 (> MAX), re-raises
             with self.assertRaises(LftpJobStatusParserError):
                 self.lftp.status()
@@ -779,15 +779,16 @@ class TestLftpProtocol(unittest.TestCase):
     @pytest.mark.timeout(5)
     def test_status_parser_error_increments_and_swallows(self):
         """Controller counter: the 1st and 2nd consecutive parse errors increment
-        __consecutive_status_errors to 1 then 2 (both <= MAX) and are swallowed --
-        status() returns [] without raising. (parse-stub scope: counter only.)"""
+        __consecutive_status_errors to 1 then 2 (both <= MAX) and are reported
+        unavailable -- status() returns None (never []) without raising.
+        (parse-stub scope: counter only.)"""
         with patch.object(self.lftp._Lftp__job_status_parser, "parse",
                           side_effect=[
                               LftpJobStatusParserError("Error parsing lftp job status"),
                               LftpJobStatusParserError("Error parsing lftp job status"),
                           ]):
-            self.assertEqual([], self.lftp.status())  # count -> 1
-            self.assertEqual([], self.lftp.status())  # count -> 2
+            self.assertIsNone(self.lftp.status())  # count -> 1, unavailable
+            self.assertIsNone(self.lftp.status())  # count -> 2, unavailable
 
     @pytest.mark.timeout(5)
     def test_status_parser_error_exceeds_max_reraises(self):
@@ -800,8 +801,8 @@ class TestLftpProtocol(unittest.TestCase):
                               LftpJobStatusParserError("Error parsing lftp job status"),
                               LftpJobStatusParserError("Error parsing lftp job status"),
                           ]):
-            self.assertEqual([], self.lftp.status())  # count -> 1, swallowed
-            self.assertEqual([], self.lftp.status())  # count -> 2, swallowed
+            self.assertIsNone(self.lftp.status())  # count -> 1, unavailable
+            self.assertIsNone(self.lftp.status())  # count -> 2, unavailable
             with self.assertRaises(LftpJobStatusParserError):
                 self.lftp.status()                    # count -> 3, re-raises
 
@@ -810,8 +811,8 @@ class TestLftpProtocol(unittest.TestCase):
         """Controller counter: a successful status() between errors resets
         __consecutive_status_errors to 0 (lftp.py:305 success branch). Proven via
         public status() returns only: drive 2 errors (count -> 2), then a success
-        (a clean parse returning []), then 2 MORE errors -- both are swallowed
-        (return []). Had the counter NOT reset, the very next error would be count
+        (a clean parse returning []), then 2 MORE errors -- both are reported
+        unavailable (None). Had the counter NOT reset, the very next error would be count
         3 (> MAX) and would re-raise. (parse-stub scope: counter only.)"""
         with patch.object(self.lftp._Lftp__job_status_parser, "parse",
                           side_effect=[
@@ -821,11 +822,11 @@ class TestLftpProtocol(unittest.TestCase):
                               LftpJobStatusParserError("Error parsing lftp job status"),
                               LftpJobStatusParserError("Error parsing lftp job status"),
                           ]):
-            self.assertEqual([], self.lftp.status())  # error, count -> 1, swallowed
-            self.assertEqual([], self.lftp.status())  # error, count -> 2, swallowed
+            self.assertIsNone(self.lftp.status())  # error, count -> 1, unavailable
+            self.assertIsNone(self.lftp.status())  # error, count -> 2, unavailable
             self.assertEqual([], self.lftp.status())  # SUCCESS -> count reset to 0
-            # After reset, two further errors are swallowed again (count -> 1, 2),
+            # After reset, two further errors are reported unavailable again (count -> 1, 2),
             # NOT re-raised -- proving the reset happened.
-            self.assertEqual([], self.lftp.status())  # error, count -> 1, swallowed
-            self.assertEqual([], self.lftp.status())  # error, count -> 2, swallowed
+            self.assertIsNone(self.lftp.status())  # error, count -> 1, unavailable
+            self.assertIsNone(self.lftp.status())  # error, count -> 2, unavailable
 

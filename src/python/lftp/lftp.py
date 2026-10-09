@@ -50,6 +50,9 @@ class Lftp:
         self.__job_status_parser = LftpJobStatusParser()
         self.__timeout = 180  # in seconds
         self.__consecutive_status_errors = 0
+        # Set when the most recent command's expect timed out, i.e. its output
+        # is an incomplete observation. Only status() consults it.
+        self.__last_command_timed_out = False
 
         self.__log_command_output = False
         self.__pending_error = None
@@ -112,10 +115,12 @@ class Lftp:
     def __run_command(self, command: str):
         if self.__log_command_output:
             self.logger.debug("command: {}".format(command.encode('utf8', 'surrogateescape')))
+        self.__last_command_timed_out = False
         self.__process.sendline(command)
         try:
             self.__process.expect(self.__expect_pattern, timeout=self.__timeout)
         except pexpect.exceptions.TIMEOUT:
+            self.__last_command_timed_out = True
             self.logger.warning("Lftp timeout exception")
         finally:
             before = self.__process.before
@@ -136,6 +141,7 @@ class Lftp:
             try:
                 self.__process.expect(self.__expect_pattern, timeout=self.__timeout)
             except pexpect.exceptions.TIMEOUT:
+                self.__last_command_timed_out = True
                 self.logger.warning("Lftp timeout exception")
             finally:
                 out = self.__process.before.decode('utf8', 'replace')
@@ -295,19 +301,35 @@ class Lftp:
     def sftp_connect_program(self, program: str):
         self.__set(Lftp.__SET_SFTP_CONNECT_PROGRAM, program)
 
-    def status(self) -> List[LftpJobStatus]:
+    def status(self) -> Optional[List[LftpJobStatus]]:
         """
-        Return a status list of queued and running jobs
+        Return a status list of queued and running jobs.
+
+        :return: the parsed job list, which is empty only when lftp genuinely
+                 has no jobs; or None when the status is unavailable, meaning
+                 either the `jobs -v` command did not complete (pexpect timeout;
+                 the partial buffer is not parsed) or a tolerated parse error
+                 occurred. None must never be treated as "no jobs".
+        :raises LftpJobStatusParserError: once more than
+                 MAX_CONSECUTIVE_STATUS_ERRORS consecutive parse failures have
+                 occurred, and on every further failure until a successful parse
+                 resets the counter. Timeouts neither count toward nor reset
+                 that counter.
         """
         out = self.__run_command("jobs -v")
+        if self.__last_command_timed_out:
+            self.logger.warning("Lftp status command timed out; status unavailable")
+            return None
         try:
             statuses = self.__job_status_parser.parse(out)
             self.__consecutive_status_errors = 0
         except LftpJobStatusParserError:
             self.__consecutive_status_errors += 1
             if self.__consecutive_status_errors <= MAX_CONSECUTIVE_STATUS_ERRORS:
-                self.logger.warning(f"Ignoring status error (count={self.__consecutive_status_errors})")
-                statuses = []
+                self.logger.warning(
+                    f"Ignoring status error (count={self.__consecutive_status_errors}); status unavailable"
+                )
+                return None
             else:
                 raise
         return statuses
@@ -346,9 +368,14 @@ class Lftp:
         Kill a queued or running job
         :return: True if job of given name was found, False otherwise
         """
+        # Unavailable status is not "job absent": returning False here would let
+        # the caller mark a still-running download as stopped.
+        statuses = self.status()
+        if statuses is None:
+            raise LftpJobStatusParserError("Lftp status unavailable; cannot locate job to kill")
         # look for this name in the status list
         job_to_kill = None
-        for status in self.status():
+        for status in statuses:
             if status.name == name:
                 job_to_kill = status
                 break
