@@ -239,3 +239,89 @@ tests/unittests/test_common/test_persist.py::TestPersistAtomicWrite::test_write_
 Each of the 42 has a recorded fail-before: the 8 Phase 116 tests in `116-REL01-EVIDENCE.md`, the 26 Phase 117 tests in `117-REL01-EVIDENCE.md`, and the 8 Phase 118 tests in this file's RED section.
 
 Plan 118-03's release commit changes no file under `src/python` outside tests, so this run stands for the release SHA. Plan 118-03 proves that with `git diff --stat`.
+
+## Release commit (Plan 118-03)
+
+**Release commit:** `9398e7b` — `chore(release): v1.7.4 — safety patch (import, transfer-state, durable-state)` (branch `safety-patch-1.7.4`, not pushed, not tagged).
+
+Files in the release commit (`git show --stat 9398e7b`): `CHANGELOG.md`, `package.json`, `release-notes.md`, `src/angular/package-lock.json`, `src/angular/package.json`, `src/python/pyproject.toml`.
+
+### Release-metadata gate
+
+```
+$ npm run verify:release-metadata -- 1.7.4
+
+> verify:release-metadata
+> node scripts/verify-release-metadata.mjs 1.7.4
+
+Release metadata matches 1.7.4:
+- CHANGELOG.md has release section [1.7.4]
+- release-notes.md links to CHANGELOG.md through the {{VERSION}} tag placeholder
+- package.json version is 1.7.4
+- src/angular/package.json version is 1.7.4
+- src/angular/package-lock.json version is 1.7.4
+- src/angular/package-lock.json packages[""].version is 1.7.4
+(exit 0)
+```
+
+`npm run test:release-metadata` (`node --test scripts/verify-release-metadata.test.mjs`): `tests 21`, `pass 21`, `fail 0`.
+
+### Production tree unchanged since the 118-02 fix
+
+```
+$ git diff --stat d208acb 9398e7b -- src/python ':!src/python/tests'
+ src/python/pyproject.toml | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+```
+
+The only production-tree change between the 118-02 fix commit and the release commit is the two version lines in `pyproject.toml`, so the combined REL-01 gate-1 regression run above stands for the release SHA.
+
+### Owner decision: public backup check dropped (2026-10-09)
+
+The owner decided the public release notes stay plain English for non-engineer self-hosters: stop the app, copy `settings.cfg`, `controller.persist` and `autoqueue.persist`, upgrade; a short rollback that puts the copies back, makes sure `[AutoDelete]` reads `enabled = False` in the restored `settings.cfg`, starts 1.7.2, and keeps auto-delete off until imports are reconciled. The `docker run --entrypoint python3 … from_str` loader-check command, its FAILED/do-not-start block and `sha256sum` steps are NOT in `release-notes.md`. The rigorous loader-based backup check remains in Plan 118-05 (NAS deploy) only.
+
+### NAS scratch proof of the loader check (run before the owner decision; informational)
+
+The proof had already run when the decision arrived. It is kept here because it validates the same loader approach Plan 118-05 uses, but the command is no longer published. Image `ghcr.io/thejuran/seedsyncarr:1.7.2`; scratch dir `/volume1/docker/seedsync-relnotes-check` (no production path or container touched); fixtures generated inside that image (`good` = `Seedsyncarr._create_default_config().to_str()`, `ControllerPersist().to_str()`, `AutoQueuePersist().to_str()`; `bad` = default INI cut immediately before its second section header, `{}`, `{"not_patterns": []}`). Command run:
+
+```
+sudo /usr/local/bin/docker run --rm --network none --entrypoint python3 -w /app/python \
+  -v "/volume1/docker/seedsync-relnotes-check/<good|bad>:/c:ro" ghcr.io/thejuran/seedsyncarr:1.7.2 -c '
+import sys
+from common import Config
+from controller.controller_persist import ControllerPersist
+from controller.auto_queue import AutoQueuePersist
+failed = 0
+for name, loader in (("settings.cfg.pre-1.7.4", Config),
+                     ("controller.persist.pre-1.7.4", ControllerPersist),
+                     ("autoqueue.persist.pre-1.7.4", AutoQueuePersist)):
+    try:
+        with open("/c/" + name, encoding="utf-8") as f:
+            loader.from_str(f.read())
+        print("OK      " + name)
+    except Exception as e:
+        failed = 1
+        print("FAILED  " + name + " (" + type(e).__name__ + ")")
+sys.exit(failed)
+'
+```
+
+Good set:
+
+```
+OK      settings.cfg.pre-1.7.4
+OK      controller.persist.pre-1.7.4
+OK      autoqueue.persist.pre-1.7.4
+exit 0
+```
+
+Bad set:
+
+```
+FAILED  settings.cfg.pre-1.7.4 (ConfigError)
+FAILED  controller.persist.pre-1.7.4 (PersistError)
+FAILED  autoqueue.persist.pre-1.7.4 (PersistError)
+exit 1
+```
+
+Scratch dir removed afterwards (`ls -d` → `No such file or directory`).
