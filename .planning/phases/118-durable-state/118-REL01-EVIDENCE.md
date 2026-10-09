@@ -448,7 +448,6 @@ PyPI rejected the very first file, so nothing for 1.7.4 was accepted: `https://p
 
 Cause (diagnosis, not yet fixed): the PyPI job runs `pip install build && python -m build` with no version pins. Nothing in `src/python/pyproject.toml` or `.github/workflows/ci.yml` changed between `v1.7.2` (PyPI publish succeeded, run `34002932571`) and `v1.7.4`, apart from the two version lines. So the `./.gitignore` member comes from a newer unpinned build backend or a newer PyPI upload check, not from Phase 116-118 code. Fixing it needs a commit (packaging exclude or pinned builder). Per the plan the tag was **not** moved or deleted: whether to ship 1.7.5 or re-publish 1.7.4 to PyPI is the owner's call.
 
-Image digest / NAS_IMAGE_ID: **not recorded yet**. The plan stops on a CI failure, so `:1.7.4` has not been pulled onto the NAS.
 
 ### wud status at the failure stop
 
@@ -459,4 +458,31 @@ $ ssh nas "sudo /usr/local/bin/docker inspect seedsyncarr --format '{{.Config.Im
 ghcr.io/thejuran/seedsyncarr:357 running
 ```
 
-wud remains stopped. Owner decision on restoring it: **pending** (asked in the failure report).
+wud remains stopped. Owner decision on restoring it: keep it stopped (see below).
+
+### Owner decision on the PyPI failure (2026-10-09), accepted deviation
+
+Owner reply relayed by the orchestrator: **option (a)**. Ship 1.7.4 through Docker and GitHub without PyPI. The PyPI packaging fix (`packages = ["."]` in `src/python/pyproject.toml` produces `./`-prefixed archive members, which PyPI now rejects; confirmed by rebuilding the wheel from `v1.7.4` locally: every member is listed as `./…`) ships as follow-up **1.7.5**, together with open Dependabot alert #93 (`source-map-js >= 1.2.2`). Keep wud stopped. Do not move or delete the `v1.7.4` tag, and do not re-run the PyPI job.
+
+Accepted deviation from the Task 3 success criterion "every job green". Every test, e2e, metadata, Docker publish and GitHub Release job is green; only `Publish to PyPI` failed, and nothing was uploaded to PyPI.
+
+The four `docs(118-04)` evidence commits after the merge (`aeac94f` onwards) stay **local on `main`** and are not pushed now. They are `.planning`-only, and every push to `main` publishes a new numbered staging image through CI. They go out with the next push that is needed anyway.
+
+### Published :1.7.4 image on the NAS (pull only; production untouched)
+
+```
+$ ssh nas "sudo /usr/local/bin/docker pull ghcr.io/thejuran/seedsyncarr:1.7.4"
+Digest: sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595
+Status: Downloaded newer image for ghcr.io/thejuran/seedsyncarr:1.7.4
+$ ssh nas "sudo /usr/local/bin/docker image inspect ghcr.io/thejuran/seedsyncarr:1.7.4 --format '{{json .RepoDigests}}'"
+["ghcr.io/thejuran/seedsyncarr@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595"]
+$ ssh nas "sudo /usr/local/bin/docker image inspect ghcr.io/thejuran/seedsyncarr:1.7.4 --format '{{.Id}} {{.Architecture}}'"
+sha256:0e33b030b41004f077d05742286b5599506f27e171b624b6c5122d59811c6d45 amd64
+```
+
+DIGEST=sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595
+NAS_IMAGE_ID=sha256:0e33b030b41004f077d05742286b5599506f27e171b624b6c5122d59811c6d45
+
+Plan 118-05 reference: `ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595` (smoke test, compose pin, deploy). The smoke container's `.Image` must equal NAS_IMAGE_ID.
+
+Recorded at NAS time `2026-10-09 08:52:10 -0500`. Checked right after the pull: wud `exited`; production `ghcr.io/thejuran/seedsyncarr:357 running` (not touched).
