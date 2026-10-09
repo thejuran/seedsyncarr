@@ -4,13 +4,13 @@ milestone: v1.7.4
 milestone_name: Safety Patch
 status: executing
 stopped_at: Completed 118-01-PLAN.md
-last_updated: "2026-10-09T13:26:50.254Z"
+last_updated: "2026-10-09T13:53:14.645Z"
 last_activity: 2026-10-09 -- Completed 118-01 (RED atomic-write regressions)
 progress:
   total_phases: 20
   completed_phases: 4
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 18
   percent: 20
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-10-08)
 ## Current Position
 
 Phase: 118 (durable-state) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Executing Phase 118
 Last activity: 2026-10-09 -- Completed 118-01 (RED atomic-write regressions)
 
-Progress: [█████████░] 89%
+Progress: [██████████] 95%
 
 ## Accumulated Context
 
@@ -53,6 +53,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 118]: Host coverage 86.36% vs fail_under 88 is informational only (CI runs no --cov); surfaced at 118-04 checkpoint
 - [Phase 118]: Owner (2026-10-09): 1.7.4 public release notes are plain English (stop, copy 3 files, upgrade; rollback sets [AutoDelete] enabled = False in restored settings.cfg); loader-based backup check lives only in 118-05
 - [Phase 118]: Public rollback target is :1.7.2 (1.7.3 never published); owner confirms at 118-04
+- [Phase 118]: 118-04: Owner approved 1.7.4 as drafted; (a)-(e) confirmed (rollback 1.7.2, CHANGELOG fold, coverage informational, wud semver filter in 118-05, inode-preserving compose edit)
+- [Phase 118]: 118-04: Tag CI PyPI publish failed (./-prefixed archive paths, nothing uploaded); owner chose ship 1.7.4 via Docker/GitHub only, PyPI fix + Dependabot #93 in 1.7.5; tag not moved
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -116,7 +118,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-10-09T13:26:41.468Z
+Last session: 2026-10-09T13:53:09.636Z
 Stopped at: Completed 118-01-PLAN.md
 Next action: Execute Plan 118-02 (atomic Persist.to_file fix; turn the 9 RED tests GREEN)
 

@@ -787,7 +787,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 118-04-PLAN.md — Owner approval checkpoint, push main, history-preserving merge, annotated v1.7.4 tag, CI green, image digest (REL-01)
+- [x] 118-04-PLAN.md — Owner approval checkpoint, push main, history-preserving merge, annotated v1.7.4 tag, CI green, image digest (REL-01)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -833,7 +833,7 @@ Plans:
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
 | 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
-| 118. Durable State | v1.7.4 | 3/5 | In Progress|  |
+| 118. Durable State | v1.7.4 | 4/5 | In Progress|  |
 
 ---
 
