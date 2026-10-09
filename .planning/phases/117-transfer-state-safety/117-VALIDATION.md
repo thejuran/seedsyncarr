@@ -47,6 +47,8 @@ Filled by the planner per task; requirement→test mapping (from research):
 | XFER-02 | `Lftp.kill` on unavailable raises `LftpJobStatusParserError` | unit | `pytest tests/unittests/test_lftp/test_lftp_status_contract.py -q` | ❌ W0 | new |
 | XFER-02 | Transfer submitted to lftp but not yet observed (parse failure right after QUEUE) stays QUEUED: no re-queue after cooldown expiry, not DOWNLOADED from a preallocated local size, not committed/extracted/deleted (codex finding; Plan 08) | composed + unit | safety file + `pytest tests/unittests/test_controller/test_lftp_manager.py tests/unittests/test_controller/test_model_builder.py -q` | ❌ W0 / ✅ files | YES (composed) / new (unit) |
 | XFER-02 | Same-cycle command ordering: QUEUE then EXTRACT / DELETE_LOCAL / DELETE_REMOTE for one DEFAULT file in a single `Controller.process()` dispatches no file operation and reports 409; repeated QUEUE is not re-submitted; a never-submitted file in the same batch is unaffected (codex pass-2 finding; Plan 08 Task 3 CommandProcessor guard) | composed (Controller + real LftpManager) + unit | safety file + `pytest tests/unittests/test_controller/test_controller_unit.py -q` | ❌ W0 / ✅ file | YES (composed x3) / new (unit x4) |
+| XFER-02 / XFER-03 | A `jobs -v` whose pexpect expect timed out (empty or partially parseable buffer) is reported unavailable (None), never parsed as a complete listing; timeouts neither count toward nor reset the parser-error counter; composed: observed DOWNLOADING and submitted QUEUED protection survive the timeout (codex pass-3 finding; Plan 05 unit, Plans 05+08 composed) | unit + composed | contract file + safety file | ❌ W0 | YES (unit x2, composed x2) / new (counter semantics x2) |
+| XFER-02 | After submitted → unavailable → STOP (Lftp.kill returned) → USER QUEUE, a second lftp `queue` command is really sent: LftpManager.kill discards the stopped name from the submitted set (codex pass-3 finding; Plan 08 Task 1) | composed + unit | safety file + `pytest tests/unittests/test_controller/test_lftp_manager.py -q` | ❌ W0 / ✅ file | preservation (passes on old code; guards Plan 08) / new (unit x3) |
 | XFER-03 | Failures 1..MAX → None; MAX+1 raises; success resets; empty → [] clears | unit + composed | contract file + safety file | ❌ W0 | YES / preservation |
 | XFER-04 | Failed remote scans spanning window → not queued; D-03/D-04 cases; UI fields unchanged | unit + composed | `pytest tests/unittests/test_controller/test_auto_queue.py -q` + safety file + serializer test | ✅ / ❌ | YES |
 | XFER-05 | Failed local scans spanning window → gate holds; D-05 both cases | unit + composed | auto_queue + safety file | ❌ | YES |
@@ -57,8 +59,8 @@ Filled by the planner per task; requirement→test mapping (from research):
 
 ## Wave 0 Requirements
 
-- [ ] `tests/unittests/test_lftp/test_lftp_status_contract.py` — B2 boundary + kill-on-None
-- [ ] `tests/unittests/test_controller/test_transfer_state_safety.py` — composed B2 downstream (observed + submitted-but-unobserved transfers + same-cycle command ordering with a real LftpManager inside the Controller) + composed B3
+- [ ] `tests/unittests/test_lftp/test_lftp_status_contract.py` — B2 boundary + timed-out `jobs -v` (scripted pexpect process) + kill-on-None + timeout counter semantics
+- [ ] `tests/unittests/test_controller/test_transfer_state_safety.py` — composed B2 downstream (observed + submitted-but-unobserved transfers + timed-out status + same-cycle command ordering with a real LftpManager inside the Controller + Stop-then-requeue preservation) + composed B3
 - [ ] `tests/unittests/test_controller/test_auto_queue.py` — new-field None init in setUps; `_set_scan(failed=)`; `_cycle` success clock
 - [ ] `117-REL01-EVIDENCE.md` — RED section (old code + test-only commit), later GREEN section
 
