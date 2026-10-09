@@ -391,8 +391,8 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 **CI gate every phase must hold:** full Python suite green AND `ruff check src/python/` clean whole-tree (CI runs ruff as a **separate gate from pytest**); Python `fail_under` ≥ 88 holds. Each targeted regression test must be shown to fail against the old behavior before its fix lands (REL-01 gate 1). No version bump or tag inside Phases 116-117 — the release gate (REL-01) is Phase 118's closing criterion and the milestone close.
 
-- [ ] **Phase 116: Import Safety** - `name_to_root` keeps every distinct model path per lowercased basename; a webhook import resolving to two or more distinct paths (across releases, case-only root differences, root-equals-child-basename, or repeated basenames inside one release) is rejected with no import record, no coverage credit, no badge, no auto-delete timer, and one sanitized warning naming the candidate roots; a unique match (including repeated references to the same path) behaves exactly as before (IMPORT-01, IMPORT-02)
-- [ ] **Phase 117: Transfer-State Safety** - LFTP parser never consumes the next job's header (other next-line-consuming sites audited); unparseable status is reported as *unavailable* (`None`), never `[]`, with the existing `MAX_CONSECUTIVE_STATUS_ERRORS` boundary pinned exactly and no downstream consumer collapsing unavailable into "no jobs"; remote and local stability clocks advance only on successful scans while the UI "last scan" timestamp keeps its meaning (XFER-01, XFER-02, XFER-03, XFER-04, XFER-05)
+- [x] **Phase 116: Import Safety** - `name_to_root` keeps every distinct model path per lowercased basename; a webhook import resolving to two or more distinct paths (across releases, case-only root differences, root-equals-child-basename, or repeated basenames inside one release) is rejected with no import record, no coverage credit, no badge, no auto-delete timer, and one sanitized warning naming the candidate roots; a unique match (including repeated references to the same path) behaves exactly as before (IMPORT-01, IMPORT-02) (completed 2026-10-08)
+- [x] **Phase 117: Transfer-State Safety** - LFTP parser never consumes the next job's header (other next-line-consuming sites audited); unparseable status is reported as *unavailable* (`None`), never `[]`, with the existing `MAX_CONSECUTIVE_STATUS_ERRORS` boundary pinned exactly and no downstream consumer collapsing unavailable into "no jobs"; remote and local stability clocks advance only on successful scans while the UI "last scan" timestamp keeps its meaning (XFER-01, XFER-02, XFER-03, XFER-04, XFER-05) (completed 2026-10-09)
 - [ ] **Phase 118: Durable State** - `Persist.to_file` writes atomically (serialize first → 0600 temp in target dir → write/flush/fsync → `os.replace` commit point → best-effort directory fsync) so any pre-replace failure leaves the original byte-for-byte intact with no temp file left behind; then the 1.7.4 release gate — regressions fail-before/pass-after, full suite + ruff, release-image smoke test, `:1.7.4` NAS deploy with scanner recovery confirmed by a subsequent successful scan (PERSIST-01, PERSIST-02, REL-01)
 
 ## Phase Details
@@ -704,15 +704,15 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 116-01-PLAN.md — RED: shape-independent e2e ambiguity regressions + delete-guard tests, shown failing on pre-fix code (REL-01 gate 1)
+- [x] 116-01-PLAN.md — RED: shape-independent e2e ambiguity regressions + delete-guard tests, shown failing on pre-fix code (REL-01 gate 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 116-02-PLAN.md — GREEN import side: multi-path `name_to_paths` lookup + `WebhookManager.process` ambiguity rejection with sanitized warning
+- [x] 116-02-PLAN.md — GREEN import side: multi-path `name_to_paths` lookup + `WebhookManager.process` ambiguity rejection with sanitized warning
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 116-03-PLAN.md — GREEN delete side: video-only `duplicate_basename` guard (terminal skip) + full-suite baseline check + GREEN evidence
+- [x] 116-03-PLAN.md — GREEN delete side: video-only `duplicate_basename` guard (terminal skip) + full-suite baseline check + GREEN evidence
 
 ### Phase 117: Transfer-State Safety
 
@@ -729,7 +729,31 @@ Plans:
 
 **Owner planning notes (2026-10-08)**: Test downstream behavior, not just the `None` return: active transfers remain protected with no unintended re-queue, extraction, or deletion while status is unavailable.
 
-**Plans**: TBD
+**Plans**: 8 plans
+
+Plans:
+**Wave 1**
+
+- [x] 117-01-PLAN.md — RED: B1 parser header-swallowing regressions, Lftp status-boundary contract, composed B2 downstream protection tests (observed and submitted-but-unobserved transfers)
+- [x] 117-02-PLAN.md — RED: B3 stability-clock regressions (AutoQueue unit D-03/D-04/D-05 + composed Controller→Status→AutoQueue), harness init
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 117-03-PLAN.md — RED evidence: quick run against unfixed tree recorded in 117-REL01-EVIDENCE.md
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 117-04-PLAN.md — Fix B1: peek-before-pop at pget data line, \chunk follower, mirror-empty header guard (job_status_parser.py)
+- [x] 117-05-PLAN.md — Fix B2: Lftp.status None on tolerated errors, kill() None guard, integration flips, LftpManager pass-through tests
+- [x] 117-06-PLAN.md — Fix B3: successful-scan clocks on ControllerStatus, controller writes, AutoQueue stability reads; serializer keys guard
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 117-08-PLAN.md — Fix B2 (codex findings): hold transfers submitted to lftp but not yet observed by a successful status as QUEUED (LftpManager set -> ModelPipeline sync -> ModelBuilder derivation) and guard CommandProcessor extract/delete/queue handlers against the same set at execution time (same-tick QUEUE-then-destructive ordering) so no re-queue / DOWNLOADED / extract / delete decision is made on them
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 117-07-PLAN.md — GREEN evidence, full host suite vs baseline, whole-tree ruff, validation sign-off, deferred/accepted items record
 
 ### Phase 118: Durable State
 
@@ -746,7 +770,28 @@ Plans:
 
 **Owner planning notes (2026-10-08)**: Run the REL-01 release gates against the combined changes from all three phases, and deploy to the NAS the exact image that passed testing (same tag/digest).
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+
+- [x] 118-01-PLAN.md — RED atomic-write regressions for Persist.to_file + fail-before evidence (PERSIST-01, PERSIST-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 118-02-PLAN.md — Atomic to_file fix (mkstemp → fsync → os.replace → dir fsync) + GREEN and combined 116-118 regression evidence (PERSIST-01, PERSIST-02, REL-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 118-03-PLAN.md — 1.7.4 release commit: version bumps, CHANGELOG fold, release notes with rollback runbook, metadata gate (REL-01)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 118-04-PLAN.md — Owner approval checkpoint, push main, history-preserving merge, annotated v1.7.4 tag, CI green, image digest (REL-01)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 118-05-PLAN.md — NAS smoke test of :1.7.4, deploy approval, same-digest NAS deploy with scanner-recovery gate (REL-01)
 
 ## Progress
 
@@ -786,9 +831,9 @@ Plans:
 | 113. Presentation & Launch Readiness | v1.4.0 | 4/4 | Complete   | 2026-06-03 |
 | 114. Scanner Auto-Recovery | v1.4.1 | 2/2 | Complete   | 2026-06-21 |
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
-| 116. Import Safety | v1.7.4 | 0/? | Not started | - |
-| 117. Transfer-State Safety | v1.7.4 | 0/? | Not started | - |
-| 118. Durable State | v1.7.4 | 0/? | Not started | - |
+| 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
+| 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
+| 118. Durable State | v1.7.4 | 3/5 | In Progress|  |
 
 ---
 
@@ -805,3 +850,13 @@ Plans:
 Plans:
 
 - [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.2: LFTP command-stream resync after timeout — a delayed prompt from a timed-out command must not make the next status look like "no jobs" (BACKLOG)
+
+**Goal:** [Captured for future planning] After any pexpect TIMEOUT in `Lftp.__run_command` (180 s, `src/python/lftp/lftp.py`), a delayed prompt from the timed-out command can satisfy the next command's `expect`, so the next `jobs -v` looks successful with empty/stale output and could clear observed or submitted-transfer protection. Fix: mark the stream unsynchronized after a timeout and re-establish a verified command boundary (e.g. sentinel echo) before trusting another status result; return `None` (unavailable) until then. Add a regression with a delayed previous-command prompt followed by the real jobs output, asserting stale output cannot clear observed or submitted-transfer protection. Source: codex adversarial pass 4 on Phase 117 (`.orchestrator/codex/v1.7.4/117/pass-4.out`), accepted by owner 2026-10-08 as a known follow-up to keep the 1.7.4 safety patch scoped. Pre-existing in the lftp wrapper (affects all commands, not just status).
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (promote with /bm:review-backlog when ready)

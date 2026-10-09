@@ -1,6 +1,6 @@
 import collections
 import os
-from typing import Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from common import sanitize_log_value
 from model import ModelFile
@@ -20,9 +20,10 @@ _VIDEO_EXTENSIONS = frozenset({
 # collection at this many nodes to prevent a pathological pack (BD rip with
 # deep nesting, or a user-introduced symlink loop surfaced in the model) from
 # monopolizing the timer thread. If exceeded, the auto-delete is skipped with
-# a warning log and is NOT re-armed (terminal skip -- unlike the unsafe_child
-# and partial_coverage skips, which Controller.__execute_auto_delete defers
-# and retries, bounded by _AUTO_DELETE_MAX_REARMS).
+# a warning log and is NOT re-armed. Terminal skips are bfs_limit and
+# duplicate_basename; the unsafe_child and partial_coverage skips are
+# retriable, and Controller.__execute_auto_delete defers and retries them,
+# bounded by _AUTO_DELETE_MAX_REARMS.
 _AUTO_DELETE_BFS_NODE_LIMIT = 10_000
 
 
@@ -89,6 +90,9 @@ class AutoDeleteManager:
                 returning (terminal skip — Timer does not re-arm for this firing)
           - skip=True,  reason="unsafe_child", on_disk_videos=None
               → an unsafe (active-state) child was found; retriable
+          - skip=True,  reason="duplicate_basename", on_disk_videos=None
+              → two or more distinct video paths share a basename; terminal
+                skip, caller pops imported_children
           - skip=True,  reason="partial_coverage", on_disk_videos=None
               → per-child coverage check failed; retriable
 
@@ -103,8 +107,11 @@ class AutoDeleteManager:
                 constant which is the authoritative list).
         """
         on_disk_videos: Set[str] = set()
+        # Lowercased video basename -> case-preserving relative paths under the
+        # root, so distinct files that collapse to one basename can be detected.
+        video_paths: Dict[str, List[str]] = {}
         unsafe_child = None
-        frontier = collections.deque(file.get_children())
+        frontier = collections.deque((c, c.name) for c in file.get_children())
         nodes_visited = 0
 
         while frontier:
@@ -121,7 +128,7 @@ class AutoDeleteManager:
                 # skip paths are retriable and intentionally leave the entry intact.
                 return True, "bfs_limit", None
 
-            child = frontier.popleft()
+            child, rel_path = frontier.popleft()
             if child.state not in deletable_states:
                 unsafe_child = child
                 break
@@ -136,8 +143,10 @@ class AutoDeleteManager:
             if not child.is_dir:
                 ext = os.path.splitext(child.name)[1].lower()
                 if ext in _VIDEO_EXTENSIONS:
-                    on_disk_videos.add(child.name.lower())
-            frontier.extend(grandchildren)
+                    lower = child.name.lower()
+                    on_disk_videos.add(lower)
+                    video_paths.setdefault(lower, []).append(rel_path)
+            frontier.extend((g, rel_path + "/" + g.name) for g in grandchildren)
 
         if unsafe_child is not None:
             self.logger.info(
@@ -148,6 +157,36 @@ class AutoDeleteManager:
                 )
             )
             return True, "unsafe_child", None
+
+        # Duplicate-basename guard (D-05): coverage is tracked per basename, so
+        # when two distinct video files share one (Disc1/movie.mkv and
+        # Disc2/movie.mkv), a single imported basename cannot prove every copy
+        # was imported. This runs before any read of imported_children so that
+        # neither a legacy record already reading as fully covered (D-07) nor
+        # the no-entry grandfather path (D-14) can bypass it. Only video
+        # extensions count, because non-video files never contribute to
+        # coverage (D-05a). The skip is terminal (D-06): duplicate basenames
+        # are a structural property of a settled pack and do not clear with
+        # time.
+        dupes = {b: p for b, p in video_paths.items() if len(p) > 1}
+        if dupes:
+            dup_list = sorted(path for paths in dupes.values() for path in paths)
+            shown = [sanitize_log_value(path) for path in dup_list[:5]]
+            suffix = ""
+            if len(dup_list) > 5:
+                suffix = " (+{} more)".format(len(dup_list) - 5)
+            self.logger.warning(
+                "Auto-delete skipped for '{}': {} video basename(s) appear at "
+                "more than one path in this release ({}{}); per-file import "
+                "coverage cannot be proven. Local copy left in place for "
+                "manual removal".format(
+                    sanitize_log_value(file_name),
+                    len(dupes),
+                    ", ".join(shown),
+                    suffix,
+                )
+            )
+            return True, "duplicate_basename", None
 
         # Coverage guard (D-08): pack roots with a directory on disk require
         # every on-disk video child to appear in imported_children[root].

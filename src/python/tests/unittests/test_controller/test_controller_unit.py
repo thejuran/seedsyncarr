@@ -1093,18 +1093,18 @@ class TestControllerWebhookIntegration(BaseControllerTestCase):
         self.assertEqual(0, len(self.persist.imported_file_names))
 
     def test_webhook_name_lookup_includes_root_names(self):
-        """Verify name_to_root dict passed to webhook_manager includes root file names."""
+        """Verify name_to_paths dict passed to webhook_manager includes root file names."""
         self._add_file_to_model("File.A", remote_size=5000)
         self._add_file_to_model("File.B", remote_size=3000)
         self.controller.process()
         call_args = self.mock_webhook_manager.process.call_args[0][0]
         self.assertIn("file.a", call_args)
-        self.assertEqual("File.A", call_args["file.a"])
+        self.assertEqual({"File.A": "File.A"}, call_args["file.a"])
         self.assertIn("file.b", call_args)
-        self.assertEqual("File.B", call_args["file.b"])
+        self.assertEqual({"File.B": "File.B"}, call_args["file.b"])
 
     def test_webhook_name_lookup_includes_child_names(self):
-        """Verify name_to_root dict includes child file names mapped to root."""
+        """Verify name_to_paths dict includes child file paths mapped to root."""
         # Create a directory with children
         root_dir = ModelFile("ShowDir", True)
         root_dir.remote_size = 5000
@@ -1119,15 +1119,15 @@ class TestControllerWebhookIntegration(BaseControllerTestCase):
         call_args = self.mock_webhook_manager.process.call_args[0][0]
         # Root name should be in the lookup
         self.assertIn("showdir", call_args)
-        self.assertEqual("ShowDir", call_args["showdir"])
-        # Child names should map back to root name
+        self.assertEqual({"ShowDir": "ShowDir"}, call_args["showdir"])
+        # Child names should map their full path back to root name
         self.assertIn("episode.s01e01.mkv", call_args)
-        self.assertEqual("ShowDir", call_args["episode.s01e01.mkv"])
+        self.assertEqual({"ShowDir/Episode.S01E01.mkv": "ShowDir"}, call_args["episode.s01e01.mkv"])
         self.assertIn("episode.s01e02.mkv", call_args)
-        self.assertEqual("ShowDir", call_args["episode.s01e02.mkv"])
+        self.assertEqual({"ShowDir/Episode.S01E02.mkv": "ShowDir"}, call_args["episode.s01e02.mkv"])
 
     def test_webhook_name_lookup_includes_nested_child_names(self):
-        """Verify name_to_root dict includes deeply nested child names."""
+        """Verify name_to_paths dict includes deeply nested child names."""
         root_dir = ModelFile("ShowDir", True)
         root_dir.remote_size = 5000
         sub_dir = ModelFile("Season 1", True)
@@ -1140,9 +1140,9 @@ class TestControllerWebhookIntegration(BaseControllerTestCase):
         call_args = self.mock_webhook_manager.process.call_args[0][0]
         self.assertIn("showdir", call_args)
         self.assertIn("season 1", call_args)
-        self.assertEqual("ShowDir", call_args["season 1"])
+        self.assertEqual({"ShowDir/Season 1": "ShowDir"}, call_args["season 1"])
         self.assertIn("episode.s01e01.mkv", call_args)
-        self.assertEqual("ShowDir", call_args["episode.s01e01.mkv"])
+        self.assertEqual({"ShowDir/Season 1/Episode.S01E01.mkv": "ShowDir"}, call_args["episode.s01e01.mkv"])
 
 
 class TestControllerWebhookThreadSafety(BaseControllerTestCase):
@@ -1153,7 +1153,7 @@ class TestControllerWebhookThreadSafety(BaseControllerTestCase):
         self._make_controller_started()
 
     def test_check_webhook_imports_acquires_model_lock_for_name_lookup(self):
-        """Verify model lock is held when iterating model file names for name_to_root."""
+        """Verify model lock is held when iterating model file names for name_to_paths."""
         lock_was_held = []
         original_get_file_names = self.controller._Controller__model.get_file_names
 
@@ -1327,6 +1327,8 @@ class TestRestartBurstRegression(BaseControllerTestCase):
         aq_context.config.autoqueue.local_stability_seconds = 0
         aq_context.status.controller.latest_remote_scan_time = None
         aq_context.status.controller.latest_local_scan_time = None
+        aq_context.status.controller.latest_successful_remote_scan_time = None
+        aq_context.status.controller.latest_successful_local_scan_time = None
         return AutoQueue(aq_context, AutoQueuePersist(), self.controller)
 
     def _simulate_restart_build(self, model_files):
@@ -1450,3 +1452,68 @@ class TestControllerCommandDeleteRecordsDownloaded(BaseControllerTestCase):
         )
         self._queue_and_process_command(Controller.Command.Action.DELETE_REMOTE, "file")
         self.assertNotIn("file", self.persist.downloaded_file_names)
+
+
+class TestControllerCommandSubmittedUnobservedGuard(BaseControllerTestCase):
+    """XFER-02 (codex pass-2 command-ordering finding): commands are handled
+    against the ModelFile frozen at the last build, before the model is
+    rebuilt, so a QUEUE accepted by lftp earlier in the same batch is invisible
+    in file.state. The handlers must consult the LftpManager's set of
+    submitted-but-unobserved names and refuse to act on them."""
+
+    def setUp(self):
+        super().setUp()
+        self._make_controller_started()
+        self.mock_lftp_manager.submitted_unobserved_file_names.return_value = ["file"]
+
+    def test_extract_rejected_while_submitted_unobserved(self):
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DEFAULT, local_size=5000, remote_size=5000
+        )
+        mock_cb = MagicMock(spec=Controller.Command.ICallback)
+        self._queue_and_process_command(
+            Controller.Command.Action.EXTRACT, "file", [mock_cb]
+        )
+        self.mock_file_op_manager.extract.assert_not_called()
+        mock_cb.on_failure.assert_called_once()
+        self.assertEqual(409, mock_cb.on_failure.call_args[0][1])
+
+    def test_delete_local_rejected_while_submitted_unobserved(self):
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DEFAULT, local_size=5000, remote_size=5000
+        )
+        mock_cb = MagicMock(spec=Controller.Command.ICallback)
+        self._queue_and_process_command(
+            Controller.Command.Action.DELETE_LOCAL, "file", [mock_cb]
+        )
+        self.mock_file_op_manager.delete_local.assert_not_called()
+        mock_cb.on_failure.assert_called_once()
+        self.assertEqual(409, mock_cb.on_failure.call_args[0][1])
+        self.assertNotIn("file", self.persist.stopped_file_names)
+        self.assertNotIn("file", self.persist.downloaded_file_names)
+
+    def test_delete_remote_rejected_while_submitted_unobserved(self):
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DEFAULT, local_size=5000, remote_size=5000
+        )
+        mock_cb = MagicMock(spec=Controller.Command.ICallback)
+        self._queue_and_process_command(
+            Controller.Command.Action.DELETE_REMOTE, "file", [mock_cb]
+        )
+        self.mock_file_op_manager.delete_remote.assert_not_called()
+        mock_cb.on_failure.assert_called_once()
+        self.assertEqual(409, mock_cb.on_failure.call_args[0][1])
+
+    def test_queue_not_resubmitted_while_submitted_unobserved(self):
+        self.persist.stopped_file_names.add("file")
+        self._add_file_to_model(
+            "file", state=ModelFile.State.DEFAULT, local_size=5000, remote_size=5000
+        )
+        mock_cb = MagicMock(spec=Controller.Command.ICallback)
+        self._queue_and_process_command(
+            Controller.Command.Action.QUEUE, "file", [mock_cb]
+        )
+        self.mock_lftp_manager.queue.assert_not_called()
+        mock_cb.on_success.assert_called_once()
+        mock_cb.on_failure.assert_not_called()
+        self.assertNotIn("file", self.persist.stopped_file_names)

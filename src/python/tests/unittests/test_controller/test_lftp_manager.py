@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from controller import LftpManager
-from lftp import LftpError, LftpJobStatusParserError
+from lftp import LftpError, LftpJobStatus, LftpJobStatusParserError
 
 
 class TestLftpManager(unittest.TestCase):
@@ -192,6 +192,184 @@ class TestLftpManager(unittest.TestCase):
         result = manager.status()
 
         self.assertIsNone(result)
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_status_passes_none_through_unchanged(self, mock_lftp_class):
+        """New-contract (XFER-02): an unavailable Lftp status (None) is passed
+        through as None; no consumer converts unavailable into "no jobs"."""
+        mock_lftp = MagicMock()
+        mock_lftp.status.return_value = None
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+
+        self.assertIsNone(manager.status())
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_status_passes_empty_list_through_unchanged(self, mock_lftp_class):
+        """New-contract (XFER-02): a genuinely empty Lftp status ([]) is passed
+        through as [], never turned into unavailable (None)."""
+        mock_lftp = MagicMock()
+        mock_lftp.status.return_value = []
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        result = manager.status()
+
+        self.assertIsNot(None, result)
+        self.assertEqual([], result)
+
+    @staticmethod
+    def _other_job_status() -> LftpJobStatus:
+        return LftpJobStatus(job_id=1,
+                             job_type=LftpJobStatus.Type.PGET,
+                             state=LftpJobStatus.State.RUNNING,
+                             name="other.rar",
+                             flags="")
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_queue_records_submitted_unobserved_file(self, mock_lftp_class):
+        """New-contract (XFER-02): a QUEUE that lftp accepted is recorded as
+        submitted before first successful status (codex finding)."""
+        mock_lftp = MagicMock()
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        manager.queue("a.rar", False)
+        self.assertEqual(["a.rar"], manager.submitted_unobserved_file_names())
+
+        manager.queue("b.rar", False)
+        self.assertEqual(["a.rar", "b.rar"], sorted(manager.submitted_unobserved_file_names()))
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_queue_failure_does_not_record_submission(self, mock_lftp_class):
+        """New-contract (XFER-02): a QUEUE that lftp rejected was never
+        submitted, so it is not tracked."""
+        mock_lftp = MagicMock()
+        mock_lftp.queue.side_effect = LftpError("boom")
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        with self.assertRaises(LftpError):
+            manager.queue("a.rar", False)
+        self.assertEqual([], manager.submitted_unobserved_file_names())
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_successful_status_clears_submitted_set(self, mock_lftp_class):
+        """New-contract (XFER-02): any successful status reconciles the
+        submitted set, even one that does not list the submitted job."""
+        mock_lftp = MagicMock()
+        mock_lftp.status.return_value = [self._other_job_status()]
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        manager.queue("a.rar", False)
+        manager.status()
+        self.assertEqual([], manager.submitted_unobserved_file_names())
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_genuinely_empty_status_clears_submitted_set(self, mock_lftp_class):
+        """New-contract (XFER-02): a genuinely empty status ([]) is a
+        successful observation and clears the submitted set."""
+        mock_lftp = MagicMock()
+        mock_lftp.status.return_value = []
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        manager.queue("a.rar", False)
+        self.assertEqual([], manager.status())
+        self.assertEqual([], manager.submitted_unobserved_file_names())
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_unavailable_status_keeps_submitted_set(self, mock_lftp_class):
+        """New-contract (XFER-02): an unavailable status observed nothing, so
+        a file submitted before first successful status stays tracked."""
+        mock_lftp = MagicMock()
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        manager.queue("a.rar", False)
+
+        mock_lftp.status.return_value = None
+        self.assertIsNone(manager.status())
+        self.assertEqual(["a.rar"], manager.submitted_unobserved_file_names())
+
+        mock_lftp.status.side_effect = LftpJobStatusParserError("bad")
+        self.assertIsNone(manager.status())
+        self.assertEqual(["a.rar"], manager.submitted_unobserved_file_names())
+
+        mock_lftp.status.side_effect = LftpError("down")
+        self.assertIsNone(manager.status())
+        self.assertEqual(["a.rar"], manager.submitted_unobserved_file_names())
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_submitted_unobserved_file_names_returns_copy(self, mock_lftp_class):
+        """New-contract (XFER-02): callers cannot mutate the tracked set."""
+        mock_lftp = MagicMock()
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        manager.queue("a.rar", False)
+        names = manager.submitted_unobserved_file_names()
+        names.append("x.rar")
+        names.remove("a.rar")
+        self.assertEqual(["a.rar"], manager.submitted_unobserved_file_names())
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_successful_kill_reconciles_submitted_name(self, mock_lftp_class):
+        """New-contract (XFER-02, codex pass-3): Lftp.kill polls status
+        directly, so a kill that returned reconciles the killed name (and only
+        that name) out of the submitted set."""
+        mock_lftp = MagicMock()
+        mock_lftp.status.return_value = None
+        mock_lftp.kill.return_value = True
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        manager.queue("a.rar", False)
+        manager.queue("b.rar", False)
+        manager.status()
+        self.assertEqual(["a.rar", "b.rar"], sorted(manager.submitted_unobserved_file_names()))
+
+        manager.kill("a.rar")
+        mock_lftp.kill.assert_called_once_with("a.rar")
+        self.assertEqual(["b.rar"], manager.submitted_unobserved_file_names())
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_kill_not_found_still_reconciles_submitted_name(self, mock_lftp_class):
+        """New-contract (XFER-02, codex pass-3): Lftp.kill returning False
+        means its status poll succeeded and the job is not listed, which is a
+        reconciliation of the submitted name."""
+        mock_lftp = MagicMock()
+        mock_lftp.kill.return_value = False
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        manager.queue("a.rar", False)
+        manager.kill("a.rar")
+        self.assertEqual([], manager.submitted_unobserved_file_names())
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_failed_kill_keeps_submitted_name(self, mock_lftp_class):
+        """New-contract (XFER-02, codex pass-3): a kill that raised observed
+        nothing, so a file submitted before first successful status keeps its
+        protection."""
+        mock_lftp = MagicMock()
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        manager.queue("a.rar", False)
+
+        mock_lftp.kill.side_effect = LftpError("down")
+        with self.assertRaises(LftpError):
+            manager.kill("a.rar")
+        self.assertEqual(["a.rar"], manager.submitted_unobserved_file_names())
+
+        mock_lftp.kill.side_effect = LftpJobStatusParserError(
+            "Lftp status unavailable; cannot locate job to kill")
+        with self.assertRaises(LftpJobStatusParserError):
+            manager.kill("a.rar")
+        self.assertEqual(["a.rar"], manager.submitted_unobserved_file_names())
 
     @patch('controller.lftp_manager.Lftp')
     def test_exit_delegates_to_lftp(self, mock_lftp_class):

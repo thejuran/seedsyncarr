@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7.4
 milestone_name: Safety Patch
-status: planning
-stopped_at: Phase 116 context gathered
-last_updated: "2026-10-08T22:46:43.993Z"
-last_activity: 2026-10-08 — Milestone v1.7.4 roadmap written (Phases 116-118)
+status: executing
+stopped_at: Completed 118-01-PLAN.md
+last_updated: "2026-10-09T13:26:50.254Z"
+last_activity: 2026-10-09 -- Completed 118-01 (RED atomic-write regressions)
 progress:
-  total_phases: 19
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 3
-  percent: 11
+  total_phases: 20
+  completed_phases: 4
+  total_plans: 19
+  completed_plans: 17
+  percent: 20
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-08)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 116 — Import Safety (deletion path)
+**Current focus:** Phase 118 — durable-state
 
 ## Current Position
 
-Phase: 116 — Import Safety (not started)
-Plan: —
-Status: Roadmap created; Phase 116 ready to plan
-Last activity: 2026-10-08 — Milestone v1.7.4 roadmap written (Phases 116-118)
+Phase: 118 (durable-state) — EXECUTING
+Plan: 4 of 5
+Status: Executing Phase 118
+Last activity: 2026-10-09 -- Completed 118-01 (RED atomic-write regressions)
 
-Progress: [░░░░░░░░░░] 0% (0/3 phases)
+Progress: [█████████░] 89%
 
 ## Accumulated Context
 
@@ -47,6 +47,12 @@ Decisions are logged in PROJECT.md Key Decisions table.
 **CI gate (every phase):** full Python suite green AND `ruff check src/python/` clean whole-tree — CI runs ruff as a **separate gate from pytest**, so build-verify must run ruff on the whole tree, not just touched files. Python `fail_under` ≥ 88 holds. Each targeted regression must be shown to fail against old behavior before its fix (REL-01 gate 1) — plan tasks should run the new test red first.
 
 **Dependency edges:** 116 → Phase 115 (last GSD phase; `main` currently at release 1.7.3). 117 → 116 and 118 → 117 are sequencing only (disjoint code paths); 118's REL-01 gate requires 116 and 117 complete.
+
+- [Phase 118]: 118-01: RED tests patch only global os.fsync/os.replace/tempfile.mkstemp so pre-fix failures are behavioral AssertionErrors; PERSIST-01/02 stay unchecked until 118-02 lands the fix
+- [Phase 118]: Persist.to_file re-raises the original exception unwrapped (never PersistError) so caller handlers and ServiceExit keep working and save failures never trigger the load-side corrupt-file reset
+- [Phase 118]: Host coverage 86.36% vs fail_under 88 is informational only (CI runs no --cov); surfaced at 118-04 checkpoint
+- [Phase 118]: Owner (2026-10-09): 1.7.4 public release notes are plain English (stop, copy 3 files, upgrade; rollback sets [AutoDelete] enabled = False in restored settings.cfg); loader-based backup check lives only in 118-05
+- [Phase 118]: Public rollback target is :1.7.2 (1.7.3 never published); owner confirms at 118-04
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -110,9 +116,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-10-08T22:18:12.726Z
-Stopped at: Phase 116 context gathered
-Next action: Plan Phase 116 (Import Safety) — `/bm:plan-phase 116`
+Last session: 2026-10-09T13:26:41.468Z
+Stopped at: Completed 118-01-PLAN.md
+Next action: Execute Plan 118-02 (atomic Persist.to_file fix; turn the 9 RED tests GREEN)
 
 ## Operator Next Steps
 

@@ -8,21 +8,21 @@
 
 ### Import Safety (deletion path)
 
-- [ ] **IMPORT-01**: A webhook import whose file name matches more than one distinct model path — across releases, roots differing only by case, a root name equal to a child basename elsewhere, or repeated basenames within one release (e.g. `Pack/Disc1/movie.mkv` + `Pack/Disc2/movie.mkv`) — is rejected: no imported record, no per-child coverage credit, no import badge, no auto-delete timer, and one sanitized warning naming the candidate roots.
-- [ ] **IMPORT-02**: A webhook import whose file name matches exactly one distinct model path (including repeated references to that same path) behaves exactly as before: recorded, badged, and armed for auto-delete when evidence allows.
+- [x] **IMPORT-01**: A webhook import whose file name matches more than one distinct model path — across releases, roots differing only by case, a root name equal to a child basename elsewhere, or repeated basenames within one release (e.g. `Pack/Disc1/movie.mkv` + `Pack/Disc2/movie.mkv`) — is rejected: no imported record, no per-child coverage credit, no import badge, no auto-delete timer, and one sanitized warning naming the candidate roots.
+- [x] **IMPORT-02**: A webhook import whose file name matches exactly one distinct model path (including repeated references to that same path) behaves exactly as before: recorded, badged, and armed for auto-delete when evidence allows.
 
 ### Transfer-State Safety
 
-- [ ] **XFER-01**: A pget job with no data line yet never consumes the following job's header; every job in `jobs -v` output appears in the parsed status with its correct name and state (the parser's other next-line-consuming sites are audited for the same flaw).
-- [ ] **XFER-02**: When LFTP status cannot be parsed, it is reported as *unavailable* (never as an empty job list) and actively transferring files keep their last-known state and protection — nothing is re-queued or deleted because of the failure; no downstream consumer converts unavailable back into "no jobs".
-- [ ] **XFER-03**: The existing status-error boundary is preserved exactly: failures 1..`MAX_CONSECUTIVE_STATUS_ERRORS` are tolerated (each reported unavailable) and the next failure raises; a successful parse resets the counter; a genuinely empty status still clears active state.
-- [ ] **XFER-04**: A file's remote size is considered stable only on the clock of successful remote scans — failed scans spanning the stability window never make a file auto-queue eligible; the UI "last scan" timestamp keeps its current meaning.
-- [ ] **XFER-05**: The local-size stability gate likewise advances only on successful local scans.
+- [x] **XFER-01**: A pget job with no data line yet never consumes the following job's header; every job in `jobs -v` output appears in the parsed status with its correct name and state (the parser's other next-line-consuming sites are audited for the same flaw).
+- [x] **XFER-02**: When LFTP status cannot be parsed, it is reported as *unavailable* (never as an empty job list) and actively transferring files keep their last-known state and protection — nothing is re-queued or deleted because of the failure; no downstream consumer converts unavailable back into "no jobs".
+- [x] **XFER-03**: The existing status-error boundary is preserved exactly: failures 1..`MAX_CONSECUTIVE_STATUS_ERRORS` are tolerated (each reported unavailable) and the next failure raises; a successful parse resets the counter; a genuinely empty status still clears active state.
+- [x] **XFER-04**: A file's remote size is considered stable only on the clock of successful remote scans — failed scans spanning the stability window never make a file auto-queue eligible; the UI "last scan" timestamp keeps its current meaning.
+- [x] **XFER-05**: The local-size stability gate likewise advances only on successful local scans.
 
 ### Durable State
 
-- [ ] **PERSIST-01**: Saving settings.cfg, the controller persist, or the auto-queue persist never leaves a truncated or partial file: any failure before the atomic replace (serialization, temp creation, write, fsync, replace) leaves the original byte-for-byte intact and removes the temp file.
-- [ ] **PERSIST-02**: A successful save produces the correct content with `0600` permissions; after the `os.replace` commit point the new file is committed and the containing directory is fsynced best-effort (a directory-fsync failure is logged, not raised).
+- [x] **PERSIST-01**: Saving settings.cfg, the controller persist, or the auto-queue persist never leaves a truncated or partial file: any failure before the atomic replace (serialization, temp creation, write, fsync, replace) leaves the original byte-for-byte intact and removes the temp file.
+- [x] **PERSIST-02**: A successful save produces the correct content with `0600` permissions; after the `os.replace` commit point the new file is committed and the containing directory is fsynced best-effort (a directory-fsync failure is logged, not raised).
 
 ### Release
 
@@ -44,15 +44,15 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IMPORT-01 | Phase 116 | Pending |
-| IMPORT-02 | Phase 116 | Pending |
-| XFER-01 | Phase 117 | Pending |
-| XFER-02 | Phase 117 | Pending |
-| XFER-03 | Phase 117 | Pending |
-| XFER-04 | Phase 117 | Pending |
-| XFER-05 | Phase 117 | Pending |
-| PERSIST-01 | Phase 118 | Pending |
-| PERSIST-02 | Phase 118 | Pending |
+| IMPORT-01 | Phase 116 | Complete |
+| IMPORT-02 | Phase 116 | Complete |
+| XFER-01 | Phase 117 | Complete |
+| XFER-02 | Phase 117 | Complete |
+| XFER-03 | Phase 117 | Complete |
+| XFER-04 | Phase 117 | Complete |
+| XFER-05 | Phase 117 | Complete |
+| PERSIST-01 | Phase 118 | Complete |
+| PERSIST-02 | Phase 118 | Complete |
 | REL-01 | Phase 118 | Pending |
 
 **Coverage:**

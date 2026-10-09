@@ -1,3 +1,4 @@
+import json
 import pytest
 import threading
 from unittest.mock import MagicMock
@@ -404,6 +405,95 @@ class TestAutoDeletePersistRehydration(TestAutoDeleteExecution):
 
         # ep02 was not in the persisted imported_children -> partial coverage -> skip
         self.mock_file_op_manager.delete_local.assert_not_called()
+
+
+class TestAutoDeleteDuplicateBasenameGuard(TestAutoDeleteExecution):
+    """Delete-time guard: a pack in which two or more distinct video paths
+    share a basename (case-insensitive) is never auto-deleted, because one
+    imported basename cannot prove every copy was imported (D-05).
+
+    The guard applies regardless of persisted coverage, including legacy
+    records that read as fully covered (D-07) and the no-entry grandfather
+    path (D-14). Only video files count (D-05a).
+    """
+
+    def _two_disc_pack(self, name1="movie.mkv", name2="movie.mkv"):
+        disc1 = self._make_child("Disc1", children=[self._make_child(name1)])
+        disc2 = self._make_child("Disc2", children=[self._make_child(name2)])
+        mock_file = self._make_safe_mock_file(is_dir=True, children=[disc1, disc2])
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        return mock_file
+
+    def test_duplicate_video_basenames_block_delete_despite_legacy_full_coverage(self):
+        """D-07: a pre-1.7.4 persist whose imported_children[root] already
+        holds the duplicated basename reads as fully covered; the guard must
+        still prevent the delete."""
+        legacy = ControllerPersist.from_str(json.dumps({
+            "downloaded": ["Pack.S01"],
+            "extracted": [],
+            "stopped": [],
+            "imported": ["Pack.S01"],
+            "imported_children": {"Pack.S01": ["movie.mkv"]},
+        }), max_tracked_files=100)
+        # AutoDeleteManager holds its own persist reference; swap both or the
+        # coverage check would read the empty shared persist and take the
+        # grandfather path instead of the legacy record.
+        self.controller._Controller__persist = legacy
+        self.controller._Controller__auto_delete_mgr._persist = legacy
+        self.assertIn(
+            "movie.mkv",
+            [c.lower() for c in legacy.imported_children["Pack.S01"].as_list()],
+        )
+        self._two_disc_pack()
+
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+
+        self.mock_file_op_manager.delete_local.assert_not_called()
+
+    def test_duplicate_video_basenames_block_delete_without_imported_children_entry(self):
+        """D-14 grandfather: no per-root imported_children entry would normally
+        treat the pack as fully imported; duplicate video basenames still
+        block the delete."""
+        self.persist.imported_file_names.add("Pack.S01")
+        self.assertNotIn("Pack.S01", self.persist.imported_children)
+        self._two_disc_pack()
+
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+
+        self.mock_file_op_manager.delete_local.assert_not_called()
+
+    def test_duplicate_video_basenames_case_insensitive(self):
+        """D-05: basenames are compared case-insensitively, so Disc1/Movie.MKV
+        and Disc2/movie.mkv are duplicates."""
+        self._two_disc_pack(name1="Movie.MKV", name2="movie.mkv")
+        self.persist.add_imported_child("Pack.S01", "movie.mkv")
+
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+
+        self.mock_file_op_manager.delete_local.assert_not_called()
+
+    def test_duplicate_non_video_basenames_do_not_block_delete(self):
+        """D-05a: repeated subtitle or metadata basenames (per-episode
+        Subs/<ep>/English.srt, per-disc info.nfo) never contribute to coverage
+        and must not block a fully covered pack."""
+        ep01 = self._make_child("ep01.mkv")
+        ep02 = self._make_child("ep02.mkv")
+        subs = self._make_child("Subs", children=[
+            self._make_child("E01", children=[self._make_child("English.srt")]),
+            self._make_child("E02", children=[self._make_child("English.srt")]),
+        ])
+        disc1 = self._make_child("Disc1", children=[self._make_child("info.nfo")])
+        disc2 = self._make_child("Disc2", children=[self._make_child("info.nfo")])
+        mock_file = self._make_safe_mock_file(
+            is_dir=True, children=[ep01, ep02, subs, disc1, disc2],
+        )
+        self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
+        self.persist.add_imported_child("Pack.S01", "ep01.mkv")
+        self.persist.add_imported_child("Pack.S01", "ep02.mkv")
+
+        self.controller._Controller__execute_auto_delete("Pack.S01")
+
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
 
 
 class TestAutoDeleteShutdown(BaseAutoDeleteTestCase):

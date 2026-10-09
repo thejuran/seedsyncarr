@@ -38,6 +38,12 @@ _AUTO_DELETE_DEFER_REASONS = {
     "partial_coverage": "not every on-disk video child has been imported yet",
 }
 
+# AutoDeleteManager skip codes that never re-arm. The per-child
+# imported_children entry is popped so a stale or poisoned record is not
+# stranded; safety does not depend on that record because the guard runs
+# before coverage on every firing.
+_AUTO_DELETE_TERMINAL_SKIPS = frozenset({"bfs_limit", "duplicate_basename"})
+
 class ControllerError(AppError):
     """
     Exception indicating a controller error
@@ -489,11 +495,18 @@ class Controller:
         Writes storage capacity (Phase 74) gated by the >1% change rule
         (D-12/D-13) per-side independently (D-15). A None total/used pair
         leaves that side untouched (silent fallback per D-16).
+
+        The UI scan fields are written from every scan; the successful-scan
+        clocks (latest_successful_*_scan_time) only advance when the scan did
+        not fail, so AutoQueue stability is never measured across a failed scan.
         """
         if remote_scan is not None:
             self.__context.status.controller.latest_remote_scan_time = remote_scan.timestamp
             self.__context.status.controller.latest_remote_scan_failed = remote_scan.failed
             self.__context.status.controller.latest_remote_scan_error = remote_scan.error_message
+            if not remote_scan.failed:
+                self.__context.status.controller.latest_successful_remote_scan_time = \
+                    remote_scan.timestamp
             if remote_scan.total_bytes is not None and remote_scan.used_bytes is not None:
                 # Per-field gate: total and used are independent under D-12/D-15 so
                 # a sub-1% change on one must not drag the other into a write.
@@ -505,6 +518,9 @@ class Controller:
                     self.__context.status.storage.remote_used = remote_scan.used_bytes
         if local_scan is not None:
             self.__context.status.controller.latest_local_scan_time = local_scan.timestamp
+            if not local_scan.failed:
+                self.__context.status.controller.latest_successful_local_scan_time = \
+                    local_scan.timestamp
             if local_scan.total_bytes is not None and local_scan.used_bytes is not None:
                 if Controller._should_update_capacity(
                         self.__context.status.storage.local_total, local_scan.total_bytes):
@@ -546,32 +562,44 @@ class Controller:
 
         Thread safety: model reads and mutations are protected by __model_lock.
         Two lock windows are used to keep critical sections minimal:
-          Window 1 (read): build name_to_root dict
+          Window 1 (read): build name_to_paths (lowercased basename ->
+            {case-preserving path -> root})
           Window 2 (mutate): update model import_status per imported file
+        webhook_manager.process() returns only unambiguous matches: a name
+        that resolves to two or more distinct model paths is rejected there,
+        so nothing in Window 2 can record, badge or arm auto-delete for it.
         The webhook_manager.process() call and auto-delete scheduling run
         outside the lock (thread-safe Queue and Timer operations respectively).
         """
-        # Window 1: Build name-to-root lookup under lock
-        # lowercased name -> root model file name
-        # Includes both root names and all child file names
-        name_to_root = {}
+        # Window 1: Build the basename lookup under lock
+        # lowercased basename -> {case-preserving relative path -> root model file name}
+        # Includes both root names and all child file names. Keeping every
+        # path per basename (instead of last-writer-wins) lets process()
+        # detect a name that is ambiguous across or within releases. Only
+        # the key is lowercased, so case-distinct paths stay distinct.
+        name_to_paths: Dict[str, Dict[str, str]] = {}
         with self.__model_lock:
             for root_name in self.__model.get_file_names():
-                name_to_root[root_name.lower()] = root_name
+                name_to_paths.setdefault(root_name.lower(), {})[root_name] = root_name
                 try:
                     root_file = self.__model.get_file(root_name)
                     if root_file.is_dir:
-                        # BFS over children to collect all child names
-                        frontier = collections.deque(root_file.get_children())
+                        # BFS over children carrying each child's parent path.
+                        # Paths are '/'-joined identity keys built from names,
+                        # not filesystem paths.
+                        frontier = collections.deque(
+                            (c, root_name) for c in root_file.get_children()
+                        )
                         while frontier:
-                            child = frontier.popleft()
-                            name_to_root[child.name.lower()] = root_name
-                            frontier.extend(child.get_children())
+                            child, parent_path = frontier.popleft()
+                            child_path = parent_path + "/" + child.name
+                            name_to_paths.setdefault(child.name.lower(), {})[child_path] = root_name
+                            frontier.extend((g, child_path) for g in child.get_children())
                 except ModelError:
                     self.logger.debug("ModelError looking up '{}' for webhook mapping".format(sanitize_log_value(root_name)))
 
         # Process outside lock -- webhook_manager only touches its own thread-safe Queue
-        newly_imported = self.__webhook_manager.process(name_to_root)
+        newly_imported = self.__webhook_manager.process(name_to_paths)
 
         if newly_imported:
             # Roots that passed the evidence gate below; only these are
@@ -734,7 +762,8 @@ class Controller:
         mid-lifecycle, pack not fully imported yet) re-arms the Timer through
         __defer_auto_delete, bounded by _AUTO_DELETE_MAX_REARMS. Terminal skips
         (feature disabled, dry-run, file gone from the model, no download
-        evidence, BFS node limit) never re-arm and clear the deferral counter.
+        evidence, BFS node limit, duplicate video basenames) never re-arm and
+        clear the deferral counter.
         """
         # Remove from tracking dict; entry guard for shutdown (BUG-03 criterion #2).
         # Checking __shutdown_event inside __auto_delete_lock is the fast-path:
@@ -820,11 +849,12 @@ class Controller:
                     file, file_name, deletable_states
                 )
                 if skip:
-                    if reason == "bfs_limit":
+                    if reason in _AUTO_DELETE_TERMINAL_SKIPS:
                         # Terminal skip: Timer does not re-arm. Clear the
                         # per-child entry so imported_children isn't stranded
-                        # on a permanently-oversized pack. All other skip paths
-                        # are retriable and leave the entry intact.
+                        # on a permanently-oversized pack or a pack with
+                        # duplicate video basenames. All other skip paths are
+                        # retriable and leave the entry intact.
                         self.__persist.imported_children.pop(file_name, None)
                         self.__clear_auto_delete_rearms(file_name)
                         return

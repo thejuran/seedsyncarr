@@ -131,6 +131,8 @@ class TestStatus(unittest.TestCase):
         self.assertEqual(None, status.server.error_msg)
         self.assertEqual(None, status.controller.latest_local_scan_time)
         self.assertEqual(None, status.controller.latest_remote_scan_time)
+        self.assertEqual(None, status.controller.latest_successful_local_scan_time)
+        self.assertEqual(None, status.controller.latest_successful_remote_scan_time)
 
     def test_components_registered(self):
         # Test that all components were registered

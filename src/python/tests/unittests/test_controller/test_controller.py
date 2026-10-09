@@ -463,5 +463,79 @@ class TestAutoDeleteLogSanitization(unittest.TestCase):
         self.assertIn("\\n", logged_msg)
 
 
+
+class TestUpdateControllerStatusSuccessClocks(unittest.TestCase):
+    """
+    The successful-scan clocks advance only on scans that did not fail, while
+    the UI scan fields keep tracking every scan. Uses real ScannerResult
+    objects: a MagicMock `.failed` is truthy and would silently skip the write.
+    """
+
+    def _make_controller_with_status(self):
+        controller = Controller.__new__(Controller)
+        ctx = MagicMock()
+        ctx.status = Status()
+        controller._Controller__context = ctx
+        return controller
+
+    @staticmethod
+    def _scan(ts, failed):
+        return ScannerResult(timestamp=ts, files=[], failed=failed)
+
+    def test_remote_success_advances_success_clock(self):
+        c = self._make_controller_with_status()
+        ts = datetime(2026, 10, 8, 12, 0, 0)
+        c._update_controller_status(self._scan(ts, False), None)
+        status = c._Controller__context.status.controller
+        self.assertEqual(ts, status.latest_successful_remote_scan_time)
+        self.assertEqual(ts, status.latest_remote_scan_time)
+
+    def test_remote_failure_does_not_advance_success_clock(self):
+        c = self._make_controller_with_status()
+        ts = datetime(2026, 10, 8, 12, 0, 0)
+        ts2 = datetime(2026, 10, 8, 12, 5, 0)
+        c._update_controller_status(self._scan(ts, False), None)
+        c._update_controller_status(self._scan(ts2, True), None)
+        status = c._Controller__context.status.controller
+        self.assertEqual(ts2, status.latest_remote_scan_time)
+        self.assertIs(True, status.latest_remote_scan_failed)
+        self.assertEqual(ts, status.latest_successful_remote_scan_time)
+
+    def test_local_success_advances_success_clock(self):
+        c = self._make_controller_with_status()
+        ts = datetime(2026, 10, 8, 12, 0, 0)
+        c._update_controller_status(None, self._scan(ts, False))
+        status = c._Controller__context.status.controller
+        self.assertEqual(ts, status.latest_successful_local_scan_time)
+        self.assertEqual(ts, status.latest_local_scan_time)
+
+    def test_local_failure_does_not_advance_success_clock(self):
+        c = self._make_controller_with_status()
+        ts = datetime(2026, 10, 8, 12, 0, 0)
+        ts2 = datetime(2026, 10, 8, 12, 5, 0)
+        c._update_controller_status(None, self._scan(ts, False))
+        c._update_controller_status(None, self._scan(ts2, True))
+        status = c._Controller__context.status.controller
+        self.assertEqual(ts2, status.latest_local_scan_time)
+        self.assertEqual(ts, status.latest_successful_local_scan_time)
+
+    def test_failed_first_scans_leave_success_clocks_none(self):
+        c = self._make_controller_with_status()
+        ts = datetime(2026, 10, 8, 12, 0, 0)
+        c._update_controller_status(self._scan(ts, True), self._scan(ts, True))
+        status = c._Controller__context.status.controller
+        self.assertEqual(ts, status.latest_remote_scan_time)
+        self.assertEqual(ts, status.latest_local_scan_time)
+        self.assertIsNone(status.latest_successful_remote_scan_time)
+        self.assertIsNone(status.latest_successful_local_scan_time)
+
+    def test_none_scan_results_leave_success_clocks_none(self):
+        c = self._make_controller_with_status()
+        c._update_controller_status(None, None)
+        status = c._Controller__context.status.controller
+        self.assertIsNone(status.latest_successful_remote_scan_time)
+        self.assertIsNone(status.latest_successful_local_scan_time)
+
+
 if __name__ == "__main__":
     unittest.main()

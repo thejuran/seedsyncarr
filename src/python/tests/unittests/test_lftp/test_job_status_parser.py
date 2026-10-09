@@ -932,6 +932,195 @@ class TestLftpJobStatusParser(unittest.TestCase):
         statuses_jobs = [j for j in statuses if j.state == LftpJobStatus.State.RUNNING]
         self.assertEqual(golden_jobs, statuses_jobs)
 
+    def test_jobs_pget_no_data_line_followed_by_pget_header(self):
+        """
+        Header-swallowing site #2 (D-07, D-08, XFER-01): a pget job whose
+        transfer has finished prints no data line, so the next line is the
+        following pget job's header. That header must not be consumed as the
+        first pget's data line.
+        Pre-fix failure: the header is swallowed, the second job's sftp line is
+        orphaned and LftpJobStatusParserError escapes.
+        """
+        output = """
+        [0] queue (sftp://seedsyncarrtest:@localhost:22)
+        sftp://seedsyncarrtest:@localhost:22/home/seedsyncarrtest
+        Now executing: [4] pget -c /tmp/t/remote/d.txt -o /tmp/t/local/
+        -[5] pget -c /tmp/t/remote/e.txt -o /tmp/t/local/
+        [4] pget -c /tmp/t/remote/d.txt -o /tmp/t/local/
+        sftp://seedsyncarrtest:@localhost:22/home/seedsyncarrtest
+        [5] pget -c /tmp/t/remote/e.txt -o /tmp/t/local/
+        sftp://seedsyncarrtest:@localhost:22/home/seedsyncarrtest
+        `/tmp/t/remote/e.txt' at 10 (5%) [Receiving data]
+        """
+        parser = LftpJobStatusParser()
+        statuses = parser.parse(output)
+        golden_job1 = LftpJobStatus(job_id=4,
+                                    job_type=LftpJobStatus.Type.PGET,
+                                    state=LftpJobStatus.State.RUNNING,
+                                    name="d.txt",
+                                    flags="-c")
+        golden_job1.total_transfer_state = LftpJobStatus.TransferState(None, None, None, None, None)
+        golden_job2 = LftpJobStatus(job_id=5,
+                                    job_type=LftpJobStatus.Type.PGET,
+                                    state=LftpJobStatus.State.RUNNING,
+                                    name="e.txt",
+                                    flags="-c")
+        golden_job2.total_transfer_state = LftpJobStatus.TransferState(None, None, None, None, None)
+        golden_jobs = [golden_job1, golden_job2]
+        self.assertEqual(len(golden_jobs), len(statuses))
+        statuses_jobs = [j for j in statuses if j.state == LftpJobStatus.State.RUNNING]
+        self.assertEqual(golden_jobs, statuses_jobs)
+
+    def test_jobs_pget_no_data_line_followed_by_mirror_header(self):
+        """
+        Header-swallowing site #2 (D-07, D-08, XFER-01): a pget job with no
+        data line followed by a downloading mirror header. The mirror must be
+        reported, and its \\transfer line must belong to the mirror, not the
+        pget.
+        Pre-fix failure: AssertionError, the mirror header is swallowed as the
+        pget's data line and the mirror job is silently dropped.
+        """
+        output = """
+        [0] queue (sftp://seedsyncarrtest:@localhost:22)
+        sftp://seedsyncarrtest:@localhost:22/home/seedsyncarrtest
+        Now executing: [4] pget -c /tmp/t/remote/d.txt -o /tmp/t/local/
+        -[3] mirror -c /tmp/t/remote/c /tmp/t/local/ -- 100/1.1k (9%)
+        [4] pget -c /tmp/t/remote/d.txt -o /tmp/t/local/
+        sftp://seedsyncarrtest:@localhost:22/home/seedsyncarrtest
+        [3] mirror -c /tmp/t/remote/c /tmp/t/local/  -- 100/1.1k (9%)
+        \\transfer `c/ca'
+        `ca' at 50 (50%) [Receiving data]
+        """
+        parser = LftpJobStatusParser()
+        statuses = parser.parse(output)
+        golden_job1 = LftpJobStatus(job_id=4,
+                                    job_type=LftpJobStatus.Type.PGET,
+                                    state=LftpJobStatus.State.RUNNING,
+                                    name="d.txt",
+                                    flags="-c")
+        golden_job1.total_transfer_state = LftpJobStatus.TransferState(None, None, None, None, None)
+        golden_job2 = LftpJobStatus(job_id=3,
+                                    job_type=LftpJobStatus.Type.MIRROR,
+                                    state=LftpJobStatus.State.RUNNING,
+                                    name="c",
+                                    flags="-c")
+        golden_job2.total_transfer_state = LftpJobStatus.TransferState(100, 1126, 9, None, None)
+        golden_job2.add_active_file_transfer_state(
+            "c/ca", LftpJobStatus.TransferState(None, None, None, None, None)
+        )
+        golden_jobs = [golden_job1, golden_job2]
+        self.assertEqual(len(golden_jobs), len(statuses))
+        statuses_jobs = [j for j in statuses if j.state == LftpJobStatus.State.RUNNING]
+        self.assertEqual(golden_jobs, statuses_jobs)
+
+    def test_jobs_chunk_without_data_line_followed_by_mirror_header(self):
+        """
+        Header-swallowing site #10 (D-07, D-08, XFER-01): a finished pget chunk
+        (\\chunk a-b) prints no data line, so the next line can be another
+        job's header. That header must not be consumed as the chunk's data.
+        Pre-fix failure: AssertionError, the mirror header is swallowed and the
+        mirror job is silently dropped.
+        """
+        output = """
+        [0] queue (sftp://seedsyncarrtest:@localhost:22)
+        sftp://seedsyncarrtest:@localhost:22/home/seedsyncarrtest
+        Now executing: [1] pget -c /tmp/t/remote/A.rar -o /tmp/t/local/
+        -[2] mirror -c /tmp/t/remote/b /tmp/t/local/  -- 1/2 (50%)
+        [1] pget -c /tmp/t/remote/A.rar -o /tmp/t/local/
+        sftp://seedsyncarrtest:@localhost:22/home/seedsyncarrtest
+        `/tmp/t/remote/A.rar', got 100 of 1000 (10%)
+        \\chunk 0-499
+        `/tmp/t/remote/A.rar' at 50 (0%) [Receiving data]
+        \\chunk 500-999
+        [2] mirror -c /tmp/t/remote/b /tmp/t/local/  -- 1/2 (50%)
+        """
+        parser = LftpJobStatusParser()
+        statuses = parser.parse(output)
+        golden_job1 = LftpJobStatus(job_id=1,
+                                    job_type=LftpJobStatus.Type.PGET,
+                                    state=LftpJobStatus.State.RUNNING,
+                                    name="A.rar",
+                                    flags="-c")
+        golden_job1.total_transfer_state = LftpJobStatus.TransferState(100, 1000, 10, None, None)
+        golden_job2 = LftpJobStatus(job_id=2,
+                                    job_type=LftpJobStatus.Type.MIRROR,
+                                    state=LftpJobStatus.State.RUNNING,
+                                    name="b",
+                                    flags="-c")
+        golden_job2.total_transfer_state = LftpJobStatus.TransferState(1, 2, 50, None, None)
+        golden_jobs = [golden_job1, golden_job2]
+        self.assertEqual(len(golden_jobs), len(statuses))
+        statuses_jobs = [j for j in statuses if j.state == LftpJobStatus.State.RUNNING]
+        self.assertEqual(golden_jobs, statuses_jobs)
+
+    def test_jobs_chunk_without_data_line_followed_by_chunk(self):
+        """
+        Header-swallowing site #10 (D-07, D-08, XFER-01): a finished chunk with
+        no data line directly followed by the next \\chunk line. The second
+        chunk header must not be consumed as the first chunk's data.
+        Pre-fix failure: the second \\chunk is swallowed, its data line is
+        orphaned ("Unable to parse line") and LftpJobStatusParserError escapes.
+        """
+        output = """
+        [0] queue (sftp://seedsyncarrtest:@localhost:22)
+        sftp://seedsyncarrtest:@localhost:22/home/seedsyncarrtest
+        Now executing: [1] pget -c /tmp/t/remote/A.rar -o /tmp/t/local/
+        [1] pget -c /tmp/t/remote/A.rar -o /tmp/t/local/
+        sftp://seedsyncarrtest:@localhost:22/home/seedsyncarrtest
+        `/tmp/t/remote/A.rar', got 100 of 1000 (10%)
+        \\chunk 0-499
+        \\chunk 500-999
+        `/tmp/t/remote/A.rar' at 550 (10%) [Receiving data]
+        """
+        parser = LftpJobStatusParser()
+        statuses = parser.parse(output)
+        golden_job1 = LftpJobStatus(job_id=1,
+                                    job_type=LftpJobStatus.Type.PGET,
+                                    state=LftpJobStatus.State.RUNNING,
+                                    name="A.rar",
+                                    flags="-c")
+        golden_job1.total_transfer_state = LftpJobStatus.TransferState(100, 1000, 10, None, None)
+        golden_jobs = [golden_job1]
+        self.assertEqual(len(golden_jobs), len(statuses))
+        statuses_jobs = [j for j in statuses if j.state == LftpJobStatus.State.RUNNING]
+        self.assertEqual(golden_jobs, statuses_jobs)
+
+    def test_jobs_mirror_empty_followed_by_header_containing_getting_file_list(self):
+        """
+        Header-swallowing site #9 (D-07, D-08, XFER-01): the MIRROR_EMPTY
+        follower check matches "Getting file list" as a substring, so a job
+        header whose path contains that phrase must still be parsed as a job.
+        Pre-fix failure: AssertionError, the second mirror header is swallowed
+        and the job is silently dropped.
+        """
+        output = """
+        [0] queue (sftp://seedsyncarrtest:@localhost:22)
+        sftp://seedsyncarrtest:@localhost:22/home/seedsyncarrtest
+        Now executing: [1] mirror -c /tmp/t/remote/a /tmp/t/local/  -- 1/2 (50%)
+        -[2] mirror -c "/tmp/t/remote/Getting file list" /tmp/t/local/  -- 1/2 (50%)
+        [1] mirror -c /tmp/t/remote/a /tmp/t/local/  -- 1/2 (50%)
+        \\mirror `sub'
+        [2] mirror -c "/tmp/t/remote/Getting file list" /tmp/t/local/  -- 1/2 (50%)
+        """
+        parser = LftpJobStatusParser()
+        statuses = parser.parse(output)
+        golden_job1 = LftpJobStatus(job_id=1,
+                                    job_type=LftpJobStatus.Type.MIRROR,
+                                    state=LftpJobStatus.State.RUNNING,
+                                    name="a",
+                                    flags="-c")
+        golden_job1.total_transfer_state = LftpJobStatus.TransferState(1, 2, 50, None, None)
+        golden_job2 = LftpJobStatus(job_id=2,
+                                    job_type=LftpJobStatus.Type.MIRROR,
+                                    state=LftpJobStatus.State.RUNNING,
+                                    name="Getting file list",
+                                    flags="-c")
+        golden_job2.total_transfer_state = LftpJobStatus.TransferState(1, 2, 50, None, None)
+        golden_jobs = [golden_job1, golden_job2]
+        self.assertEqual(len(golden_jobs), len(statuses))
+        statuses_jobs = [j for j in statuses if j.state == LftpJobStatus.State.RUNNING]
+        self.assertEqual(golden_jobs, statuses_jobs)
+
     def test_raises_error_on_bad_status(self):
         output = """
         [0] queue (sftp://someone:@localhost) 
