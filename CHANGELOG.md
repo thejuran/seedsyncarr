@@ -4,7 +4,10 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [1.7.3] - Unreleased
+## [1.7.4] - 2026-10-09
+
+1.7.3 was never tagged; the staged-extraction and auto-delete re-arm fixes
+written up for it below ship in this release together with the safety patch.
 
 Two defects from one incident (2026-09-16, a 96-volume rar'd 2160p release
 with a 38.5 GB mkv inside). Archives were unpacked straight into the release
@@ -49,6 +52,34 @@ instead of the transfer side.
   gone from the model, no download evidence, BFS node limit — still never
   re-arm; a fresh webhook import resets the budget; shutdown cancels re-armed
   timers like any other.
+- Fixed a Sonarr/Radarr import being credited to the wrong download when its
+  file name matched more than one release. The webhook handler credited the
+  import to whichever release it happened to look up last, so auto-delete
+  could remove a download that had not been imported. A webhook file name
+  that matches more than one release — across releases or within one pack,
+  compared case-insensitively — is now rejected with a warning naming the
+  candidates; nothing is recorded as imported and nothing is deleted for it.
+- Fixed a momentary lftp hiccup being read as "nothing is downloading". An
+  unreadable or timed-out lftp status is now treated as "unavailable" rather
+  than "no jobs": files keep their Downloading/Queued state, nothing is
+  marked downloaded because a preallocated local file happens to have its
+  full size, and nothing is re-queued, deleted or extracted on that cycle.
+  The status parser no longer swallows the header line of the job that
+  follows a job it cannot fully parse, and the remote and local "stable for
+  N seconds" clocks advance only on successful scans, so a failed scan can
+  no longer make a growing file look stable.
+- Changed Stop while lftp status is unavailable to report an error instead
+  of a false success. Stop used to say it had succeeded while lftp kept
+  downloading; it now returns the generic "Lftp error", marks nothing as
+  stopped, and can be retried once status recovers.
+- Fixed a failed save leaving `settings.cfg`, `controller.persist` or
+  `autoqueue.persist` empty or partial. The old writer truncated the file
+  before serializing, so a serialization error, a full disk or a crash
+  mid-write left a file the next start treated as corrupt, set aside, and
+  replaced with defaults. Each file is now written to a 0600 temp file in
+  the same directory, flushed to disk, and swapped in with an atomic rename;
+  on any failure the previous good copy stays in place and the temp file is
+  removed.
 
 ### Internal
 
@@ -64,6 +95,17 @@ instead of the transfer side.
   give-up path, counter reset on success and on a fresh webhook, and
   shutdown cancellation of a re-armed timer. The existing extract dispatch
   tests now expect the staging path as the extractor's output directory.
+- New `test_import_ambiguity.py` covers cross-release and within-pack
+  file-name collisions on the webhook path. New
+  `test_transfer_state_safety.py`, `test_scan_clock_safety.py` and
+  `test_lftp_status_contract.py` cover the unavailable-status contract, the
+  Stop error, the parser's job-header handling, and scan-clock stability.
+  New `TestPersistAtomicWrite` in `test_persist.py` injects a failure at
+  every step of the persist write and checks the original survives
+  byte-for-byte with no temp file left behind.
+- Each safety fix was recorded failing before the change and passing after
+  it; the evidence lives in `116-REL01-EVIDENCE.md`,
+  `117-REL01-EVIDENCE.md` and `118-REL01-EVIDENCE.md` under `.planning/`.
 
 ## [1.7.2] - 2026-09-05
 
