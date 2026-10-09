@@ -743,9 +743,9 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 117-04-PLAN.md — Fix B1: peek-before-pop at pget data line, \chunk follower, mirror-empty header guard (job_status_parser.py)
-- [ ] 117-05-PLAN.md — Fix B2: Lftp.status None on tolerated errors, kill() None guard, integration flips, LftpManager pass-through tests
-- [ ] 117-06-PLAN.md — Fix B3: successful-scan clocks on ControllerStatus, controller writes, AutoQueue stability reads; serializer keys guard
+- [x] 117-04-PLAN.md — Fix B1: peek-before-pop at pget data line, \chunk follower, mirror-empty header guard (job_status_parser.py)
+- [x] 117-05-PLAN.md — Fix B2: Lftp.status None on tolerated errors, kill() None guard, integration flips, LftpManager pass-through tests
+- [x] 117-06-PLAN.md — Fix B3: successful-scan clocks on ControllerStatus, controller writes, AutoQueue stability reads; serializer keys guard
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -811,7 +811,7 @@ Plans:
 | 114. Scanner Auto-Recovery | v1.4.1 | 2/2 | Complete   | 2026-06-21 |
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
-| 117. Transfer-State Safety | v1.7.4 | 3/8 | In Progress|  |
+| 117. Transfer-State Safety | v1.7.4 | 6/8 | In Progress|  |
 | 118. Durable State | v1.7.4 | 0/? | Not started | - |
 
 ---
