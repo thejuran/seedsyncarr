@@ -119,12 +119,50 @@
 
 ---
 
+## Milestone: v1.7.4 — Safety Patch
+
+**Shipped:** 2026-10-09
+**Phases:** 3 (116-118) | **Plans:** 16
+
+### What Was Built
+- 116 Import Safety: ambiguous webhook import matches (a basename resolving to 2+ distinct model paths) rejected with no credit/badge/auto-delete; delete-time duplicate-basename guard as defense in depth.
+- 117 Transfer-State Safety: LFTP parser peek-before-pop; status unavailable = `None` end to end; submitted-but-unobserved transfers protected (incl. 409 on manual extract/delete); success-only stability clocks.
+- 118 Durable State: atomic `Persist.to_file`; 1.7.4 release gate run and the image deployed to the NAS by digest.
+
+### What Worked
+- Design spec → 3 risk-ordered phases with disjoint code paths; deletion safety landed first so it could ship alone if needed.
+- RED-first regressions (fail-before/pass-after, 42 named tests) made the release gate mechanical and auditable.
+- Digest-pinned smoke test with a real SSH→LFTP transfer before the production deploy; clean 79 s cutover.
+- Phase verifiers re-ran evidence independently (incl. reproducing RED in a disposable worktree) instead of trusting SUMMARY narratives.
+
+### What Was Inefficient
+- Phase 117 grew to 8 plans: codex adversarial passes expanded XFER-02 scope (submitted-unobserved protection, same-cycle command guard, Stop reconcile) mid-phase.
+- Phase 118's plan went through 4 rewrites; the owner waiver of the final codex re-review was never written down.
+- PyPI publish broke at tag time (`./`-prefixed wheel paths) — packaging was never exercised before the tag.
+- REQUIREMENTS.md / VALIDATION.md bookkeeping lagged behind completion again (117 unchecked, 118 VALIDATION left draft).
+
+### Patterns Established
+- "Unavailable" vs "empty" as distinct states for any external status source.
+- Atomic same-directory temp + `os.replace` for every persisted file; relies on `/config` being a directory mount.
+- Milestone audit integration check catches cross-phase seams the per-phase verifiers can't (116 auto-delete × 117 submitted-unobserved → backlog 999.3).
+
+### Key Lessons
+- When a safety fix adds a guard on one destructive path (manual delete), check every other destructive path (timer auto-delete) for the same guard in the same phase.
+- Dry-run the PyPI build/upload (or `twine check`) before tagging a release.
+- Record owner waivers in the phase CONTEXT/DISCUSSION log at the moment they're given.
+
+### Cost Observations
+- Model mix: Opus-driven orchestration, Sonnet subagents for planning/verification/integration check, codex for adversarial plan review.
+- Sessions: multiple over 2 days (2026-10-08 → 2026-10-09).
+- Notable: per-phase deep reviews all came back with 0 findings; the gates that caught real issues were codex adversarial (scope) and the milestone integration check (cross-phase seam).
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
 
 | Milestone | Phases | Plans | Key Change |
 |-----------|--------|-------|------------|
+| v1.7.4 | 3 | 16 | Safety patch from a design spec; RED-first release gate; digest-pinned NAS deploy |
 | v1.2.0 | 10 | 23 | Quality-only hardening; audit→fix pipeline; 5-day execution |
 | v1.1.2 | 4 | 6 | Audit-only milestone; research-first per layer |
 | v1.1.1 | 8 | 26 | Cleanup sweep; deferred E2E + UAT from v1.1.0 |
@@ -134,6 +172,7 @@
 
 | Milestone | Python Tests | Angular Tests | E2E Specs | Python Coverage |
 |-----------|-------------|---------------|-----------|-----------------|
+| v1.7.4 | 1,481 host part-1 (+ container-only suites) | — | 45+ | fail_under 88 (CI); host 86.36% informational |
 | v1.3.0 | 1,278 | 614 | 45+ | 89.27% container-inclusive (fail_under 88) |
 | v1.2.0 | 1,200+ | 599 | 45+ | 84% (fail_under enforced) |
 | v1.1.2 | 1,262 | 599 | 37 | 85.05% |
@@ -145,4 +184,5 @@
 1. Test cleanup happens naturally during feature work — dedicated audit milestones confirm rather than fix
 2. E2E harness configuration is a recurring source of subtle CI failures (autoqueue, arm64 rar, CSP)
 3. Quality-only milestones execute faster than mixed milestones — clear scope, no feature drift
-4. REQUIREMENTS.md checkboxes should be updated at plan completion, not deferred to milestone close
+4. REQUIREMENTS.md checkboxes should be updated at plan completion, not deferred to milestone close (repeated in v1.7.4)
+5. A guard added to one destructive path must be checked on every destructive path (v1.7.4 → backlog 999.3)
