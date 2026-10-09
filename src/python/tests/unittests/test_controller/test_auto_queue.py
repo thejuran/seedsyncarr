@@ -296,6 +296,8 @@ class TestAutoQueue(unittest.TestCase):
         # No scan clock in this harness: sweep cooldown stays inactive
         self.context.status.controller.latest_remote_scan_time = None
         self.context.status.controller.latest_local_scan_time = None
+        self.context.status.controller.latest_successful_remote_scan_time = None
+        self.context.status.controller.latest_successful_local_scan_time = None
         self.controller = MagicMock()
         self.controller.get_model_files_and_add_listener = MagicMock()
         self.controller.queue_command = MagicMock()
@@ -1776,6 +1778,8 @@ class TestAutoQueueCommandOrigin(unittest.TestCase):
         self.context.config.autoqueue.local_stability_seconds = 0
         self.context.status.controller.latest_remote_scan_time = None
         self.context.status.controller.latest_local_scan_time = None
+        self.context.status.controller.latest_successful_remote_scan_time = None
+        self.context.status.controller.latest_successful_local_scan_time = None
         self.controller = MagicMock()
         self.controller.get_model_files_and_add_listener.return_value = []
         self.controller.is_file_stopped.return_value = False
@@ -1825,6 +1829,8 @@ class TestAutoQueueComposedPipeline(unittest.TestCase):
         self.context.logger = self.logger
         self.context.status.controller.latest_remote_scan_time = None
         self.context.status.controller.latest_local_scan_time = None
+        self.context.status.controller.latest_successful_remote_scan_time = None
+        self.context.status.controller.latest_successful_local_scan_time = None
 
         self.model = Model()
         self.model.set_base_logger(self.logger)
@@ -1948,6 +1954,8 @@ class TestAutoQueueStabilityAndSweep(unittest.TestCase):
         self.context.status.controller = _ControllerStatus()
         self.context.status.controller.latest_remote_scan_time = None
         self.context.status.controller.latest_local_scan_time = None
+        self.context.status.controller.latest_successful_remote_scan_time = None
+        self.context.status.controller.latest_successful_local_scan_time = None
 
         self.controller = MagicMock()
         self.controller.queue_command = MagicMock()
@@ -1970,15 +1978,26 @@ class TestAutoQueueStabilityAndSweep(unittest.TestCase):
             self.logger.removeHandler(h)
 
     def _set_scan(self, scan_time, remote_size, local_size=None,
-                  state=ModelFile.State.DEFAULT):
-        """Simulate a remote scan result landing in the model at scan_time."""
+                  state=ModelFile.State.DEFAULT, failed=False):
+        """
+        Simulate a remote scan result landing at scan_time.
+
+        A successful scan updates the model and both remote clocks (the UI
+        clock latest_remote_scan_time and latest_successful_remote_scan_time).
+        A failed scan advances ONLY the UI clock: the model pipeline does not
+        apply failed results, so the model keeps its stale sizes and no
+        listener event fires.
+        """
+        self.context.status.controller.latest_remote_scan_time = scan_time
+        if failed:
+            return
+        self.context.status.controller.latest_successful_remote_scan_time = scan_time
         f = ModelFile(self.FILE, False)
         f.remote_size = remote_size
         f.local_size = local_size
         f.state = state
         old = self.model_files[0] if self.model_files else None
         self.model_files = [f]
-        self.context.status.controller.latest_remote_scan_time = scan_time
         if self.model_listener is not None:
             if old is None:
                 self.model_listener.file_added(f)
@@ -2147,6 +2166,89 @@ class TestAutoQueueStabilityAndSweep(unittest.TestCase):
         self.assertEqual(2, self._queued_count(),
                          "sweep must retry after the cooldown window elapses")
 
+    def test_failed_remote_scans_spanning_window_do_not_establish_stability(self):
+        """
+        XFER-04 / D-03: failed remote scans can neither advance the stability
+        clock nor reset it. A run of failed scans spanning the whole window
+        leaves the model holding the last successful (stale) size, so it must
+        never count as an observation of a stable size.
+        """
+        w = self.STABILITY
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._set_scan(0, remote_size=100)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "file must not be queued on first sighting")
+
+        for t in (w // 3, 2 * w // 3, w, 4 * w // 3, 2 * w):
+            self._set_scan(t, remote_size=100, failed=True)
+            auto_queue.process()
+            self.assertEqual(0, self._queued_count(),
+                             "failed scans must not advance the stability clock (D-03) "
+                             "[t={}]".format(t))
+
+    def test_matching_size_across_remote_outage_is_stable(self):
+        """
+        D-03 preservation: when the first successful scan after an outage
+        reports the same size, and two successful observations are at least
+        the window apart, the file is stable and queues.
+        """
+        w = self.STABILITY
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._set_scan(0, remote_size=100)
+        auto_queue.process()
+        for t in (w // 3, 2 * w // 3):
+            self._set_scan(t, remote_size=100, failed=True)
+            auto_queue.process()
+            self.assertEqual(0, self._queued_count(),
+                             "nothing may queue inside the window [t={}]".format(t))
+
+        self._set_scan(w + 1, remote_size=100)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "matching size observed by two successful scans >= window "
+                         "apart must queue")
+        command = self.controller.queue_command.call_args[0][0]
+        self.assertEqual(Controller.Command.Action.QUEUE, command.action)
+        self.assertEqual(self.FILE, command.filename)
+
+    def test_changed_size_after_remote_outage_restarts_window(self):
+        """
+        XFER-04 / D-04: failed scans can neither advance the clock nor reset
+        it; a size change seen by the first successful scan after an outage
+        restarts the stability window from that scan.
+        """
+        w = self.STABILITY
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._set_scan(0, remote_size=100)
+        auto_queue.process()
+        for t in (w // 2, w, 3 * w // 2):
+            self._set_scan(t, remote_size=100, failed=True)
+            auto_queue.process()
+            self.assertEqual(0, self._queued_count(),
+                             "failed scans must not establish stability during the "
+                             "outage (D-03/D-04) [t={}]".format(t))
+
+        self._set_scan(2 * w, remote_size=150)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "a size change after the outage restarts the window (D-04)")
+
+        self._set_scan(2 * w + w // 2, remote_size=150)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "restarted window has not elapsed yet")
+
+        self._set_scan(3 * w + 1, remote_size=150)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "file must queue once the restarted window elapses")
+        command = self.controller.queue_command.call_args[0][0]
+        self.assertEqual(Controller.Command.Action.QUEUE, command.action)
+
 
 class TestAutoQueueLocalStabilityGate(unittest.TestCase):
     """
@@ -2192,6 +2294,8 @@ class TestAutoQueueLocalStabilityGate(unittest.TestCase):
         self.context.status.controller = _ControllerStatus()
         self.context.status.controller.latest_remote_scan_time = None
         self.context.status.controller.latest_local_scan_time = None
+        self.context.status.controller.latest_successful_remote_scan_time = None
+        self.context.status.controller.latest_successful_local_scan_time = None
 
         self.controller = MagicMock()
         self.controller.queue_command = MagicMock()
@@ -2212,20 +2316,21 @@ class TestAutoQueueLocalStabilityGate(unittest.TestCase):
             self.logger.removeHandler(h)
 
     def _cycle(self, local_scan_time, remote_size, local_size,
-               state=ModelFile.State.DEFAULT):
+               state=ModelFile.State.DEFAULT, failed=False):
         """
         One controller cycle: the model reflects the given sizes/state and the
         local scan clock reads local_scan_time (unchanged clock == the scan
         result is the same stale one as last cycle). The remote gate is
         disabled in this class so the remote side never gates anything.
+
+        With failed=True the local scan failed: only the UI clock
+        latest_local_scan_time advances (plus the remote clock lockstep the
+        cooldown depends on); the model keeps its stale sizes and no listener
+        event fires, because the model pipeline does not apply failed results.
         """
-        f = ModelFile(self.FILE, False)
-        f.remote_size = remote_size
-        f.local_size = local_size
-        f.state = state
-        old = self.model_files[0] if self.model_files else None
-        self.model_files = [f]
         self.context.status.controller.latest_local_scan_time = local_scan_time
+        if not failed:
+            self.context.status.controller.latest_successful_local_scan_time = local_scan_time
         # Remote clock tracks the local clock so the sweep cooldown (which
         # runs on the remote clock) elapses in step with the local window.
         if local_scan_time is None:
@@ -2233,6 +2338,14 @@ class TestAutoQueueLocalStabilityGate(unittest.TestCase):
                 (self.context.status.controller.latest_remote_scan_time or 0) + 1
         else:
             self.context.status.controller.latest_remote_scan_time = local_scan_time
+        if failed:
+            return
+        f = ModelFile(self.FILE, False)
+        f.remote_size = remote_size
+        f.local_size = local_size
+        f.state = state
+        old = self.model_files[0] if self.model_files else None
+        self.model_files = [f]
         if self.model_listener is not None:
             if old is None:
                 self.model_listener.file_added(f)
@@ -2384,3 +2497,84 @@ class TestAutoQueueLocalStabilityGate(unittest.TestCase):
         auto_queue.process()
         self.assertEqual(1, self._queued_count(),
                          "gate disabled: idle partial queues immediately")
+
+    def test_failed_local_scans_spanning_window_do_not_establish_local_idle(self):
+        """
+        XFER-05 / D-03 / D-05: failed local scans can neither advance the
+        local stability clock nor reset it. The model keeps the stale partial
+        size, so a run of failed scans spanning the window is not evidence
+        that the partial is idle.
+        """
+        w = self.LOCAL_STABILITY
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._cycle(0, remote_size=1000, local_size=400)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "partial must not be swept on first sighting")
+
+        for t in (w // 3, 2 * w // 3, w, 4 * w // 3, 2 * w):
+            self._cycle(t, remote_size=1000, local_size=400, failed=True)
+            auto_queue.process()
+            self.assertEqual(0, self._queued_count(),
+                             "failed local scans must not advance the local stability "
+                             "clock (D-03/D-05) [t={}]".format(t))
+
+    def test_matching_local_size_across_outage_is_idle(self):
+        """
+        D-03 / D-05 preservation: a matching local size seen by two successful
+        local scans >= window apart, with failed scans in between, is idle and
+        the sweep re-queues the partial.
+        """
+        w = self.LOCAL_STABILITY
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._cycle(0, remote_size=1000, local_size=400)
+        auto_queue.process()
+        for t in (w // 3, 2 * w // 3):
+            self._cycle(t, remote_size=1000, local_size=400, failed=True)
+            auto_queue.process()
+            self.assertEqual(0, self._queued_count(),
+                             "nothing may queue inside the window [t={}]".format(t))
+
+        self._cycle(w + 1, remote_size=1000, local_size=400)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "matching local size across the outage must be idle")
+        command = self.controller.queue_command.call_args[0][0]
+        self.assertEqual(Controller.Command.Action.QUEUE, command.action)
+
+    def test_changed_local_size_after_outage_restarts_window(self):
+        """
+        XFER-05 / D-04 / D-05: failed local scans can neither advance the
+        clock nor reset it; a local size change seen by the first successful
+        scan after the outage restarts the local window from that scan.
+        """
+        w = self.LOCAL_STABILITY
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+        self._cycle(0, remote_size=1000, local_size=400)
+        auto_queue.process()
+        for t in (w // 2, w, 3 * w // 2):
+            self._cycle(t, remote_size=1000, local_size=400, failed=True)
+            auto_queue.process()
+            self.assertEqual(0, self._queued_count(),
+                             "failed local scans must not establish idleness during "
+                             "the outage (D-03/D-05) [t={}]".format(t))
+
+        self._cycle(2 * w, remote_size=1000, local_size=600)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "a local size change after the outage restarts the window (D-04)")
+
+        self._cycle(2 * w + w // 2, remote_size=1000, local_size=600)
+        auto_queue.process()
+        self.assertEqual(0, self._queued_count(),
+                         "restarted local window has not elapsed yet")
+
+        self._cycle(3 * w + 1, remote_size=1000, local_size=600)
+        auto_queue.process()
+        self.assertEqual(1, self._queued_count(),
+                         "partial must be swept once the restarted window elapses")
+        command = self.controller.queue_command.call_args[0][0]
+        self.assertEqual(Controller.Command.Action.QUEUE, command.action)
