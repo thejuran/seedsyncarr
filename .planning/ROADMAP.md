@@ -836,18 +836,38 @@ Plans:
 
 Plans:
 
+**Wave 1**
+
 - [ ] 119-01-PLAN.md — XFER-06: LFTP sentinel resync after a status timeout (RED-first fake-pty regression)
 - [ ] 119-02-PLAN.md — REL-02: hatch `only-include` packaging fix, member-path checker, `verify-python-package` CI job
 - [ ] 119-03-PLAN.md — DEL-01: lock-protected submitted-unobserved set + auto-delete Timer guard (RED-first)
 - [ ] 119-04-PLAN.md — IMP-02 foundation: ArrQueueClient (`/api/v3/queue/details`) + CompletionGate (D-16/D-17 verdicts, capped backoff, hold registry)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 119-05-PLAN.md — IMP-03: early per-episode import credit, pending-notice re-evaluation, arm-on-commit, immediate atomic persist (Days of Hope replay RED-first)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 119-06-PLAN.md — IMP-01 + IMP-02: forced temp files, sweep + execution-time completion gate, one-shot manual release flag (Obsession replay RED-first)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 119-07-PLAN.md — IMP-02 hold visibility backend: `ModelFile.hold_reason` → builder → pipeline → SSE
 - [ ] 119-08-PLAN.md — IMP-02 UI: Waiting badge + reason, 428 → confirm → release re-dispatch
-- [ ] 119-09-PLAN.md — REL-03 (1/3): 1.7.5 version bumps, Dependabot #93/#123/#124, CHANGELOG/notes, gate evidence, CI green, owner approval checkpoint
-- [ ] 119-10-PLAN.md — REL-03 (2/3): wud pause, tag v1.7.5, tag CI (Docker/GitHub/PyPI), smoke on the exact `:1.7.5` digest, deploy go-ahead checkpoint
-- [ ] 119-11-PLAN.md — REL-03 (3/3): NAS deploy by digest with verified backups, scan recovery + arr reachability, wud restore, owner confirmation
 - [ ] 119-12-PLAN.md — IMP-01/IMP-02 settings + docs: remove `use_temp_file` toggle (D-19), e2e seed release flag, CONFIGURATION docs (wave 4, sibling of 119-08)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 119-09-PLAN.md — REL-03 (1/3): 1.7.5 version bumps, Dependabot #93/#123/#124, CHANGELOG/notes, gate evidence, CI green, owner approval checkpoint
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 119-10-PLAN.md — REL-03 (2/3): wud pause, tag v1.7.5, tag CI (Docker/GitHub/PyPI), smoke on the exact `:1.7.5` digest, deploy go-ahead checkpoint
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 119-11-PLAN.md — REL-03 (3/3): NAS deploy by digest with verified backups, scan recovery + arr reachability, wud restore, owner confirmation
 
 ## Progress
 
@@ -891,7 +911,6 @@ Plans:
 | 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
 | 118. Durable State | v1.7.4 | 5/5 | Complete    | 2026-10-09 |
 | 119. Safety Follow-ups and 1.7.5 Release | v1.7.5 | 0/11 | Planned | — |
-
 
 ---
 

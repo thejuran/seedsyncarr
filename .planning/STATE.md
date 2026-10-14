@@ -4,12 +4,12 @@ milestone: v1.7.5
 milestone_name: Safety Release
 status: Defining requirements
 stopped_at: Phase 119 context gathered
-last_updated: "2026-10-14T20:14:42.330Z"
+last_updated: "2026-10-14T21:36:37.863Z"
 last_activity: 2026-10-14 — Milestone v1.7.5 started
 progress:
   total_phases: 22
   completed_phases: 5
-  total_plans: 19
+  total_plans: 31
   completed_plans: 19
   percent: 23
 ---
