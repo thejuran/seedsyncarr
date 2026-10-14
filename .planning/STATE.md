@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.7.4
-milestone_name: Safety Patch
-status: Next milestone sequencing agreed
-stopped_at: Reliability roadmap updated; Phase 119 awaiting planning
-last_updated: "2026-10-09T14:56:26.482449Z"
-last_activity: 2026-10-09 — Phase 119 agreed as Reliability opening patch, releasing 1.7.5 first
+milestone: v1.7.5
+milestone_name: Safety Release
+status: planning
+last_updated: "2026-10-14T20:05:10.880Z"
+last_activity: 2026-10-14
 progress:
-  total_phases: 21
-  completed_phases: 5
-  total_plans: 19
-  completed_plans: 19
-  percent: 24
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-10-09)
 
 ## Current Position
 
-Phase: Milestone v1.7.4 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Next milestone sequencing agreed; detailed planning not started
-Last activity: 2026-10-09 — Roadmap updated with Phase 119 and the 1.7.5 release checkpoint
+Status: Defining requirements
+Last activity: 2026-10-14 — Milestone v1.7.5 started
 
 ## Accumulated Context
 

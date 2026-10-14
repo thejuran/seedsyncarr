@@ -301,7 +301,20 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Current State
 
-v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seedsyncarr:1.7.4` running on the NAS by digest). The next milestone is Reliability: its opening Phase 119 delivers LFTP timeout resynchronization (former backlog 999.2), the auto-delete timer submitted-unobserved guard (former backlog 999.3), and the PyPI packaging repair. Release that phase as 1.7.5 before executing the remaining reliability phases; it is not a separate milestone. Detailed planning has not started. The final Reliability release version remains TBD; milestone three remains Performance and usability. Backlog 999.1 stays deferred. Dependabot #93 is considered only insofar as it supports the packaging repair.
+v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seedsyncarr:1.7.4` running on the NAS by digest). Milestone v1.7.5 Safety Release is in progress (single Phase 119). Owner decision 2026-10-14: v1.7.5 is its own milestone; the Reliability milestone follows it starting at Phase 120, then Performance and usability. Backlog 999.1 stays deferred and does not substitute for the 1.7.5 import fixes.
+
+## Current Milestone: v1.7.5 Safety Release
+
+**Goal:** Close the carried-forward safety gaps from v1.7.4 and the two 2026-10 Done-group incidents (an incomplete file imported into the library; early per-episode import notices discarded), and ship 1.7.5 to Docker/GitHub/PyPI with the tested image verified on the NAS.
+
+**Target features:**
+- LFTP command-boundary resync after a timeout — a delayed prompt or stale output cannot become a trusted empty job list (promotes 999.2).
+- Explicit submitted-but-unobserved guard in the auto-delete timer, with safe defer/re-arm (promotes 999.3).
+- PyPI packaging repair and verified distribution (Dependabot #93 only as relevant).
+- Incomplete-import prevention (Obsession, 2026-10-13): an unverified copy stays unavailable for Sonarr/Radarr import until completion checks pass; size/mtime are supporting evidence only; arr-queue release identification must be reliable and absence from the queue is not completion; arr unavailable → visible hold/retry, never an unsafe copy after a timeout. Separate plan and tests.
+- Early per-episode import credit (Days of Hope, 2026-10-09): notices for demonstrably complete episodes are credited and persisted while siblings transfer; whole-folder deletion stays gated on transfer completion and full video coverage; restart recovery tested; ambiguous-filename protections retained. Separate plan and tests.
+
+**Key context:** Diagnosis in `.planning/debug/done-group-no-auto-delete.md`. Broad research skipped; planning must verify the specific Sonarr/Radarr queue/API semantics needed to establish completion — the incident diagnosis establishes the problem, not every detail of the solution. Release gate: targeted regressions fail-before/pass-after, full suite + whole-tree ruff + release CI, release-image smoke (startup, real transfer, settings persistence, restart), Docker/GitHub/PyPI publication, and NAS verification of the tested image including a successful scan after any startup scanner error.
 
 ## Previous Milestone: v1.7.4 Safety Patch (Shipped 2026-10-09, tagged v1.7.4)
 
@@ -353,7 +366,11 @@ v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seeds
 
 ### Active
 
-- [ ] Plan Phase 119 within the next Reliability milestone; ship its contained fixes as 1.7.5 before continuing broader reliability work. See ROADMAP.md for scope and release criteria.
+- [ ] LFTP status cannot be trusted as "no jobs" after a timed-out command until the command stream is verifiably resynchronized (Phase 119)
+- [ ] A pending auto-delete timer cannot delete a submitted-but-unobserved transfer (Phase 119)
+- [ ] 1.7.5 publishes to PyPI from a valid, verified distribution (Phase 119)
+- [ ] Sonarr/Radarr cannot import an incomplete copy of a seedbox file (Phase 119)
+- [ ] Import notices for fully transferred episodes are credited while siblings still transfer, survive restart, and let auto-delete complete (Phase 119)
 
 <!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
 
@@ -472,7 +489,7 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 
 ## Project Status
 
-**Status:** v1.7.4 Safety Patch shipped (2026-10-09). Deletion, transfer-state and durable-state safety fixes; deployed to NAS at `:1.7.4`.
+**Status:** v1.7.5 Safety Release in progress (started 2026-10-14). v1.7.4 Safety Patch shipped 2026-10-09 and runs on the NAS at `:1.7.4`.
 
 31 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit + v1.2.0 test hardening as SeedSyncarr).
 
@@ -494,4 +511,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-09 after v1.7.4 milestone*
+*Last updated: 2026-10-14 after starting milestone v1.7.5*
