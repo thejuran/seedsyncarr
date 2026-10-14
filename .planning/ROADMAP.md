@@ -38,19 +38,20 @@
 - ✅ v1.4.0 — Launch-Hardening for Public Release - Phases 110-113 (shipped 2026-06-03; merged to `main`, `v1.4.0` tag)
 - ✅ v1.4.1 — Scanner Auto-Recovery - Phases 114-115 (shipped 2026-06-22; tagged `v1.5.0`)
 - ✅ v1.7.4 Safety Patch - Phases 116-118 (shipped 2026-10-09; tagged `v1.7.4`; archive: `milestones/v1.7.4-ROADMAP.md`)
+- 🚧 v1.7.5 Safety Release - Phase 119 (in progress, started 2026-10-14)
 
-## Agreed three-milestone sequence
+## Agreed milestone sequence
 
 1. **Safety Patch — complete:** v1.7.4, Phases 116–118.
-2. **Reliability — next:** start with Phase 119 below and release its contained fixes as **1.7.5 before continuing** with the remaining reliability work. The patch is the opening phase of this milestone, not a separate milestone. Remaining work covers import/cleanup recovery across scan timing and restarts, shutdown/resource cleanup, bounded scanner-result buffering, and useful memory diagnostics; detailed phases and the final release version remain to be planned.
-3. **Performance and usability — later:** retain the previously discussed targeted UI/backend efficiency and usability work after reliability. No scope expansion or transfer-engine replacement.
+2. **v1.7.5 Safety Release — in progress:** Phase 119 only. Owner decision 2026-10-14: 1.7.5 is its own milestone (previously planned as the opening phase of Reliability), so the orchestrator's milestone-end walkthrough, audit and `v1.7.5` tag apply to it directly.
+3. **Reliability — next:** starts at Phase 120 after v1.7.5 ships. Covers import/cleanup recovery across scan timing and restarts, shutdown/resource cleanup, bounded scanner-result buffering, and useful memory diagnostics; detailed phases and the final release version remain to be planned.
+4. **Performance and usability — later:** retain the previously discussed targeted UI/backend efficiency and usability work after reliability. No scope expansion or transfer-engine replacement.
 
-### Next milestone: Reliability
+### 🚧 v1.7.5 Safety Release (In Progress)
 
-- [ ] **Phase 119: Safety Follow-ups and 1.7.5 Release** — close the two carried-forward safety gaps, stop incomplete-file imports, recover early per-episode import notices, and restore PyPI publishing; ship this phase first.
-- [ ] **Remaining reliability phases:** plan after the opening patch scope; execute only after the 1.7.5 release checkpoint is complete.
+- [ ] **Phase 119: Safety Follow-ups and 1.7.5 Release** — close the two carried-forward safety gaps, stop incomplete-file imports, recover early per-episode import notices, and restore PyPI publishing.
 
-**Release ordering:** Phase 119 → verify and release 1.7.5 → resume the remaining reliability phases → milestone three. Do not hold 1.7.5 for the rest of the reliability milestone, and do not archive that milestone when its opening patch ships.
+**Release ordering:** Phase 119 → verify and release 1.7.5 (milestone v1.7.5 complete) → Reliability milestone (Phase 120+) → Performance and usability.
 
 ## Phases
 
@@ -808,10 +809,10 @@ Plans:
 
 ### Phase 119: Safety Follow-ups and 1.7.5 Release
 
-**Milestone:** Reliability (opening phase; final milestone release version TBD)
-**Goal:** Deliver the contained safety follow-ups and packaging repair as 1.7.5 before continuing with broader reliability work.
+**Milestone:** v1.7.5 Safety Release (sole phase)
+**Goal:** Deliver the contained safety follow-ups, the two Done-group incident fixes, and the packaging repair as 1.7.5 before the Reliability milestone begins.
 **Depends on:** Phase 118 (v1.7.4 shipped)
-**Requirements:** Carry-forward scope from backlog 999.2, backlog 999.3, the v1.7.4 PyPI publishing failure, and the 2026-10-14 Done-group incidents (debug session `.planning/debug/done-group-no-auto-delete.md`); formal requirement IDs to be assigned during milestone planning.
+**Requirements:** XFER-06, DEL-01, IMP-01, IMP-02, IMP-03, REL-02, REL-03 (see `.planning/REQUIREMENTS.md`). Sources: backlog 999.2, backlog 999.3, the v1.7.4 PyPI publishing failure, and the Done-group incidents (debug session `.planning/debug/done-group-no-auto-delete.md`). Plan grouping: IMP-01 + IMP-02 in one plan with its own regression tests; IMP-03 in a separate plan with its own regression tests.
 **Scope:**
 
 1. Re-establish a trustworthy LFTP command boundary after a timeout. Until synchronized, status remains unavailable; a delayed prompt or stale output must not clear active/submitted-transfer protection (promotes 999.2).
@@ -823,15 +824,15 @@ Plans:
 **Success criteria:**
 
 1. A delayed prompt from a timed-out command cannot turn the next status into a trusted empty job list; normal status resumes after verified synchronization.
-2. A pending auto-delete timer cannot delete a submitted-but-unobserved transfer; it defers and can safely retry after the transfer is observed and existing deletion guards pass.
+2. A pending auto-delete timer cannot delete a submitted-but-unobserved transfer; it defers and can safely retry once transfer status is successfully observed (the job need not appear active if it already finished) and the existing deletion guards pass.
 3. Built distributions have valid member paths, pass packaging checks, and install successfully in a clean environment; the 1.7.5 PyPI publication succeeds.
-4. A seedbox file that stalls or is still growing can never become visible to Sonarr/Radarr as a completed import candidate; when the arr queue cannot be reached or cannot identify the release, the transfer is held or retried visibly rather than released after a timeout.
-5. An import notice for a fully transferred episode is credited and persisted while sibling episodes are still transferring, survives a restart, and lets auto-delete proceed once the whole folder completes and every required video is covered. Ambiguous-filename protections still reject unsafe matches.
-6. Targeted regressions fail before their fixes and pass after; the full Python suite, Ruff, and release CI gates pass. The release image passes startup, real-transfer, settings-persistence and restart smoke checks.
-7. Release 1.7.5 through the established Docker/GitHub/PyPI process and verify the tested image on the NAS, including a successful scan after any startup scanner error, before resuming later reliability work.
+4. An incomplete or unverified copy is never exposed at an importable path — during transfer, retries, crashes, or restart recovery. Completion requires reliable evidence; stable size and modification time alone are insufficient. Each of these is a reason to hold, never to release: Sonarr/Radarr unavailable, an ambiguous queue match, a missing queue entry. The copy is held and retried visibly, and elapsed time never grants completion. Queue/API semantics are verified during planning.
+5. An import notice for a uniquely identified, fully transferred episode is credited and persisted while sibling episodes are still transferring and survives a restart; that credit alone never authorizes whole-folder deletion, which requires both a complete transfer of the folder and import coverage of every required video. Ambiguous-filename protections still reject unsafe matches.
+6. Targeted regressions fail before their fixes and pass after; the full Python suite, Ruff, and release CI gates pass. The release image passes startup, real-transfer, import visibility and webhook handling, automatic cleanup, settings-persistence and restart smoke checks.
+7. Release 1.7.5 through the established Docker/GitHub/PyPI process and verify the tested image on the NAS, including a successful scan after any startup scanner error (any other startup error needs its own resolution before release), before the Reliability milestone begins.
 
-**Scope boundary:** No transfer-engine replacement, broad refactor, UI feature, or unrelated dependency churn in this opening patch. Items 4 and 5 are in scope only as far as needed to stop incomplete imports and incorrect cleanup; any broader path-aware import redesign stays out. Backlog 999.1 (payload-size evidence) remains separate defense in depth and does not substitute for items 4 or 5.
-**Plans:** 0 plans — ready for detailed planning; no implementation or release performed by this roadmap update.
+**Scope boundary:** No transfer-engine replacement, broad refactor, UI feature, or unrelated dependency churn in this patch release. Items 4 and 5 are in scope only as far as needed to stop incomplete imports and incorrect cleanup; any broader path-aware import redesign stays out. Backlog 999.1 (payload-size evidence) stays deferred as defense in depth; payload-size evidence alone would not satisfy the new completion requirements.
+**Plans:** 0 plans — ready for detailed planning.
 
 Plans:
 
@@ -878,12 +879,12 @@ Plans:
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
 | 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
 | 118. Durable State | v1.7.4 | 5/5 | Complete    | 2026-10-09 |
-| 119. Safety Follow-ups and 1.7.5 Release | Reliability (opening patch) | 0/TBD | Not planned | — |
+| 119. Safety Follow-ups and 1.7.5 Release | v1.7.5 | 0/TBD | Not planned | — |
 
 
 ---
 
-*Last updated: 2026-10-14 — Owner expanded Phase 119 with scope items 4 (prevent incomplete-file imports) and 5 (recover early per-episode import notices), each with its own plan and tests, after the Obsession and Days of Hope Done-group incidents. 2026-10-09 — Owner approved Phase 119 as the opening phase of the next Reliability milestone; release 1.7.5 before resuming its remaining phases. v1.7.4 remains shipped and archived. Backlog 999.2 and 999.3 are promoted into Phase 119.*
+*Last updated: 2026-10-14 — Milestone v1.7.5 Safety Release started with Phase 119 as its sole phase (owner decision: 1.7.5 is its own milestone; Reliability follows at Phase 120); requirements XFER-06, DEL-01, IMP-01..03, REL-02, REL-03 mapped. Earlier 2026-10-14 — Owner expanded Phase 119 with scope items 4 (prevent incomplete-file imports) and 5 (recover early per-episode import notices), each with its own plan and tests, after the Obsession and Days of Hope Done-group incidents. 2026-10-09 — Owner approved Phase 119 as the opening phase of the next Reliability milestone; release 1.7.5 before resuming its remaining phases. v1.7.4 remains shipped and archived. Backlog 999.2 and 999.3 are promoted into Phase 119.*
 
 ## Backlog
 

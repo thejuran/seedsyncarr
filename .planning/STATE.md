@@ -20,7 +20,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-09)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Plan the next Reliability milestone with Phase 119 first; release 1.7.5 before resuming remaining reliability work
+**Current focus:** Milestone v1.7.5 Safety Release — Phase 119 (sole phase); Reliability follows at Phase 120
 
 ## Current Position
 
@@ -33,6 +33,7 @@ Last activity: 2026-10-14 — Milestone v1.7.5 started
 
 ### Roadmap Evolution
 
+- 2026-10-14: Milestone v1.7.5 Safety Release started (owner decision): 1.7.5 is its own milestone with Phase 119 as sole phase; Reliability becomes the next milestone at Phase 120. Milestone-start phase-dir cleanup skipped by owner (keep 119 and backlog 999.1–999.3; archive completed phases selectively later).
 - 2026-10-14: Expanded Phase 119 (owner-approved) with two Done-group incident fixes, each with separate plans and tests: (4) prevent incomplete-file imports — size/mtime are supporting evidence only, reliable arr-queue release identification, absence from queue is not completion, arr unavailable → visible hold/retry never unsafe copy, unverified copy unavailable for import until checks pass; (5) persist per-episode import credit for complete episodes while siblings transfer, whole-folder delete still gated on completion + full video coverage, restart recovery tested, ambiguous-filename protections retained. Diagnosis: `.planning/debug/done-group-no-auto-delete.md`. 999.1 stays separate.
 - 2026-10-09: Added Phase 119, Safety Follow-ups and 1.7.5 Release, as the opening phase of the next Reliability milestone. Promotes 999.2 and 999.3 and includes the PyPI packaging repair. Release 1.7.5 before executing later reliability phases; no separate patch milestone. Detailed milestone initialization and plans remain pending.
 
@@ -128,10 +129,10 @@ None.
 ## Session Continuity
 
 Last session: 2026-10-09T14:14:07.192Z
-Stopped at: Reliability roadmap sequencing agreed; Phase 119 awaiting planning
-Next action: Initialize the Reliability milestone using the agreed roadmap, then plan Phase 119. Its 1.7.5 release precedes execution of the remaining reliability phases.
+Stopped at: Milestone v1.7.5 initialized (requirements + roadmap); Phase 119 awaiting discuss/plan
+Next action: Discuss and plan Phase 119 (milestone orchestrator), then execute, verify and release 1.7.5.
 
 ## Operator Next Steps
 
-- Initialize the Reliability milestone with Phase 119 as its opening phase; retain the approved scope in ROADMAP.md.
-- Plan Phase 119, then implement, verify and release 1.7.5 before continuing later reliability phases.
+- Discuss and plan Phase 119 (requirements XFER-06, DEL-01, IMP-01..03, REL-02, REL-03); verify Sonarr/Radarr queue/API completion semantics during planning.
+- Implement, verify and release 1.7.5; then start the Reliability milestone at Phase 120.
