@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.7.4
 milestone_name: Safety Patch
-status: Awaiting next milestone
-stopped_at: Milestone v1.7.4 archived
-last_updated: "2026-10-09T14:45:33.706Z"
-last_activity: 2026-10-09 — Milestone v1.7.4 completed and archived
+status: Next milestone sequencing agreed
+stopped_at: Reliability roadmap updated; Phase 119 awaiting planning
+last_updated: "2026-10-09T14:56:26.482449Z"
+last_activity: 2026-10-09 — Phase 119 agreed as Reliability opening patch, releasing 1.7.5 first
 progress:
   total_phases: 21
   completed_phases: 5
@@ -18,19 +18,24 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-08)
+See: .planning/PROJECT.md (updated 2026-10-09)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Milestone complete
+**Current focus:** Plan the next Reliability milestone with Phase 119 first; release 1.7.5 before resuming remaining reliability work
 
 ## Current Position
 
 Phase: Milestone v1.7.4 complete
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-09 — Milestone v1.7.4 completed and archived
+Status: Next milestone sequencing agreed; detailed planning not started
+Last activity: 2026-10-09 — Roadmap updated with Phase 119 and the 1.7.5 release checkpoint
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- 2026-10-14: Expanded Phase 119 (owner-approved) with two Done-group incident fixes, each with separate plans and tests: (4) prevent incomplete-file imports — size/mtime are supporting evidence only, reliable arr-queue release identification, absence from queue is not completion, arr unavailable → visible hold/retry never unsafe copy, unverified copy unavailable for import until checks pass; (5) persist per-episode import credit for complete episodes while siblings transfer, whole-folder delete still gated on completion + full video coverage, restart recovery tested, ambiguous-filename protections retained. Diagnosis: `.planning/debug/done-group-no-auto-delete.md`. 999.1 stays separate.
+- 2026-10-09: Added Phase 119, Safety Follow-ups and 1.7.5 Release, as the opening phase of the next Reliability milestone. Promotes 999.2 and 999.3 and includes the PyPI packaging repair. Release 1.7.5 before executing later reliability phases; no separate patch milestone. Detailed milestone initialization and plans remain pending.
 
 ### Decisions
 
@@ -87,8 +92,8 @@ None.
 | todo | test-hardening-backlog A-01..A-06 | test-infra (DEFER-TESTHARDEN — deferred v1.4.0) |
 | quick_task | 260528-khw-triage-and-merge-dependabot-prs | housekeeping (prior session, SUMMARY missing; acknowledged + deferred at v1.4.0 close) |
 | backlog | 999.1 webhook import evidence (payload size == remote size) | v2 requirement IMPORT-F1; defense in depth, not in v1.7.4 scope |
-| backlog | 999.2 LFTP command-stream resync after timeout | deferred from Phase 117 codex pass 4 |
-| backlog | 999.3 auto-delete timer explicit submitted-unobserved guard | v1.7.4 audit integration warning; target 1.7.5 |
+| promoted | 999.2 LFTP command-stream resync after timeout | Phase 119; opening 1.7.5 patch |
+| promoted | 999.3 auto-delete timer explicit submitted-unobserved guard | Phase 119; opening 1.7.5 patch |
 | debug | extract-staging-autodel-rearm | awaiting_human_verify (fixes applied + self-verified 2026-09-16; acknowledged + deferred at v1.7.4 close) |
 
 > Acknowledged + deferred at v1.7.4 milestone close (2026-10-09): debug session extract-staging-autodel-rearm and todo webob-cgi-upstream-unblock (both pre-existing, outside v1.7.4 scope).
@@ -124,9 +129,10 @@ None.
 ## Session Continuity
 
 Last session: 2026-10-09T14:14:07.192Z
-Stopped at: Milestone v1.7.4 completed and archived
-Next action: Scope the next milestone (likely 1.7.5: PyPI packaging fix + Dependabot #93, backlog 999.3)
+Stopped at: Reliability roadmap sequencing agreed; Phase 119 awaiting planning
+Next action: Initialize the Reliability milestone using the agreed roadmap, then plan Phase 119. Its 1.7.5 release precedes execution of the remaining reliability phases.
 
 ## Operator Next Steps
 
-- `/bm:new-milestone` — scope the next milestone (candidate 1.7.5: PyPI packaging fix + Dependabot #93, backlog 999.3 auto-delete guard)
+- Initialize the Reliability milestone with Phase 119 as its opening phase; retain the approved scope in ROADMAP.md.
+- Plan Phase 119, then implement, verify and release 1.7.5 before continuing later reliability phases.

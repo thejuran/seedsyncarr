@@ -301,7 +301,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Current State
 
-v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seedsyncarr:1.7.4` running on the NAS by digest). No milestone in progress. Next-milestone candidates (1.7.5): fix the PyPI wheel packaging (`./`-prefixed archive paths) + Dependabot #93; backlog 999.3 (explicit submitted-unobserved guard in the auto-delete timer, from the v1.7.4 audit); backlog 999.2 (LFTP command-stream resync after timeout); backlog 999.1 (webhook payload-size import evidence).
+v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seedsyncarr:1.7.4` running on the NAS by digest). The next milestone is Reliability: its opening Phase 119 delivers LFTP timeout resynchronization (former backlog 999.2), the auto-delete timer submitted-unobserved guard (former backlog 999.3), and the PyPI packaging repair. Release that phase as 1.7.5 before executing the remaining reliability phases; it is not a separate milestone. Detailed planning has not started. The final Reliability release version remains TBD; milestone three remains Performance and usability. Backlog 999.1 stays deferred. Dependabot #93 is considered only insofar as it supports the packaging repair.
 
 ## Previous Milestone: v1.7.4 Safety Patch (Shipped 2026-10-09, tagged v1.7.4)
 
@@ -353,7 +353,7 @@ v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seeds
 
 ### Active
 
-<!-- No active milestone. Candidates for the next one: see Current State above (1.7.5: PyPI packaging fix + Dependabot #93, backlog 999.1–999.3). -->
+- [ ] Plan Phase 119 within the next Reliability milestone; ship its contained fixes as 1.7.5 before continuing broader reliability work. See ROADMAP.md for scope and release criteria.
 
 <!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
 

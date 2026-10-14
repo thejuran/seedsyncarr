@@ -156,6 +156,22 @@
 - Sessions: multiple over 2 days (2026-10-08 → 2026-10-09).
 - Notable: per-phase deep reviews all came back with 0 findings; the gates that caught real issues were codex adversarial (scope) and the milestone integration check (cross-phase seam).
 
+### Orchestrator Gates (retro, 2026-10-09)
+- Pauses: 14 owner pauses across 3 phases (3 auto-followed risk-tier prompts excluded; the DISCUSS card's pause is counted on both risk-tier and requirement-manifest).
+- K0→K1 tokens (`docs/bench/meas02-after-0.11.0.md`, the latest bench; no 0.11.1 bench exists, and 45 of 52 v1.7.4 records ran on 0.11.1): output_tokens median 2752 (before 2331, +421), requests 5 (before 4), elapsed 25.7 s (before 22.8 s), read_scripts 0.
+- Security-scan row 6: both phase-118 blocking findings (braces GHSA-vfj7, source-map-js GHSA-68fv; dev-only Angular test/build tooling, owner accepted risk) adjudicated real by owner → blocking FP rate 0.0% (0/2).
+
+```
+== QUALITY BESIDE SAVINGS (MEAS-02; tokens come from docs/bench/, not the gate log) ==
+  note: the DISCUSS card's pause is recorded on both risk-tier and requirement-manifest (counted twice)
+  _unscoped: phases=0 escaped=0/0 phases with a postmortem pauses=0 (auto-followed excluded=0) session_model=claude-opus-5-5[1m]:1 plugin_version=0.11.0:1
+  v1.7.0: phases=0 escaped=0/0 phases with a postmortem pauses=n/a (auto-followed excluded=0) session_model=not recorded plugin_version=not recorded unattributed postmortems=2
+  v1.7.4: phases=3 escaped=0/3 phases with a postmortem pauses=14 (auto-followed excluded=3) session_model=claude-opus-5-5[1m]:52 plugin_version=0.11.0:7,0.11.1:45
+    116: escaped=0 catches=adversarial:1/1,build-verify:0/1,deep-review:0/1,preflight:0/1,security-scan:0/1 pauses=4 session_model=claude-opus-5-5[1m]:14 plugin_version=0.11.0:7,0.11.1:7
+    117: escaped=0 catches=adversarial:4/4,build-verify:0/1,deep-review:0/1,preflight:0/1,security-scan:0/1 pauses=3 session_model=claude-opus-5-5[1m]:17 plugin_version=0.11.1:17
+    118: escaped=0 catches=adversarial:4/4,build-verify:0/1,deep-review:0/1,preflight:0/1,security-scan:1/1 pauses=5 session_model=claude-opus-5-5[1m]:18 plugin_version=0.11.1:18
+```
+
 ## Cross-Milestone Trends
 
 ### Process Evolution

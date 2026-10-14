@@ -39,6 +39,19 @@
 - ✅ v1.4.1 — Scanner Auto-Recovery - Phases 114-115 (shipped 2026-06-22; tagged `v1.5.0`)
 - ✅ v1.7.4 Safety Patch - Phases 116-118 (shipped 2026-10-09; tagged `v1.7.4`; archive: `milestones/v1.7.4-ROADMAP.md`)
 
+## Agreed three-milestone sequence
+
+1. **Safety Patch — complete:** v1.7.4, Phases 116–118.
+2. **Reliability — next:** start with Phase 119 below and release its contained fixes as **1.7.5 before continuing** with the remaining reliability work. The patch is the opening phase of this milestone, not a separate milestone. Remaining work covers import/cleanup recovery across scan timing and restarts, shutdown/resource cleanup, bounded scanner-result buffering, and useful memory diagnostics; detailed phases and the final release version remain to be planned.
+3. **Performance and usability — later:** retain the previously discussed targeted UI/backend efficiency and usability work after reliability. No scope expansion or transfer-engine replacement.
+
+### Next milestone: Reliability
+
+- [ ] **Phase 119: Safety Follow-ups and 1.7.5 Release** — close the two carried-forward safety gaps, stop incomplete-file imports, recover early per-episode import notices, and restore PyPI publishing; ship this phase first.
+- [ ] **Remaining reliability phases:** plan after the opening patch scope; execute only after the 1.7.5 release checkpoint is complete.
+
+**Release ordering:** Phase 119 → verify and release 1.7.5 → resume the remaining reliability phases → milestone three. Do not hold 1.7.5 for the rest of the reliability milestone, and do not archive that milestone when its opening patch ships.
+
 ## Phases
 
 <details>
@@ -793,6 +806,37 @@ Plans:
 
 - [x] 118-05-PLAN.md — NAS smoke test of :1.7.4, deploy approval, same-digest NAS deploy with scanner-recovery gate (REL-01)
 
+### Phase 119: Safety Follow-ups and 1.7.5 Release
+
+**Milestone:** Reliability (opening phase; final milestone release version TBD)
+**Goal:** Deliver the contained safety follow-ups and packaging repair as 1.7.5 before continuing with broader reliability work.
+**Depends on:** Phase 118 (v1.7.4 shipped)
+**Requirements:** Carry-forward scope from backlog 999.2, backlog 999.3, the v1.7.4 PyPI publishing failure, and the 2026-10-14 Done-group incidents (debug session `.planning/debug/done-group-no-auto-delete.md`); formal requirement IDs to be assigned during milestone planning.
+**Scope:**
+
+1. Re-establish a trustworthy LFTP command boundary after a timeout. Until synchronized, status remains unavailable; a delayed prompt or stale output must not clear active/submitted-transfer protection (promotes 999.2).
+2. Add the explicit submitted-but-unobserved transfer check to the auto-delete timer, with safe defer/re-arm behavior and a regression covering unavailable status (promotes 999.3).
+3. Repair the PyPI archive packaging failure and verify the built distribution. Evaluate the already-linked Dependabot #93 only as relevant to this packaging repair; no general dependency-upgrade sweep.
+4. Prevent incomplete-file imports (Obsession incident, 2026-10-13: a copy taken while the seedbox was still downloading stalled ~800 MB short, passed the 90 s size-stability check, and Radarr imported the short file). Unchanged size and modification time are supporting evidence only, never proof of completion. The arr download-queue check must identify the release reliably, and absence from the queue must not by itself mean complete. If Sonarr/Radarr is unavailable, hold or retry visibly; a timeout must never fall through to an unsafe copy. An unverified copy must stay unavailable for arr import until the completion checks pass — a recheck just before marking the copy complete is not sufficient on its own. Separate plan and tests.
+5. Recover early per-episode import notices (Days of Hope incident, 2026-10-09: Sonarr notices for parts 1–3 arrived while part 4 was still transferring, were rejected for "no transfer evidence" and never reconsidered, so the all-children coverage gate could never pass). Persist import credit for each demonstrably complete episode while its siblings continue transferring. Whole-folder deletion stays gated on transfer completion and coverage of every required video. Retain the ambiguous-filename protections. Separate plan and tests.
+
+**Success criteria:**
+
+1. A delayed prompt from a timed-out command cannot turn the next status into a trusted empty job list; normal status resumes after verified synchronization.
+2. A pending auto-delete timer cannot delete a submitted-but-unobserved transfer; it defers and can safely retry after the transfer is observed and existing deletion guards pass.
+3. Built distributions have valid member paths, pass packaging checks, and install successfully in a clean environment; the 1.7.5 PyPI publication succeeds.
+4. A seedbox file that stalls or is still growing can never become visible to Sonarr/Radarr as a completed import candidate; when the arr queue cannot be reached or cannot identify the release, the transfer is held or retried visibly rather than released after a timeout.
+5. An import notice for a fully transferred episode is credited and persisted while sibling episodes are still transferring, survives a restart, and lets auto-delete proceed once the whole folder completes and every required video is covered. Ambiguous-filename protections still reject unsafe matches.
+6. Targeted regressions fail before their fixes and pass after; the full Python suite, Ruff, and release CI gates pass. The release image passes startup, real-transfer, settings-persistence and restart smoke checks.
+7. Release 1.7.5 through the established Docker/GitHub/PyPI process and verify the tested image on the NAS, including a successful scan after any startup scanner error, before resuming later reliability work.
+
+**Scope boundary:** No transfer-engine replacement, broad refactor, UI feature, or unrelated dependency churn in this opening patch. Items 4 and 5 are in scope only as far as needed to stop incomplete imports and incorrect cleanup; any broader path-aware import redesign stays out. Backlog 999.1 (payload-size evidence) remains separate defense in depth and does not substitute for items 4 or 5.
+**Plans:** 0 plans — ready for detailed planning; no implementation or release performed by this roadmap update.
+
+Plans:
+
+- [ ] TBD (plan Phase 119)
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -834,10 +878,12 @@ Plans:
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
 | 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
 | 118. Durable State | v1.7.4 | 5/5 | Complete    | 2026-10-09 |
+| 119. Safety Follow-ups and 1.7.5 Release | Reliability (opening patch) | 0/TBD | Not planned | — |
+
 
 ---
 
-*Last updated: 2026-10-09 — Milestone v1.7.4 (Safety Patch, Phases 116-118) shipped and archived (tagged `v1.7.4`; `:1.7.4` deployed to NAS). Full details: `.planning/milestones/v1.7.4-ROADMAP.md`; audit: `.planning/milestones/v1.7.4-MILESTONE-AUDIT.md` (10/10 requirements, tech debt only). Backlog 999.3 added from the audit.*
+*Last updated: 2026-10-14 — Owner expanded Phase 119 with scope items 4 (prevent incomplete-file imports) and 5 (recover early per-episode import notices), each with its own plan and tests, after the Obsession and Days of Hope Done-group incidents. 2026-10-09 — Owner approved Phase 119 as the opening phase of the next Reliability milestone; release 1.7.5 before resuming its remaining phases. v1.7.4 remains shipped and archived. Backlog 999.2 and 999.3 are promoted into Phase 119.*
 
 ## Backlog
 
@@ -851,22 +897,12 @@ Plans:
 
 - [ ] TBD (promote with /gsd:review-backlog when ready)
 
-### Phase 999.2: LFTP command-stream resync after timeout — a delayed prompt from a timed-out command must not make the next status look like "no jobs" (BACKLOG)
+### Phase 999.2: LFTP command-stream resync after timeout — a delayed prompt from a timed-out command must not make the next status look like "no jobs" (PROMOTED TO PHASE 119)
 
 **Goal:** [Captured for future planning] After any pexpect TIMEOUT in `Lftp.__run_command` (180 s, `src/python/lftp/lftp.py`), a delayed prompt from the timed-out command can satisfy the next command's `expect`, so the next `jobs -v` looks successful with empty/stale output and could clear observed or submitted-transfer protection. Fix: mark the stream unsynchronized after a timeout and re-establish a verified command boundary (e.g. sentinel echo) before trusting another status result; return `None` (unavailable) until then. Add a regression with a delayed previous-command prompt followed by the real jobs output, asserting stale output cannot clear observed or submitted-transfer protection. Source: codex adversarial pass 4 on Phase 117 (`.orchestrator/codex/v1.7.4/117/pass-4.out`), accepted by owner 2026-10-08 as a known follow-up to keep the 1.7.4 safety patch scoped. Pre-existing in the lftp wrapper (affects all commands, not just status).
-**Requirements:** TBD
-**Plans:** 0 plans
+**Status:** Promoted into Phase 119 on 2026-10-09. Retained here for provenance only; plan and track implementation in Phase 119, not as a separate backlog phase.
 
-Plans:
-
-- [ ] TBD (promote with /bm:review-backlog when ready)
-
-### Phase 999.3: Auto-delete timer — explicit submitted-unobserved guard, matching the manual Delete/Extract 409 (BACKLOG)
+### Phase 999.3: Auto-delete timer — explicit submitted-unobserved guard, matching the manual Delete/Extract 409 (PROMOTED TO PHASE 119)
 
 **Goal:** [Captured for future planning] `Controller.__execute_auto_delete` (the Timer-based auto-delete added around Phase 116) has no explicit `LftpManager.submitted_unobserved_file_names()` check analogous to `CommandProcessor._is_submitted_unobserved` (which returns 409 for manual extract/delete on a just-submitted, not-yet-observed transfer). Today protection is indirect — the evidence gate on `downloaded_file_names` membership plus `deletable_states` reading the last-built (stale-retained) model state. The v1.7.4 integration check traced the realistic race (user re-queue vs a pending auto-delete Timer) and found it defused in practice, but the Timer auto-delete × None-status/submitted-unobserved combination is untested, and `downloaded_file_names`/`imported_children` are mutated from the command thread outside `__model_lock` while the Timer reads under it (narrow TOCTOU in principle). Fix: add the explicit guard inside `__execute_auto_delete` (defer/re-arm when the root is submitted-unobserved) plus a regression test combining Timer auto-delete with an unavailable status and a submitted-unobserved root. Source: v1.7.4 milestone audit (`.planning/v1.7.4-MILESTONE-AUDIT.md`), accepted by owner 2026-10-09 as backlog for 1.7.5; pair with the 1.7.5 PyPI packaging fix (Dependabot #93).
-**Requirements:** TBD
-**Plans:** 0 plans
-
-Plans:
-
-- [ ] TBD (promote with /bm:review-backlog when ready)
+**Status:** Promoted into Phase 119 on 2026-10-09. Retained here for provenance only; plan and track implementation in Phase 119, not as a separate backlog phase.
