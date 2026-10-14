@@ -28,12 +28,12 @@ Fixed by ROADMAP.md; discussion clarified HOW, not WHETHER.
 
 ### Completion evidence (IMP-02)
 - **D-03:** Sonarr/Radarr download-queue state is the primary completion evidence. Size and mtime stability are supporting evidence only and can never establish completion on their own.
-- **D-04:** Each of these keeps completion unproven and the item held: Sonarr/Radarr API unavailable or erroring; ambiguous queue match (more than one candidate release); no queue entry found; queue entry still downloading/queued/paused. Elapsed time never grants completion.
+- **D-04 (revised 2026-10-14 by D-17):** When at least one integration is enabled, each of these keeps completion unproven and the item held: Sonarr/Radarr API unavailable or erroring; ambiguous queue match (more than one candidate release); no queue entry found; queue entry still downloading/queued/paused. Elapsed time never grants completion.
 - **D-05:** A successful API response alone is insufficient — planning must pin down the specific queue fields and matching rules that prove download completion. Planning MUST verify the actual Sonarr v3/v4 and Radarr v3 queue/API semantics needed to identify a release and establish completion (fields, status values, download-client completion signal, how the seedbox path/title maps to the queue entry, behaviour after import when the entry leaves the queue). The incident diagnosis establishes the problem, not the solution details.
 - **D-06:** The arr URLs and API keys already exist in config (`Config.Sonarr` / `Config.Radarr`, currently used only by the web test-connection handler) and are configured on the NAS. No new user setup step; API keys stay secrets (never logged).
 
 ### Items Sonarr/Radarr can't vouch for
-- **D-07:** Items whose completion can't be established (including items with no queue entry — absence does not prove an item is unrelated to Sonarr/Radarr) are held, never auto-transferred. No exemption for "non-arr" items.
+- **D-07 (revised by D-16):** When verification is required (D-16), items whose completion can't be established (including items with no queue entry — absence does not prove an item is unrelated to Sonarr/Radarr) are held, never auto-transferred.
 - **D-08:** Manual release override: the user can deliberately release a held item. The existing Queue action must NOT silently bypass safety — releasing a held/unverified item requires an explicit confirmation: "Completion could not be verified. Transfer and release this item anyway?" The approval applies only to that one transfer attempt (not persisted for future attempts/re-queues).
 - **D-09:** Manual release is a recorded, explicit exception to IMP-01/IMP-02 and a small, owner-approved exception to the phase's "no UI features" boundary. Normal automatic transfers keep the strict checks. The override bypasses source-completion verification only: the local copy must still finish transferring (temp-file + verified local completion) before it becomes importable.
 
@@ -50,6 +50,14 @@ Fixed by ROADMAP.md; discussion clarified HOW, not WHETHER.
 
 ### Carried-forward requirements (no new decisions needed)
 - **D-15:** XFER-06, DEL-01, REL-02, REL-03 as written in REQUIREMENTS.md / ROADMAP.md success criteria. REL-03 smoke checks: startup, real transfer, import visibility and webhook handling, automatic cleanup, settings persistence, restart; successful scan after any startup scanner error (other startup errors need their own resolution).
+
+### Post-research decisions (2026-10-14)
+- **D-16 (compatibility exception, revises D-07):** Both Sonarr and Radarr integrations disabled → retain stability-based automatic syncing (pre-1.7.5 behaviour), documented as unable to prove the seedbox download is complete. Disabling integration in SeedSyncarr does not prove no external app watches the folder — this is a compatibility exception with a documented limitation (docs + release notes), not a guarantee that protection is unnecessary. Either integration enabled → verification enforced: unreachable services, missing entries and ambiguous matches hold until verified or explicitly overridden (D-08).
+- **D-17 (multi-arr, revises D-04):** An unavailable service causes a hold only when no other configured service provides sufficient completion evidence for that release. A responding arr may release an item if it identifies this exact release by a strong identity match (queue record `outputPath` basename equals the SeedSyncarr root name exactly, per RESEARCH) AND every record for that download shows completion (`status == "completed"` and `sizeleft == 0`). "Unique" means strong identity, not merely the only similar filename; uncertain identity holds.
+- **D-18:** Temp-file transfer is always on in BOTH modes (with or without integration): incomplete local copies stay hidden until copying finishes. Finishing the copy alone does not authorize publication when verification is required — the start gate (D-03/D-17) still applies.
+- **D-19:** Remove the "Rename unfinished/downloading files" (`use_temp_file`) toggle from Settings UI. Keep accepting the old config key for compatibility (loads without error) but ignore its value. Update docs and release notes.
+- **D-20:** Per-episode import credit (IMP-03) is persisted immediately when recorded (atomic persist), not only on the 30 s periodic save — closes the hard-crash window.
+- **D-21:** Roll Dependabot #93 (source-map-js, build-only), #123 (cryptography 50.0.2, shipped) and #124 (pytz, shipped) into 1.7.5; each must pass CI before release.
 
 ### Claude's Discretion
 - Exact gating point(s) in the pipeline (auto-queue acceptance vs. lftp completion/rename vs. both), data structures for hold state, backoff constants, queue-match algorithm (subject to D-04/D-05), persistence format for per-episode credit, PyPI packaging fix approach, LFTP resync mechanism.
