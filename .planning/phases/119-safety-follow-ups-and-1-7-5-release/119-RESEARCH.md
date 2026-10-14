@@ -517,25 +517,31 @@ The scope boundary forbids "unrelated dependency churn". Surface the list to the
 | A5 | Pending-notice TTL 6 h / cap 1000; backoff 30→300 s; refresh 30 s; resync timeout 15 s | Patterns 1, 4, 6 | Tunable constants (discretion) |
 | A6 | HTTP 428 as the "needs confirmation" code | Pattern 3 | Any non-transient 4xx works. Must not be 409 (already used for state conflicts) |
 
-## Open Questions (owner/product decisions; bring to the plan checkpoint)
+## Open Questions (RESOLVED)
 
 1. **Behavior when neither Sonarr nor Radarr is enabled** (public users, e2e)
    - Known: D-07 holds unverifiable items, and there is no arr to ask.
    - Unclear: should all auto-queue be held ("Completion check not configured"), or keep pre-1.7.5 behavior when the integration is off?
    - Recommendation: strict hold, with a fifth label "Sonarr/Radarr not configured", because it matches D-07. The planner needs the owner's answer, since it changes the product for non-arr users.
+   - **Resolved → D-16:** both integrations disabled retains stability-based syncing as a documented compatibility exception; either enabled enforces verification.
 2. **One arr down, other arr proves it** (A3)
    - Recommendation: strict (hold) for 1.7.5.
+   - **Resolved → D-17:** a responding arr may release on strong identity + complete; unavailable arr holds only when no other arr proves it.
 3. **Settings checkbox "Rename unfinished/downloading files"**
    - Options: remove it, or make it read-only "Always on".
    - Recommendation: remove it from `options-list.ts` and keep the config key for compatibility. This is a tiny UI removal; confirm it counts as part of the owner-approved exception.
+   - **Resolved → D-19:** remove the toggle, keep accepting the key, ignore its value (plan 119-12).
 4. **`twine check --strict`**
    - Strict fails only on the missing `long_description`.
    - Recommendation: non-strict `twine check` plus member-path assertions plus clean install. Optionally add `readme`, which requires a file under `src/python/`.
+   - **Resolved → plan 119-02:** non-strict `twine check` plus member-path assertions plus clean-venv install.
 5. **Credit crash window**
    - Persist runs every 30 s, so a hard crash within 30 s of a credit loses it.
    - Recommendation: accept it (clean restarts persist at exit). Alternatively the controller could request an immediate persist through a callback. Not recommended for a patch.
+   - **Resolved → D-20:** persist credit immediately (atomic persist) when recorded.
 6. **Dependabot #93 and runtime PRs (#123 cryptography, #124 pytz)**
    - Roll in or defer, per the user's release rule. #93 is dev-only and cheap.
+   - **Resolved → D-21:** roll #93, #123 and #124 into 1.7.5; each must pass CI.
 
 ## Environment Availability
 

@@ -1,8 +1,8 @@
 ---
 phase: 119
 slug: safety-follow-ups-and-1-7-5-release
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-10-14
 ---
@@ -37,25 +37,37 @@ created: 2026-10-14
 
 ## Per-Task Verification Map
 
-Task IDs are filled in by the planner; this map is per requirement (from 119-RESEARCH.md §Validation Architecture).
+Task IDs reference `{plan}-T{n}` in the 119-NN-PLAN.md files. Wave 0 test files are created inside plans 01/04/05/06 Task 1 (RED-first), so `wave_0_complete` stays false until those tasks land.
 
-| Requirement | Behavior | Threat Ref | Test Type | Automated Command | File Exists | Status |
-|-------------|----------|------------|-----------|-------------------|-------------|--------|
-| XFER-06 | Stale prompt after timeout never yields trusted `[]`; resync then real status | lftp command injection (hex nonce only) | unit, RED first | `pytest tests/unittests/test_lftp/test_lftp_resync.py -q` | ❌ W0 | ⬜ |
-| XFER-06 | Unsynced + resync fail → status None, queue raises, submitted set untouched | — | unit | same + `test_lftp_manager.py` | ❌ / ✅ | ⬜ |
-| DEL-01 | Timer + status None + submitted root → defers; after successful status → deletes | — | unit, RED first | `pytest tests/unittests/test_controller/test_auto_delete_rearm.py -q -k submitted` | ✅ extend | ⬜ |
-| DEL-01 | Submitted set thread-safe snapshot | — | unit | `pytest tests/unittests/test_controller/test_lftp_manager.py -q -k lock` | ✅ extend | ⬜ |
-| IMP-01 / R10 | Temp file forced on even when config False (both modes); old key loads, ignored; setting removed from UI | — | unit + Angular | `pytest ... test_lftp_manager.py test_scan_manager.py -q -k temp` + CI angular | ✅ extend | ⬜ |
-| IMP-02 | Arr client: shape validation, unavailable on errors/non-200/bad JSON, size cap, timeouts, no key in logs | key leak, log injection, DoS | unit (mock `requests.get`) | `pytest tests/unittests/test_controller/test_arr_queue.py -q` | ❌ W0 | ⬜ |
-| IMP-02 | Gate verdict matrix: proven / still downloading / no entry / ambiguous / unavailable; strong identity (outputPath basename == root); multi-arr (D-17: one arr down, other proves → release; uncertain → hold); both disabled → stability path (D-16); backoff growth/reset; one fetch per arr per cycle | — | unit | `pytest tests/unittests/test_controller/test_completion_gate.py -q` | ❌ W0 | ⬜ |
-| IMP-02 | Obsession replay: holds while downloading, queues after completed; hold_reason in model; no cooldown stamp while held | — | unit, RED first | `pytest tests/unittests/test_controller/test_auto_queue.py -q -k completion` | ✅ extend | ⬜ |
-| IMP-02 / R6 | USER queue unverified → needs-confirmation; with flag → submitted once; flag not persisted; WARNING log on manual release | gate bypass | unit | `pytest ... test_controller_unit.py test_web/test_handler/test_controller_handler.py -q -k release` | ✅ extend | ⬜ |
-| IMP-02 / R5 | hold_reason serialized; model diff on reason change; log only on reason change/clear | — | unit | `pytest ... test_serialize_model.py test_model_builder.py -q -k hold` | ✅ extend | ⬜ |
-| IMP-02 / R5–R6 | UI: Waiting badge + reason; confirm → re-dispatch with flag | — | Angular unit | CI `make run-tests-angular` | ✅ extend | ⬜ |
-| IMP-03 | Days of Hope replay: early credit, immediate persist, no timer, restart round trip, arm-on-commit, coverage passes | — | unit, RED first | `pytest tests/unittests/test_controller/test_import_credit.py -q` | ❌ W0 | ⬜ |
-| IMP-03 | Ambiguous basename still rejected; foreign dir never credited; credit alone never deletes | — | unit | same + `test_import_ambiguity.py` | ✅ extend | ⬜ |
-| REL-02 | No `./` members, twine check, clean-venv install, `seedsyncarr --help` | — | CI job + local | `python -m build && twine check dist/* && <member-check> && pip install dist/*.whl` | ❌ W0 | ⬜ |
-| REL-03 | Full suite, ruff, CI green; release-image smoke (startup, real transfer, import visibility + webhook, auto-cleanup, settings persistence, restart, held item visible); NAS digest + scan recovery | — | manual/CI | 118-style runbook | ✅ precedent | ⬜ |
+| Task ID | Requirement | Behavior | Threat Ref | Test Type | Automated Command | File Exists | Status |
+|---------|-------------|----------|------------|-----------|-------------------|-------------|--------|
+| 119-01-T1 | XFER-06 | RED: fake pty stream shows a stale prompt becoming a trusted empty job list | lftp command injection (hex nonce only) | unit, RED first | `pytest tests/unittests/test_lftp/test_lftp_resync.py -q` | ❌ W0 (created by this task) | ⬜ |
+| 119-01-T2 | XFER-06 | GREEN: synced flag + nonce sentinel resync; status None / queue raises while unsynced; submitted set untouched | same | unit | `pytest tests/unittests/test_lftp tests/unittests/test_controller/test_lftp_manager.py -q` | ✅ after T1 | ⬜ |
+| 119-02-T1 | REL-02 | hatch `only-include` fix; member-path checker rejects `./` members; non-strict `twine check` | — | script + local | `python -m build && twine check dist/* && <member-check>` | ❌ W0 (created by this task) | ⬜ |
+| 119-02-T2 | REL-02 | `verify-python-package` CI job gates publish-pypi / build-docker-image; clean-venv install + `seedsyncarr --help` | — | CI job | CI workflow run on push | ❌ W0 (created by this task) | ⬜ |
+| 119-03-T1 | DEL-01 | RED: Timer fires on a submitted-unobserved root with status unavailable; lock-contract tests | — | unit, RED first | `pytest tests/unittests/test_controller/test_auto_delete_rearm.py -q -k submitted` + `test_lftp_manager.py -k lock` | ✅ extend | ⬜ |
+| 119-03-T2 | DEL-01 | GREEN: lock-protected submitted set, add-before-queue ordering, Timer guard defers then deletes after successful status | — | unit | same | ✅ after T1 | ⬜ |
+| 119-04-T1 | IMP-02 | ArrQueueClient: shape validation, unavailable on errors/non-200/bad JSON, size cap, timeouts, no key in logs | key leak, log injection, DoS | unit (mock `requests.get`) | `pytest tests/unittests/test_controller/test_arr_queue.py -q` | ❌ W0 (created by this task) | ⬜ |
+| 119-04-T2 | IMP-02 | CompletionGate verdict matrix (proven / still downloading / no entry / ambiguous / unavailable), strong identity, multi-arr D-17, both-disabled D-16, backoff growth/reset, one fetch per arr per cycle | — | unit | `pytest tests/unittests/test_controller/test_completion_gate.py -q` | ❌ W0 (created by this task) | ⬜ |
+| 119-05-T1 | IMP-03 | RED: Days of Hope replay and IMP-03 contract tests (early credit, no timer, restart round trip, foreign dir never credited) | — | unit, RED first | `pytest tests/unittests/test_controller/test_import_credit.py -q` | ❌ W0 (created by this task) | ⬜ |
+| 119-05-T2 | IMP-03 | GREEN: child credit, bounded pending notices, arm-on-commit, immediate atomic persist (D-20); ambiguous basename still rejected; credit alone never deletes | — | unit | same + `test_import_ambiguity.py` | ✅ after T1 | ⬜ |
+| 119-06-T1 | IMP-01 / IMP-02 | RED: Obsession replay in the sweep, forced-temp contract (both modes, old key loads/ignored), execution-time gate and release-flag tests; `base.py` CompletionGate patcher defaulting to PROVEN | gate bypass | unit, RED first | `pytest tests/unittests/test_controller/test_auto_queue.py -q -k completion` + `test_lftp_manager.py test_scan_manager.py -k temp` | ✅ extend / ❌ W0 patcher | ⬜ |
+| 119-06-T2 | IMP-01 / IMP-02 | GREEN: temp files forced on, gate constructed in Controller, sweep gated before the cooldown stamp | — | unit | same | ✅ after T1 | ⬜ |
+| 119-06-T3 | IMP-02 / R6 | GREEN: CommandProcessor re-check; USER queue unverified → needs-confirmation (428); with flag → submitted once; flag not persisted; WARNING log on manual release | gate bypass | unit | `pytest ... test_controller_unit.py test_web/test_handler/test_controller_handler.py -q -k release` | ✅ extend | ⬜ |
+| 119-07-T1 | IMP-02 / R5 | `ModelFile.hold_reason` + `ModelBuilder.set_hold_reasons` applied to DEFAULT roots; model diff on reason change | — | unit | `pytest ... test_model_builder.py -q -k hold` | ✅ extend | ⬜ |
+| 119-07-T2 | IMP-02 / R5 | Holds fed through ModelPipeline; `hold_reason` serialized; log only on reason change/clear | — | unit | `pytest ... test_serialize_model.py -q -k hold` | ✅ extend | ⬜ |
+| 119-08-T1 | IMP-02 / R5 | UI: hold plumbing model-file → view-file → transfer-row; Waiting badge, secondary style, reason label + title; five exact labels | XSS (interpolation only) | Angular unit | `cd src/angular && npx ng test --watch=false --browsers=ChromeHeadless` (CI `make run-tests-angular` authority) | ✅ extend | ⬜ |
+| 119-08-T2 | IMP-02 / R6 | UI: 428 → confirm (verbatim text) → one-shot re-dispatch with `release_unverified: true` for the 428 files only; cancel sends nothing | gate bypass | Angular unit | same | ✅ extend | ⬜ |
+| 119-12-T1 | IMP-01 / R10 | `use_temp_file` toggle removed from Settings, config key retained; e2e seed `queueFile` sends `?release_unverified=true` | — | Angular unit + e2e tsc | `grep` gates + `cd src/e2e && npx tsc --noEmit -p tsconfig.json` | ✅ extend | ⬜ |
+| 119-12-T2 | IMP-01 / IMP-02 / R10 | Docs: `use_temp_file` ignored/always on; Completion verification subsection with five labels, verbatim confirm text, D-16 limitation | docs over-promise | grep gate | `grep -c 'Transfer and release this item anyway' docs/CONFIGURATION.md` == 1 | ✅ extend | ⬜ |
+| 119-09-T1 | REL-02 / REL-03 | 1.7.5 version bumps, Dependabot #93/#123/#124 roll-in (D-21), CHANGELOG/notes | — | CI | push → CI green (python, angular, lint, e2e, packaging-verify) | ✅ | ⬜ |
+| 119-09-T2 | REL-03 | Gate evidence: each targeted regression shown RED before its fix, GREEN after; full suite; ruff 0.15.22; packaging; CI green | — | unit + CI | full suite command + `ruff check src/python/` | ✅ | ⬜ |
+| 119-09-T3 | REL-03 | Owner approval checkpoint to publish 1.7.5 | — | manual | checkpoint:decision | — | ⬜ |
+| 119-10-T1 | REL-02 / REL-03 | wud pause, tag v1.7.5, tag CI (Docker/GitHub/PyPI), PyPI verified, digest recorded | — | CI + registry | `pip install seedsyncarr==1.7.5` in clean venv; `gh run` status | ✅ | ⬜ |
+| 119-10-T2 | REL-03 | Smoke on the exact `:1.7.5` digest (startup, real transfer with `.lftp`, webhook import, auto-cleanup, settings, restart, held item + manual release) | — | manual (see table below) | 118-style runbook | ✅ precedent | ⬜ |
+| 119-10-T3 | REL-03 | Owner go-ahead for the production deploy | — | manual | checkpoint:human-verify | — | ⬜ |
+| 119-11-T1 | REL-03 | NAS deploy by digest with verified backups; startup/scan/arr reachability/persist; wud restore | — | manual (see table below) | `ssh nas` digest compare + log scan | ✅ precedent | ⬜ |
+| 119-11-T2 | REL-03 | Owner confirmation of the deployed 1.7.5 | — | manual | checkpoint:human-verify | — | ⬜ |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -63,13 +75,13 @@ Task IDs are filled in by the planner; this map is per requirement (from 119-RES
 
 ## Wave 0 Requirements
 
-- [ ] `tests/unittests/test_lftp/test_lftp_resync.py` — fake-stream harness (XFER-06)
-- [ ] `tests/unittests/test_controller/test_arr_queue.py` — real-shape QueueResource fixtures (IMP-02)
-- [ ] `tests/unittests/test_controller/test_completion_gate.py` (IMP-02)
-- [ ] `tests/unittests/test_controller/test_import_credit.py` (IMP-03)
-- [ ] `tests/unittests/test_controller/base.py` — CompletionGate patcher defaulting to PROVEN
-- [ ] CI `verify-python-package` job (REL-02)
-- [ ] e2e `seed-state.ts` release flag / gate stub
+- [ ] `tests/unittests/test_lftp/test_lftp_resync.py` — fake-stream harness (XFER-06, 119-01-T1)
+- [ ] `tests/unittests/test_controller/test_arr_queue.py` — real-shape QueueResource fixtures (IMP-02, 119-04-T1)
+- [ ] `tests/unittests/test_controller/test_completion_gate.py` (IMP-02, 119-04-T2)
+- [ ] `tests/unittests/test_controller/test_import_credit.py` (IMP-03, 119-05-T1)
+- [ ] `tests/unittests/test_controller/base.py` — CompletionGate patcher defaulting to PROVEN (119-06-T1)
+- [ ] CI `verify-python-package` job (REL-02, 119-02-T2)
+- [ ] e2e `seed-state.ts` release flag (119-12-T1)
 
 ---
 
@@ -85,11 +97,12 @@ Task IDs are filled in by the planner; this map is per requirement (from 119-RES
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 120s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies (checkpoint tasks in 119-09/10/11 are manual by design; every auto task has an `<automated>` gate)
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (created RED-first inside 119-01/02/04/05/06 Task 1)
+- [x] No watch-mode flags (`--watch=false` on Angular; pytest `-p no:cacheprovider`)
+- [x] Feedback latency < 120s (quick run ~1 s; Angular headless and full suite within budget)
+- [x] `nyquist_compliant: true` set in frontmatter
+- [ ] `wave_0_complete: true` — set after 119-01/02/04/05/06 Task 1 land
 
-**Approval:** pending
+**Approval:** approved 2026-10-14 for planning (execution evidence pending)
