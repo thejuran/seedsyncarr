@@ -831,7 +831,7 @@ Plans:
 6. Targeted regressions fail before their fixes and pass after; the full Python suite, Ruff, and release CI gates pass. The release image passes startup, real-transfer, import visibility and webhook handling, automatic cleanup, settings-persistence and restart smoke checks.
 7. Release 1.7.5 through the established Docker/GitHub/PyPI process and verify the tested image on the NAS, including a successful scan after any startup scanner error (any other startup error needs its own resolution before release), before the Reliability milestone begins.
 
-**Scope boundary:** No transfer-engine replacement, broad refactor, UI feature, or unrelated dependency churn in this patch release. Items 4 and 5 are in scope only as far as needed to stop incomplete imports and incorrect cleanup; any broader path-aware import redesign stays out. Backlog 999.1 (payload-size evidence) stays deferred as defense in depth; payload-size evidence alone would not satisfy the new completion requirements.
+**Scope boundary:** No transfer-engine replacement, broad refactor, UI feature, or unrelated dependency churn in this patch release. Owner-approved exceptions: held items show as waiting with their reason in the existing file list, and a manual release requires an explicit confirmation ("Completion could not be verified. Transfer and release this item anyway?") valid for one transfer attempt only. Items 4 and 5 are in scope only as far as needed to stop incomplete imports and incorrect cleanup; any broader path-aware import redesign stays out. Backlog 999.1 (payload-size evidence) stays deferred as defense in depth; payload-size evidence alone would not satisfy the new completion requirements.
 **Plans:** 0 plans — ready for detailed planning.
 
 Plans:
