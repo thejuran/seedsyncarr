@@ -29,16 +29,16 @@ Fixed by ROADMAP.md; discussion clarified HOW, not WHETHER.
 ### Completion evidence (IMP-02)
 - **D-03:** Sonarr/Radarr download-queue state is the primary completion evidence. Size and mtime stability are supporting evidence only and can never establish completion on their own.
 - **D-04:** Each of these keeps completion unproven and the item held: Sonarr/Radarr API unavailable or erroring; ambiguous queue match (more than one candidate release); no queue entry found; queue entry still downloading/queued/paused. Elapsed time never grants completion.
-- **D-05:** Planning MUST verify the actual Sonarr v3/v4 and Radarr v3 queue/API semantics needed to identify a release and establish completion (fields, status values, download-client completion signal, how the seedbox path/title maps to the queue entry, behaviour after import when the entry leaves the queue). The incident diagnosis establishes the problem, not the solution details.
+- **D-05:** A successful API response alone is insufficient — planning must pin down the specific queue fields and matching rules that prove download completion. Planning MUST verify the actual Sonarr v3/v4 and Radarr v3 queue/API semantics needed to identify a release and establish completion (fields, status values, download-client completion signal, how the seedbox path/title maps to the queue entry, behaviour after import when the entry leaves the queue). The incident diagnosis establishes the problem, not the solution details.
 - **D-06:** The arr URLs and API keys already exist in config (`Config.Sonarr` / `Config.Radarr`, currently used only by the web test-connection handler) and are configured on the NAS. No new user setup step; API keys stay secrets (never logged).
 
 ### Items Sonarr/Radarr can't vouch for
 - **D-07:** Items whose completion can't be established (including items with no queue entry — absence does not prove an item is unrelated to Sonarr/Radarr) are held, never auto-transferred. No exemption for "non-arr" items.
 - **D-08:** Manual release override: the user can deliberately release a held item. The existing Queue action must NOT silently bypass safety — releasing a held/unverified item requires an explicit confirmation: "Completion could not be verified. Transfer and release this item anyway?" The approval applies only to that one transfer attempt (not persisted for future attempts/re-queues).
-- **D-09:** Manual release is a recorded, explicit exception to IMP-01/IMP-02 and a small, owner-approved exception to the phase's "no UI features" boundary. Normal automatic transfers keep the strict checks.
+- **D-09:** Manual release is a recorded, explicit exception to IMP-01/IMP-02 and a small, owner-approved exception to the phase's "no UI features" boundary. Normal automatic transfers keep the strict checks. The override bypasses source-completion verification only: the local copy must still finish transferring (temp-file + verified local completion) before it becomes importable.
 
 ### Hold visibility
-- **D-10:** A held item shows as waiting in the existing file list, using existing status display, with its reason available there: "Sonarr unavailable" / "Radarr unavailable", "Ambiguous match", "Still downloading" (planner may add an equivalent "Not found in queue" reason consistent with D-04). No new screen, no bell notification this milestone.
+- **D-10:** A held item shows as waiting in the existing file list, using existing status display, with its reason available there: "Sonarr unavailable" / "Radarr unavailable", "Ambiguous match", "Still downloading" and "No matching queue entry" (required). No new screen, no bell notification this milestone.
 - **D-11:** Log on hold start, reason change, and hold clear — not on every retry. When verification succeeds the hold clears automatically and the transfer proceeds.
 
 ### Retry behaviour
