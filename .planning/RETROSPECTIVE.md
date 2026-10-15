@@ -172,12 +172,48 @@
     118: escaped=0 catches=adversarial:4/4,build-verify:0/1,deep-review:0/1,preflight:0/1,security-scan:1/1 pauses=5 session_model=claude-opus-5-5[1m]:18 plugin_version=0.11.1:18
 ```
 
+## Milestone: v1.7.5 — Safety Release
+
+**Shipped:** 2026-10-15 (tags `v1.7.5`, `v1.7.6`; `1.7.6` deployed)
+**Phases:** 2 (119, 119.1 inserted) | **Plans:** 18
+
+### What Was Built
+- 119 Safety Follow-ups: LFTP sentinel resync after a timeout (XFER-06); auto-delete timer defers on submitted-unobserved transfers using a shared root reservation (DEL-01); incomplete-import prevention: forced temp files, arr-queue completion gate, visible "Waiting" holds, one-shot confirmed manual release (IMP-01/02); persisted per-episode import credit (IMP-03); PyPI packaging repaired with a member-path CI check (REL-02); 1.7.5 published (REL-03).
+- 119.1 Startup log secrets fix: no `settings.cfg` dump at startup; debug dump redacts every `secret_fields()` option; unreadable config is fatal and value-free; `%` round-trips (SEC-01). 1.7.6 released and deployed to NAS production by digest (REL-03 NAS portion, REL-04).
+
+### What Worked
+- The 1.7.5 smoke test found a pre-existing (since v1.0.0) secrets-in-startup-log leak before production. Holding the deploy and inserting 119.1 kept leaked credentials out of the production log.
+- Count-only secret checks (field names and counts, never values), with a 1.7.5 positive control, proved the fix without the evidence itself leaking secrets.
+- Incident-driven scope (Obsession, Days of Hope) with replay RED tests made the import fixes concrete and testable.
+- The milestone integration check confirmed the frontend and backend hold-reason codes match exactly, a classic drift point.
+
+### What Was Inefficient
+- Phase 119 grew to 12 plans after the owner added two incident fixes mid-milestone. The 119-11 deploy plan was superseded.
+- The UI pieces (Waiting badge, release confirm box) never got a browser check: no e2e seed creates a held file, and production had none at walkthrough time.
+- SUMMARY `requirements_completed` frontmatter was mostly empty, and the GSD `milestone.complete` stats and accomplishments pulled from earlier milestones and had to be corrected by hand.
+
+### Patterns Established
+- "Hold, never release" when external completion evidence is unavailable; elapsed time never grants completion.
+- Smoke-test the exact release digest on a NAS scratch setup before production, including a no-secrets log check.
+- Secret-bearing evidence is count-only, and walkthrough artifacts that capture secrets get deleted.
+
+### Key Lessons
+- Any user-visible state the backend can produce (held, waiting) needs an e2e seed, or its UI never gets a visual check.
+- Audit startup scripts for config dumps when adding new secret config fields; the leak was 1.x-old and only surfaced on a fresh smoke.
+- Keep SUMMARY frontmatter `requirements_completed` filled so the audit's three-source cross-reference works without manual reconciliation.
+
+### Cost Observations
+- Model mix: Opus-driven orchestration; Sonnet subagents for planning, verification and the integration check; codex for adversarial plan review.
+- Sessions: multiple over 2 days (2026-10-14 → 2026-10-15).
+- Notable: the per-phase deep review of 119.1 returned 0 findings. The real catches were the release smoke (secrets leak) and the owner hold.
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
 
 | Milestone | Phases | Plans | Key Change |
 |-----------|--------|-------|------------|
+| v1.7.5 | 2 | 18 | Incident-driven safety release; deploy held on smoke finding, inserted 119.1 for a secrets fix |
 | v1.7.4 | 3 | 16 | Safety patch from a design spec; RED-first release gate; digest-pinned NAS deploy |
 | v1.2.0 | 10 | 23 | Quality-only hardening; audit→fix pipeline; 5-day execution |
 | v1.1.2 | 4 | 6 | Audit-only milestone; research-first per layer |
@@ -188,6 +224,7 @@
 
 | Milestone | Python Tests | Angular Tests | E2E Specs | Python Coverage |
 |-----------|-------------|---------------|-----------|-----------------|
+| v1.7.5 | 1,895 (CI dockerized) | 643 | 45+ | fail_under 88 (CI) |
 | v1.7.4 | 1,481 host part-1 (+ container-only suites) | — | 45+ | fail_under 88 (CI); host 86.36% informational |
 | v1.3.0 | 1,278 | 614 | 45+ | 89.27% container-inclusive (fail_under 88) |
 | v1.2.0 | 1,200+ | 599 | 45+ | 84% (fail_under enforced) |
