@@ -36,7 +36,11 @@ dev = [
 seedsyncarr = "seedsyncarr:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
+only-include = ["common", "controller", "lftp", "model", "ssh", "system", "web", "seedsyncarr.py", "scan_fs.py"]
+exclude = ["**/__pycache__"]
+
+[tool.hatch.build.targets.sdist]
+only-include = ["common", "controller", "lftp", "model", "ssh", "system", "web", "seedsyncarr.py", "scan_fs.py", "pyproject.toml"]
 
 [tool.poetry]
 name = "seedsyncarr"
