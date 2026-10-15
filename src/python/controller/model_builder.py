@@ -2,7 +2,7 @@ import collections
 import os
 import logging
 import time
-from typing import Iterable, List, Optional, Set
+from typing import Dict, Iterable, List, Mapping, Optional, Set
 import math
 
 from system import SystemFile
@@ -32,6 +32,7 @@ class ModelBuilder:
         self.__extract_statuses = dict()
         self.__extracted_files = set()
         self.__submitted_files: Set[str] = set()
+        self.__hold_reasons: Dict[str, str] = {}
         self.__cached_model = None
         self.__cache_timestamp = None
 
@@ -100,6 +101,17 @@ class ModelBuilder:
             self.__submitted_files = new_submitted_files
             self.__cached_model = None
 
+    def set_hold_reasons(self, hold_reasons: Mapping[str, str]) -> None:
+        """
+        Root name -> reason code for automatic transfers the completion gate is
+        currently holding. Applied only to roots whose built state is DEFAULT,
+        so a root that starts transferring never shows a stale reason (IMP-02).
+        """
+        new_hold_reasons = dict(hold_reasons)
+        if new_hold_reasons != self.__hold_reasons:
+            self.__hold_reasons = new_hold_reasons
+            self.__cached_model = None
+
     def clear(self):
         self.__local_files.clear()
         self.__remote_files.clear()
@@ -108,6 +120,7 @@ class ModelBuilder:
         self.__extract_statuses.clear()
         self.__extracted_files.clear()
         self.__submitted_files.clear()
+        self.__hold_reasons.clear()
         self.__cached_model = None
         self.__cache_timestamp = None
 
@@ -140,6 +153,8 @@ class ModelBuilder:
         for name in all_file_names:
             model_file = self._build_root_file(name)
             self._determine_final_state(model_file)
+            if model_file.state == ModelFile.State.DEFAULT:
+                model_file.hold_reason = self.__hold_reasons.get(name)
             model.add_file(model_file)
 
         self.__cached_model = model

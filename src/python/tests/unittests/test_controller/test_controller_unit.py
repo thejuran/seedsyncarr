@@ -1,10 +1,12 @@
+import threading
 import time
 from unittest.mock import MagicMock
 
 from controller import Controller
 from controller.arr_queue import ArrTarget, QueueRecord
 from controller.completion_gate import CompletionGate, Verdict
-from controller.controller import ControllerError
+from controller.controller import ControllerError, _PendingNotice
+from controller.model_pipeline import ModelPipeline
 from model import ModelFile, IModelListener, ModelDiff, Model
 from lftp import LftpError, LftpJobStatus, LftpJobStatusParserError
 from tests.unittests.test_controller.base import BaseControllerTestCase
@@ -631,6 +633,33 @@ class TestControllerFeedModelBuilder(BaseControllerTestCase):
         )
         self.mock_model_builder.set_active_files.assert_not_called()
 
+    def test_feed_syncs_completion_holds(self):
+        """IMP-02: the gate's current holds feed the builder every cycle."""
+        self.mock_completion_gate.holds = {"X": "no_queue_entry"}
+        self.controller._feed_model_builder(None, None, None, None, None, [])
+        self.mock_model_builder.set_hold_reasons.assert_called_once_with({"X": "no_queue_entry"})
+
+    def test_process_syncs_completion_holds_once_per_cycle(self):
+        """IMP-02: one process() cycle syncs the hold reasons exactly once."""
+        self._make_controller_started()
+        self.mock_completion_gate.holds = {"X": "no_queue_entry"}
+        self.controller.process()
+        self.mock_model_builder.set_hold_reasons.assert_called_once_with({"X": "no_queue_entry"})
+
+
+def _seed_pending_notice(controller, root_name, matched_name):
+    """Insert a pending import notice for root_name under its current generation."""
+    generation = controller._Controller__root_lifecycle_generation[root_name]
+    controller._Controller__pending_child_notices[(root_name, matched_name)] = _PendingNotice(
+        root_name, matched_name, "{}/{}".format(root_name, matched_name), generation, time.time()
+    )
+    return generation
+
+
+def _pending_roots(controller):
+    return {n.root_name for n in controller._Controller__pending_child_notices.values()}
+
+
 class TestControllerNoTrackingBeforeCompletion(BaseControllerTestCase):
     """Regression tests: files must NOT be tracked as downloaded before completion.
 
@@ -738,6 +767,36 @@ class TestControllerLifecycleReset(BaseControllerTestCase):
         self.assertNotIn("file", self.persist.imported_children)
         self.assertNotIn("file", self.persist.absent_since)
         self.assertFalse(self.controller.is_file_downloaded("file"))
+
+    def test_regrab_after_long_absence_resets_proof_and_pending_notices(self):
+        """A same-name re-grab must not inherit the previous lifecycle's
+        completion proof or pending import notices."""
+        self.persist.downloaded_file_names.add("file")
+        self.persist.absent_since["file"] = self._absent_for(self.OLD)
+        self._add_file_to_model("file", remote_size=1000)
+        old_generation = _seed_pending_notice(self.controller, "file", "child.mkv")
+        _seed_pending_notice(self.controller, "other", "child.mkv")
+
+        self.pipeline._prune_downloaded_files(self.ok_scan)
+
+        self.mock_completion_gate.invalidate.assert_called_once()
+        name, cause = self.mock_completion_gate.invalidate.call_args[0]
+        self.assertEqual("file", name)
+        self.assertIn("lifecycle", cause)
+        self.assertEqual({"other"}, _pending_roots(self.controller))
+        self.assertEqual(old_generation + 1,
+                         self.controller._Controller__root_lifecycle_generation["file"])
+
+    def test_reappearance_within_threshold_does_not_reset_proof(self):
+        self.persist.downloaded_file_names.add("file")
+        self.persist.absent_since["file"] = self._absent_for(self.RECENT)
+        self._add_file_to_model("file", remote_size=1000)
+        _seed_pending_notice(self.controller, "file", "child.mkv")
+
+        self.pipeline._prune_downloaded_files(self.ok_scan)
+
+        self.mock_completion_gate.invalidate.assert_not_called()
+        self.assertEqual({"file"}, _pending_roots(self.controller))
 
     def test_reappearance_within_threshold_keeps_tracking(self):
         # A transient empty remote scan (flap) must NOT clear tracking,
@@ -939,6 +998,112 @@ class TestControllerApplyModelDiff(BaseControllerTestCase):
         diff = ModelDiff(ModelDiff.Change.ADDED, None, f)
         self.controller._apply_model_diff([diff])
         self.assertIn("dl_file", self.persist.downloaded_file_names)
+
+    def test_removed_root_resets_proof_and_pending_notices(self):
+        """A root leaving the model drops its completion proof and its
+        pending import notices."""
+        self._add_file_to_model("X", remote_size=1000)
+        old_f = self.controller._Controller__model.get_file("X")
+        old_generation = _seed_pending_notice(self.controller, "X", "child.mkv")
+
+        self.controller._apply_model_diff([ModelDiff(ModelDiff.Change.REMOVED, old_f, None)])
+
+        self.mock_completion_gate.invalidate.assert_called_once()
+        name, cause = self.mock_completion_gate.invalidate.call_args[0]
+        self.assertEqual("X", name)
+        self.assertIn("removed", cause)
+        self.assertEqual(set(), _pending_roots(self.controller))
+        self.assertEqual(old_generation + 1,
+                         self.controller._Controller__root_lifecycle_generation["X"])
+
+    def test_added_and_updated_roots_do_not_reset(self):
+        self._add_file_to_model("U", remote_size=1000)
+        old_u = self.controller._Controller__model.get_file("U")
+        new_u = ModelFile("U", False)
+        new_u.remote_size = 2000
+        new_a = ModelFile("A", False)
+        new_a.remote_size = 10
+        _seed_pending_notice(self.controller, "U", "child.mkv")
+        _seed_pending_notice(self.controller, "A", "child.mkv")
+        gens = dict(self.controller._Controller__root_lifecycle_generation)
+
+        self.controller._apply_model_diff([
+            ModelDiff(ModelDiff.Change.ADDED, None, new_a),
+            ModelDiff(ModelDiff.Change.UPDATED, old_u, new_u),
+        ])
+
+        self.mock_completion_gate.invalidate.assert_not_called()
+        self.assertEqual({"U", "A"}, _pending_roots(self.controller))
+        self.assertEqual(gens, dict(self.controller._Controller__root_lifecycle_generation))
+
+
+class TestRootLifecycleResetCallback(BaseControllerTestCase):
+    """Controller._on_root_lifecycle_reset is the single reset entry point for
+    the per-root caches that must not survive a new download lifecycle."""
+
+    def test_callback_invalidates_proof_and_discards_notices(self):
+        old_generation = _seed_pending_notice(self.controller, "X", "child.mkv")
+
+        result = self.controller._on_root_lifecycle_reset("X", "why")
+
+        self.assertIsNone(result)
+        self.mock_completion_gate.invalidate.assert_called_once_with("X", "why")
+        self.assertEqual(set(), _pending_roots(self.controller))
+        self.assertEqual(old_generation + 1,
+                         self.controller._Controller__root_lifecycle_generation["X"])
+
+    def test_callback_does_not_take_model_lock(self):
+        """Both pipeline call sites hold the model lock; re-taking it would deadlock."""
+        lock = self.controller._Controller__model_lock
+        with lock:
+            worker = threading.Thread(
+                target=self.controller._on_root_lifecycle_reset, args=("X", "under lock"), daemon=True
+            )
+            worker.start()
+            worker.join(timeout=2)
+            self.assertFalse(worker.is_alive(), "callback blocked on the model lock")
+        self.mock_completion_gate.invalidate.assert_called_once_with("X", "under lock")
+
+
+class TestModelPipelineWithoutLifecycleCallback(BaseControllerTestCase):
+    """A pipeline built without on_lifecycle_reset or a gate never raises."""
+
+    def _pipeline(self):
+        model = Model()
+        return model, ModelPipeline(
+            context=self.mock_context,
+            persist=self.persist,
+            model=model,
+            model_lock=threading.Lock(),
+            model_builder=MagicMock(),
+            scan_manager=MagicMock(),
+            lftp_manager=MagicMock(),
+            file_op_manager=MagicMock(),
+            logger=MagicMock(),
+        )
+
+    def test_removed_diff_without_callback(self):
+        model, pipeline = self._pipeline()
+        f = ModelFile("X", False)
+        f.remote_size = 1
+        model.add_file(f)
+        pipeline.apply_model_diff([ModelDiff(ModelDiff.Change.REMOVED, f, None)])
+        self.assertNotIn("X", model.get_file_names())
+
+    def test_new_lifecycle_without_callback(self):
+        model, pipeline = self._pipeline()
+        f = ModelFile("X", False)
+        f.remote_size = 1
+        model.add_file(f)
+        self.persist.downloaded_file_names.add("X")
+        self.persist.absent_since["X"] = time.time() - 25 * 3600
+        pipeline._prune_downloaded_files(MagicMock(failed=False))
+        self.assertNotIn("X", self.persist.downloaded_file_names)
+
+    def test_feed_without_gate_does_not_sync_holds(self):
+        _, pipeline = self._pipeline()
+        pipeline.feed_model_builder(None, None, None, None, None, [])
+        pipeline._model_builder.set_hold_reasons.assert_not_called()
 
 
 class TestControllerActiveFileTracking(BaseControllerTestCase):

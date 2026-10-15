@@ -52,6 +52,7 @@ class ModelFile:
         self.__parent = None  # direct predecessor
         self.__frozen = False  # immutability flag
         self.__import_status = ModelFile.ImportStatus.NONE
+        self.__hold_reason: Optional[str] = None
 
     @property
     def is_frozen(self) -> bool:
@@ -243,6 +244,22 @@ class ModelFile:
         if not isinstance(import_status, ModelFile.ImportStatus):
             raise TypeError
         self.__import_status = import_status
+
+    @property
+    def hold_reason(self) -> Optional[str]:
+        """
+        Reason code set by the controller while the completion gate holds an
+        automatic transfer of this root (e.g. "still_downloading"), or None.
+        Not persisted.
+        """
+        return self.__hold_reason
+
+    @hold_reason.setter
+    def hold_reason(self, hold_reason: Optional[str]):
+        self._check_frozen()
+        if hold_reason is not None and not isinstance(hold_reason, str):
+            raise TypeError
+        self.__hold_reason = hold_reason
 
     @property
     def local_created_timestamp(self) -> datetime: return self.__local_created_timestamp
