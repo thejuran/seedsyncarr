@@ -1,8 +1,9 @@
 import threading
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
+from controller import Controller
 from controller.controller import _AUTO_DELETE_MAX_REARMS
 from model import ModelFile, ModelError
 from tests.unittests.test_controller.test_auto_delete import BaseAutoDeleteTestCase
@@ -107,7 +108,7 @@ class TestAutoDeleteDeferral(BaseAutoDeleteRearmTestCase):
         # Extraction finished -> next fire deletes and clears the counter
         mock_file.state = ModelFile.State.EXTRACTED
         self._fire(INCIDENT_ROOT)
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         self.assertNotIn(INCIDENT_ROOT, self._pending())
         self.assertNotIn(INCIDENT_ROOT, self._rearms())
         self.assertNotIn(INCIDENT_ROOT, self.persist.imported_children)
@@ -128,7 +129,7 @@ class TestAutoDeleteDeferral(BaseAutoDeleteRearmTestCase):
 
         child.state = ModelFile.State.EXTRACTED
         self._fire("Pack.S01")
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         self.assertNotIn("Pack.S01", self._pending())
         self.assertNotIn("Pack.S01", self._rearms())
 
@@ -153,7 +154,7 @@ class TestAutoDeleteDeferral(BaseAutoDeleteRearmTestCase):
         # Sonarr imports the second episode
         self.persist.add_imported_child("Pack.S01", "ep02.mkv")
         self._fire("Pack.S01")
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         self.assertNotIn("Pack.S01", self._pending())
         self.assertNotIn("Pack.S01", self._rearms())
 
@@ -223,7 +224,7 @@ class TestAutoDeleteDeferral(BaseAutoDeleteRearmTestCase):
 
         self._fire("test_file.mkv")
 
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         self.assertNotIn("test_file.mkv", self._rearms())
         self.assertNotIn("test_file.mkv", self._pending())
 
@@ -351,7 +352,7 @@ class TestAutoDeleteDeferralTimerIntegration(BaseAutoDeleteRearmTestCase):
         mock_file = self._make_file(state=ModelFile.State.EXTRACTING)
         self._set_model_file(mock_file)
         deleted = threading.Event()
-        self.mock_file_op_manager.delete_local.side_effect = lambda _file: deleted.set()
+        self.mock_file_op_manager.delete_local.side_effect = lambda _file, reservation=None: deleted.set()
 
         # First firing defers and arms a real 50 ms Timer
         self._fire("test_file.mkv")
@@ -360,5 +361,279 @@ class TestAutoDeleteDeferralTimerIntegration(BaseAutoDeleteRearmTestCase):
         mock_file.state = ModelFile.State.EXTRACTED
 
         self.assertTrue(deleted.wait(5), "re-armed Timer never fired")
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         self.assertNotIn("test_file.mkv", self._rearms())
+
+
+class TestAutoDeleteSubmittedUnobserved(BaseAutoDeleteRearmTestCase):
+    """DEL-01: a QUEUE lftp accepted but no successful status has observed
+    yet leaves the model on its stale-retained state (XFER-02). The Timer must
+    defer instead of deleting the copy lftp is about to rewrite."""
+
+    SUBMITTED_REASON = "transfer submitted, awaiting lftp status"
+
+    def setUp(self):
+        super().setUp()
+        self.mock_lftp_manager.status.return_value = None
+        self.mock_lftp_manager.submitted_unobserved_file_names.return_value = [INCIDENT_ROOT]
+        self.mock_file = self._make_file(state=ModelFile.State.DOWNLOADED, is_dir=False)
+        self.mock_file.name = INCIDENT_ROOT
+        self._set_model_file(self.mock_file)
+
+    def test_timer_defers_when_root_submitted_unobserved_and_status_unavailable(self):
+        self._fire(INCIDENT_ROOT)
+
+        self.mock_file_op_manager.delete_local.assert_not_called()
+        self.assertIn(INCIDENT_ROOT, self._pending())
+        self.assertEqual(1, self._rearms()[INCIDENT_ROOT])
+        self.assertIn(
+            self._deferred_line(INCIDENT_ROOT, 1, self.SUBMITTED_REASON),
+            self._info_messages()
+        )
+
+    def test_timer_deletes_after_status_observed_clears_submitted_set(self):
+        self.persist.add_imported_child(INCIDENT_ROOT, "The.Burbs.1989.mkv")
+        self._fire(INCIDENT_ROOT)
+        self.mock_file_op_manager.delete_local.assert_not_called()
+
+        # A successful status (the job need not appear active) clears the set
+        self.mock_lftp_manager.submitted_unobserved_file_names.return_value = []
+        self._fire(INCIDENT_ROOT)
+
+        self.mock_file_op_manager.delete_local.assert_called_once()
+        self.assertIs(self.mock_file, self.mock_file_op_manager.delete_local.call_args[0][0])
+        self.assertNotIn(INCIDENT_ROOT, self._pending())
+        self.assertNotIn(INCIDENT_ROOT, self._rearms())
+        self.assertNotIn(INCIDENT_ROOT, self.persist.imported_children)
+
+    def test_submitted_guard_runs_after_state_guard_and_respects_rearm_budget(self):
+        # State guard wins when the root is mid-lifecycle
+        self.mock_file.state = ModelFile.State.DOWNLOADING
+        self._fire(INCIDENT_ROOT)
+        self.assertIn(
+            self._deferred_line(INCIDENT_ROOT, 1, "file is in state {}".format(ModelFile.State.DOWNLOADING)),
+            self._info_messages()
+        )
+
+        # Submitted guard holds across the whole re-arm budget, then gives up
+        self.mock_file.state = ModelFile.State.DOWNLOADED
+        for _ in range(_AUTO_DELETE_MAX_REARMS):
+            self._fire(INCIDENT_ROOT)
+
+        self.mock_file_op_manager.delete_local.assert_not_called()
+        self.assertNotIn(INCIDENT_ROOT, self._pending())
+        self.assertNotIn(INCIDENT_ROOT, self._rearms())
+        self.assertEqual(
+            [self._given_up_line(INCIDENT_ROOT, self.SUBMITTED_REASON)],
+            self._warning_messages()
+        )
+
+
+class TestAutoDeleteRootReservation(BaseAutoDeleteRearmTestCase):
+    """DEL-01 / codex findings: the Timer releases __model_lock before
+    delete_local and __process_commands releases it before
+    CommandProcessor.handle, so a per-root reservation serializes deletion
+    against queue submission. delete_local only STARTS the deletion child, so
+    the reservation outlives it; here the captured token's release() stands
+    in for cleanup_completed_processes observing the child's exit."""
+
+    WAIT = 5
+
+    def setUp(self):
+        super().setUp()
+        self._make_controller_started()
+        self.mock_lftp_manager.submitted_unobserved_file_names.return_value = []
+        self.mock_file = self._make_file(state=ModelFile.State.DOWNLOADED, is_dir=False)
+        self.mock_file.name = INCIDENT_ROOT
+        self.mock_file.remote_size = 1234
+        self.mock_file.local_size = 1234
+        self._set_model_file(self.mock_file)
+        self._captured = []
+
+    def tearDown(self):
+        for token in self._captured:
+            if token is not None:
+                token.release()
+        super().tearDown()
+
+    def _reservations(self):
+        return self.controller._Controller__root_reservations
+
+    def _capturing_delete_local(self, block_on=None, signal=None):
+        captured = self._captured
+
+        def _se(_file, reservation=None):
+            captured.append(reservation)
+            if signal is not None:
+                signal.set()
+            if block_on is not None:
+                block_on.wait(timeout=self.WAIT)
+            return True
+        return _se, captured
+
+    def _start_thread(self, target):
+        errors = []
+
+        def _run():
+            try:
+                target()
+            except Exception as e:  # pragma: no cover - surfaced via errors
+                errors.append(e)
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+        return t, errors
+
+    def _assert_refused_409(self, cb):
+        cb.on_success.assert_not_called()
+        cb.on_failure.assert_called_once()
+        msg, code = cb.on_failure.call_args[0]
+        self.assertEqual(409, code)
+        self.assertIn("operation in progress", msg)
+
+    def test_queue_refused_while_auto_delete_holds_root(self):
+        deleting = threading.Event()
+        proceed = threading.Event()
+        se, captured = self._capturing_delete_local(block_on=proceed, signal=deleting)
+        self.mock_file_op_manager.delete_local.side_effect = se
+        t, errors = self._start_thread(lambda: self._fire(INCIDENT_ROOT))
+        try:
+            self.assertTrue(deleting.wait(timeout=self.WAIT), "Timer never reached delete_local")
+            cb = MagicMock()
+            self._queue_and_process_command(Controller.Command.Action.QUEUE, INCIDENT_ROOT, callbacks=[cb])
+            self._assert_refused_409(cb)
+            self.mock_lftp_manager.queue.assert_not_called()
+        finally:
+            proceed.set()
+            t.join(timeout=self.WAIT)
+        self.assertFalse(t.is_alive())
+        self.assertEqual([], errors)
+        self.assertEqual(1, self.mock_file_op_manager.delete_local.call_count)
+        # delete_local returned but the child is still deleting
+        self.assertEqual("auto-delete", self._reservations().holder_of(INCIDENT_ROOT))
+
+        captured[0].release()
+        self._queue_and_process_command(Controller.Command.Action.QUEUE, INCIDENT_ROOT)
+        self.mock_lftp_manager.queue.assert_called_once_with(INCIDENT_ROOT, False)
+
+    def test_queue_stays_refused_after_delete_local_returns_until_subprocess_exits(self):
+        se, captured = self._capturing_delete_local()
+        self.mock_file_op_manager.delete_local.side_effect = se
+
+        self._fire(INCIDENT_ROOT)  # Timer callback has fully returned
+
+        self.assertEqual(1, self.mock_file_op_manager.delete_local.call_count)
+        self.assertIsNotNone(captured[0], "reservation must be handed to delete_local")
+        self.assertEqual("auto-delete", captured[0].holder)
+        self.assertEqual("auto-delete", self._reservations().holder_of(INCIDENT_ROOT))
+
+        cb = MagicMock()
+        self._queue_and_process_command(Controller.Command.Action.QUEUE, INCIDENT_ROOT, callbacks=[cb])
+        self._assert_refused_409(cb)
+        self.mock_lftp_manager.queue.assert_not_called()
+
+        captured[0].release()
+        self._queue_and_process_command(Controller.Command.Action.QUEUE, INCIDENT_ROOT)
+        self.mock_lftp_manager.queue.assert_called_once_with(INCIDENT_ROOT, False)
+
+    def test_manual_delete_local_keeps_root_reserved_until_subprocess_exits(self):
+        se, captured = self._capturing_delete_local()
+        self.mock_file_op_manager.delete_local.side_effect = se
+
+        cb = MagicMock()
+        self._queue_and_process_command(Controller.Command.Action.DELETE_LOCAL, INCIDENT_ROOT, callbacks=[cb])
+        cb.on_success.assert_called_once()
+        self.assertIsNotNone(captured[0], "reservation must be handed to delete_local")
+        self.assertEqual("delete", captured[0].holder)
+        self.assertEqual("delete", self._reservations().holder_of(INCIDENT_ROOT))
+
+        cb_queue = MagicMock()
+        self._queue_and_process_command(Controller.Command.Action.QUEUE, INCIDENT_ROOT, callbacks=[cb_queue])
+        self._assert_refused_409(cb_queue)
+        self.mock_lftp_manager.queue.assert_not_called()
+
+        captured[0].release()
+        self._queue_and_process_command(Controller.Command.Action.QUEUE, INCIDENT_ROOT)
+        self.mock_lftp_manager.queue.assert_called_once_with(INCIDENT_ROOT, False)
+
+    def test_auto_delete_defers_while_queue_submission_holds_root(self):
+        submitting = threading.Event()
+        proceed = threading.Event()
+
+        def _queue(_name, _is_dir):
+            submitting.set()
+            proceed.wait(timeout=self.WAIT)
+        self.mock_lftp_manager.queue.side_effect = _queue
+
+        t, errors = self._start_thread(
+            lambda: self._queue_and_process_command(Controller.Command.Action.QUEUE, INCIDENT_ROOT)
+        )
+        try:
+            self.assertTrue(submitting.wait(timeout=self.WAIT), "QUEUE never reached lftp.queue")
+            self._fire(INCIDENT_ROOT)
+            self.mock_file_op_manager.delete_local.assert_not_called()
+            self.assertEqual(1, self._rearms()[INCIDENT_ROOT])
+            self.assertIn(
+                self._deferred_line(INCIDENT_ROOT, 1, "root operation in progress"),
+                self._info_messages()
+            )
+        finally:
+            proceed.set()
+            t.join(timeout=self.WAIT)
+        self.assertFalse(t.is_alive())
+        self.assertEqual([], errors)
+
+    def test_manual_delete_local_refused_while_auto_delete_holds_root(self):
+        deleting = threading.Event()
+        proceed = threading.Event()
+        se, captured = self._capturing_delete_local(block_on=proceed, signal=deleting)
+        self.mock_file_op_manager.delete_local.side_effect = se
+        t, errors = self._start_thread(lambda: self._fire(INCIDENT_ROOT))
+        try:
+            self.assertTrue(deleting.wait(timeout=self.WAIT), "Timer never reached delete_local")
+            cb = MagicMock()
+            self._queue_and_process_command(Controller.Command.Action.DELETE_LOCAL, INCIDENT_ROOT, callbacks=[cb])
+            self._assert_refused_409(cb)
+        finally:
+            proceed.set()
+            t.join(timeout=self.WAIT)
+        self.assertFalse(t.is_alive())
+        self.assertEqual([], errors)
+        self.assertEqual(1, self.mock_file_op_manager.delete_local.call_count)
+
+    def test_reservation_released_on_every_non_delete_timer_path(self):
+        reservations = self._reservations()
+
+        # Defer path
+        self.mock_file.state = ModelFile.State.EXTRACTING
+        self._fire(INCIDENT_ROOT)
+        self.assertIsNone(reservations.holder_of(INCIDENT_ROOT))
+        self.mock_file.state = ModelFile.State.DOWNLOADED
+
+        # Evidence-gate terminal path
+        self.persist.downloaded_file_names.discard(INCIDENT_ROOT)
+        self._fire(INCIDENT_ROOT)
+        self.assertIsNone(reservations.holder_of(INCIDENT_ROOT))
+        self.persist.downloaded_file_names.add(INCIDENT_ROOT)
+
+        # Shutdown begins mid-callback: the final-commit early return
+        shutdown_event = self.controller._Controller__shutdown_event
+
+        def _get_file_then_shutdown(_name):
+            shutdown_event.set()
+            return self.mock_file
+        self.controller._Controller__model.get_file = MagicMock(side_effect=_get_file_then_shutdown)
+        self._fire(INCIDENT_ROOT)
+        self.assertIsNone(reservations.holder_of(INCIDENT_ROOT))
+        shutdown_event.clear()
+        self._set_model_file(self.mock_file)
+
+        self.mock_file_op_manager.delete_local.assert_not_called()
+
+        # Delete path: the token outlives the Timer until the child exits
+        se, captured = self._capturing_delete_local()
+        self.mock_file_op_manager.delete_local.side_effect = se
+        self._fire(INCIDENT_ROOT)
+        self.assertEqual(1, self.mock_file_op_manager.delete_local.call_count)
+        self.assertEqual("auto-delete", reservations.holder_of(INCIDENT_ROOT))
+        captured[0].release()
+        self.assertIsNone(reservations.holder_of(INCIDENT_ROOT))

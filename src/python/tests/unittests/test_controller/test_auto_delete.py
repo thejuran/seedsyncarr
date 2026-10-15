@@ -1,7 +1,7 @@
 import json
 import pytest
 import threading
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 from controller import Controller
 from controller.controller_persist import ControllerPersist
@@ -97,7 +97,7 @@ class TestAutoDeleteExecution(BaseAutoDeleteTestCase):
 
         self.controller._Controller__execute_auto_delete("test_file.mkv")
 
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
 
     def test_execute_never_calls_delete_remote(self):
         """SAFETY: Verify execution NEVER calls delete_remote."""
@@ -176,7 +176,7 @@ class TestAutoDeleteExecution(BaseAutoDeleteTestCase):
         mock_file = self._make_safe_mock_file()
         self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
 
-        def check_lock_on_delete(file):
+        def check_lock_on_delete(file, reservation=None):
             lock_held_during_delete.append(self.controller._Controller__model_lock.locked())
 
         self.mock_file_op_manager.delete_local.side_effect = check_lock_on_delete
@@ -211,13 +211,13 @@ class TestAutoDeleteExecution(BaseAutoDeleteTestCase):
         mock_file = self._make_safe_mock_file(state=ModelFile.State.DEFAULT)
         self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
         self.controller._Controller__execute_auto_delete("test_file.mkv")
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
 
     def test_execute_proceeds_when_root_is_extracted(self):
         mock_file = self._make_safe_mock_file(state=ModelFile.State.EXTRACTED)
         self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
         self.controller._Controller__execute_auto_delete("test_file.mkv")
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
 
     # --- Pack guard: skip deletion when any descendant is in an active state --
 
@@ -260,7 +260,7 @@ class TestAutoDeleteExecution(BaseAutoDeleteTestCase):
         mock_file = self._make_safe_mock_file(is_dir=True, children=[child_a, child_b])
         self.controller._Controller__model.get_file = MagicMock(return_value=mock_file)
         self.controller._Controller__execute_auto_delete("Pack.S01")
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
 
 
 class TestAutoDeleteCoverageGuard(TestAutoDeleteExecution):
@@ -281,7 +281,7 @@ class TestAutoDeleteCoverageGuard(TestAutoDeleteExecution):
         # Intentionally NOT seeding imported_children -- single-file roots never
         # touch it (coverage check gated on file.is_dir == True).
         self.controller._Controller__execute_auto_delete("single_file.mkv")
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
 
     def test_execute_proceeds_dir_when_all_video_children_imported(self):
         """D-08 full-coverage path: every on-disk video basename covered -> delete."""
@@ -292,7 +292,7 @@ class TestAutoDeleteCoverageGuard(TestAutoDeleteExecution):
         self.persist.add_imported_child("Pack.S01", "ep01.mkv")
         self.persist.add_imported_child("Pack.S01", "ep02.mkv")
         self.controller._Controller__execute_auto_delete("Pack.S01")
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
 
     def test_execute_skips_dir_when_one_video_child_missing(self):
         """D-08 partial-coverage path: one on-disk video missing from imported
@@ -333,7 +333,7 @@ class TestAutoDeleteCoverageGuard(TestAutoDeleteExecution):
 
         self.controller._Controller__execute_auto_delete("Pack.S01")
 
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
 
     def test_execute_proceeds_dir_when_no_imported_children_entry_legacy(self):
         """D-14 grandfather: root tracked in imported_file_names but absent
@@ -347,7 +347,7 @@ class TestAutoDeleteCoverageGuard(TestAutoDeleteExecution):
 
         self.controller._Controller__execute_auto_delete("Pack.S01")
 
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
 
     def test_execute_clears_imported_children_after_delete(self):
         """D-04: after successful delete, the per-root entry is removed from
@@ -360,7 +360,7 @@ class TestAutoDeleteCoverageGuard(TestAutoDeleteExecution):
 
         self.controller._Controller__execute_auto_delete("Pack.S01")
 
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         self.assertNotIn("Pack.S01", self.persist.imported_children)
 
     def test_execute_coverage_check_is_case_insensitive(self):
@@ -374,7 +374,7 @@ class TestAutoDeleteCoverageGuard(TestAutoDeleteExecution):
 
         self.controller._Controller__execute_auto_delete("Pack.S01")
 
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
 
 
 class TestAutoDeletePersistRehydration(TestAutoDeleteExecution):
@@ -493,7 +493,7 @@ class TestAutoDeleteDuplicateBasenameGuard(TestAutoDeleteExecution):
 
         self.controller._Controller__execute_auto_delete("Pack.S01")
 
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
 
 
 class TestAutoDeleteShutdown(BaseAutoDeleteTestCase):
@@ -706,7 +706,7 @@ class TestAutoDeleteToggleDuringTimer(TestAutoDeleteExecution):
         mock_file = self._run_gated_timer(flip=lambda: None)
 
         # Positive control: deletion MUST be called.
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
 
 
 class TestAutoDeleteShutdownGuard(BaseAutoDeleteTestCase):
@@ -849,7 +849,7 @@ class TestAutoDeleteShutdownGuard(BaseAutoDeleteTestCase):
         self.controller._Controller__execute_auto_delete(file_name)
 
         # Positive control: delete must fire.
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         # And the per-child entry must be cleaned up.
         self.assertNotIn(
             file_name,
@@ -999,7 +999,7 @@ class TestAutoDeleteModelLockSerialization(BaseAutoDeleteTestCase):
             "add_imported_child on the process() thread to race the pop without exclusion.",
         )
         # Positive-path invariants: dispatch still fires and entry was cleared.
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         self.assertNotIn(file_name, self.persist.imported_children)
 
     def test_delete_local_is_outside_model_lock(self):
@@ -1017,7 +1017,7 @@ class TestAutoDeleteModelLockSerialization(BaseAutoDeleteTestCase):
 
         lock_held_during_delete = []
 
-        def check_lock_on_delete(file):
+        def check_lock_on_delete(file, reservation=None):
             lock_held_during_delete.append(
                 self.controller._Controller__model_lock.locked()
             )
@@ -1065,7 +1065,7 @@ class TestAutoDeleteDownloadedGate(BaseAutoDeleteTestCase):
 
         self.controller._Controller__execute_auto_delete("test_file.mkv")
 
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
 
 
 class TestWebhookImportEvidenceGate(BaseAutoDeleteTestCase):
