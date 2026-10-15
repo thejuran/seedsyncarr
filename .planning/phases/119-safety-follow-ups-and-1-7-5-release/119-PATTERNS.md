@@ -17,6 +17,8 @@ Scope note: CONTEXT D-16..D-21 supersede RESEARCH Open Questions 1-6. In particu
 |---|---|---|---|---|
 | `src/python/controller/arr_queue.py` (NEW) | service (HTTP client) | request-response | `src/python/web/handler/config.py` `_test_arr_connection` (L133-202) | role-match (same API, same headers) |
 | `src/python/controller/completion_gate.py` (NEW) | service (cache + verdict + hold registry) | transform / polling w/ backoff | `src/python/controller/lftp_manager.py` (breaker L34-42, L167-198) + `controller/webhook_manager.py` (class shape L17-35) | partial (no existing arr-state cache) |
+| `src/python/controller/root_reservation.py` (NEW) | service (per-root reservation registry) | lock / token hand-off | none | **no analog** |
+| `src/python/controller/file_operation_manager.py` | service (one-shot process tracking) | subprocess lifecycle | self `delete_local` L151-172, `cleanup_completed_processes` L201-217 | exact |
 | `src/python/controller/controller.py` | coordinator | event-driven (cycle) | self: ctor wiring L218-255; webhook gate L553-678; auto-delete L750-897 | exact (in-file) |
 | `src/python/controller/auto_queue.py` | service | batch sweep | self L283-337 | exact |
 | `src/python/controller/command_processor.py` | controller (command dispatch) | request-response | self `_handle_queue` L104-149 | exact |
@@ -570,6 +572,7 @@ mock_requests.Timeout = requests.Timeout
 **Source:** the controller.py lock-order comment, L741-748 ("`__model_lock` THEN `__auto_delete_lock`").
 **Apply to:**
 - The new LftpManager lock: a leaf lock, never held while calling out.
+- The `RootReservations` registry lock and `FileOperationManager.__processes_lock`: leaf locks. The reservation TOKEN is the outermost element of the order (reservation → `__model_lock` → `__auto_delete_lock`) and on the delete path is handed to the `CommandProcessWrapper` instead of being released on return.
 - The D-20 persist call: outside `__model_lock`.
 
 ### Monotonic-clock backoff
@@ -584,6 +587,7 @@ mock_requests.Timeout = requests.Timeout
 |---|---|---|---|
 | CI inline wheel/sdist member-path checker | script | batch | No packaging-verification step exists. Use the RESEARCH Pattern 7 description (zipfile/tarfile scan for `./` / `..`) |
 | Arr queue verdict/matching logic inside `completion_gate.py` | service | transform | No existing arr-state consumer. Use the RESEARCH §"Exact matching rule" amended by D-16/D-17 |
+| `src/python/controller/root_reservation.py` (`RootReservations` / `RootReservation`) | service (non-blocking per-root reservation registry with ownership hand-off) | lock / token hand-off | No per-resource reservation exists in the tree; the closest analogs are the plain `threading.Lock`s in controller.py and lftp_manager.py, which block and cannot be handed to a process wrapper. The contract lives in 119-03 `<interfaces>`: `acquire(name, holder) -> Optional[RootReservation]`, `holder_of(name)`, idempotent owner-checked `release()` + context manager; the token is transferred to `FileOperationManager.delete_local(file, reservation=...)` and released by `cleanup_completed_processes` once the child is dead (codex pass-4 finding 1) |
 
 ## Conventions
 
