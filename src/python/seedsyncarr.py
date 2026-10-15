@@ -9,6 +9,7 @@ from logging.handlers import RotatingFileHandler
 from typing import Optional, Type, TypeVar
 import shutil
 import platform
+import threading
 
 from common import ServiceExit, Context, Constants, Config, Args, AppError
 from common import ServiceRestart
@@ -46,6 +47,12 @@ class Seedsyncarr:
     logger = None
 
     def __init__(self):
+        # Serializes every persist-file write: the periodic/exit persist() on
+        # the main thread and the controller's immediate save after an import
+        # credit. Without it the two threads could read (to_str) and write
+        # the same persist concurrently.
+        self.__persist_lock = threading.Lock()
+
         # Parse the args
         args, legacy_fallback_warning = self._parse_args(sys.argv[1:])
 
@@ -142,7 +149,11 @@ class Seedsyncarr:
         webhook_manager = WebhookManager(self.context)
 
         # Create controller
-        controller = Controller(self.context, self.controller_persist, webhook_manager)
+        # The persist callback saves the controller persist as soon as an
+        # import notice is credited, closing the crash window between the
+        # credit and the next periodic save.
+        controller = Controller(self.context, self.controller_persist, webhook_manager,
+                                persist_callback=self._persist_controller_now)
 
         # Create auto queue
         auto_queue = AutoQueue(self.context, self.auto_queue_persist, controller)
@@ -253,10 +264,21 @@ class Seedsyncarr:
 
     def persist(self):
         # Save the persists
-        self.context.logger.debug("Persisting states to file")
-        self.controller_persist.to_file(self.controller_persist_path)
-        self.auto_queue_persist.to_file(self.auto_queue_persist_path)
-        self.context.config.to_file(self.config_path)
+        with self.__persist_lock:
+            self.context.logger.debug("Persisting states to file")
+            self.controller_persist.to_file(self.controller_persist_path)
+            self.auto_queue_persist.to_file(self.auto_queue_persist_path)
+            self.context.config.to_file(self.config_path)
+
+    def _persist_controller_now(self):
+        """Write only the controller persist, now (controller thread).
+
+        Called by the Controller after an import credit; config and the
+        auto-queue persist are not touched by a credit. Shares the persist
+        lock with persist() so the two writers never overlap.
+        """
+        with self.__persist_lock:
+            self.controller_persist.to_file(self.controller_persist_path)
 
     def signal(self, signum: int, _):
         # Signals is a generated enum

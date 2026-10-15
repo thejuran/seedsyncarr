@@ -76,14 +76,17 @@ def _transferring_pack(done=(1, 2, 3), root_name=ROOT, parts=None, extra_childre
     parts = parts or PARTS
     root = ModelFile(root_name, True)
     root.state = ModelFile.State.DOWNLOADING
-    root.remote_size = ROOT_REMOTE_SIZE
+    remote = ROOT_REMOTE_SIZE
     local = 0
     for i, name in sorted(parts.items()):
         child = _child(name, i in done)
         local += child.local_size
         root.add_child(child)
     for extra in extra_children:
+        remote += extra.remote_size or 0
+        local += extra.local_size or 0
         root.add_child(extra)
+    root.remote_size = remote
     root.local_size = local
     return root
 
@@ -268,8 +271,10 @@ class TestEarlyChildCredit(BaseImportCreditTestCase):
 
     def test_credit_alone_never_deletes(self):
         """All four children credited while the root still transfers: the
-        root is not committed, so the Timer path refuses outright."""
-        self._put(_transferring_pack(done=(1, 2, 3, 4)))
+        root is not committed, so the Timer path refuses outright. An
+        in-flight subtitle keeps the root short of its remote size."""
+        subtitle = _child("Days.of.Hope.en.srt", False, size=4096)
+        self._put(_transferring_pack(done=(1, 2, 3, 4), extra_children=[subtitle]))
         self._webhook(1, 2, 3, 4)
         self.controller.process()
 
