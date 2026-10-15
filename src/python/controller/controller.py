@@ -370,10 +370,17 @@ class Controller:
                 self.__pending_auto_deletes.clear()
                 self.__auto_delete_rearms.clear()
 
-            self.__lftp_manager.exit()
-            self.__scan_manager.stop()
-            self.__file_op_manager.stop()
-            self.__mp_logger.stop()
+            # Each cleanup runs independently: a failure in one (e.g. lftp's
+            # graceful exit failing on an unsynchronized command stream) must
+            # never leave the remaining child processes running.
+            for component, stop in (("lftp", self.__lftp_manager.exit),
+                                    ("scanner", self.__scan_manager.stop),
+                                    ("file operations", self.__file_op_manager.stop),
+                                    ("multiprocessing logger", self.__mp_logger.stop)):
+                try:
+                    stop()
+                except Exception:
+                    self.logger.exception("Error stopping {} during controller exit".format(component))
             self.__started = False
             self.logger.info("Exited controller")
 

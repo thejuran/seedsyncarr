@@ -77,6 +77,17 @@ class TestControllerLifecycle(BaseControllerTestCase):
         self.mock_file_op_manager.stop.assert_called_once()
         self.mock_mp_logger.stop.assert_called_once()
 
+    def test_exit_stops_every_manager_even_when_lftp_exit_fails(self):
+        self.controller.start()
+        self.mock_lftp_manager.exit.side_effect = LftpError("lftp command stream not synchronized")
+        self.mock_scan_manager.stop.side_effect = RuntimeError("scanner stop failed")
+        self.controller.exit()  # failures are logged, never abort the remaining cleanup
+        self.mock_lftp_manager.exit.assert_called_once()
+        self.mock_scan_manager.stop.assert_called_once()
+        self.mock_file_op_manager.stop.assert_called_once()
+        self.mock_mp_logger.stop.assert_called_once()
+        self.assertEqual(2, self.controller.logger.exception.call_count)
+
     def test_exit_without_start_is_safe(self):
         self.controller.exit()  # should not raise
         self.mock_scan_manager.stop.assert_not_called()

@@ -70,6 +70,9 @@ class _FakeStream:
     def isalive(self):
         return True
 
+    def close(self, force=False):
+        self.closed_force = force
+
     def inject(self, data: bytes):
         """Append late output (e.g. a delayed stale prompt) between commands."""
         self.buf += data
@@ -158,6 +161,31 @@ class TestLftpResync(unittest.TestCase):
         self.assertIn("not synchronized", str(ctx.exception))
         # No queue command reached lftp while the stream was unsynchronized.
         self.assertFalse(any(s.startswith("queue ") for s in stream.sent))
+
+    def test_exit_force_closes_after_command_timeout_and_failed_resync(self):
+        stream = _FakeStream()
+        lftp = _make_lftp(stream)
+        stream.responses["jobs -v"] = [None]
+        stream.sync_behaviours = [SYNC_TIMEOUT, SYNC_TIMEOUT]
+
+        self.assertIsNone(lftp.status())  # the original command timeout
+        self.assertIsNone(lftp.status())  # a failed resync
+
+        with self.assertRaises(LftpError):
+            lftp.exit()  # kill_all cannot resync, but the process is still closed
+        self.assertTrue(getattr(stream, "closed_force", False))
+
+    def test_exit_force_closes_after_command_timeout(self):
+        stream = _FakeStream()
+        lftp = _make_lftp(stream)
+        stream.responses["jobs -v"] = [None]
+        stream.sync_behaviours = [SYNC_TIMEOUT]
+
+        self.assertIsNone(lftp.status())  # the original command timeout
+
+        with self.assertRaises(LftpError):
+            lftp.exit()  # kill_all's resync attempt fails
+        self.assertTrue(getattr(stream, "closed_force", False))
 
     def test_resync_marker_ignores_tty_echo(self):
         stream = _FakeStream()

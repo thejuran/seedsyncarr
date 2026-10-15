@@ -449,10 +449,18 @@ class Lftp:
         self.__run_command("kill all")
 
     def exit(self):
-        """Exit the lftp process. The instance cannot be used after this call."""
-        self.kill_all()
-        self.__process.sendline("exit")
-        self.__process.close(force=True)
+        """
+        Exit the lftp process. The instance cannot be used after this call.
+
+        The process is force-closed even when the graceful kill/exit commands
+        fail (e.g. the command stream could not be resynchronized after a
+        timeout); the graceful failure still propagates after the close.
+        """
+        try:
+            self.kill_all()
+            self.__process.sendline("exit")
+        finally:
+            self.__process.close(force=True)
 
     # Mark decorators as static (must be at end of class)
     # Source: https://stackoverflow.com/a/3422823
