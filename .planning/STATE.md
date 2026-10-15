@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.7.5
 milestone_name: Safety Release
-status: executing
-stopped_at: Completed 119-10-PLAN.md (owner HOLD on 1.7.5 production deploy)
-last_updated: "2026-10-15T16:09:54.951Z"
+status: ready_to_plan
+stopped_at: Phase 119 complete (12/12) — ready to discuss Phase 119.1
+last_updated: 2026-10-15T18:32:23.901Z
 last_activity: 2026-10-15 -- 119-10 complete; owner held 1.7.5 prod deploy (secrets in container startup log)
 progress:
   total_phases: 23
   completed_phases: 5
   total_plans: 31
-  completed_plans: 30
+  completed_plans: 31
   percent: 22
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-09)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 119 — Safety Follow-ups and 1.7.5 Release
+**Current focus:** Phase 119.1 — startup log secrets fix and 1 7 6 release
 
 ## Current Position
 
-Phase: 119 (Safety Follow-ups and 1.7.5 Release) — EXECUTING
-Plan: 119-10 complete (1.7.5 published, smoke 8/8 PASS, prod deploy on HOLD); 119-11 superseded by Phase 119.1
-Status: Executing Phase 119
-Last activity: 2026-10-15 -- 119-10 complete; owner held 1.7.5 prod deploy (secrets in container startup log)
+Phase: 119.1
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-15
 
 ## Accumulated Context
 
