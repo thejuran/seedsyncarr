@@ -937,11 +937,11 @@ Plans:
 2. 1.7.6 is published to Docker/GitHub/PyPI from green CI and its exact digest passes the smoke list on the NAS, including a no-secrets-in-startup-log check.
 3. Production runs `:1.7.6@<digest>`, the first post-deploy scan succeeds, both arrs are reachable, wud is restored, and the owner is reminded to rotate credentials.
 
-**Plans:** 6 plans
+**Plans:** 2/6 plans executed
 
 Plans:
-- [ ] 119.1-01-PLAN.md — RED sentinel test + fix setup_default_config.sh (no settings.cfg dump; status line; CI compose mount)
-- [ ] 119.1-02-PLAN.md — print_to_log redaction by Config.secret_fields() + startup/reload sentinel guard tests; unreadable settings.cfg (interpolation error) is fatal and value-free, no default reset
+- [x] 119.1-01-PLAN.md — RED sentinel test + fix setup_default_config.sh (no settings.cfg dump; status line; CI compose mount)
+- [x] 119.1-02-PLAN.md — print_to_log redaction by Config.secret_fields() + startup/reload sentinel guard tests; unreadable settings.cfg (interpolation error) is fatal and value-free, no default reset
 - [ ] 119.1-06-PLAN.md — Config.to_str escapes % on write (round-trip, byte-compatible), value-free serialization errors, RED-first reload-persist test, persist/reload/shutdown leak sweep
 - [ ] 119.1-03-PLAN.md — 1.7.6 version bumps, CHANGELOG + release notes (D-06 notice, D-11 full 1.7.5 changes), REL-04 evidence, release PR CI green, owner approval (incl. SECURITY.md decision)
 - [ ] 119.1-04-PLAN.md — Merge, tag v1.7.6, tag CI publish, PyPI check, digest; NAS scratch smoke incl. count-only no-secrets check with 1.7.5 positive control; seedsyncarr-test count; owner go-ahead
