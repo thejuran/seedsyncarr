@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7.5
 milestone_name: Safety Release
-status: milestone_complete
-stopped_at: Milestone complete (Phase 119.1 was final phase)
-last_updated: 2026-10-15T22:43:55.602Z
-last_activity: 2026-10-15 -- 119.1-05 1.7.6 deployed to NAS, awaiting owner confirmation
+status: Awaiting next milestone
+stopped_at: "119.1-05 complete (7a2a122): 1.7.6 on NAS prod confirmed by owner; credential-rotation checklist delivered"
+last_updated: "2026-10-15T23:42:48.567Z"
+last_activity: 2026-10-15 — Milestone v1.7.5 completed and archived
 progress:
-  total_phases: 23
+  total_phases: 24
   completed_phases: 7
   total_plans: 37
   completed_plans: 37
-  percent: 30
+  percent: 29
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-10-09)
 
 ## Current Position
 
-Phase: 119.1
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-10-15
+Phase: Milestone v1.7.5 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-15 — Milestone v1.7.5 completed and archived
 
 ## Accumulated Context
 
@@ -104,7 +104,13 @@ None.
 | promoted | 999.2 LFTP command-stream resync after timeout | Phase 119; opening 1.7.5 patch |
 | promoted | 999.3 auto-delete timer explicit submitted-unobserved guard | Phase 119; opening 1.7.5 patch |
 | debug | extract-staging-autodel-rearm | awaiting_human_verify (fixes applied + self-verified 2026-09-16; acknowledged + deferred at v1.7.4 close) |
+| debug | done-group-no-auto-delete | diagnosed — fix shipped in Phase 119 (IMP-01/IMP-03); session file not closed (acknowledged at v1.7.5 close) |
+| uat_gap | Phase 119 119-HUMAN-UAT.md (2 scenarios) | held-file "Waiting" badge + manual-release confirm modal not browser-confirmed; no held file on prod at milestone-end walkthrough (acknowledged at v1.7.5 close) |
+| verification_gap | Phase 119 119-VERIFICATION.md human_needed | same two UI checks (acknowledged at v1.7.5 close) |
+| backlog | 999.4 braces advisory via karma | dev-only; deferred to Reliability |
 
+> Acknowledged + deferred at v1.7.5 milestone close (2026-10-15): all 5 open items from the pre-close audit (2 debug sessions, Phase 119 UAT + verification UI checks, webob todo).
+>
 > Acknowledged + deferred at v1.7.4 milestone close (2026-10-09): debug session extract-staging-autodel-rearm and todo webob-cgi-upstream-unblock (both pre-existing, outside v1.7.4 scope).
 >
 > Acknowledged + deferred at v1.4.0 milestone close (2026-06-03): webob-cgi-upstream-unblock (still blocked on upstream webob 2.0) and the 260528-khw dependabot quick-task (prior-session housekeeping).
@@ -139,9 +145,9 @@ None.
 
 Last session: 2026-10-15T22:30:24.625Z
 Stopped at: 119.1-05 complete (7a2a122): 1.7.6 on NAS prod confirmed by owner; credential-rotation checklist delivered
-Next action: Phase 119.1 verification, then milestone v1.7.5 completion. Owner rotates credentials on own schedule (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys). Open for the pre-release walkthrough: Phase 119 HUMAN-UAT UI items (Waiting badge, manual-release modal) and Done-group one-time cleanup. Optional: delete /volume1/docker/seedsync-smoke-1.7.6.
+Next action: Milestone v1.7.5 archived 2026-10-15 (1.7.6 live on NAS). Next: Reliability milestone (Phase 120+) via /bm:new-milestone. Owner rotates credentials on own schedule (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys). Still open: Phase 119 UI checks (Waiting badge, manual-release modal) when a file is next held; Done-group one-time cleanup. Optional: delete /volume1/docker/seedsync-smoke-1.7.6.
 
 ## Operator Next Steps
 
-- Discuss and plan Phase 119 (requirements XFER-06, DEL-01, IMP-01..03, REL-02, REL-03); verify Sonarr/Radarr queue/API completion semantics during planning.
-- Implement, verify and release 1.7.5; then start the Reliability milestone at Phase 120.
+- Start the Reliability milestone (Phase 120+) with /bm:new-milestone.
+- When a file is next held (Sonarr/Radarr unreachable), look at the Waiting badge and the manual-release confirm modal in the browser.

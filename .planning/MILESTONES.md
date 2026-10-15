@@ -1,5 +1,22 @@
 # Project Milestones: SeedSync
 
+## v1.7.5 Safety Release (Shipped: 2026-10-15; tags `v1.7.5`, `v1.7.6`; deployed `1.7.6`)
+
+**Phases completed:** 2 phases (119, 119.1 inserted), 18 plans. Requirements 9/9 (XFER-06, DEL-01, IMP-01, IMP-02, IMP-03, REL-02, REL-03, SEC-01, REL-04). Audit: tech_debt, accepted (`milestones/v1.7.5-MILESTONE-AUDIT.md`).
+
+**Key accomplishments:**
+
+- A delayed prompt after an LFTP timeout can no longer read as an empty job list. Status stays unavailable until a sentinel resync confirms the command stream again (XFER-06).
+- The auto-delete timer defers while a transfer has been submitted but not yet observed, using a root reservation shared with the queue path (DEL-01).
+- Incomplete or unverified copies are never at an importable path. Completion needs Sonarr/Radarr download-queue evidence, not just stable size. Held items show a "Waiting" badge with the reason, and a one-shot manual release asks for confirmation first (IMP-01, IMP-02).
+- Import notices for individual episodes are credited and persisted while sibling episodes are still transferring. Whole-folder delete is still gated on full coverage (IMP-03).
+- PyPI publishing works again, with a packaging member-path check in CI (REL-02).
+- The container no longer prints config secrets to its log at startup or on settings reload. 1.7.6 is released and deployed to NAS production by digest (SEC-01, REL-03, REL-04). The owner was reminded to rotate credentials.
+
+**Known deferred items at close:** 5 (see STATE.md Deferred Items). The two Phase 119 UI checks (held-file badge, release confirm box) have not yet been seen in a browser.
+
+---
+
 ## v1.7.4 Safety Patch (Shipped: 2026-10-09, tagged `v1.7.4`)
 
 **Phases completed:** 3 phases (116-118), 16 plans. Patch release protecting users from wrong deletion and wrong transfer-state decisions. Python-only, behavior-narrowing, no on-disk format change, no UI work.

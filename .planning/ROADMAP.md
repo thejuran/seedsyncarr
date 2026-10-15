@@ -38,21 +38,14 @@
 - ✅ v1.4.0 — Launch-Hardening for Public Release - Phases 110-113 (shipped 2026-06-03; merged to `main`, `v1.4.0` tag)
 - ✅ v1.4.1 — Scanner Auto-Recovery - Phases 114-115 (shipped 2026-06-22; tagged `v1.5.0`)
 - ✅ v1.7.4 Safety Patch - Phases 116-118 (shipped 2026-10-09; tagged `v1.7.4`; archive: `milestones/v1.7.4-ROADMAP.md`)
-- 🚧 v1.7.5 Safety Release - Phase 119 (in progress, started 2026-10-14)
+- ✅ v1.7.5 Safety Release - Phases 119, 119.1 (shipped 2026-10-15; tagged `v1.7.5` + `v1.7.6`, `1.7.6` deployed; archive: `milestones/v1.7.5-ROADMAP.md`)
 
 ## Agreed milestone sequence
 
 1. **Safety Patch — complete:** v1.7.4, Phases 116–118.
-2. **v1.7.5 Safety Release — in progress:** Phase 119 only. Owner decision 2026-10-14: 1.7.5 is its own milestone (previously planned as the opening phase of Reliability), so the orchestrator's milestone-end walkthrough, audit and `v1.7.5` tag apply to it directly.
+2. **v1.7.5 Safety Release — complete (2026-10-15):** Phases 119 and 119.1 (inserted); 1.7.6 is the deployed build. Owner decision 2026-10-14: 1.7.5 is its own milestone (previously planned as the opening phase of Reliability), so the orchestrator's milestone-end walkthrough, audit and `v1.7.5` tag apply to it directly.
 3. **Reliability — next:** starts at Phase 120 after v1.7.5 ships. Covers import/cleanup recovery across scan timing and restarts, shutdown/resource cleanup, bounded scanner-result buffering, and useful memory diagnostics; detailed phases and the final release version remain to be planned.
 4. **Performance and usability — later:** retain the previously discussed targeted UI/backend efficiency and usability work after reliability. No scope expansion or transfer-engine replacement.
-
-### 🚧 v1.7.5 Safety Release (In Progress)
-
-- [x] **Phase 119: Safety Follow-ups and 1.7.5 Release** — close the two carried-forward safety gaps, stop incomplete-file imports, recover early per-episode import notices, and restore PyPI publishing. (completed 2026-10-15)
-- [x] **Phase 119.1: Startup log secrets fix and 1.7.6 release** (INSERTED) — stop printing config secrets at startup; release 1.7.6; deploy 1.7.6 to the NAS (replaces the held 1.7.5 deploy). (completed 2026-10-15)
-
-**Release ordering:** Phase 119 → verify and release 1.7.5 (milestone v1.7.5 complete) → Reliability milestone (Phase 120+) → Performance and usability.
 
 ## Phases
 
@@ -409,6 +402,13 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 - [x] **Phase 116: Import Safety** - `name_to_root` keeps every distinct model path per lowercased basename; a webhook import resolving to two or more distinct paths (across releases, case-only root differences, root-equals-child-basename, or repeated basenames inside one release) is rejected with no import record, no coverage credit, no badge, no auto-delete timer, and one sanitized warning naming the candidate roots; a unique match (including repeated references to the same path) behaves exactly as before (IMPORT-01, IMPORT-02) (completed 2026-10-08)
 - [x] **Phase 117: Transfer-State Safety** - LFTP parser never consumes the next job's header (other next-line-consuming sites audited); unparseable status is reported as *unavailable* (`None`), never `[]`, with the existing `MAX_CONSECUTIVE_STATUS_ERRORS` boundary pinned exactly and no downstream consumer collapsing unavailable into "no jobs"; remote and local stability clocks advance only on successful scans while the UI "last scan" timestamp keeps its meaning (XFER-01, XFER-02, XFER-03, XFER-04, XFER-05) (completed 2026-10-09)
 - [x] **Phase 118: Durable State** - `Persist.to_file` writes atomically (serialize first → 0600 temp in target dir → write/flush/fsync → `os.replace` commit point → best-effort directory fsync) so any pre-replace failure leaves the original byte-for-byte intact with no temp file left behind; then the 1.7.4 release gate — regressions fail-before/pass-after, full suite + ruff, release-image smoke test, `:1.7.4` NAS deploy with scanner recovery confirmed by a subsequent successful scan (PERSIST-01, PERSIST-02, REL-01) (completed 2026-10-09)
+
+✅ v1.7.5 — Safety Release (Phases 119, 119.1) — SHIPPED 2026-10-15 (tagged `v1.7.5`, `v1.7.6`; `1.7.6` deployed)
+
+- [x] **Phase 119: Safety Follow-ups and 1.7.5 Release** — LFTP resync after timeout, auto-delete submitted-unobserved guard, incomplete-import prevention with visible holds + one-shot manual release, persisted per-episode import credit, PyPI packaging repair; 1.7.5 released (XFER-06, DEL-01, IMP-01..03, REL-02, REL-03) (completed 2026-10-15)
+- [x] **Phase 119.1: Startup log secrets fix and 1.7.6 release** (INSERTED) — no config secrets in startup/reload logs; 1.7.6 released and deployed to NAS by digest (SEC-01, REL-03 NAS portion, REL-04) (completed 2026-10-15)
+
+Full details: `milestones/v1.7.5-ROADMAP.md`; audit: `milestones/v1.7.5-MILESTONE-AUDIT.md` (tech_debt accepted).
 
 ## Phase Details
 
@@ -870,6 +870,34 @@ Plans:
 
 - [x] 119-11-PLAN.md — REL-03 (3/3): NAS deploy by digest with verified backups, scan recovery + arr reachability, wud restore, owner confirmation — SUPERSEDED (owner HOLD 2026-10-15): not executed; replaced by Phase 119.1 (1.7.6 deploy)
 
+### Phase 119.1: Startup log secrets fix and 1.7.6 release (INSERTED)
+
+**Goal:** Stop the container from printing configuration secrets to its log at startup, release that as 1.7.6 through the same gates as 1.7.5, and deploy 1.7.6 (not 1.7.5) to the NAS production container — replacing the held 119-11 deploy (owner decision 2026-10-15).
+**Requirements:** SEC-01, REL-03 (NAS-verification portion carried from Phase 119), REL-04
+**Depends on:** Phase 119
+**Scope:**
+
+1. Startup no longer prints `settings.cfg` secrets (seedbox password, Sonarr/Radarr API keys, webhook secret, api_token, any secret-marked config) to the container/stdout log — redacted or omitted, while non-secret startup diagnostics remain useful. Pre-existing since v1.0.0; found during the 1.7.5 smoke. Regression test fails before the fix.
+2. Release 1.7.6 through the 1.7.5 gates: release branch + PR CI green (incl. Docker build, e2e, CodeQL, packaging check), annotated tag, tag CI publishes Docker/GitHub/PyPI, smoke on the exact digest on the NAS scratch setup (incl. confirming the startup log carries no secrets).
+3. Deploy 1.7.6 to the NAS production container by digest (supersedes 119-11): verified backups + loader check, digest pin, successful scan after any startup scanner error, arr reachability with no steady-state holds, wud restored last, rollback runbook to 1.7.4.
+4. After deploy, remind the owner to rotate the seedbox password and both arr API keys (they have been exposed in container logs); old container logs are discarded with the old container.
+
+**Success criteria:**
+
+1. A fresh container start's log contains none of the configured secret values; a regression test fails before the fix and passes after.
+2. 1.7.6 is published to Docker/GitHub/PyPI from green CI and its exact digest passes the smoke list on the NAS, including a no-secrets-in-startup-log check.
+3. Production runs `:1.7.6@<digest>`, the first post-deploy scan succeeds, both arrs are reachable, wud is restored, and the owner is reminded to rotate credentials.
+
+**Plans:** 6/6 plans complete
+
+Plans:
+- [x] 119.1-01-PLAN.md — RED sentinel test + fix setup_default_config.sh (no settings.cfg dump; status line; CI compose mount)
+- [x] 119.1-02-PLAN.md — print_to_log redaction by Config.secret_fields() + startup/reload sentinel guard tests; unreadable settings.cfg (interpolation error) is fatal and value-free, no default reset
+- [x] 119.1-06-PLAN.md — Config.to_str escapes % on write (round-trip, byte-compatible), value-free serialization errors, RED-first reload-persist test, persist/reload/shutdown leak sweep
+- [x] 119.1-03-PLAN.md — 1.7.6 version bumps, CHANGELOG + release notes (D-06 notice, D-11 full 1.7.5 changes), REL-04 evidence, release PR CI green, owner approval (incl. SECURITY.md decision)
+- [x] 119.1-04-PLAN.md — Merge, tag v1.7.6, tag CI publish, PyPI check, digest; NAS scratch smoke incl. count-only no-secrets check with 1.7.5 positive control; seedsyncarr-test count; owner go-ahead
+- [x] 119.1-05-PLAN.md — Deploy :1.7.6@digest to NAS production (backups, loader checks, recreate, scan/arr/no-secrets checks, wud last, rollback runbook), owner confirmation, rotation reminder
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -912,40 +940,13 @@ Plans:
 | 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
 | 118. Durable State | v1.7.4 | 5/5 | Complete    | 2026-10-09 |
 | 119. Safety Follow-ups and 1.7.5 Release | v1.7.5 | 12/12 | Complete    | 2026-10-15 |
+| 119.1. Startup log secrets fix and 1.7.6 release | v1.7.5 | 6/6 | Complete    | 2026-10-15 |
 
 ---
 
-*Last updated: 2026-10-14 — Milestone v1.7.5 Safety Release started with Phase 119 as its sole phase (owner decision: 1.7.5 is its own milestone; Reliability follows at Phase 120); requirements XFER-06, DEL-01, IMP-01..03, REL-02, REL-03 mapped. Earlier 2026-10-14 — Owner expanded Phase 119 with scope items 4 (prevent incomplete-file imports) and 5 (recover early per-episode import notices), each with its own plan and tests, after the Obsession and Days of Hope Done-group incidents. 2026-10-09 — Owner approved Phase 119 as the opening phase of the next Reliability milestone; release 1.7.5 before resuming its remaining phases. v1.7.4 remains shipped and archived. Backlog 999.2 and 999.3 are promoted into Phase 119.*
+*Last updated: 2026-10-15 — Milestone v1.7.5 Safety Release shipped and archived (Phases 119, 119.1; 1.7.6 deployed); next: Reliability at Phase 120. Earlier 2026-10-14 — Milestone v1.7.5 Safety Release started with Phase 119 as its sole phase (owner decision: 1.7.5 is its own milestone; Reliability follows at Phase 120); requirements XFER-06, DEL-01, IMP-01..03, REL-02, REL-03 mapped. Earlier 2026-10-14 — Owner expanded Phase 119 with scope items 4 (prevent incomplete-file imports) and 5 (recover early per-episode import notices), each with its own plan and tests, after the Obsession and Days of Hope Done-group incidents. 2026-10-09 — Owner approved Phase 119 as the opening phase of the next Reliability milestone; release 1.7.5 before resuming its remaining phases. v1.7.4 remains shipped and archived. Backlog 999.2 and 999.3 are promoted into Phase 119.*
 
 ## Backlog
-
-### Phase 119.1: Startup log secrets fix and 1.7.6 release (INSERTED)
-
-**Goal:** Stop the container from printing configuration secrets to its log at startup, release that as 1.7.6 through the same gates as 1.7.5, and deploy 1.7.6 (not 1.7.5) to the NAS production container — replacing the held 119-11 deploy (owner decision 2026-10-15).
-**Requirements:** SEC-01, REL-03 (NAS-verification portion carried from Phase 119), REL-04
-**Depends on:** Phase 119
-**Scope:**
-
-1. Startup no longer prints `settings.cfg` secrets (seedbox password, Sonarr/Radarr API keys, webhook secret, api_token, any secret-marked config) to the container/stdout log — redacted or omitted, while non-secret startup diagnostics remain useful. Pre-existing since v1.0.0; found during the 1.7.5 smoke. Regression test fails before the fix.
-2. Release 1.7.6 through the 1.7.5 gates: release branch + PR CI green (incl. Docker build, e2e, CodeQL, packaging check), annotated tag, tag CI publishes Docker/GitHub/PyPI, smoke on the exact digest on the NAS scratch setup (incl. confirming the startup log carries no secrets).
-3. Deploy 1.7.6 to the NAS production container by digest (supersedes 119-11): verified backups + loader check, digest pin, successful scan after any startup scanner error, arr reachability with no steady-state holds, wud restored last, rollback runbook to 1.7.4.
-4. After deploy, remind the owner to rotate the seedbox password and both arr API keys (they have been exposed in container logs); old container logs are discarded with the old container.
-
-**Success criteria:**
-
-1. A fresh container start's log contains none of the configured secret values; a regression test fails before the fix and passes after.
-2. 1.7.6 is published to Docker/GitHub/PyPI from green CI and its exact digest passes the smoke list on the NAS, including a no-secrets-in-startup-log check.
-3. Production runs `:1.7.6@<digest>`, the first post-deploy scan succeeds, both arrs are reachable, wud is restored, and the owner is reminded to rotate credentials.
-
-**Plans:** 6/6 plans complete
-
-Plans:
-- [x] 119.1-01-PLAN.md — RED sentinel test + fix setup_default_config.sh (no settings.cfg dump; status line; CI compose mount)
-- [x] 119.1-02-PLAN.md — print_to_log redaction by Config.secret_fields() + startup/reload sentinel guard tests; unreadable settings.cfg (interpolation error) is fatal and value-free, no default reset
-- [x] 119.1-06-PLAN.md — Config.to_str escapes % on write (round-trip, byte-compatible), value-free serialization errors, RED-first reload-persist test, persist/reload/shutdown leak sweep
-- [x] 119.1-03-PLAN.md — 1.7.6 version bumps, CHANGELOG + release notes (D-06 notice, D-11 full 1.7.5 changes), REL-04 evidence, release PR CI green, owner approval (incl. SECURITY.md decision)
-- [x] 119.1-04-PLAN.md — Merge, tag v1.7.6, tag CI publish, PyPI check, digest; NAS scratch smoke incl. count-only no-secrets check with 1.7.5 positive control; seedsyncarr-test count; owner go-ahead
-- [x] 119.1-05-PLAN.md — Deploy :1.7.6@digest to NAS production (backups, loader checks, recreate, scan/arr/no-secrets checks, wud last, rollback runbook), owner confirmation, rotation reminder
 
 ### Phase 999.1: Webhook import evidence — accept a Sonarr/Radarr import whose payload file size equals the remote release size (BACKLOG)
 

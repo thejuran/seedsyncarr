@@ -303,9 +303,13 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Current State
 
-v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seedsyncarr:1.7.4` running on the NAS by digest). Milestone v1.7.5 Safety Release is in progress: Phases 119 and 119.1 complete 2026-10-15: 1.7.5 published (deploy held), then 1.7.6 (startup log secrets fix) published and deployed to NAS production by digest; wud restored. Milestone-end walkthrough, audit and archive pending. Owner decision 2026-10-14: v1.7.5 is its own milestone; the Reliability milestone follows it starting at Phase 120, then Performance and usability. Backlog 999.1 stays deferred and does not substitute for the 1.7.5 import fixes.
+v1.7.5 Safety Release shipped 2026-10-15 (Phases 119, 119.1; tagged `v1.7.5` and `v1.7.6`). `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` runs on NAS production. The milestone-end walkthrough on the live build passed: no secrets in the startup or app logs, dashboard, settings and logs healthy. Audit: tech_debt, accepted. The two Phase 119 UI checks (held-file "Waiting" badge, manual-release confirm box) have not been seen in a browser yet, because no file was held on production. Next: the Reliability milestone at Phase 120 (import/cleanup recovery across scan timing and restarts, shutdown/resource cleanup, bounded scanner-result buffering, memory diagnostics), then Performance and usability. Backlog 999.1 and 999.4 stay deferred.
 
-## Current Milestone: v1.7.5 Safety Release
+## Next Milestone Goals
+
+Reliability (Phase 120+): import/cleanup recovery across scan timing and restarts, shutdown/resource cleanup, bounded scanner-result buffering, and useful memory diagnostics. Carry-forward: confirm the Phase 119 UI hold/release checks in a browser; close the Done-group debug session; the braces dev advisory (999.4).
+
+## Previous Milestone: v1.7.5 Safety Release (Shipped 2026-10-15, tagged v1.7.5 + v1.7.6)
 
 **Goal:** Close the carried-forward safety gaps from v1.7.4 and the two 2026-10 Done-group incidents (an incomplete file imported into the library; early per-episode import notices discarded), and ship 1.7.5 to Docker/GitHub/PyPI with the tested image verified on the NAS.
 
@@ -442,7 +446,10 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 | Reject ambiguous webhook import matches instead of path-mapping (v1.7.4) | Conservative: a basename matching 2+ distinct model paths can never arm auto-delete; full path mapping is a larger change | ✓ Good |
 | LFTP status unavailable = `None`, never `[]` (v1.7.4) | "No jobs" and "couldn't tell" must be distinct so protection survives parse failures; error boundary kept exactly | ✓ Good |
 | Atomic `Persist.to_file` via same-dir temp + `os.replace` (v1.7.4) | A failed save must never destroy the last valid settings/persist; relies on `/config` being a directory mount (documented setup) | ✓ Good |
-| Ship 1.7.4 via Docker/GitHub despite PyPI publish failure (v1.7.4) | Safety fixes reach NAS users promptly; packaging fix deferred to 1.7.5 | — Pending (1.7.5) |
+| Ship 1.7.4 via Docker/GitHub despite PyPI publish failure (v1.7.4) | Safety fixes reach NAS users promptly; packaging fix deferred to 1.7.5 | ✓ Good (PyPI restored in 1.7.5) |
+| Hold the 1.7.5 NAS deploy; ship 1.7.6 with the startup-log secrets fix instead (v1.7.5) | The 1.7.5 smoke test surfaced a pre-existing secrets-in-startup-log leak; deploying a build that prints credentials was not acceptable | ✓ Good |
+| Completion needs arr-queue evidence; holds are visible with a one-shot confirmed manual release (v1.7.5) | Stable size and mtime let an ~800 MB-short file import (Obsession incident); an unavailable arr must hold, never release | ✓ Good (UI visual check pending) |
+| Persist per-episode import credit while siblings transfer (v1.7.5) | Early Sonarr notices were discarded, so folder coverage could never pass (Days of Hope incident); whole-folder delete stays gated | ✓ Good |
 | Use teal (secondary) for all selections | Teal is more distinctive than blue, already used in bulk selection | ✓ Good |
 | Migrate to Bootstrap `btn` classes | Reduces custom CSS, leverages Bootstrap's states | ✓ Good |
 | Keep @import for Bootstrap SCSS | Mixing @use/@import creates namespace conflicts | ✓ Good |
@@ -486,7 +493,7 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 
 ## Project Status
 
-**Status:** v1.7.5 Safety Release in progress (started 2026-10-14). v1.7.4 Safety Patch shipped 2026-10-09 and runs on the NAS at `:1.7.4`.
+**Status:** v1.7.5 Safety Release shipped 2026-10-15; 1.7.6 runs on the NAS. Next: Reliability milestone (Phase 120).
 
 31 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit + v1.2.0 test hardening as SeedSyncarr).
 
@@ -508,4 +515,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-15 after Phase 119.1 completion*
+*Last updated: 2026-10-15 after v1.7.5 milestone*
