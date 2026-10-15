@@ -4,6 +4,7 @@ import {DecimalPipe} from "@angular/common";
 import {FileSizePipe} from "../../common/file-size.pipe";
 import {EtaPipe} from "../../common/eta.pipe";
 import {ViewFile} from "../../services/files/view-file";
+import {Localization} from "../../common/localization";
 import {ClickStopPropagationDirective} from "../../common/click-stop-propagation.directive";
 import {FileSelectionService} from "../../services/files/file-selection.service";
 
@@ -82,14 +83,30 @@ export class TransferRowComponent {
             (this.file.localSize == null || this.file.localSize === 0);
     }
 
+    /**
+     * A DEFAULT file the completion gate is holding back (the Sonarr/Radarr
+     * queue has not proven the download finished). Shown as "Waiting" with
+     * the reason so the user can see why it has not started.
+     */
+    get isHeld(): boolean {
+        return (this.file.status ?? ViewFile.Status.DEFAULT) === ViewFile.Status.DEFAULT &&
+            !!this.file.holdReason;
+    }
+
+    get holdReasonLabel(): string {
+        return this.file.holdReason ? Localization.Hold.label(this.file.holdReason) : "";
+    }
+
     get badgeLabel(): string {
         if (this.isSkippedRemote) { return "Skipped (remote)"; }
+        if (this.isHeld) { return "Waiting"; }
         const status = this.file.status ?? ViewFile.Status.DEFAULT;
         return TransferRowComponent.BADGE_LABELS[status] ?? "\u2014";
     }
 
     get badgeClass(): string {
         if (this.isSkippedRemote) { return "badge bg-warning text-dark"; }
+        if (this.isHeld) { return "badge bg-secondary"; }
         const status = this.file.status ?? ViewFile.Status.DEFAULT;
         return TransferRowComponent.BADGE_CLASSES[status] ?? "badge bg-dark";
     }

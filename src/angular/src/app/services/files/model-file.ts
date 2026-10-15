@@ -16,6 +16,7 @@ export interface ModelFileJson {
     full_path: string;
     is_extractable?: boolean | null;
     import_status?: string | null;
+    hold_reason?: string | null;
     local_created_timestamp?: number | null;
     local_modified_timestamp?: number | null;
     remote_created_timestamp?: number | null;
@@ -38,6 +39,8 @@ interface IModelFile {
     full_path: string;
     is_extractable: boolean;
     import_status: ModelFile.ImportStatus;
+    // Why the completion gate is holding this file back (null when not held)
+    hold_reason: string | null;
     local_created_timestamp: Date | null;
     local_modified_timestamp: Date | null;
     remote_created_timestamp: Date | null;
@@ -57,6 +60,7 @@ const DefaultModelFile: IModelFile = {
     full_path: "",
     is_extractable: false,
     import_status: "none" as ModelFile.ImportStatus,
+    hold_reason: null,
     local_created_timestamp: null,
     local_modified_timestamp: null,
     remote_created_timestamp: null,
@@ -82,6 +86,7 @@ export class ModelFile extends ModelFileRecord implements IModelFile {
     full_path!: string;
     is_extractable!: boolean;
     import_status!: ModelFile.ImportStatus;
+    hold_reason!: string | null;
     local_created_timestamp!: Date;
     local_modified_timestamp!: Date;
     remote_created_timestamp!: Date;
@@ -135,6 +140,7 @@ export namespace ModelFile {
             full_path: json.full_path,
             is_extractable: json.is_extractable != null ? json.is_extractable : false,
             import_status: importStatus,
+            hold_reason: json.hold_reason ?? null,
             local_created_timestamp: localCreatedTimestamp ?? undefined,
             local_modified_timestamp: localModifiedTimestamp ?? undefined,
             remote_created_timestamp: remoteCreatedTimestamp ?? undefined,

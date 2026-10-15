@@ -28,6 +28,8 @@ interface IViewFile {
     remoteCreatedTimestamp: Date | null;
     remoteModifiedTimestamp: Date | null;
     importStatus: ViewFile.ImportStatus | null;
+    // Completion-gate hold reason code (e.g. "still_downloading"), null when not held
+    holdReason: string | null;
 }
 
 // Boiler plate code to set up an immutable class
@@ -52,7 +54,8 @@ const DefaultViewFile: IViewFile = {
     localModifiedTimestamp: null,
     remoteCreatedTimestamp: null,
     remoteModifiedTimestamp: null,
-    importStatus: null
+    importStatus: null,
+    holdReason: null
 };
 const ViewFileRecord = Record(DefaultViewFile);
 
@@ -81,6 +84,7 @@ export class ViewFile extends ViewFileRecord implements IViewFile {
     remoteCreatedTimestamp!: Date | null;
     remoteModifiedTimestamp!: Date | null;
     importStatus!: ViewFile.ImportStatus | null;
+    holdReason!: string | null;
 
     constructor(props: Partial<ViewFile>) {
         super(props);

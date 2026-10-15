@@ -436,7 +436,8 @@ export class ViewFileService implements OnDestroy {
             localModifiedTimestamp: modelFile.local_modified_timestamp,
             remoteCreatedTimestamp: modelFile.remote_created_timestamp,
             remoteModifiedTimestamp: modelFile.remote_modified_timestamp,
-            importStatus: ViewFileService.mapImportStatus(modelFile.import_status)
+            importStatus: ViewFileService.mapImportStatus(modelFile.import_status),
+            holdReason: modelFile.hold_reason ?? null
         });
     }
 
