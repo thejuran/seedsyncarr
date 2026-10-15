@@ -58,10 +58,12 @@ class Context:
         # Print the config (redacting credentials)
         self.logger.debug("Config:")
         config_dict = self.config.as_dict()
+        # Every PROP flagged secret is redacted, plus the hand-kept names above
+        redacted = set(self._REDACTED_KEYS) | {field for (_attr, field, _section) in Config.secret_fields()}
         for section in config_dict.keys():
             for option in config_dict[section].keys():
                 value = config_dict[section][option]
-                if option in self._REDACTED_KEYS:
+                if option in redacted:
                     value = "***REDACTED***" if value else "(empty)"
                 self.logger.debug("  {}.{}: {}".format(section, option, value))
 
