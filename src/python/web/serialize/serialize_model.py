@@ -61,6 +61,7 @@ class SerializeModel(Serialize):
         ModelFile.ImportStatus.NONE: "none",
         ModelFile.ImportStatus.IMPORTED: "imported"
     }
+    __KEY_FILE_HOLD_REASON = "hold_reason"
 
     @staticmethod
     def __model_file_to_json_dict(model_file: ModelFile) -> dict:
@@ -84,6 +85,7 @@ class SerializeModel(Serialize):
         json_dict[SerializeModel.__KEY_FILE_FULL_PATH] = model_file.full_path
         json_dict[SerializeModel.__KEY_FILE_IMPORT_STATUS] = \
             SerializeModel.__VALUES_FILE_IMPORT_STATUS[model_file.import_status]
+        json_dict[SerializeModel.__KEY_FILE_HOLD_REASON] = model_file.hold_reason
         json_dict[SerializeModel.__KEY_FILE_CHILDREN] = list()
         for child in model_file.get_children():
             json_dict[SerializeModel.__KEY_FILE_CHILDREN].append(SerializeModel.__model_file_to_json_dict(child))

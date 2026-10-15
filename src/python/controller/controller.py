@@ -314,6 +314,8 @@ class Controller:
             lftp_manager=self.__lftp_manager,
             file_op_manager=self.__file_op_manager,
             logger=self.logger,
+            completion_gate=self.__completion_gate,
+            on_lifecycle_reset=self._on_root_lifecycle_reset,
         )
 
         self.__started = False
@@ -967,6 +969,18 @@ class Controller:
             )
             return "expired"
         return None
+
+    def _on_root_lifecycle_reset(self, name: str, cause: str) -> None:
+        """Single reset entry point for the per-root caches that must not
+        survive into a new download lifecycle: the completion gate's cached
+        proof (dropped and fenced) and the root's pending import notices.
+
+        Called by ModelPipeline on the same-name re-grab reset and when a root
+        leaves the model. Runs on the controller thread with __model_lock
+        already held, so it must not acquire that lock.
+        """
+        self.__completion_gate.invalidate(name, cause)
+        self._discard_pending_notices(name, cause)
 
     def _discard_pending_notices(self, root_name: str, cause: str) -> int:
         """Drop every pending import notice for root_name and start a new
