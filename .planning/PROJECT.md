@@ -299,10 +299,11 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ LFTP parser never swallows another job's header; unparseable or timed-out status reported as unavailable (never "no jobs") with the error boundary unchanged; transfers submitted but not yet observed stay Queued and protected (incl. same-cycle command guard, Stop reconcile); remote/local stability measured only on successful-scan clocks with the UI "last scan" unchanged (XFER-01..05) — Validated in Phase 117: Transfer-State Safety (v1.7.4)
 - ✓ Settings, controller persist and auto-queue persist written atomically (serialize first, same-dir 0600 temp, fsync, `os.replace` commit point, best-effort logged directory fsync) so a failed save leaves the previous file byte-for-byte intact (PERSIST-01/02); 1.7.4 release gate met — 42 regressions fail-before/pass-after, full suite + whole-tree ruff, digest-pinned smoke test with a real transfer, NAS deployed at `:1.7.4@sha256:682d…` with clean post-deploy scan (REL-01; PyPI publish deferred to 1.7.5 by owner) — Validated in Phase 118: Durable State (v1.7.4)
 - ✓ LFTP status stays unavailable after a timed-out command until the command stream is verifiably resynchronized (XFER-06); pending auto-delete timer defers on a submitted-but-unobserved transfer (DEL-01); incomplete copies never exposed at an importable path, transfers gated on strong-identity arr-queue completion evidence with visible Waiting holds and a one-shot confirmed manual release (IMP-01/02); early per-episode import credit persisted while siblings transfer, whole-folder delete still gated on full coverage (IMP-03); PyPI packaging repaired and 1.7.5 published to Docker/GitHub/PyPI with digest smoke 8/8 (REL-02, REL-03 — NAS production deploy held by owner and carried to Phase 119.1) — Validated in Phase 119: Safety Follow-ups and 1.7.5 Release (v1.7.5)
+- ✓ Container startup no longer prints settings.cfg (one 'Config ready at' line); debug dump redacts every secret_fields() option; an unreadable settings.cfg is fatal and value-free (no reset to defaults, no web server); '%' in a value saves and reloads unchanged with value-free serialization errors — RED-first sentinel tests in CI (SEC-01); 1.7.6 published to Docker/GitHub/PyPI with a security notice and the full 1.7.5 changes, exact-digest NAS smoke incl. count-only no-secrets check with 1.7.5 positive control, and deployed to NAS production at `:1.7.6@sha256:da6196e0…` with verified backups, scan/arr checks and wud restored; owner given the credential-rotation checklist (REL-03 NAS portion, REL-04) — Validated in Phase 119.1: Startup log secrets fix and 1.7.6 release (v1.7.5)
 
 ## Current State
 
-v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seedsyncarr:1.7.4` running on the NAS by digest). Milestone v1.7.5 Safety Release is in progress: Phase 119 complete 2026-10-15 (1.7.5 published to Docker/GitHub/PyPI; production deploy held by owner because config secrets appear in the startup log); inserted Phase 119.1 fixes that, releases 1.7.6 and deploys it to the NAS. Production remains on 1.7.4. Owner decision 2026-10-14: v1.7.5 is its own milestone; the Reliability milestone follows it starting at Phase 120, then Performance and usability. Backlog 999.1 stays deferred and does not substitute for the 1.7.5 import fixes.
+v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seedsyncarr:1.7.4` running on the NAS by digest). Milestone v1.7.5 Safety Release is in progress: Phases 119 and 119.1 complete 2026-10-15: 1.7.5 published (deploy held), then 1.7.6 (startup log secrets fix) published and deployed to NAS production by digest; wud restored. Milestone-end walkthrough, audit and archive pending. Owner decision 2026-10-14: v1.7.5 is its own milestone; the Reliability milestone follows it starting at Phase 120, then Performance and usability. Backlog 999.1 stays deferred and does not substitute for the 1.7.5 import fixes.
 
 ## Current Milestone: v1.7.5 Safety Release
 
@@ -367,8 +368,6 @@ v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seeds
 
 ### Active
 
-- [ ] Startup no longer prints configuration secrets to the container log (SEC-01, Phase 119.1)
-- [ ] 1.7.6 released through the 1.7.5 gates and deployed to NAS production by digest, replacing the held 1.7.5 deploy (REL-03 NAS portion, REL-04, Phase 119.1)
 
 <!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
 
@@ -509,4 +508,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-15 after Phase 119 completion*
+*Last updated: 2026-10-15 after Phase 119.1 completion*
