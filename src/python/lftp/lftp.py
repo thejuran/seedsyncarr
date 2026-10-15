@@ -1,5 +1,6 @@
 import logging
 import re
+import secrets
 from functools import wraps
 from typing import Callable, Union, List, Optional
 
@@ -35,6 +36,11 @@ class Lftp:
     __SET_SFTP_AUTO_CONFIRM = "sftp:auto-confirm"
     __SET_SFTP_CONNECT_PROGRAM = "sftp:connect-program"
 
+    # Short timeout for the resync sentinel, so a still-wedged lftp fails fast
+    # instead of blocking the caller for the full command timeout.
+    RESYNC_TIMEOUT_SECS = 15
+    __SYNC_MARKER_PREFIX = "SEEDSYNCARR-SYNC-"
+
     def __init__(self,
                  address: str,
                  port: int,
@@ -53,6 +59,10 @@ class Lftp:
         # Set when the most recent command's expect timed out, i.e. its output
         # is an incomplete observation. Only status() consults it.
         self.__last_command_timed_out = False
+        # Set False on any expect TIMEOUT: the timed-out command's late output
+        # and prompt may still arrive, so no command output is trusted until
+        # __resync proves a fresh command boundary.
+        self.__synced = True
 
         self.__log_command_output = False
         self.__pending_error = None
@@ -111,16 +121,42 @@ class Lftp:
             self.__pending_error = None
             raise LftpError(error)
 
+    def __resync(self) -> bool:
+        """
+        Prove a fresh command boundary on the pty stream with a nonce sentinel.
+
+        lftp's `echo` removes the quotes around the nonce, while the tty echo of
+        the typed command keeps them, so only lftp's real output can match the
+        unquoted marker. A new nonce per attempt means stale output from an
+        earlier attempt never satisfies a later one.
+        :return: True once synchronized, False if the sentinel did not complete
+        """
+        nonce = secrets.token_hex(8)
+        self.__process.sendline('echo {}"{}"-END'.format(Lftp.__SYNC_MARKER_PREFIX, nonce))
+        marker = re.escape("{}{}-END".format(Lftp.__SYNC_MARKER_PREFIX, nonce)).encode()
+        try:
+            self.__process.expect(marker, timeout=Lftp.RESYNC_TIMEOUT_SECS)
+            self.__process.expect(self.__expect_pattern, timeout=Lftp.RESYNC_TIMEOUT_SECS)
+        except pexpect.exceptions.TIMEOUT:
+            self.logger.warning("Lftp resync attempt timed out; status stays unavailable")
+            return False
+        self.__synced = True
+        self.logger.info("Lftp command stream resynchronized")
+        return True
+
     @with_check_process
     def __run_command(self, command: str):
         if self.__log_command_output:
             self.logger.debug("command: {}".format(command.encode('utf8', 'surrogateescape')))
+        if not self.__synced and not self.__resync():
+            raise LftpError("lftp command stream not synchronized")
         self.__last_command_timed_out = False
         self.__process.sendline(command)
         try:
             self.__process.expect(self.__expect_pattern, timeout=self.__timeout)
         except pexpect.exceptions.TIMEOUT:
             self.__last_command_timed_out = True
+            self.__synced = False
             self.logger.warning("Lftp timeout exception")
         finally:
             before = self.__process.before
@@ -142,6 +178,7 @@ class Lftp:
                 self.__process.expect(self.__expect_pattern, timeout=self.__timeout)
             except pexpect.exceptions.TIMEOUT:
                 self.__last_command_timed_out = True
+                self.__synced = False
                 self.logger.warning("Lftp timeout exception")
             finally:
                 out = self.__process.before.decode('utf8', 'replace')
@@ -314,9 +351,17 @@ class Lftp:
                  MAX_CONSECUTIVE_STATUS_ERRORS consecutive parse failures have
                  occurred, and on every further failure until a successful parse
                  resets the counter. Timeouts neither count toward nor reset
-                 that counter.
+                 that counter. Neither does an unsynchronized command stream
+                 (after a timeout, until a sentinel resync succeeds), which also
+                 returns None.
         """
-        out = self.__run_command("jobs -v")
+        try:
+            out = self.__run_command("jobs -v")
+        except LftpError as e:
+            if "not synchronized" in str(e):
+                self.logger.warning("Lftp status unavailable: command stream not synchronized")
+                return None
+            raise
         if self.__last_command_timed_out:
             self.logger.warning("Lftp status command timed out; status unavailable")
             return None
