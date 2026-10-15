@@ -28,6 +28,11 @@ Requirements for the 1.7.5 safety release. All map to Phase 119.
 - [x] **REL-02**: The 1.7.5 built distributions have valid member paths, pass packaging checks, install successfully in a clean environment, and publish to PyPI. Dependabot #93 is evaluated only as relevant to this packaging repair.
 - [ ] **REL-03**: 1.7.5 ships through the established Docker/GitHub/PyPI process. Each targeted regression fails before its fix and passes after; the full Python suite, whole-tree Ruff, and release CI gates pass. The release image passes smoke checks for startup, a real transfer, import visibility and webhook handling, automatic cleanup, settings persistence, and restart. The tested image is verified on the NAS, including a successful scan after any startup scanner error; any other startup error needs its own resolution before release.
 
+### Startup log hygiene (Phase 119.1)
+
+- [ ] **SEC-01**: The container does not print configuration secrets (seedbox password, Sonarr/Radarr API keys, webhook secret, api_token, any secret-marked setting) to its stdout/container log at startup or on settings reload; non-secret startup diagnostics remain. Regression test fails before the fix.
+- [ ] **REL-04**: 1.7.6 ships through the 1.7.5 gates (release PR CI green, tag publish Docker/GitHub/PyPI, smoke on the exact digest incl. no-secrets-in-log) and is deployed to the NAS production container by digest; the owner is reminded to rotate the seedbox password and both arr API keys.
+
 ## Future Requirements
 
 Deferred to the Reliability milestone (Phase 120+): import/cleanup recovery across scan timing and restarts, shutdown/resource cleanup, bounded scanner-result buffering, useful memory diagnostics.
@@ -52,7 +57,9 @@ Deferred to the Reliability milestone (Phase 120+): import/cleanup recovery acro
 | IMP-02 | Phase 119 | Incomplete-import plan (with IMP-01), own regression tests | Pending |
 | IMP-03 | Phase 119 | Early-episode-credit plan, own regression tests | Pending |
 | REL-02 | Phase 119 | 119-10 | Complete |
-| REL-03 | Phase 119 | — | Pending |
+| REL-03 | Phase 119 (NAS portion → 119.1) | — | Pending |
+| SEC-01 | Phase 119.1 | — | Pending |
+| REL-04 | Phase 119.1 | — | Pending |
 
 **Coverage:**
 - v1.7.5 requirements: 7 total

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.7.5
 milestone_name: Safety Release
 status: executing
-stopped_at: "Completed 119-10-PLAN.md (1.7.5 published + smoked; owner HOLD on prod deploy)"
-last_updated: "2026-10-15T16:08:54.255Z"
-last_activity: 2026-10-15 -- 119-10 complete; owner held 1.7.5 prod deploy
+stopped_at: Completed 119-10-PLAN.md (owner HOLD on 1.7.5 production deploy)
+last_updated: "2026-10-15T16:09:54.951Z"
+last_activity: 2026-10-15 -- 119-10 complete; owner held 1.7.5 prod deploy (secrets in container startup log)
 progress:
-  total_phases: 22
+  total_phases: 23
   completed_phases: 5
   total_plans: 31
   completed_plans: 30
-  percent: 23
+  percent: 22
 ---
 
 # Project State
@@ -37,6 +37,7 @@ Last activity: 2026-10-15 -- 119-10 complete; owner held 1.7.5 prod deploy (secr
 - 2026-10-14: Milestone v1.7.5 Safety Release started (owner decision): 1.7.5 is its own milestone with Phase 119 as sole phase; Reliability becomes the next milestone at Phase 120. Milestone-start phase-dir cleanup skipped by owner (keep 119 and backlog 999.1–999.3; archive completed phases selectively later).
 - 2026-10-14: Expanded Phase 119 (owner-approved) with two Done-group incident fixes, each with separate plans and tests: (4) prevent incomplete-file imports — size/mtime are supporting evidence only, reliable arr-queue release identification, absence from queue is not completion, arr unavailable → visible hold/retry never unsafe copy, unverified copy unavailable for import until checks pass; (5) persist per-episode import credit for complete episodes while siblings transfer, whole-folder delete still gated on completion + full video coverage, restart recovery tested, ambiguous-filename protections retained. Diagnosis: `.planning/debug/done-group-no-auto-delete.md`. 999.1 stays separate.
 - 2026-10-09: Added Phase 119, Safety Follow-ups and 1.7.5 Release, as the opening phase of the next Reliability milestone. Promotes 999.2 and 999.3 and includes the PyPI packaging repair. Release 1.7.5 before executing later reliability phases; no separate patch milestone. Detailed milestone initialization and plans remain pending.
+- Phase 119.1 inserted after Phase 119: Startup log secrets fix and 1.7.6 release; supersedes the held 119-11 1.7.5 deploy (owner decision 2026-10-15) (URGENT)
 
 ### Decisions
 
