@@ -1,8 +1,13 @@
+import logging
 import shlex
+import threading
 import unittest
 from unittest.mock import MagicMock, patch
 
 from controller import FileOperationManager
+from controller.command_processor import CommandProcessor
+from controller.controller import Controller
+from controller.root_reservation import RootReservations
 from controller.delete.delete_process import DeleteRemoteProcess
 from controller.extract import ExtractStatus
 
@@ -355,6 +360,263 @@ class TestFileOperationManager(unittest.TestCase):
 
         # Callback should not be called for active processes
         self.mock_force_local_scan.assert_not_called()
+
+    # --- Root reservation lifetime (DEL-01) --------------------------------
+    # delete_local only STARTS a DeleteLocalProcess and returns at once; the
+    # child deletes for seconds to minutes afterwards. A reservation handed to
+    # delete_local must therefore be held until cleanup_completed_processes
+    # observes the child dead, and never released for a child that has not
+    # been started yet.
+
+    def _make_manager(self):
+        return FileOperationManager(
+            self.mock_context,
+            self.mock_mp_logger,
+            self.mock_force_local_scan,
+            self.mock_force_remote_scan
+        )
+
+    @staticmethod
+    def _named_file(name="f"):
+        mock_file = MagicMock()
+        mock_file.name = name
+        return mock_file
+
+    @patch('controller.file_operation_manager.DeleteLocalProcess')
+    @patch('controller.file_operation_manager.ExtractProcess')
+    def test_delete_local_holds_reservation_until_process_exit(self, mock_extract_class, mock_delete_class):
+        mock_delete = MagicMock()
+        mock_delete.is_alive.return_value = True
+        mock_delete_class.return_value = mock_delete
+        reservations = RootReservations()
+        token = reservations.acquire("f", "delete")
+        try:
+            manager = self._make_manager()
+            self.assertTrue(manager.delete_local(self._named_file(), reservation=token))
+            # delete_local returned, but the child is still deleting
+            self.assertEqual("delete", reservations.holder_of("f"))
+
+            manager.cleanup_completed_processes()
+            self.assertEqual("delete", reservations.holder_of("f"))
+            self.mock_force_local_scan.assert_not_called()
+
+            mock_delete.is_alive.return_value = False
+            manager.cleanup_completed_processes()
+            self.assertIsNone(reservations.holder_of("f"))
+            self.mock_force_local_scan.assert_called_once()
+            mock_delete.propagate_exception.assert_called_once()
+        finally:
+            token.release()
+
+    @patch('controller.file_operation_manager.DeleteLocalProcess')
+    @patch('controller.file_operation_manager.ExtractProcess')
+    def test_delete_local_releases_reservation_on_launch_failure(self, mock_extract_class, mock_delete_class):
+        mock_delete = MagicMock()
+        mock_delete.is_alive.return_value = False
+        mock_delete.start.side_effect = RuntimeError("fork failed")
+        mock_delete_class.return_value = mock_delete
+        reservations = RootReservations()
+        token = reservations.acquire("f", "delete")
+        try:
+            manager = self._make_manager()
+            with self.assertRaises(RuntimeError):
+                manager.delete_local(self._named_file(), reservation=token)
+            self.assertIsNone(reservations.holder_of("f"))
+
+            # The failed wrapper was never tracked: nothing to clean up
+            manager.cleanup_completed_processes()
+            self.mock_force_local_scan.assert_not_called()
+            mock_delete.propagate_exception.assert_not_called()
+        finally:
+            token.release()
+
+    @patch('controller.file_operation_manager.DeleteLocalProcess')
+    @patch('controller.file_operation_manager.ExtractProcess')
+    def test_cleanup_releases_reservation_even_when_propagate_exception_raises(
+            self, mock_extract_class, mock_delete_class):
+        mock_delete = MagicMock()
+        mock_delete.is_alive.return_value = False
+        mock_delete.propagate_exception.side_effect = RuntimeError("child died")
+        mock_delete_class.return_value = mock_delete
+        reservations = RootReservations()
+        token = reservations.acquire("f", "delete")
+        try:
+            manager = self._make_manager()
+            manager.delete_local(self._named_file(), reservation=token)
+            with self.assertRaises(RuntimeError):
+                manager.cleanup_completed_processes()
+            # A crashed child can never pin the root
+            self.assertIsNone(reservations.holder_of("f"))
+        finally:
+            token.release()
+
+    @patch('controller.file_operation_manager.DeleteLocalProcess')
+    @patch('controller.file_operation_manager.ExtractProcess')
+    def test_stop_releases_outstanding_reservations(self, mock_extract_class, mock_delete_class):
+        mock_delete = MagicMock()
+        mock_delete.is_alive.return_value = True
+        mock_delete_class.return_value = mock_delete
+        reservations = RootReservations()
+
+        # Started manager
+        token = reservations.acquire("f", "delete")
+        try:
+            manager = self._make_manager()
+            manager.start()
+            manager.delete_local(self._named_file(), reservation=token)
+            self.assertEqual("delete", reservations.holder_of("f"))
+            manager.stop()
+            self.assertIsNone(reservations.holder_of("f"))
+        finally:
+            token.release()
+
+        # Never-started manager: the sweep runs before the early return
+        token = reservations.acquire("g", "delete")
+        try:
+            manager = self._make_manager()
+            manager.delete_local(self._named_file("g"), reservation=token)
+            self.assertEqual("delete", reservations.holder_of("g"))
+            manager.stop()
+            self.assertIsNone(reservations.holder_of("g"))
+        finally:
+            token.release()
+
+    @patch('controller.file_operation_manager.DeleteLocalProcess')
+    @patch('controller.file_operation_manager.ExtractProcess')
+    def test_delete_local_without_reservation_keeps_legacy_behavior(self, mock_extract_class, mock_delete_class):
+        mock_delete = MagicMock()
+        mock_delete.is_alive.return_value = False
+        mock_delete_class.return_value = mock_delete
+
+        manager = self._make_manager()
+        self.assertTrue(manager.delete_local(self._named_file("test_file")))
+        mock_delete_class.assert_called_once_with(local_path="/local/path", file_name="test_file")
+        mock_delete.start.assert_called_once()
+
+        manager.cleanup_completed_processes()
+        self.mock_force_local_scan.assert_called_once()
+        mock_delete.propagate_exception.assert_called_once()
+
+    @patch('controller.file_operation_manager.DeleteLocalProcess')
+    @patch('controller.file_operation_manager.ExtractProcess')
+    def test_delete_local_and_cleanup_from_two_threads_do_not_lose_wrappers(
+            self, mock_extract_class, mock_delete_class):
+        """The auto-delete Timer thread appends wrappers while the controller
+        thread sweeps them; no wrapper may be lost in between."""
+        mock_delete = MagicMock()
+        mock_delete.is_alive.return_value = False
+        mock_delete_class.return_value = mock_delete
+        manager = self._make_manager()
+        mock_file = self._named_file()
+        errors = []
+
+        def _appender():
+            try:
+                for _ in range(200):
+                    manager.delete_local(mock_file)
+            except Exception as e:  # pragma: no cover - surfaced via errors
+                errors.append(e)
+
+        appender = threading.Thread(target=_appender, daemon=True)
+        appender.start()
+        while appender.is_alive():
+            manager.cleanup_completed_processes()
+        appender.join(timeout=5)
+        self.assertFalse(appender.is_alive())
+        manager.cleanup_completed_processes()
+
+        self.assertEqual([], errors)
+        self.assertEqual(200, self.mock_force_local_scan.call_count)
+
+    @patch('controller.file_operation_manager.DeleteLocalProcess')
+    @patch('controller.file_operation_manager.ExtractProcess')
+    def test_reservation_held_across_register_start_window(self, mock_extract_class, mock_delete_class):
+        """Launch window: a multiprocessing.Process reports is_alive() False
+        until start() has run. A cleanup sweep that runs while the launching
+        thread is inside start() must neither reap the wrapper nor release
+        the reservation, and a USER QUEUE must stay refused."""
+        in_launch = threading.Event()
+        proceed = threading.Event()
+        started = threading.Event()
+        child_alive = [True]
+        proceed_waits = []
+
+        def _start():
+            in_launch.set()
+            proceed_waits.append(proceed.wait(timeout=5))
+            started.set()
+
+        mock_delete = MagicMock()
+        mock_delete.is_alive.side_effect = lambda: started.is_set() and child_alive[0]
+        mock_delete.start.side_effect = _start
+        mock_delete_class.return_value = mock_delete
+
+        manager = self._make_manager()
+        reservations = RootReservations()
+        mock_lftp = MagicMock()
+        mock_lftp.submitted_unobserved_file_names.return_value = []
+        processor = CommandProcessor(
+            lftp_manager=mock_lftp,
+            file_op_manager=manager,
+            persist=MagicMock(),
+            logger=logging.getLogger("test_launch_window"),
+            root_reservations=reservations,
+        )
+        mock_file = self._named_file()
+        mock_file.remote_size = 1234
+        mock_file.is_dir = False
+
+        token = reservations.acquire("f", "delete")
+        results = []
+        launcher = threading.Thread(
+            target=lambda: results.append(manager.delete_local(mock_file, reservation=token)),
+            daemon=True,
+        )
+        try:
+            launcher.start()
+            self.assertTrue(in_launch.wait(timeout=5), "launcher never reached start()")
+
+            # Controller.process() runs a sweep while the child is unstarted
+            manager.cleanup_completed_processes()
+            self.assertEqual("delete", reservations.holder_of("f"))
+            self.mock_force_local_scan.assert_not_called()
+            mock_delete.propagate_exception.assert_not_called()
+
+            ok, msg, code = processor.handle(
+                mock_file, Controller.Command(Controller.Command.Action.QUEUE, "f")
+            )
+            self.assertFalse(ok)
+            self.assertEqual(409, code)
+            self.assertIn("operation in progress", msg)
+            mock_lftp.queue.assert_not_called()
+
+            proceed.set()
+            launcher.join(timeout=5)
+            self.assertFalse(launcher.is_alive())
+            self.assertEqual([True], proceed_waits)
+            self.assertEqual([True], results)
+            self.assertEqual("delete", reservations.holder_of("f"))
+
+            # Started child still running
+            manager.cleanup_completed_processes()
+            self.assertEqual("delete", reservations.holder_of("f"))
+
+            # Child exits -> next sweep releases the root
+            child_alive[0] = False
+            manager.cleanup_completed_processes()
+            self.assertIsNone(reservations.holder_of("f"))
+            self.mock_force_local_scan.assert_called_once()
+            mock_delete.propagate_exception.assert_called_once()
+
+            ok, msg, code = processor.handle(
+                mock_file, Controller.Command(Controller.Command.Action.QUEUE, "f")
+            )
+            self.assertTrue(ok)
+            mock_lftp.queue.assert_called_once_with("f", False)
+        finally:
+            proceed.set()
+            launcher.join(timeout=5)
+            token.release()
 
     @patch('controller.file_operation_manager.ExtractProcess')
     def test_propagate_exception_delegates_to_extract_process(self, mock_extract_class):

@@ -1,3 +1,4 @@
+import threading
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -314,6 +315,47 @@ class TestLftpManager(unittest.TestCase):
         names.append("x.rar")
         names.remove("a.rar")
         self.assertEqual(["a.rar"], manager.submitted_unobserved_file_names())
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_submitted_set_snapshot_is_lock_protected(self, mock_lftp_class):
+        """DEL-01: the auto-delete Timer thread reads the submitted set while
+        the controller thread mutates it, so every access goes through a
+        lock and readers get a fresh snapshot list."""
+        mock_lftp = MagicMock()
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        manager.queue("a", False)
+        self.assertEqual(["a"], manager.submitted_unobserved_file_names())
+
+        lock = getattr(manager, "_LftpManager__submitted_lock", None)
+        self.assertIsNotNone(lock, "submitted set must be guarded by a lock")
+        self.assertIsInstance(lock, type(threading.Lock()))
+        self.assertIsNot(
+            manager.submitted_unobserved_file_names(),
+            manager.submitted_unobserved_file_names()
+        )
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_queue_adds_name_before_lftp_queue_and_discards_on_error(self, mock_lftp_class):
+        """DEL-01: the name is tracked BEFORE lftp gets the job, so the Timer
+        can never observe lftp holding a job the set does not; a rejected
+        QUEUE discards it again and the error propagates."""
+        mock_lftp = MagicMock()
+        mock_lftp_class.return_value = mock_lftp
+        manager = LftpManager(self.mock_context)
+
+        seen_during_queue = []
+        mock_lftp.queue.side_effect = \
+            lambda name, is_dir: seen_during_queue.append(manager.submitted_unobserved_file_names())
+        manager.queue("a", False)
+        self.assertEqual([["a"]], seen_during_queue)
+        self.assertEqual(["a"], manager.submitted_unobserved_file_names())
+
+        mock_lftp.queue.side_effect = LftpError("rejected")
+        with self.assertRaises(LftpError):
+            manager.queue("b", False)
+        self.assertEqual(["a"], manager.submitted_unobserved_file_names())
 
     @patch('controller.lftp_manager.Lftp')
     def test_successful_kill_reconciles_submitted_name(self, mock_lftp_class):
