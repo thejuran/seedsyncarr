@@ -4,6 +4,84 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.5] - 2026-10-15
+
+A safety release. Two incidents in October 2026 drive most of it. In the
+first (Obsession), a download that was still being written on the seedbox was
+copied early: lftp finished against the short remote file, renamed it to its
+final name, and Radarr imported a file about 800 MB short (55,477,377,022 B on
+the seedbox, 54,676,946,944 B imported). In the second (Days of Hope), Sonarr
+reported season-pack episodes as imported about a minute before the pack
+finished transferring; those notices were rejected as "no transfer evidence",
+were never repeated, and auto-delete deferred 24 times and gave up, leaving the
+pack on disk. This release also carries the two safety follow-ups deferred from
+1.7.4 and repairs the PyPI package.
+
+### Changed
+
+- Changed automatic transfers to wait for Sonarr/Radarr to confirm that the
+  seedbox download is complete when either integration is enabled. Before
+  queueing, SeedSyncarr reads each enabled app's download queue (one shared
+  fetch per app per check, with capped backoff while an app is unreachable)
+  and releases a root only when a queue record names it exactly (its
+  `outputPath` basename equals the root name) and every record for that
+  download reports `status` completed with nothing left to download. Size and
+  modification-time stability are supporting evidence only. A root that cannot
+  be proven complete is held and retried indefinitely, never released because
+  time passed. With one app unreachable, the other app can still prove a
+  release it identifies exactly. (IMP-02)
+- Changed held roots to show as **Waiting** in the file list with a reason:
+  "Sonarr unavailable", "Radarr unavailable", "Ambiguous match",
+  "Still downloading" or "No matching queue entry". Holds are logged when they
+  start, when the reason changes and when they clear — not on every retry.
+  (IMP-02)
+- Changed the Queue action for an unverified root to ask
+  "Completion could not be verified. Transfer and release this item anyway?"
+  The confirmation applies to that one transfer attempt only and is never
+  remembered for re-queues. The single-file
+  `POST /server/command/queue/<file>` endpoint now answers `428` for an
+  unverified root unless `release_unverified=true` is passed; completion is
+  re-checked when the queued command actually runs. (IMP-02)
+- Changed every transfer to write under a temporary `<name>.lftp` file until
+  the copy is complete, so an interrupted, retried or restart-recovered copy
+  is never at a path Sonarr/Radarr can import. The "Rename unfinished/
+  downloading files" setting is removed from the Settings page; the
+  `use_temp_file` key is still accepted in `settings.cfg` and ignored. (IMP-01)
+- With both Sonarr and Radarr integrations disabled, SeedSyncarr keeps the
+  pre-1.7.5 stability-based syncing as a compatibility exception. It cannot
+  prove that the seedbox download finished in that mode.
+
+### Fixed
+
+- Fixed the lftp command stream drifting out of step after a command timed
+  out: a late reply from the timed-out command could be read as the answer to
+  the next one. The stream is now resynchronized before it is used again, and
+  a failed resync no longer stops shutdown before child processes are stopped.
+  (XFER-06)
+- Fixed the auto-delete timer being able to fire for a root whose transfer
+  had been submitted to lftp but not yet observed in its status. Deletion and
+  queueing now reserve the root for their whole lifetime — including the
+  deletion subprocess and its launch — so a delete and a queue of the same
+  root can never overlap. A re-queue or lifecycle reset cancels any
+  auto-delete timer armed for the previous attempt. (DEL-01)
+- Fixed season-pack episodes imported while their siblings were still
+  transferring losing their import credit. A Sonarr/Radarr notice for a
+  uniquely identified, fully transferred episode is now credited and saved
+  immediately, survives a restart, and lets cleanup finish once the whole
+  pack is transferred and every required video is imported. Credit alone
+  never authorizes deleting the folder, and the ambiguous-file-name rejection
+  from 1.7.4 still applies. A notice naming the pack folder itself while the
+  pack is still transferring is ignored rather than kept for later. (IMP-03)
+- Fixed the PyPI package: the wheel and sdist now contain only the
+  application modules with correct paths, and CI builds and checks the
+  package on every push before anything is published. (REL-02)
+
+### Security
+
+- Rolled in dependency updates: `cryptography` 50.0.2 and `pytz` 2026.5
+  (shipped), and `source-map-js` 1.2.2 (build-only; GHSA advisory for
+  event-loop denial of service via indexed source-map section offsets).
+
 ## [1.7.4] - 2026-10-09
 
 1.7.3 was never tagged; the staged-extraction and auto-delete re-arm fixes
