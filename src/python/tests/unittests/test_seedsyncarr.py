@@ -852,6 +852,8 @@ class TestSeedsyncarrStartupLogSentinels(_StartupEnvMixin, unittest.TestCase):
             setattr(getattr(config, attr), field, value)
             sentinels[field] = value
         self.assertGreaterEqual(len(sentinels), 5)
+        # One distinct sentinel per discovered secret field (no name collisions)
+        self.assertEqual(len(Config.secret_fields()), len(sentinels))
         return config, sentinels
 
     @staticmethod
