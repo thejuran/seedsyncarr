@@ -262,6 +262,12 @@ class Controller:
         # Consecutive deferrals per root (see __defer_auto_delete); guarded by
         # __auto_delete_lock like the Timer dict it shadows.
         self.__auto_delete_rearms: Dict[str, int] = {}
+        # Per-root auto-delete epoch, guarded by __auto_delete_lock. Every
+        # Timer is stamped with the epoch current when it was armed; a USER
+        # requeue or a lifecycle reset bumps it (see _cancel_auto_delete), so
+        # a Timer from the previous lifecycle that is already running can
+        # neither delete nor re-arm itself.
+        self.__auto_delete_epochs: Dict[str, int] = collections.defaultdict(int)
         self.__auto_delete_lock = threading.Lock()
         # BUG-03 criterion #2: dedicated shutdown signal for the auto-delete path.
         # exit() sets this UNDER __auto_delete_lock (same lock window as the
@@ -988,6 +994,38 @@ class Controller:
         """
         self.__completion_gate.invalidate(name, cause)
         self._discard_pending_notices(name, cause)
+        self._cancel_auto_delete(name, cause)
+
+    def _cancel_auto_delete(self, root_name: str, cause: str) -> None:
+        """Cancel root_name's pending auto-delete and forget its deferrals.
+
+        Called on a USER requeue and on a root lifecycle reset: a Timer armed
+        for the previous lifecycle must never fire against the new copy (it
+        would see no per-child tracking and grandfather the root as fully
+        imported). Bumping the epoch also neutralizes a Timer that has
+        already started running. Takes only __auto_delete_lock, so it is safe
+        under __model_lock (lock order __model_lock -> __auto_delete_lock).
+        """
+        with self.__auto_delete_lock:
+            self.__auto_delete_epochs[root_name] += 1
+            timer = self.__pending_auto_deletes.pop(root_name, None)
+            if timer is not None:
+                timer.cancel()
+            self.__auto_delete_rearms.pop(root_name, None)
+        if timer is not None:
+            self.logger.info(
+                "Cancelled pending auto-delete of '{}': {}".format(
+                    sanitize_log_value(root_name), cause
+                )
+            )
+
+    def __auto_delete_stale(self, file_name: str, epoch: Optional[int]) -> bool:
+        """True if a Timer stamped with epoch belongs to a cancelled lifecycle.
+
+        Caller MUST hold __auto_delete_lock. epoch None (a direct call, not a
+        Timer firing) is never stale.
+        """
+        return epoch is not None and epoch != self.__auto_delete_epochs[file_name]
 
     def _discard_pending_notices(self, root_name: str, cause: str) -> int:
         """Drop every pending import notice for root_name and start a new
@@ -1041,13 +1079,14 @@ class Controller:
             del self.__pending_auto_deletes[file_name]
 
         delay = self.__context.config.autodelete.delay_seconds
-        timer = threading.Timer(delay, self.__execute_auto_delete, args=[file_name])
+        timer = threading.Timer(delay, self.__execute_auto_delete,
+                                args=[file_name, self.__auto_delete_epochs[file_name]])
         timer.daemon = True  # Don't prevent process exit
         self.__pending_auto_deletes[file_name] = timer
         timer.start()
         return delay
 
-    def __defer_auto_delete(self, file_name: str, reason: str):
+    def __defer_auto_delete(self, file_name: str, reason: str, epoch: Optional[int] = None):
         """Re-arm the auto-delete Timer after a retriable skip.
 
         Bounded by _AUTO_DELETE_MAX_REARMS consecutive deferrals per root; on
@@ -1060,6 +1099,8 @@ class Controller:
         with self.__auto_delete_lock:
             if self.__shutdown_event.is_set():
                 return
+            if self.__auto_delete_stale(file_name, epoch):
+                return  # lifecycle cancelled while this Timer ran: never re-arm
             attempt = self.__auto_delete_rearms.get(file_name, 0) + 1
             if attempt > _AUTO_DELETE_MAX_REARMS:
                 self.__auto_delete_rearms.pop(file_name, None)
@@ -1096,7 +1137,7 @@ class Controller:
         with self.__auto_delete_lock:
             self.__auto_delete_rearms.pop(file_name, None)
 
-    def __execute_auto_delete(self, file_name: str):
+    def __execute_auto_delete(self, file_name: str, epoch: Optional[int] = None):
         """Execute auto-delete of local file (called by Timer after delay).
 
         Thread safety: the model.get_file() call is protected by __model_lock.
@@ -1113,12 +1154,18 @@ class Controller:
         (feature disabled, dry-run, file gone from the model, no download
         evidence, BFS node limit, duplicate video basenames) never re-arm and
         clear the deferral counter.
+
+        epoch is the root's auto-delete epoch when the Timer was armed; a
+        Timer whose lifecycle was cancelled (_cancel_auto_delete) is a no-op.
         """
         # Remove from tracking dict; entry guard for shutdown (BUG-03 criterion #2).
         # Checking __shutdown_event inside __auto_delete_lock is the fast-path:
         # if exit() has already set the event under the same lock, we can return
         # immediately without doing any model read — the callback is a no-op.
         with self.__auto_delete_lock:
+            if self.__auto_delete_stale(file_name, epoch):
+                # Cancelled lifecycle: leave any newer Timer and counter alone.
+                return
             self.__pending_auto_deletes.pop(file_name, None)
             if self.__shutdown_event.is_set():
                 return
@@ -1148,7 +1195,7 @@ class Controller:
         # by the re-arm budget).
         reservation = self.__root_reservations.acquire(file_name, "auto-delete")
         if reservation is None:
-            self.__defer_auto_delete(file_name, "root operation in progress")
+            self.__defer_auto_delete(file_name, "root operation in progress", epoch)
             return
         # Set once the reservation is handed to delete_local, which then owns
         # it until the deletion child exits. Every other path releases it in
@@ -1256,6 +1303,10 @@ class Controller:
                     with self.__auto_delete_lock:
                         if self.__shutdown_event.is_set():
                             return  # no pop, no dispatch (D-02: shutdown has committed)
+                        if self.__auto_delete_stale(file_name, epoch):
+                            # USER requeue / lifecycle reset since this Timer
+                            # was armed: the copy belongs to a new lifecycle.
+                            return
                         # WR-02: clear the per-child entry before dispatching delete_local.
                         self.__persist.imported_children.pop(file_name, None)
                         # Success: forget any deferrals from earlier firings.
@@ -1264,7 +1315,7 @@ class Controller:
             if defer_reason is not None:
                 # Retriable skip: re-arm OUTSIDE __model_lock (Timer operations only,
                 # same pattern as the webhook path) so a later firing can retry.
-                self.__defer_auto_delete(file_name, defer_reason)
+                self.__defer_auto_delete(file_name, defer_reason, epoch)
                 return
 
             # delete_local is safe outside lock -- it spawns a subprocess; holding
@@ -1318,6 +1369,9 @@ class Controller:
             if command.action == Controller.Command.Action.QUEUE and \
                     (getattr(command, "origin", None) is None or command.origin.name != 'AUTO'):
                 self._discard_pending_notices(command.filename, "user requeue")
+                # The previous lifecycle's auto-delete Timer must not fire
+                # against the re-queued copy (its tracking was just cleared).
+                self._cancel_auto_delete(command.filename, "user requeue")
 
             # If we get here, it was a success
             for callback in command.callbacks:

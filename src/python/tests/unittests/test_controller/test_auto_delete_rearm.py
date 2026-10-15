@@ -637,3 +637,62 @@ class TestAutoDeleteRootReservation(BaseAutoDeleteRearmTestCase):
         self.assertEqual("auto-delete", reservations.holder_of(INCIDENT_ROOT))
         captured[0].release()
         self.assertIsNone(reservations.holder_of(INCIDENT_ROOT))
+
+
+class TestAutoDeleteCancelledOnLifecycleReset(BaseAutoDeleteRearmTestCase):
+    """A USER requeue or a root lifecycle reset clears the root's tracking;
+    the previous lifecycle's auto-delete Timer must not survive it, or it
+    could fire after the re-queued copy commits, see no per-child tracking,
+    grandfather the pack as fully imported and delete it before import."""
+
+    def _arm_deferred(self):
+        """Arm a Timer through a retriable deferral (non-zero re-arm counter)."""
+        self._make_controller_started()
+        self._set_model_file(self._make_file(state=ModelFile.State.DOWNLOADING, is_dir=True))
+        self._fire(INCIDENT_ROOT)
+        self.assertIn(INCIDENT_ROOT, self._pending())
+        self.assertEqual(1, self._rearms()[INCIDENT_ROOT])
+        return self._pending()[INCIDENT_ROOT]
+
+    def test_lifecycle_reset_cancels_timer_and_clears_rearms(self):
+        timer = self._arm_deferred()
+        self.controller._on_root_lifecycle_reset(INCIDENT_ROOT, "re-grab")
+        timer.join(timeout=2)
+        self.assertFalse(timer.is_alive())
+        self.assertNotIn(INCIDENT_ROOT, self._pending())
+        self.assertNotIn(INCIDENT_ROOT, self._rearms())
+        self.assertTrue([m for m in self._info_messages() if "Cancelled pending auto-delete" in m])
+
+    def test_user_requeue_cancels_timer_and_clears_rearms(self):
+        timer = self._arm_deferred()
+        self.controller.queue_command(Controller.Command(Controller.Command.Action.QUEUE, INCIDENT_ROOT))
+        self.controller.process()
+        timer.join(timeout=2)
+        self.assertFalse(timer.is_alive())
+        self.assertNotIn(INCIDENT_ROOT, self._pending())
+        self.assertNotIn(INCIDENT_ROOT, self._rearms())
+
+    def test_timer_already_running_from_cancelled_lifecycle_neither_deletes_nor_rearms(self):
+        self._arm_deferred()
+        stale_epoch = self.controller._Controller__auto_delete_epochs[INCIDENT_ROOT]
+        self.controller._on_root_lifecycle_reset(INCIDENT_ROOT, "user requeue")
+
+        # Deletable state: a stale firing must not delete.
+        self._set_model_file(self._make_file(state=ModelFile.State.DOWNLOADED))
+        self.controller._Controller__execute_auto_delete(INCIDENT_ROOT, stale_epoch)
+        self.mock_file_op_manager.delete_local.assert_not_called()
+
+        # Retriable state: a stale firing must not re-arm itself either.
+        self._set_model_file(self._make_file(state=ModelFile.State.DOWNLOADING, is_dir=True))
+        self.controller._Controller__execute_auto_delete(INCIDENT_ROOT, stale_epoch)
+        self.assertNotIn(INCIDENT_ROOT, self._pending())
+        self.assertNotIn(INCIDENT_ROOT, self._rearms())
+
+    def test_new_lifecycle_timer_still_deletes(self):
+        self._arm_deferred()
+        self.controller._on_root_lifecycle_reset(INCIDENT_ROOT, "re-grab")
+        current = self.controller._Controller__auto_delete_epochs[INCIDENT_ROOT]
+        mock_file = self._make_file(state=ModelFile.State.DOWNLOADED)
+        self._set_model_file(mock_file)
+        self.controller._Controller__execute_auto_delete(INCIDENT_ROOT, current)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)

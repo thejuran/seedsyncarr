@@ -609,13 +609,14 @@ class TestAutoDeleteToggleDuringTimer(TestAutoDeleteExecution):
         # Step 4: Build the Event-gated wrapper.
         callback_may_proceed = threading.Event()
 
-        def gated_execute(file_name):
+        def gated_execute(file_name, *args):
+            # *args forwards the Timer's lifecycle epoch to the real callback.
             gate_opened = callback_may_proceed.wait(timeout=5)
             if not gate_opened:
                 # Gate timed out — fail closed: do NOT call real_execute.
                 self._gate_timed_out = True
                 return
-            real_execute(file_name)
+            real_execute(file_name, *args)
 
         # Install BEFORE scheduling so the Timer captures gated_execute as its callback.
         self.controller._Controller__execute_auto_delete = gated_execute
