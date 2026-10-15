@@ -4,6 +4,54 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.6] - 2026-10-15
+
+A security release. Every container start printed the whole settings file,
+secrets included, to the container log. This release stops that and closes
+two related paths that could write credentials to the application log. There
+are no transfer, import or UI changes over 1.7.5.
+
+### Security
+
+- Versions 1.0.0 through 1.7.5 printed the full `settings.cfg` to the
+  container log (`docker logs`) on every start. That includes the seedbox
+  password, the Sonarr and Radarr API keys, the webhook secret and the API
+  token, readable as plain text unless settings encryption was turned on.
+  1.7.6 prints a single "Config ready" status line and nothing from the file.
+  In addition, configuration-error tracebacks (for example a password
+  containing a `%` sign) could expose credentials in the application log
+  files under `/config/log`. Users should rotate those credentials, recreate
+  the container (the old container's log is kept until the container is
+  removed), delete or review the application log files under `/config/log`,
+  and review any forwarded or backed-up copies of container or application
+  logs. (SEC-01)
+
+### Changed
+
+- Changed container startup to print
+  `Config ready at /config/settings.cfg (existing config kept)` (or
+  `default config generated` on first run) instead of the contents of the
+  settings file. (SEC-01)
+- Changed debug-level config logging to redact every setting marked secret,
+  found from the setting declarations (`Config.secret_fields()`) rather than
+  a hand-kept list, so a future secret setting is redacted automatically.
+  (SEC-01)
+- Changed an unreadable `settings.cfg` (for example a hand-edited value with
+  a stray `%`) to stop the app with a one-line `Fatal:` message that names
+  the setting but not its value, and to leave the file unchanged. Before, the
+  error could print the value, and the app replaced the file with defaults
+  (which have no API token) and started anyway. (SEC-01)
+- The Python test container now sees the image scripts, so the startup-output
+  regression test runs in CI. (SEC-01)
+
+### Fixed
+
+- Fixed saving a setting whose value contains `%` (for example a password
+  typed in Settings): the save failed with an error that included the value,
+  which was then written to the log, and the restart after a settings change
+  stopped. Values with `%` are now saved and read back unchanged, and any
+  remaining save error names the setting only. (SEC-01)
+
 ## [1.7.5] - 2026-10-15
 
 A safety release. Two incidents in October 2026 drive most of it. In the
