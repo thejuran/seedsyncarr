@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.7.5
 milestone_name: Safety Release
 status: executing
-stopped_at: Completed 119-09-PLAN.md
-last_updated: "2026-10-15T11:32:30.358Z"
-last_activity: 2026-10-15 -- Phase 119 execution started
+stopped_at: "Completed 119.1-03-PLAN.md (owner: \"Approve + fix SECURITY.md\")"
+last_updated: "2026-10-15T21:29:14.935Z"
+last_activity: 2026-10-15 -- 119.1-03 complete, owner approved 1.7.6 publish
 progress:
-  total_phases: 22
-  completed_phases: 5
-  total_plans: 31
-  completed_plans: 29
-  percent: 23
+  total_phases: 23
+  completed_phases: 6
+  total_plans: 37
+  completed_plans: 35
+  percent: 26
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-09)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 119 — Safety Follow-ups and 1.7.5 Release
+**Current focus:** Phase 119.1 — startup-log-secrets-fix-and-1-7-6-release
 
 ## Current Position
 
-Phase: 119 (Safety Follow-ups and 1.7.5 Release) — EXECUTING
-Plan: 10 of 12 (119-09 complete; next 119-10 tag, merge, publish, NAS deploy)
-Status: Executing Phase 119
-Last activity: 2026-10-15 -- Phase 119 execution started
+Phase: 119.1 (startup-log-secrets-fix-and-1-7-6-release) — EXECUTING
+Plan: 5 of 6 (next: 119.1-04; done: 01, 02, 06, 03)
+Status: Executing Phase 119.1
+Last activity: 2026-10-15 -- 119.1-03 complete, owner approved 1.7.6 publish
 
 ## Accumulated Context
 
@@ -37,6 +37,7 @@ Last activity: 2026-10-15 -- Phase 119 execution started
 - 2026-10-14: Milestone v1.7.5 Safety Release started (owner decision): 1.7.5 is its own milestone with Phase 119 as sole phase; Reliability becomes the next milestone at Phase 120. Milestone-start phase-dir cleanup skipped by owner (keep 119 and backlog 999.1–999.3; archive completed phases selectively later).
 - 2026-10-14: Expanded Phase 119 (owner-approved) with two Done-group incident fixes, each with separate plans and tests: (4) prevent incomplete-file imports — size/mtime are supporting evidence only, reliable arr-queue release identification, absence from queue is not completion, arr unavailable → visible hold/retry never unsafe copy, unverified copy unavailable for import until checks pass; (5) persist per-episode import credit for complete episodes while siblings transfer, whole-folder delete still gated on completion + full video coverage, restart recovery tested, ambiguous-filename protections retained. Diagnosis: `.planning/debug/done-group-no-auto-delete.md`. 999.1 stays separate.
 - 2026-10-09: Added Phase 119, Safety Follow-ups and 1.7.5 Release, as the opening phase of the next Reliability milestone. Promotes 999.2 and 999.3 and includes the PyPI packaging repair. Release 1.7.5 before executing later reliability phases; no separate patch milestone. Detailed milestone initialization and plans remain pending.
+- Phase 119.1 inserted after Phase 119: Startup log secrets fix and 1.7.6 release; supersedes the held 119-11 1.7.5 deploy (owner decision 2026-10-15) (URGENT)
 
 ### Decisions
 
@@ -61,6 +62,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 118]: 118-04: Tag CI PyPI publish failed (./-prefixed archive paths, nothing uploaded); owner chose ship 1.7.4 via Docker/GitHub only, PyPI fix + Dependabot #93 in 1.7.5; tag not moved
 - [Phase 118]: 118-05: owner go-ahead 'deploy keep pin'; NAS on :1.7.4@sha256:682d129d with compose digest pin kept and wud.tag.include semver filter; backup checker runs with --user 1026:100
 - [Phase 119]: 1.7.5 approved as drafted by owner 2026-10-15; CI green on PR #127 head cbd99dc; tag/merge/publish in 119-10
+- [Phase 119]: 119-10 owner HOLD on 1.7.5 prod deploy (container log prints settings.cfg secrets, pre-existing since v1.0.0); ship 1.7.6 fix first in Phase 119.1, deploy 1.7.6, then rotate seedbox password and arr keys; prod stays :1.7.4, wud stopped; 1.7.5 stays published; 119-11 superseded; REL-03 open
+- [Phase 119.1]: 119.1-03: 1.7.6 metadata/notes on release/1.7.6, PR #129 CI + CodeQL green on 03dcee6; paused at owner approval (SECURITY.md item, % rollback caveat); nothing merged or tagged
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -130,9 +133,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-10-15T11:32:25.853Z
-Stopped at: Completed 119-09-PLAN.md (owner approved 1.7.5 as drafted; CI green on PR #127)
-Next action: Discuss and plan Phase 119 (milestone orchestrator), then execute, verify and release 1.7.5.
+Last session: 2026-10-15T21:29:02.130Z
+Stopped at: Completed 119.1-03-PLAN.md (owner: "Approve + fix SECURITY.md")
+Next action: Execute 119.1-04 — Task 1 applies the one-line SECURITY.md encryption fix on release/1.7.6, push, CI re-check on final head, then merge PR #129 and tag v1.7.6. 119.1-05 rollback runbook must carry the % caution. Production stays :1.7.4, wud stopped until the 1.7.6 deploy is verified.
 
 ## Operator Next Steps
 

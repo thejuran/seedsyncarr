@@ -298,10 +298,11 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Ambiguous webhook import matches rejected (no credit/badge/auto-delete) and delete-time duplicate-video-basename guard that legacy coverage records cannot bypass; unique matches unchanged (IMPORT-01/02) — Validated in Phase 116: Import Safety (v1.7.4)
 - ✓ LFTP parser never swallows another job's header; unparseable or timed-out status reported as unavailable (never "no jobs") with the error boundary unchanged; transfers submitted but not yet observed stay Queued and protected (incl. same-cycle command guard, Stop reconcile); remote/local stability measured only on successful-scan clocks with the UI "last scan" unchanged (XFER-01..05) — Validated in Phase 117: Transfer-State Safety (v1.7.4)
 - ✓ Settings, controller persist and auto-queue persist written atomically (serialize first, same-dir 0600 temp, fsync, `os.replace` commit point, best-effort logged directory fsync) so a failed save leaves the previous file byte-for-byte intact (PERSIST-01/02); 1.7.4 release gate met — 42 regressions fail-before/pass-after, full suite + whole-tree ruff, digest-pinned smoke test with a real transfer, NAS deployed at `:1.7.4@sha256:682d…` with clean post-deploy scan (REL-01; PyPI publish deferred to 1.7.5 by owner) — Validated in Phase 118: Durable State (v1.7.4)
+- ✓ LFTP status stays unavailable after a timed-out command until the command stream is verifiably resynchronized (XFER-06); pending auto-delete timer defers on a submitted-but-unobserved transfer (DEL-01); incomplete copies never exposed at an importable path, transfers gated on strong-identity arr-queue completion evidence with visible Waiting holds and a one-shot confirmed manual release (IMP-01/02); early per-episode import credit persisted while siblings transfer, whole-folder delete still gated on full coverage (IMP-03); PyPI packaging repaired and 1.7.5 published to Docker/GitHub/PyPI with digest smoke 8/8 (REL-02, REL-03 — NAS production deploy held by owner and carried to Phase 119.1) — Validated in Phase 119: Safety Follow-ups and 1.7.5 Release (v1.7.5)
 
 ## Current State
 
-v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seedsyncarr:1.7.4` running on the NAS by digest). Milestone v1.7.5 Safety Release is in progress (single Phase 119). Owner decision 2026-10-14: v1.7.5 is its own milestone; the Reliability milestone follows it starting at Phase 120, then Performance and usability. Backlog 999.1 stays deferred and does not substitute for the 1.7.5 import fixes.
+v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seedsyncarr:1.7.4` running on the NAS by digest). Milestone v1.7.5 Safety Release is in progress: Phase 119 complete 2026-10-15 (1.7.5 published to Docker/GitHub/PyPI; production deploy held by owner because config secrets appear in the startup log); inserted Phase 119.1 fixes that, releases 1.7.6 and deploys it to the NAS. Production remains on 1.7.4. Owner decision 2026-10-14: v1.7.5 is its own milestone; the Reliability milestone follows it starting at Phase 120, then Performance and usability. Backlog 999.1 stays deferred and does not substitute for the 1.7.5 import fixes.
 
 ## Current Milestone: v1.7.5 Safety Release
 
@@ -366,11 +367,8 @@ v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seeds
 
 ### Active
 
-- [ ] LFTP status cannot be trusted as "no jobs" after a timed-out command until the command stream is verifiably resynchronized (Phase 119)
-- [ ] A pending auto-delete timer cannot delete a submitted-but-unobserved transfer (Phase 119)
-- [ ] 1.7.5 publishes to PyPI from a valid, verified distribution (Phase 119)
-- [ ] Sonarr/Radarr cannot import an incomplete copy of a seedbox file (Phase 119)
-- [ ] Import notices for fully transferred episodes are credited while siblings still transfer, survive restart, and let auto-delete complete (Phase 119)
+- [ ] Startup no longer prints configuration secrets to the container log (SEC-01, Phase 119.1)
+- [ ] 1.7.6 released through the 1.7.5 gates and deployed to NAS production by digest, replacing the held 1.7.5 deploy (REL-03 NAS portion, REL-04, Phase 119.1)
 
 <!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
 
@@ -511,4 +509,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-14 after starting milestone v1.7.5*
+*Last updated: 2026-10-15 after Phase 119 completion*

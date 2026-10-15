@@ -11,3 +11,7 @@ services:
         source: ../../../python
         target: /src
         read_only: true
+      - type: bind
+        source: ../../build/docker-image
+        target: /docker/build/docker-image
+        read_only: true

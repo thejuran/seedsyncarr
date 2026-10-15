@@ -34,6 +34,28 @@ class ConfigError(AppError):
     """
     pass
 
+class ConfigUnreadableError(AppError):
+    """
+    Exception indicating the config file could not be read at all.
+
+    Fatal: the caller must stop rather than back up the file and fall back to
+    defaults, because defaults carry an empty api_token. Deliberately NOT a
+    ConfigError/PersistError subclass so that reset path never catches it.
+    The message names section.option and the parser error class only, never
+    the value.
+    """
+    pass
+
+class ConfigSerializationError(AppError):
+    """
+    Exception indicating the config could not be serialized for writing.
+
+    Raised before anything is written to disk, so the existing file is left
+    unchanged. The message names section.option and the error class only,
+    never the value.
+    """
+    pass
+
 InnerConfigType = Dict[str, str]
 OuterConfigType = Dict[str, InnerConfigType]
 
@@ -434,7 +456,13 @@ class Config(Persist):
         for section in config_parser.sections():
             config_dict[section] = {}
             for option in config_parser.options(section):
-                config_dict[section][option] = config_parser.get(section, option)
+                try:
+                    config_dict[section][option] = config_parser.get(section, option)
+                except configparser.Error as e:
+                    # Interpolation errors embed the raw value (which may be a
+                    # secret) in their message; report the location and class only.
+                    raise ConfigUnreadableError("Bad config: {}.{} could not be read ({})".format(
+                        section, option, type(e).__name__)) from None
 
         # ── Decrypt hook (SEC-02 criterion #2) ───────���────────────────────────
         # Resolve encryption flag BEFORE from_dict so plaintext values reach the
@@ -518,13 +546,23 @@ class Config(Persist):
                         config_dict[ini_section][field_name] = encrypt_field(fernet_key, str(value))
         # ────────────────────────��────────────────────────────���────────────────
 
-        for section in config_dict:
-            config_parser.add_section(section)
-            section_dict = config_dict[section]
-            for key in section_dict:
-                config_parser.set(section, key, str(section_dict[key]))
+        # Every '%' is written as '%%' (the BasicInterpolation escape), so
+        # from_str reads each value back unchanged. Values without '%' are
+        # written exactly as before.
+        section, key = "?", "?"
         str_io = StringIO()
-        config_parser.write(str_io)
+        try:
+            for section in config_dict:
+                config_parser.add_section(section)
+                section_dict = config_dict[section]
+                for key in section_dict:
+                    config_parser.set(section, key, str(section_dict[key]).replace("%", "%%"))
+            config_parser.write(str_io)
+        except (ValueError, configparser.Error) as e:
+            # These errors embed the raw value (which may be a secret) in
+            # their message; report the location and class only.
+            raise ConfigSerializationError("Bad config: {}.{} could not be written ({})".format(
+                section, key, type(e).__name__)) from None
         return str_io.getvalue()
 
     @staticmethod
