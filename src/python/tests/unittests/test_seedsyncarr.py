@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import common
-from common import AppError, Config, Constants, ServiceRestart
+from common import AppError, Config, Constants, ServiceExit, ServiceRestart
 from common.encryption import is_ciphertext
 from seedsyncarr import Seedsyncarr, main
 
@@ -988,3 +988,71 @@ class TestSeedsyncarrUnreadableConfigIsFatal(_StartupEnvMixin, unittest.TestCase
         self.assertTrue(written.get("bytes") == self._read(), "settings.cfg was modified")
         self.assertEqual([], self._bak_files())
         self._assert_unreadable_on_disk()
+
+
+class TestSeedsyncarrReloadPersistPercentSecret(_StartupEnvMixin, unittest.TestCase):
+    """A secret containing '%' set through the config API must survive the UI
+    restart path: run() persists it ("Last persist"), main() rebuilds the app
+    from the file, and the reloaded value is unchanged. No step may print the
+    value to stdout, stderr or the plain-file app log. Failure messages name
+    fields and exception classes only, never the value."""
+
+    def test_reload_persists_percent_secret_without_leak(self):
+        token = uuid.uuid4().hex
+        sentinel = "SENT%INEL-" + token
+        log_dir = os.path.join(self.temp_dir, "log")
+
+        config = Seedsyncarr._create_default_config()
+        config.general.debug = True
+        config.general.api_token = "token-" + uuid.uuid4().hex
+        config.general.webhook_secret = "webhook-" + uuid.uuid4().hex
+        config.lftp.local_path = self.temp_dir
+        config.to_file(self.settings_path)
+
+        recorded = {}
+
+        def ui_restart_then_exit(app, *_args, **_kwargs):
+            if "first" not in recorded:
+                recorded["first"] = True
+                # What the config-set handler does: store the raw string
+                app.context.config.lftp.remote_password = sentinel
+                # run()'s "Last persist" before re-raising ServiceRestart
+                app.persist()
+                raise ServiceRestart()
+            recorded["reloaded"] = app.context.config.lftp.remote_password
+            raise ServiceExit()
+
+        argv = ["seedsyncarr", "-c", self.temp_dir, "--html", self.temp_dir,
+                "--scanfs", self.temp_dir, "--logdir", log_dir]
+        out, err = io.StringIO(), io.StringIO()
+        raised = None
+        with patch.object(sys, "argv", argv), \
+                patch.object(Seedsyncarr, "run", autospec=True, side_effect=ui_restart_then_exit) as run_mock, \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            try:
+                main()
+            except BaseException as e:
+                raised = e
+
+        text = out.getvalue() + err.getvalue()
+        if raised is not None:
+            text += "".join(traceback.format_exception(raised))
+        log_text = ""
+        for root, _dirs, files in os.walk(log_dir):
+            for name in files:
+                with open(os.path.join(root, name), "r", errors="replace") as f:
+                    log_text += f.read()
+
+        self.assertFalse(token in text, "remote_password appeared in stdout/stderr/traceback")
+        self.assertFalse(token in log_text, "remote_password appeared in the app log")
+        self.assertFalse(sentinel in text or sentinel in log_text, "remote_password appeared in output")
+        self.assertTrue(raised is None,
+                        "main() raised {}".format(type(raised).__name__ if raised else None))
+        self.assertEqual(2, run_mock.call_count)
+        self.assertTrue(recorded.get("reloaded") == sentinel, "reloaded remote_password differs from the saved value")
+        with open(self.settings_path, "r") as f:
+            lines = f.read().splitlines()
+        self.assertTrue("remote_password = SENT%%INEL-" + token in lines,
+                        "settings.cfg does not hold the escaped remote_password")
+        # The app log was actually written, so the negative check is not vacuous
+        self.assertIn("Exited successfully", log_text)
