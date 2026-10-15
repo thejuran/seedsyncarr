@@ -351,6 +351,26 @@ class TestEarlyCreditGuards(BaseImportCreditTestCase):
             self.controller.process()
             self.assertIsNone(self._credited())
 
+    def test_root_level_notice_while_pack_transferring_is_dropped(self):
+        """A root-level notice (releaseTitle fallback) for a pack that is still
+        transferring carries no per-child information. Kept and replayed at
+        commit it would mark the pack imported with no imported_children
+        entry, so the coverage guard would grandfather the whole pack for
+        deletion before the remaining episodes are imported."""
+        self._put(_transferring_pack(done=(1, 2, 3)))
+        self.wm.enqueue_import("Sonarr", ROOT)
+        self.controller.process()
+
+        self.assertEqual({}, self._pending_notices())
+        self.assertTrue([w for w in self._messages("warning") if "no transfer evidence" in w])
+
+        self._commit_root()
+        self.controller.process()
+
+        self.assertNotIn(ROOT, self.persist.imported_file_names)
+        self.assertNotIn(ROOT, self.persist.imported_children)
+        self.assertEqual({}, self._pending_timers())
+
 
 class TestPendingNoticeLifecycle(BaseImportCreditTestCase):
     """A pending notice is bound to the resolved model path and to the root's
@@ -449,9 +469,9 @@ class TestPendingNoticeLifecycle(BaseImportCreditTestCase):
     def test_pending_notice_with_stale_generation_never_credits(self):
         self._put(_transferring_pack(done=(1,)))
         self._webhook(2)
-        self.wm.enqueue_import("Sonarr", ROOT)  # root-level notice
+        self.wm.enqueue_import("Sonarr", ROOT)  # root-level notice: dropped, never kept
         self.controller.process()
-        self.assertEqual(2, len(self._pending_notices()))
+        self.assertEqual(1, len(self._pending_notices()))
 
         self.controller._Controller__root_lifecycle_generation[ROOT] += 1
         self._reset_logs()

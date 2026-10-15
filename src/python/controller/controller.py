@@ -780,7 +780,17 @@ class Controller:
                             root_file.remote_size is not None and
                             root_file.state in transferring_states
                         )
-                        if not transferring or path is None:
+                        # A root-level notice for a directory root carries
+                        # no per-child information: replayed at commit it
+                        # would mark the pack imported with no
+                        # imported_children entry, and the coverage guard
+                        # would grandfather the whole pack for deletion.
+                        # Only child-level notices are credited or kept.
+                        root_level_dir = (
+                            transferring and root_file.is_dir and
+                            matched_name.lower() == root_name.lower()
+                        )
+                        if not transferring or path is None or root_level_dir:
                             self.__pending_child_notices.pop(key, None)
                             self.logger.warning(
                                 "Ignoring webhook import for '{}': not downloaded "
