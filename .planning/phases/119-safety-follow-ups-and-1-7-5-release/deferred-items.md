@@ -24,3 +24,12 @@
   later. The model briefly carries a `hold_reason`. Nothing is re-transferred.
 - Candidate fix: skip gate evaluation for roots with a just-completed transfer until the local
   scan settles, or treat lftp completion as `downloaded` for gating purposes.
+
+## Outcome: secrets-in-startup-log finding becomes Phase 119.1 (owner, 2026-10-15)
+
+- The owner held the 1.7.5 production deploy because of the "Secrets printed to container stdout
+  on every start" finding above. Phase 119.1 is to be inserted to: stop the entrypoint printing
+  `settings.cfg` values (with a regression test), release 1.7.6, deploy 1.7.6 to the NAS instead
+  of 1.7.5, then rotate the seedbox password and both arr API keys.
+- Production stays on 1.7.4 and wud stays stopped until the 1.7.6 deploy is verified. Plan 119-11
+  is superseded and will not run. No secret values are recorded anywhere in `.planning/`.

@@ -909,3 +909,25 @@ this session's terminal output was destroyed with the scratch setup.
 | 6 | Restart: settings + persist files load (PARSE_OK), no re-download | PASS |
 | 7 | Held `sonarr_unavailable`, single hold log line, 428, manual release WARNING, `.lftp` → rename, no holds after disable | PASS (one cosmetic re-hold blip, noted) |
 | 8 | No startup scanner error (shutdown race only, as in 118) | PASS |
+
+## Deploy gate (Plan 119-10 Task 3): HOLD
+
+Owner decision, verbatim (2026-10-15):
+
+> HOLD the production deploy of 1.7.5. Reason: the container prints the full settings.cfg
+> (including the seedbox password and Sonarr/Radarr API keys, plaintext because encryption is off)
+> to the docker container log at every start (pre-existing since v1.0.0, not a 1.7.5 regression).
+> The owner chose to ship a 1.7.6 that stops printing secrets FIRST, then deploy 1.7.6 instead of
+> 1.7.5, then rotate the seedbox password and both arr API keys. Production stays on :1.7.4; wud
+> stays STOPPED until the 1.7.6 deploy is verified. 1.7.5 remains published (Docker/GitHub/PyPI) —
+> not retracted.
+
+State at the gate (from the teardown record above; no NAS command was run for this decision):
+
+- Deploy gate: **HOLD**. Plan 119-11 (production deploy of 1.7.5) is not executed; it is
+  superseded by Phase 119.1 (secrets out of the startup log, 1.7.6 release, NAS deploy of 1.7.6).
+- Production remains `ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595`.
+- wud remains **stopped** (exited since 2026-10-15T11:33:41Z) until the 1.7.6 deploy is verified.
+- Scratch dir `/volume1/docker/seedsync-smoke-1.7.5` is **retained** (scratch credentials only).
+- 1.7.5 stays published on GHCR, GitHub Releases and PyPI; not retracted.
+- REL-03 stays open: its NAS-verification clause is met by the 1.7.6 deploy in Phase 119.1.
