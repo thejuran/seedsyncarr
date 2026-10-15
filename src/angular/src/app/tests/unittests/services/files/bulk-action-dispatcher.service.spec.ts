@@ -237,10 +237,9 @@ describe("BulkActionDispatcher", () => {
             expect(confirmModal.confirm).toHaveBeenCalledTimes(1);
             const arg = confirmModal.confirm.calls.mostRecent().args[0];
             expect(arg.title).toBe(Localization.Modal.RELEASE_UNVERIFIED_TITLE);
-            expect(arg.body.startsWith(
-                "Completion could not be verified. Transfer and release this item anyway?")).toBeTrue();
-            expect(arg.body).toContain("B");
-            expect(arg.body).not.toContain("C");
+            // Verbatim message followed by the preview of only the held file (B)
+            expect(arg.body).toBe(
+                "Completion could not be verified. Transfer and release this item anyway?\n\nB");
             expect(arg.okBtn).toBe("Release");
         }));
 
