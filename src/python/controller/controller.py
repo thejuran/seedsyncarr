@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 import collections
 import threading
-from typing import Dict, List, Optional, Tuple
+import time
+from typing import Callable, Dict, List, NamedTuple, Optional, Tuple
 from threading import Lock
 from queue import Queue
 from enum import Enum
@@ -22,6 +23,7 @@ from common import Context, AppError, MultiprocessingLogger, sanitize_log_value
 from model import ModelError, ModelFile, Model, ModelDiff, IModelListener
 from lftp import LftpJobStatus
 from .controller_persist import ControllerPersist
+from .webhook_manager import _format_capped
 
 # Upper bound on consecutive re-arms of one root's auto-delete Timer after a
 # retriable skip (root or a child still mid-lifecycle, pack not fully imported
@@ -44,6 +46,29 @@ _AUTO_DELETE_DEFER_REASONS = {
 # stranded; safety does not depend on that record because the guard runs
 # before coverage on every firing.
 _AUTO_DELETE_TERMINAL_SKIPS = frozenset({"bfs_limit", "duplicate_basename"})
+
+# Webhook import notices that cannot be credited yet (the root is still
+# transferring and the named child is not yet visible as fully transferred,
+# usually scan lag) are kept in memory and re-evaluated every cycle. Bounded
+# in count and age so repeated or bogus webhooks cannot grow it without limit.
+_PENDING_NOTICE_MAX = 1000
+_PENDING_NOTICE_TTL_SECS = 6 * 3600
+
+
+class _PendingNotice(NamedTuple):
+    """A webhook import notice waiting for its child to finish transferring.
+
+    path is the single case-preserving model path the name resolved to when
+    the notice arrived ("Root/sub/child.mkv", or the root name itself for a
+    root-level match). generation is the root's transfer-lifecycle generation
+    at insertion; a notice from an older generation is never replayed.
+    """
+    root_name: str
+    matched_name: str
+    path: str
+    generation: int
+    inserted_at: float
+
 
 class ControllerError(AppError):
     """
@@ -111,10 +136,23 @@ class Controller:
     def __init__(self,
                  context: Context,
                  persist: ControllerPersist,
-                 webhook_manager: WebhookManager):
+                 webhook_manager: WebhookManager,
+                 persist_callback: Optional[Callable[[], None]] = None):
         self.__context = context
         self.__persist = persist
         self.__webhook_manager = webhook_manager
+        # Writes the controller persist to disk right away. Called after an
+        # early import credit so a crash before the periodic save cannot lose
+        # it. Invoked on the controller thread with no controller lock held.
+        self.__persist_callback = persist_callback
+        # Pending webhook import notices keyed (root_name, matched_name);
+        # controller thread only.
+        self.__pending_child_notices: "collections.OrderedDict[Tuple[str, str], _PendingNotice]" = \
+            collections.OrderedDict()
+        # Per-root transfer-lifecycle generation, bumped whenever the root's
+        # lifecycle resets (USER requeue, re-grab, removal) so a pending
+        # notice from the previous lifecycle can never be replayed.
+        self.__root_lifecycle_generation: Dict[str, int] = collections.defaultdict(int)
         self.logger = context.logger.getChild("Controller")
         # Set logger for persist to enable eviction logging
         self.__persist.set_base_logger(self.logger)
@@ -576,6 +614,23 @@ class Controller:
         so nothing in Window 2 can record, badge or arm auto-delete for it.
         The webhook_manager.process() call and auto-delete scheduling run
         outside the lock (thread-safe Queue and Timer operations respectively).
+
+        Early child credit (IMP-03): when the root is not yet committed but is
+        a remote release SeedSyncarr is transferring (QUEUED/DOWNLOADING), a
+        child-level notice whose child is the unique file of that name and is
+        DOWNLOADED with local_size == remote_size is credited to
+        imported_children[root] and persisted immediately via the persist
+        callback. A notice whose child is not complete yet is kept pending
+        (bounded by _PENDING_NOTICE_MAX and _PENDING_NOTICE_TTL_SECS), bound
+        to its resolved model path and the root's lifecycle generation, and
+        revalidated every cycle before either acceptance path: it must still
+        resolve to exactly one path, equal to its stored path under its stored
+        root, in the current generation. Pending notices are discarded on a
+        USER requeue, a lifecycle reset or root removal (_discard_pending_notices).
+        Credit alone never authorizes deletion (D-14): it never commits the
+        root or marks it imported. When a credited root later commits to
+        downloaded, the arm-on-commit pass marks it imported and arms
+        auto-delete, whose coverage guard then decides.
         """
         # Window 1: Build the basename lookup under lock
         # lowercased basename -> {case-preserving relative path -> root model file name}
@@ -604,36 +659,76 @@ class Controller:
                 except ModelError:
                     self.logger.debug("ModelError looking up '{}' for webhook mapping".format(sanitize_log_value(root_name)))
 
-        # Process outside lock -- webhook_manager only touches its own thread-safe Queue
-        newly_imported = self.__webhook_manager.process(name_to_paths)
+        # Revalidate every pending notice against the CURRENT lookup before it
+        # can reach either acceptance path below. A replayed notice must pass
+        # the same exactly-one-path rule WebhookManager.process applies to a
+        # fresh event, still resolve to the path it was bound to, and belong
+        # to the root's current transfer lifecycle.
+        now = time.monotonic()
+        for key, notice in list(self.__pending_child_notices.items()):
+            if self._revalidate_pending_notice(notice, name_to_paths, now) is not None:
+                self.__pending_child_notices.pop(key, None)
 
-        if newly_imported:
-            # Roots that passed the evidence gate below; only these are
-            # recorded and scheduled for auto-delete.
-            accepted_roots = set()
-            # Window 2: Update model import status for all newly imported files under single lock
-            with self.__model_lock:
-                for root_name, matched_name in newly_imported:
-                    # Evidence gate: only record imports for releases with
-                    # download evidence — already committed to downloaded, or a
-                    # complete local copy of a remote release (committed here,
-                    # covering the race where the arr imports before the next
-                    # model build runs the commit pass). A match with no
-                    # evidence (incident 2026-08-21: a foreign local-only dir
-                    # like 'iplayer' matched via a child basename) is logged
-                    # and ignored so it can never arm auto-delete.
-                    if root_name not in self.__persist.downloaded_file_names:
-                        try:
-                            root_file = self.__model.get_file(root_name)
-                        except ModelError:
-                            root_file = None
-                        has_evidence = (
+        # Process outside lock -- webhook_manager only touches its own thread-safe Queue
+        fresh = self.__webhook_manager.process(name_to_paths)
+
+        # Pending notices first, then fresh events; one entry per
+        # (root, matched) key. Value = the resolved model path, or None when
+        # the name has no single path under the root (only possible for an
+        # injected event); a None path is never kept pending.
+        events: "collections.OrderedDict[Tuple[str, str], Optional[str]]" = collections.OrderedDict()
+        for key, notice in self.__pending_child_notices.items():
+            events[key] = notice.path
+        for root_name, matched_name in fresh:
+            key = (root_name, matched_name)
+            if key not in events:
+                events[key] = self.__resolve_path(name_to_paths, root_name, matched_name)
+
+        # Roots that passed the evidence gate (or committed holding credits);
+        # only these are recorded as imported and scheduled for auto-delete.
+        accepted_roots = set()
+        persist_changed = False
+        transferring_states = (ModelFile.State.DOWNLOADING, ModelFile.State.QUEUED)
+        # Window 2: credit / record imports under a single lock
+        with self.__model_lock:
+            for (root_name, matched_name), path in events.items():
+                key = (root_name, matched_name)
+                # Evidence gate: only record imports for releases with
+                # download evidence — already committed to downloaded, or a
+                # complete local copy of a remote release (committed here,
+                # covering the race where the arr imports before the next
+                # model build runs the commit pass). A match with no
+                # evidence (incident 2026-08-21: a foreign local-only dir
+                # like 'iplayer' matched via a child basename) is logged
+                # and ignored so it can never arm auto-delete.
+                if root_name not in self.__persist.downloaded_file_names:
+                    try:
+                        root_file = self.__model.get_file(root_name)
+                    except ModelError:
+                        root_file = None
+                    has_evidence = (
+                        root_file is not None and
+                        root_file.remote_size is not None and
+                        root_file.local_size is not None and
+                        root_file.local_size >= root_file.remote_size
+                    )
+                    if not has_evidence:
+                        # The root may still be transferring (incident
+                        # 2026-10-09, Days of Hope: three episode notices
+                        # arrived ~1 min before the pack committed and were
+                        # lost). Credit a fully transferred child now; keep a
+                        # notice whose child is not visible as complete yet.
+                        # A credit writes imported_children ONLY: it never
+                        # commits the root, never marks it imported and never
+                        # arms auto-delete, so whole-folder deletion still
+                        # needs the root committed plus full coverage.
+                        transferring = (
                             root_file is not None and
                             root_file.remote_size is not None and
-                            root_file.local_size is not None and
-                            root_file.local_size >= root_file.remote_size
+                            root_file.state in transferring_states
                         )
-                        if not has_evidence:
+                        if not transferring or path is None:
+                            self.__pending_child_notices.pop(key, None)
                             self.logger.warning(
                                 "Ignoring webhook import for '{}': not downloaded "
                                 "by SeedSyncarr (no transfer evidence)".format(
@@ -641,47 +736,227 @@ class Controller:
                                 )
                             )
                             continue
-                        self.logger.info(
-                            "Committing '{}' to downloaded list on import evidence".format(
-                                sanitize_log_value(root_name)
-                            )
-                        )
-                        self.__persist.downloaded_file_names.add(root_name)
-                    accepted_roots.add(root_name)
-                    # Backward-compat root tracking (D-05) -- drives UI badge + existing dedup
-                    self.__persist.imported_file_names.add(root_name)
-                    # Per-child tracking (D-07) -- lowercased basename for case-insensitive
-                    # comparison in the coverage guard. See matched_name comment in
-                    # WebhookManager.process docstring.
-                    #
-                    # WR-01 guard: skip add_imported_child when the webhook's matched_name
-                    # is the root itself (e.g. Sonarr's releaseTitle/series.title fallback
-                    # chain when episodeFile.sourcePath is absent from the payload). A
-                    # root-level match carries no per-child information; recording the
-                    # root name as a "child" would poison imported_children[root] with a
-                    # useless value and block auto-delete indefinitely on real packs.
-                    # Leaving the key absent lets D-14 grandfather the root as fully
-                    # imported, preserving pre-phase-75 auto-delete behavior for the
-                    # releaseTitle/series.title fallback paths.
-                    if matched_name.lower() != root_name.lower():
-                        self.__persist.add_imported_child(root_name, matched_name.lower())
-                    # Sanitize webhook-supplied matched_name and remote-scanner-sourced
-                    # root_name before logging to prevent log-injection (CWE-117).
-                    safe_matched = sanitize_log_value(matched_name)
+                        if matched_name.lower() != root_name.lower() and \
+                                self.__credit_early_child(root_file, root_name, matched_name):
+                            self.__pending_child_notices.pop(key, None)
+                            persist_changed = True
+                            continue
+                        self.__keep_pending_notice(root_name, matched_name, path, now)
+                        continue
                     self.logger.info(
-                        "Recorded webhook import: '{}' (child: '{}')".format(
-                            sanitize_log_value(root_name), safe_matched
+                        "Committing '{}' to downloaded list on import evidence".format(
+                            sanitize_log_value(root_name)
                         )
                     )
-                    self._set_import_status(self.__model, root_name)
+                    self.__persist.downloaded_file_names.add(root_name)
+                # Accepted. A replayed notice only gets here after passing
+                # revalidation this cycle, so it is consumed now.
+                self.__pending_child_notices.pop(key, None)
+                accepted_roots.add(root_name)
+                persist_changed = True
+                # Backward-compat root tracking (D-05) -- drives UI badge + existing dedup
+                self.__persist.imported_file_names.add(root_name)
+                # Per-child tracking (D-07) -- lowercased basename for case-insensitive
+                # comparison in the coverage guard. See matched_name comment in
+                # WebhookManager.process docstring.
+                #
+                # WR-01 guard: skip add_imported_child when the webhook's matched_name
+                # is the root itself (e.g. Sonarr's releaseTitle/series.title fallback
+                # chain when episodeFile.sourcePath is absent from the payload). A
+                # root-level match carries no per-child information; recording the
+                # root name as a "child" would poison imported_children[root] with a
+                # useless value and block auto-delete indefinitely on real packs.
+                # Leaving the key absent lets D-14 grandfather the root as fully
+                # imported, preserving pre-phase-75 auto-delete behavior for the
+                # releaseTitle/series.title fallback paths.
+                if matched_name.lower() != root_name.lower():
+                    self.__persist.add_imported_child(root_name, matched_name.lower())
+                # Sanitize webhook-supplied matched_name and remote-scanner-sourced
+                # root_name before logging to prevent log-injection (CWE-117).
+                safe_matched = sanitize_log_value(matched_name)
+                self.logger.info(
+                    "Recorded webhook import: '{}' (child: '{}')".format(
+                        sanitize_log_value(root_name), safe_matched
+                    )
+                )
+                self._set_import_status(self.__model, root_name)
 
-            # Schedule auto-deletes outside lock -- Timer operations only.
-            # Only roots that passed the evidence gate are scheduled; the set
-            # also de-duplicates roots (two child webhooks in one cycle would
-            # otherwise re-arm the same root's timer -- benign but wasteful).
-            if self.__context.config.autodelete.enabled:
-                for root_name in accepted_roots:
-                    self.__schedule_auto_delete(root_name)
+            # Arm on commit (level-triggered every cycle, so it also covers a
+            # restart): a root holding early credits that has since committed
+            # to downloaded is marked imported and scheduled like a webhook
+            # accept. Coverage still decides whether the Timer deletes.
+            model_names = self.__model.get_file_names()
+            for root_name in list(self.__persist.imported_children.keys()):
+                if root_name not in self.__persist.downloaded_file_names or \
+                        root_name in self.__persist.imported_file_names or \
+                        root_name not in model_names:
+                    continue
+                self.__persist.imported_file_names.add(root_name)
+                self._set_import_status(self.__model, root_name)
+                self.logger.info(
+                    "Import credit for '{}' applied on commit".format(sanitize_log_value(root_name))
+                )
+                accepted_roots.add(root_name)
+                persist_changed = True
+
+        # Persist outside every controller lock (the callback takes only the
+        # persist-file lock). A failure is logged; the periodic save retries.
+        if persist_changed and self.__persist_callback is not None:
+            try:
+                self.__persist_callback()
+            except Exception as e:
+                self.logger.warning(
+                    "Immediate persist after import credit failed: {}".format(type(e).__name__)
+                )
+
+        # Schedule auto-deletes outside lock -- Timer operations only.
+        # Only roots that passed the evidence gate are scheduled; the set
+        # also de-duplicates roots (two child webhooks in one cycle would
+        # otherwise re-arm the same root's timer -- benign but wasteful).
+        if accepted_roots and self.__context.config.autodelete.enabled:
+            for root_name in accepted_roots:
+                self.__schedule_auto_delete(root_name)
+
+    @staticmethod
+    def __resolve_path(name_to_paths: Dict[str, Dict[str, str]],
+                       root_name: str, matched_name: str) -> Optional[str]:
+        """The single model path matched_name resolves to under root_name, or None."""
+        candidates = name_to_paths.get(matched_name.lower()) or {}
+        if len(candidates) != 1:
+            return None
+        path, owner = next(iter(candidates.items()))
+        return path if owner == root_name else None
+
+    def __credit_early_child(self, root_file: ModelFile, root_name: str, matched_name: str) -> bool:
+        """Credit matched_name to imported_children[root_name] if that child is
+        fully transferred. Caller holds __model_lock and has checked that the
+        root is a remote release SeedSyncarr is transferring.
+
+        The child must be the unique non-directory descendant with that name,
+        in state DOWNLOADED with local_size == remote_size.
+        """
+        target = matched_name.lower()
+        matches = []
+        frontier = collections.deque(root_file.get_children())
+        while frontier:
+            node = frontier.popleft()
+            if not node.is_dir and node.name.lower() == target:
+                matches.append(node)
+            frontier.extend(node.get_children())
+        if len(matches) != 1:
+            return False
+        child = matches[0]
+        if child.state != ModelFile.State.DOWNLOADED or child.remote_size is None or \
+                child.local_size != child.remote_size:
+            return False
+        self.__persist.add_imported_child(root_name, target)
+        self.logger.info(
+            "Credited early import of '{}' in '{}' (root still transferring)".format(
+                sanitize_log_value(matched_name), sanitize_log_value(root_name)
+            )
+        )
+        return True
+
+    def __keep_pending_notice(self, root_name: str, matched_name: str, path: str, now: float) -> None:
+        """Hold a notice that cannot be credited yet (controller thread only)."""
+        key = (root_name, matched_name)
+        if key not in self.__pending_child_notices:
+            self.__pending_child_notices[key] = _PendingNotice(
+                root_name, matched_name, path,
+                self.__root_lifecycle_generation[root_name], now,
+            )
+            while len(self.__pending_child_notices) > _PENDING_NOTICE_MAX:
+                (old_root, old_matched), _ = self.__pending_child_notices.popitem(last=False)
+                self.logger.warning(
+                    "Dropping oldest pending webhook import '{}' for '{}': more than {} "
+                    "pending notices".format(
+                        sanitize_log_value(old_matched), sanitize_log_value(old_root),
+                        _PENDING_NOTICE_MAX
+                    )
+                )
+        self.logger.debug(
+            "Deferring webhook notice '{}' for '{}': root still transferring".format(
+                sanitize_log_value(matched_name), sanitize_log_value(root_name)
+            )
+        )
+
+    def _revalidate_pending_notice(self, notice: _PendingNotice,
+                                   name_to_paths: Dict[str, Dict[str, str]],
+                                   now: float) -> Optional[str]:
+        """Check a pending notice against the current model lookup.
+
+        Returns None if the notice may be replayed this cycle, otherwise the
+        reason it must be discarded (already logged). Applies the same
+        exactly-one-path rule WebhookManager.process uses for fresh events,
+        then requires that path to be the one the notice was bound to, under
+        the same root, in the root's current lifecycle generation. Controller
+        thread only.
+        """
+        safe_child = sanitize_log_value(notice.matched_name)
+        safe_root = sanitize_log_value(notice.root_name)
+        if notice.generation != self.__root_lifecycle_generation[notice.root_name]:
+            self.logger.debug(
+                "Discarding pending webhook import '{}' for '{}': lifecycle generation "
+                "changed".format(safe_child, safe_root)
+            )
+            return "lifecycle generation changed"
+        candidates = name_to_paths.get(notice.matched_name.lower()) or {}
+        if len(candidates) > 1:
+            self.logger.warning(
+                "Pending webhook import '{}' is ambiguous: matches {} distinct SeedSyncarr "
+                "paths in release(s) {} ({}); "
+                "no import credit or automatic cleanup authorized".format(
+                    safe_child, len(candidates),
+                    _format_capped(sorted(set(candidates.values()))),
+                    _format_capped(sorted(candidates)),
+                )
+            )
+            return "ambiguous"
+        if candidates.get(notice.path) != notice.root_name:
+            self.logger.warning(
+                "Discarding pending webhook import '{}': it no longer resolves to '{}' in "
+                "'{}' (no import credit or automatic cleanup authorized)".format(
+                    safe_child, sanitize_log_value(notice.path), safe_root
+                )
+            )
+            return "path gone"
+        if now - notice.inserted_at >= _PENDING_NOTICE_TTL_SECS:
+            self.logger.warning(
+                "Pending webhook import '{}' for '{}' expired after {} s without the "
+                "file being seen fully transferred; no import credit recorded".format(
+                    safe_child, safe_root, _PENDING_NOTICE_TTL_SECS
+                )
+            )
+            return "expired"
+        return None
+
+    def _discard_pending_notices(self, root_name: str, cause: str) -> int:
+        """Drop every pending import notice for root_name and start a new
+        transfer-lifecycle generation for it. Returns the number dropped.
+
+        Controller thread only. Called after a USER QUEUE (an explicit
+        transfer reset that clears the root's import tracking), and on the
+        same-name re-grab lifecycle reset and root removal. The generation is
+        bumped even when nothing was pending, so no notice recorded under the
+        previous lifecycle can ever be credited to the new one.
+        """
+        keys = [k for k, n in self.__pending_child_notices.items() if n.root_name == root_name]
+        for key in keys:
+            del self.__pending_child_notices[key]
+        self.__root_lifecycle_generation[root_name] += 1
+        if keys:
+            self.logger.info(
+                "Discarded {} pending import notice(s) for '{}': {}".format(
+                    len(keys), sanitize_log_value(root_name), cause
+                )
+            )
+        else:
+            self.logger.debug(
+                "No pending import notices to discard for '{}': {}".format(
+                    sanitize_log_value(root_name), cause
+                )
+            )
+        return len(keys)
 
     def __schedule_auto_delete(self, file_name: str):
         """Schedule auto-delete of local file after safety delay.
@@ -972,6 +1247,18 @@ class Controller:
             if not success:
                 _notify_failure(command, error_msg, error_code)
                 continue
+
+            # A USER QUEUE is an explicit transfer reset: CommandProcessor has
+            # just cleared the root's downloaded/imported/per-child tracking.
+            # Pending import notices from the previous attempt must not
+            # outlive that reset, or a scan-lag notice could credit the
+            # replacement copy without a new import webhook. Same thread, and
+            # __check_webhook_imports runs later in this process() call, so
+            # nothing can replay a notice in between. AUTO queues (resume or
+            # retry of the same attempt) keep their notices.
+            if command.action == Controller.Command.Action.QUEUE and \
+                    (getattr(command, "origin", None) is None or command.origin.name != 'AUTO'):
+                self._discard_pending_notices(command.filename, "user requeue")
 
             # If we get here, it was a success
             for callback in command.callbacks:

@@ -1,3 +1,4 @@
+import collections
 import unittest
 from queue import Queue
 from threading import Lock
@@ -196,6 +197,11 @@ class TestCheckWebhookImportsSanitization(unittest.TestCase):
 
         # Webhook manager: returns our crafted tuple
         c._Controller__webhook_manager = MagicMock()
+
+        # Pending-notice state and the immediate-persist hook (IMP-03)
+        c._Controller__pending_child_notices = collections.OrderedDict()
+        c._Controller__root_lifecycle_generation = collections.defaultdict(int)
+        c._Controller__persist_callback = None
 
         return c
 
