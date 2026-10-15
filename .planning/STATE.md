@@ -4,13 +4,13 @@ milestone: v1.7.5
 milestone_name: Safety Release
 status: executing
 stopped_at: Phase 119.1 context gathered
-last_updated: "2026-10-15T20:11:56.086Z"
+last_updated: "2026-10-15T21:15:16.404Z"
 last_activity: 2026-10-15 -- Phase 119.1 execution started
 progress:
   total_phases: 23
   completed_phases: 6
   total_plans: 37
-  completed_plans: 31
+  completed_plans: 35
   percent: 26
 ---
 
@@ -63,6 +63,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 118]: 118-05: owner go-ahead 'deploy keep pin'; NAS on :1.7.4@sha256:682d129d with compose digest pin kept and wud.tag.include semver filter; backup checker runs with --user 1026:100
 - [Phase 119]: 1.7.5 approved as drafted by owner 2026-10-15; CI green on PR #127 head cbd99dc; tag/merge/publish in 119-10
 - [Phase 119]: 119-10 owner HOLD on 1.7.5 prod deploy (container log prints settings.cfg secrets, pre-existing since v1.0.0); ship 1.7.6 fix first in Phase 119.1, deploy 1.7.6, then rotate seedbox password and arr keys; prod stays :1.7.4, wud stopped; 1.7.5 stays published; 119-11 superseded; REL-03 open
+- [Phase 119.1]: 119.1-03: 1.7.6 metadata/notes on release/1.7.6, PR #129 CI + CodeQL green on 03dcee6; paused at owner approval (SECURITY.md item, % rollback caveat); nothing merged or tagged
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -132,7 +133,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-10-15T18:38:01.526Z
+Last session: 2026-10-15T21:15:11.583Z
 Stopped at: Phase 119.1 context gathered
 Next action: Insert Phase 119.1 (secrets in startup log + 1.7.6 release + NAS deploy). Do not run 119-11. Production stays :1.7.4, wud stopped until the 1.7.6 deploy is verified; then rotate seedbox password and both arr API keys. Nothing pushed since the 1.7.5 tag; owner decides pushes.
 
