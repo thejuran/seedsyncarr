@@ -328,5 +328,19 @@ class TestSerializeModel(unittest.TestCase):
         self.assertEqual("c", data[2]["full_path"])
         self.assertEqual("c/ca", data[2]["children"][0]["full_path"])
         self.assertEqual("c/ca/caa", data[2]["children"][0]["children"][0]["full_path"])
+
+    def test_hold_reason(self):
+        serialize = SerializeModel()
+        a = ModelFile("a", True)
+        a.hold_reason = "ambiguous_match"
+        a.add_child(ModelFile("aa", False))
+        b = ModelFile("b", False)
+        out = parse_stream(serialize.model([a, b]))
+        data = json.loads(out["data"])
+        self.assertEqual("ambiguous_match", data[0]["hold_reason"])
+        self.assertIn("hold_reason", data[0]["children"][0])
+        self.assertIsNone(data[0]["children"][0]["hold_reason"])
+        self.assertIn("hold_reason", data[1])
+        self.assertIsNone(data[1]["hold_reason"])
         self.assertEqual("c/ca/cab", data[2]["children"][0]["children"][1]["full_path"])
         self.assertEqual("c/cb", data[2]["children"][1]["full_path"])
