@@ -231,6 +231,16 @@ class TestVerdictMatrix(GateTestBase):
         ]
         self.assertEqual(HOLD("still_downloading"), _decide(self.gate, {season: 10})[season])
 
+    def test_incomplete_record_without_output_path_sharing_download_id_holds(self):
+        """A record attributable only through a matched download ID still blocks the proof."""
+        season = "Show.S01"
+        self.client.responses["sonarr"] = [_done("ABC", season), _downloading("abc", None, 500)]
+        self.assertEqual(HOLD("still_downloading"), _decide(self.gate, {season: 10})[season])
+
+    def test_incomplete_record_sharing_download_id_in_other_arr_holds(self):
+        self.client.responses = {"sonarr": [_done("ABC")], "radarr": [_downloading("ABC", "Elsewhere", 5)]}
+        self.assertEqual(HOLD("still_downloading"), _decide(self.gate, {ROOT: SIZE})[ROOT])
+
     def test_output_path_basename_compare_is_case_sensitive(self):
         self.client.responses["radarr"] = [_done("ABC", ROOT.lower())]
         self.assertEqual(HOLD("no_queue_entry"), _decide(self.gate, {ROOT: SIZE})[ROOT])

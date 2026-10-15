@@ -335,6 +335,18 @@ class CompletionGate:
                     if rec.basename is not None and rec.basename == name:
                         matching.append((code, rec))
 
+        # Every other record attributable through a matched download ID belongs to the
+        # same download (including records without an outputPath) and must also be complete.
+        candidate_ids = {rec.download_id.upper() for _, rec in matching if rec.download_id is not None}
+        if candidate_ids:
+            for code in codes:
+                snapshot = self._snapshots.get(code)
+                if isinstance(snapshot, list):
+                    for rec in snapshot:
+                        if (rec.basename != name and rec.download_id is not None
+                                and rec.download_id.upper() in candidate_ids):
+                            matching.append((code, rec))
+
         if matching:
             verdict, provisional = self._decide_from_records(name, remote_size, codes, key, matching)
             if not verdict.proven:
