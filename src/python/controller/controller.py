@@ -121,15 +121,23 @@ class Controller:
                         - 400: Bad request (invalid state, validation error)
                         - 404: Resource not found
                         - 409: Conflict (resource in wrong state)
+                        - 428: Precondition required (completion could not be
+                               verified; resend with release_unverified)
                         - 500: Internal server error
                 """
                 pass
 
         def __init__(self, action: Action, filename: str,
-                     origin: "Controller.Command.Origin" = None):
+                     origin: "Controller.Command.Origin" = None,
+                     release_unverified: bool = False):
             self.action = action
             self.filename = filename
             self.origin = origin if origin is not None else Controller.Command.Origin.USER
+            # One-shot user confirmation to transfer a root whose completion
+            # could not be verified. Lives only on this command and is never
+            # persisted, so the approval is never remembered (D-08). Honored
+            # for USER queue commands only.
+            self.release_unverified = bool(release_unverified)
             self.callbacks = []
 
         def add_callback(self, callback: ICallback):
@@ -276,6 +284,7 @@ class Controller:
             persist=self.__persist,
             logger=self.logger,
             root_reservations=self.__root_reservations,
+            completion_gate=self.__completion_gate,
         )
 
         # Auto-delete BFS+coverage collaborator — receives already-constructed instances

@@ -1698,13 +1698,12 @@ class TestQueueCompletionGate(BaseControllerTestCase):
         self.fake_now = 31.0
 
         # (3a) The verdict starts both fetches and answers at once with a
-        # provisional hold: 428, never a wait on the controller thread.
+        # provisional hold: 428, never a wait on the controller thread. The
+        # label names Radarr, whose pre-invalidation record is the evidence
+        # waiting on its forced refresh.
         cb, elapsed = self._queue()
-        cb.on_failure.assert_called_once()
-        self.assertEqual(428, cb.on_failure.call_args[0][1])
-        self.assertTrue(cb.on_failure.call_args[0][0].startswith("Completion could not be verified: "))
-        self.assertIn(cb.on_failure.call_args[0][0].split(": ", 1)[1],
-                      ("Sonarr unavailable", "Radarr unavailable"))
+        self._assert_428(cb, "Radarr unavailable")
+        self.assertEqual({}, gate.holds, "the 3a hold is provisional")
         self.assertEqual(1, self.mock_lftp_manager.queue.call_count)
         self.assertLess(elapsed, 0.1)
 

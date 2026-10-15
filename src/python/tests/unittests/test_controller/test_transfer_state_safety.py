@@ -439,6 +439,10 @@ class TestSameCycleCommandOrderingProtectsSubmittedTransfers(unittest.TestCase):
         mock_context = MagicMock()
         mock_context.logger = logging.getLogger("TestSameCycleCommandOrdering")
         mock_context.config.autodelete.enabled = False
+        # No arr integration: the real completion gate does not apply (D-16),
+        # so these tests exercise command ordering only.
+        mock_context.config.sonarr.enabled = False
+        mock_context.config.radarr.enabled = False
         self.persist = ControllerPersist(max_tracked_files=100)
         self.controller = Controller(
             context=mock_context,
