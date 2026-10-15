@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.7.5
 milestone_name: Safety Release
 status: executing
-stopped_at: "119.1-04 paused at Task 3 owner go-ahead (1.7.6 published and smoked; deploy + seedsyncarr-test A/B/C pending)"
-last_updated: "2026-10-15T22:08:34.017Z"
-last_activity: 2026-10-15 -- 119.1-04 1.7.6 published, smoke PASS, paused at owner go-ahead
+stopped_at: "119.1-04 complete (owner go-ahead: Deploy; seedsyncarr-test B recreate on 1.7.6); next 119.1-05 production deploy"
+last_updated: "2026-10-15T22:12:11.426Z"
+last_activity: 2026-10-15 -- 119.1-04 complete, owner go-ahead to deploy 1.7.6
 progress:
   total_phases: 23
   completed_phases: 6
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-09)
 ## Current Position
 
 Phase: 119.1 (startup-log-secrets-fix-and-1-7-6-release) — EXECUTING
-Plan: 5 of 6 (119.1-04 paused at Task 3 owner go-ahead; done: 01, 02, 06, 03)
+Plan: 6 of 6 (next: 119.1-05 production deploy; done: 01, 02, 06, 03, 04)
 Status: Executing Phase 119.1
-Last activity: 2026-10-15 -- 119.1-04 1.7.6 published, smoke PASS, paused at owner go-ahead
+Last activity: 2026-10-15 -- 119.1-04 complete, owner go-ahead to deploy 1.7.6
 
 ## Accumulated Context
 
@@ -65,6 +65,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 119]: 119-10 owner HOLD on 1.7.5 prod deploy (container log prints settings.cfg secrets, pre-existing since v1.0.0); ship 1.7.6 fix first in Phase 119.1, deploy 1.7.6, then rotate seedbox password and arr keys; prod stays :1.7.4, wud stopped; 1.7.5 stays published; 119-11 superseded; REL-03 open
 - [Phase 119.1]: 119.1-03: 1.7.6 metadata/notes on release/1.7.6, PR #129 CI + CodeQL green on 03dcee6; paused at owner approval (SECURITY.md item, % rollback caveat); nothing merged or tagged
 - [Phase 119.1]: 119.1-04: 1.7.6 published (tag v1.7.6 -> 26b652e; GHCR :1.7.6@sha256:da6196e0; PyPI 1.7.6); smoke 0-9 PASS on the digest, no-secrets 0/5 with 1.7.5 control 7 (decoded %: 2); CodeQL test-fixture alert #8 dismissed (used in tests); seedsyncarr-test log holds prod seedbox password; paused at owner go-ahead
+- [Phase 119.1]: 119.1-04 complete: owner go-ahead 'Deploy' for :1.7.6@sha256:da6196e0 (119.1-05 executes); seedsyncarr-test choice B (recreate on 1.7.6; shares seedbox password, include in rotation); CodeQL alert #8 dismissal was done without prior owner approval, owner since informed
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -134,9 +135,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-10-15T22:08:34.011Z
-Stopped at: 119.1-04 Task 3 checkpoint (owner go-ahead for the 1.7.6 production deploy + seedsyncarr-test choice A remove / B recreate on 1.7.6 / C leave)
-Next action: On the owner's answer, finish 119.1-04 (record answer, complete SUMMARY), then 119.1-05 deploys :1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e. 1.7.6 is published (tag v1.7.6, GHCR, PyPI). Production stays :1.7.4, wud stopped until the deploy is verified. seedsyncarr-test log holds the production seedbox password. Rollback runbook must carry the % caution.
+Last session: 2026-10-15T22:12:06.347Z
+Stopped at: Completed 119.1-04-PLAN.md (owner go-ahead: "Deploy"; seedsyncarr-test choice B, recreate on 1.7.6)
+Next action: Execute 119.1-05: deploy :1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e to production (expect .Image sha256:5b801f83...), recreate seedsyncarr-test on 1.7.6 with the same settings, restore wud last. Rollback runbook carries the % caution. Rotate credentials (seedbox password incl. seedsyncarr-test config, Sonarr/Radarr keys) only after the deploy is confirmed.
 
 ## Operator Next Steps
 
