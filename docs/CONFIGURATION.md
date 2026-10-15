@@ -31,6 +31,7 @@ num_max_parallel_files_per_download = 4
 num_max_connections_per_root_file = 4
 num_max_connections_per_dir_file = 4
 num_max_total_connections = 16
+# use_temp_file is ignored since 1.7.5: temporary .lftp names are always used
 use_temp_file = False
 
 [Controller]
@@ -101,7 +102,7 @@ Settings marked **Required** contain the placeholder value `<replace me>` by def
 | `num_max_connections_per_root_file` | Optional | `4` | Maximum LFTP connections per top-level file transfer. Must be ≥ 1. |
 | `num_max_connections_per_dir_file` | Optional | `4` | Maximum LFTP connections per file inside a directory transfer. Must be ≥ 1. |
 | `num_max_total_connections` | Optional | `16` | Hard cap on total simultaneous LFTP connections. `0` means unlimited. |
-| `use_temp_file` | Optional | `False` | Download files to a `.lftp` temporary name and rename on completion. |
+| `use_temp_file` | Optional | `False` | Ignored since 1.7.5 — temporary `.lftp` names are always used so an incomplete copy is never at an importable path; the key is still accepted for compatibility. The Settings page no longer shows this option. |
 
 ### [Controller]
 
@@ -145,6 +146,21 @@ Archives are never unpacked directly into their final directory. Each one is ext
 | `enabled` | Optional | `False` | Enable Radarr integration. |
 | `radarr_url` | Optional | _(empty)_ | Base URL of the Radarr instance. <!-- VERIFY: production Radarr instance URL --> |
 | `radarr_api_key` | Optional | _(empty)_ | Radarr API key. Redacted in API responses. |
+
+### Completion verification (1.7.5)
+
+Since 1.7.5, every transfer downloads to a temporary `.lftp` name and is renamed only when the copy finishes, so an incomplete copy is never sitting at a path Sonarr or Radarr could import. This applies whether or not an integration is enabled.
+
+**With Sonarr or Radarr integration enabled**, automatic transfers wait until that app's download queue reports the release complete. An item whose completion cannot be confirmed is held: it shows as Waiting in the file list, with one of these reasons:
+
+- `Sonarr unavailable` / `Radarr unavailable` — the app could not be reached to check
+- `Ambiguous match` — the item matches more than one download in the queue, or a queue entry that cannot be identified
+- `Still downloading` — the queue reports the release is not finished on the seedbox
+- `No matching queue entry` — no queue entry matches the item (absence does not prove the item is unrelated to Sonarr/Radarr)
+
+Held items are never transferred automatically. To release one deliberately, use the Queue action on it; SeedSyncarr asks "Completion could not be verified. Transfer and release this item anyway?" Confirming applies to that one transfer attempt only — the approval is not remembered, so a later re-queue of the same item is checked again.
+
+**With both Sonarr and Radarr integrations disabled**, SeedSyncarr keeps the pre-1.7.5 stability-based syncing as a compatibility exception. This has a known limitation: stability-based syncing cannot prove the seedbox download is complete. Disabling the integration in SeedSyncarr also does not prove that no external app watches the download folder — it is not a guarantee that completion checking is unnecessary. If Sonarr or Radarr imports from your local download folder, enable the matching integration.
 
 ### [AutoDelete]
 
@@ -202,7 +218,7 @@ The following flags are passed to `seedsyncarr` (or `python seedsyncarr.py`) at 
 | `lftp.num_max_connections_per_root_file` | `4` | `seedsyncarr.py` `_create_default_config()` |
 | `lftp.num_max_connections_per_dir_file` | `4` | `seedsyncarr.py` `_create_default_config()` |
 | `lftp.num_max_total_connections` | `16` | `seedsyncarr.py` `_create_default_config()` |
-| `lftp.use_temp_file` | `False` | `seedsyncarr.py` `_create_default_config()` |
+| `lftp.use_temp_file` | `False` (ignored since 1.7.5; temp files are always on) | `seedsyncarr.py` `_create_default_config()` |
 | `lftp.local_path` | `/downloads/` (Docker image only) | `setup_default_config.sh` |
 | `controller.interval_ms_remote_scan` | `30000` | `seedsyncarr.py` `_create_default_config()` |
 | `controller.interval_ms_local_scan` | `10000` | `seedsyncarr.py` `_create_default_config()` |

@@ -80,6 +80,7 @@ class ControllerHandler(IHandler):
         success_msg: str,
         *,
         guard: bool = False,
+        release_unverified: bool = False,
     ) -> HTTPResponse:
         """
         Shared dispatch scaffold for single-action handler endpoints.
@@ -94,7 +95,7 @@ class ControllerHandler(IHandler):
             path_guard = self._check_path_safe(file_name)
             if path_guard:
                 return path_guard
-        command = Controller.Command(action, file_name)
+        command = Controller.Command(action, file_name, release_unverified=release_unverified)
         callback = WebResponseActionCallback()
         command.add_callback(callback)
         self.__controller.queue_command(command)
@@ -107,8 +108,15 @@ class ControllerHandler(IHandler):
     def __handle_action_queue(self, file_name: str) -> HTTPResponse:
         """
         Request a QUEUE action
+
+        ?release_unverified=true is the user's one-shot confirmation to
+        transfer a file whose completion could not be verified (after a 428).
         """
-        return self._dispatch_command(Controller.Command.Action.QUEUE, file_name, "Queued file '{}'")
+        release_unverified = request.query.get("release_unverified", "").lower() == "true"
+        return self._dispatch_command(
+            Controller.Command.Action.QUEUE, file_name, "Queued file '{}'",
+            release_unverified=release_unverified,
+        )
 
     def __handle_action_stop(self, file_name: str) -> HTTPResponse:
         """
@@ -274,10 +282,28 @@ class ControllerHandler(IHandler):
                 content_type="application/json"
             )
 
+        # One-shot confirmation to transfer files whose completion could not
+        # be verified; strict boolean, queue only.
+        release_unverified = body.get("release_unverified", False)
+        if not isinstance(release_unverified, bool):
+            return HTTPResponse(
+                body=json.dumps({"error": "release_unverified must be a boolean"}),
+                status=400,
+                content_type="application/json"
+            )
+        if release_unverified and action_name != "queue":
+            return HTTPResponse(
+                body=json.dumps({"error": "release_unverified is only valid for action queue"}),
+                status=400,
+                content_type="application/json"
+            )
+
         action = self._VALID_ACTIONS[action_name]
 
         # Process files using parallel queuing for performance
-        results, succeeded, failed = self._process_bulk_commands(action, files, action_name)
+        results, succeeded, failed = self._process_bulk_commands(
+            action, files, action_name, release_unverified=release_unverified
+        )
 
         response = {
             "results": results,
@@ -298,7 +324,9 @@ class ControllerHandler(IHandler):
         self,
         action: Controller.Command.Action,
         files: list[str],
-        action_name: str
+        action_name: str,
+        *,
+        release_unverified: bool = False,
     ) -> tuple[list[dict], int, int]:
         """
         Process bulk commands with parallel queuing for improved performance.
@@ -312,6 +340,8 @@ class ControllerHandler(IHandler):
             action: The action to perform on all files.
             files: List of file names to process.
             action_name: Human-readable action name for logging.
+            release_unverified: One-shot confirmation carried by each queue
+                command to transfer files whose completion could not be verified.
 
         Returns:
             tuple of (results list, succeeded count, failed count).
@@ -346,7 +376,7 @@ class ControllerHandler(IHandler):
                     failed += 1
                     continue
 
-            command = Controller.Command(action, file_name)
+            command = Controller.Command(action, file_name, release_unverified=release_unverified)
             callback = WebResponseActionCallback()
             command.add_callback(callback)
             self.__controller.queue_command(command)

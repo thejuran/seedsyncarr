@@ -251,3 +251,32 @@ class TestModelFile(unittest.TestCase):
         self.assertIsNone(a.parent)
         self.assertEqual(a, aa.parent)
         self.assertEqual(aa, aaa.parent)
+
+    def test_hold_reason(self):
+        file = ModelFile("test", False)
+        self.assertIsNone(file.hold_reason)
+
+        file.hold_reason = "still_downloading"
+        self.assertEqual("still_downloading", file.hold_reason)
+        file.hold_reason = None
+        self.assertIsNone(file.hold_reason)
+
+        with self.assertRaises(TypeError):
+            file.hold_reason = 5
+
+    def test_hold_reason_frozen(self):
+        file = ModelFile("test", False)
+        file.freeze()
+        with self.assertRaises(ValueError):
+            file.hold_reason = "ambiguous_match"
+
+    def test_hold_reason_participates_in_equality(self):
+        file1 = ModelFile("test", False)
+        file2 = ModelFile("test", False)
+        self.assertTrue(file1 == file2)
+        file2.hold_reason = "no_queue_entry"
+        self.assertFalse(file1 == file2)
+        file1.hold_reason = "still_downloading"
+        self.assertFalse(file1 == file2)
+        file1.hold_reason = "no_queue_entry"
+        self.assertTrue(file1 == file2)

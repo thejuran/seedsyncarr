@@ -3,16 +3,26 @@ import {Observable, of} from "rxjs";
 
 import {BulkActionDispatcher} from "../../../../services/files/bulk-action-dispatcher.service";
 import {FileSelectionService} from "../../../../services/files/file-selection.service";
-import {BulkCommandService, BulkActionResult, BulkActionResponse} from "../../../../services/server/bulk-command.service";
+import {BulkCommandService, BulkActionResult, BulkActionResponse, BulkFileResult} from "../../../../services/server/bulk-command.service";
 import {ConfirmModalService} from "../../../../services/utils/confirm-modal.service";
 import {NotificationService} from "../../../../services/utils/notification.service";
 import {Notification} from "../../../../services/utils/notification";
+import {Localization} from "../../../../common/localization";
 
 
 function okResult(succeeded = 1, failed = 0): BulkActionResult {
     return new BulkActionResult(
         true,
         {results: [], summary: {total: succeeded + failed, succeeded, failed}} as BulkActionResponse,
+        null
+    );
+}
+
+function perFileResult(results: BulkFileResult[]): BulkActionResult {
+    const failed = results.filter(r => !r.success).length;
+    return new BulkActionResult(
+        true,
+        {results, summary: {total: results.length, succeeded: results.length - failed, failed}},
         null
     );
 }
@@ -208,6 +218,111 @@ describe("BulkActionDispatcher", () => {
 
             const shown = notification.show.calls.mostRecent().args[0];
             expect(shown.level).toBe(Notification.Level.DANGER);
+        }));
+    });
+
+    describe("release of unverified transfers (428)", () => {
+        const MIXED: BulkFileResult[] = [
+            {file: "A", success: true},
+            {file: "B", success: false, error: "Completion could not be verified: Still downloading", error_code: 428},
+            {file: "C", success: false, error: "File 'C' not found", error_code: 404},
+        ];
+
+        it("asks for confirmation once with the verbatim message and the held files", fakeAsync(() => {
+            bulkCommand.executeBulkAction.and.returnValues(of(perFileResult(MIXED)), of(okResult(1, 0)));
+
+            dispatcher.dispatchQueue(["A", "B", "C"]);
+            tick();
+
+            expect(confirmModal.confirm).toHaveBeenCalledTimes(1);
+            const arg = confirmModal.confirm.calls.mostRecent().args[0];
+            expect(arg.title).toBe(Localization.Modal.RELEASE_UNVERIFIED_TITLE);
+            // Verbatim message followed by the preview of only the held file (B)
+            expect(arg.body).toBe(
+                "Completion could not be verified. Transfer and release this item anyway?\n\nB");
+            expect(arg.okBtn).toBe("Release");
+        }));
+
+        it("re-sends queue with releaseUnverified for exactly the 428 files on confirm", fakeAsync(() => {
+            bulkCommand.executeBulkAction.and.returnValues(of(perFileResult(MIXED)), of(okResult(1, 0)));
+
+            dispatcher.dispatchQueue(["A", "B", "C"]);
+            tick();
+
+            expect(bulkCommand.executeBulkAction).toHaveBeenCalledTimes(2);
+            expect(bulkCommand.executeBulkAction.calls.argsFor(0)).toEqual([jasmine.any(String), ["A", "B", "C"]]);
+            expect(bulkCommand.executeBulkAction.calls.argsFor(1))
+                .toEqual(["queue", ["B"], {releaseUnverified: true}]);
+            expect(dispatcher.inProgress()).toBe(false);
+        }));
+
+        it("sends nothing more when the user cancels", fakeAsync(() => {
+            confirmModal.confirm.and.returnValue(Promise.resolve(false));
+            bulkCommand.executeBulkAction.and.returnValue(of(perFileResult(MIXED)));
+
+            dispatcher.dispatchQueue(["A", "B", "C"]);
+            tick();
+
+            expect(confirmModal.confirm).toHaveBeenCalledTimes(1);
+            expect(bulkCommand.executeBulkAction).toHaveBeenCalledTimes(1);
+        }));
+
+        it("never asks when no file needs confirmation", fakeAsync(() => {
+            bulkCommand.executeBulkAction.and.returnValue(of(perFileResult([
+                {file: "A", success: true},
+                {file: "C", success: false, error: "not found", error_code: 404},
+            ])));
+
+            dispatcher.dispatchQueue(["A", "C"]);
+            tick();
+
+            expect(confirmModal.confirm).not.toHaveBeenCalled();
+            expect(bulkCommand.executeBulkAction).toHaveBeenCalledTimes(1);
+        }));
+
+        it("does not ask again when the release attempt itself returns 428", fakeAsync(() => {
+            const held = perFileResult([MIXED[1]]);
+            bulkCommand.executeBulkAction.and.returnValues(of(held), of(held));
+
+            dispatcher.dispatchQueue(["B"]);
+            tick();
+
+            expect(confirmModal.confirm).toHaveBeenCalledTimes(1);
+            expect(bulkCommand.executeBulkAction).toHaveBeenCalledTimes(2);
+        }));
+
+        it("only offers release for queue, not other actions", fakeAsync(() => {
+            bulkCommand.executeBulkAction.and.returnValue(of(perFileResult(MIXED)));
+
+            dispatcher.dispatchStop(["A", "B", "C"]);
+            tick();
+
+            expect(confirmModal.confirm).not.toHaveBeenCalled();
+        }));
+
+        it("skips the partial-failure toast when every failure is a 428", fakeAsync(() => {
+            confirmModal.confirm.and.returnValue(Promise.resolve(false));
+            bulkCommand.executeBulkAction.and.returnValue(of(perFileResult([
+                {file: "A", success: true},
+                MIXED[1],
+            ])));
+
+            dispatcher.dispatchQueue(["A", "B"]);
+            tick();
+
+            expect(notification.show).not.toHaveBeenCalled();
+            expect(confirmModal.confirm).toHaveBeenCalledTimes(1);
+        }));
+
+        it("still shows the partial-failure toast when a non-428 failure is present", fakeAsync(() => {
+            confirmModal.confirm.and.returnValue(Promise.resolve(false));
+            bulkCommand.executeBulkAction.and.returnValue(of(perFileResult(MIXED)));
+
+            dispatcher.dispatchQueue(["A", "B", "C"]);
+            tick();
+
+            const shown = notification.show.calls.mostRecent().args[0];
+            expect(shown.level).toBe(Notification.Level.WARNING);
         }));
     });
 

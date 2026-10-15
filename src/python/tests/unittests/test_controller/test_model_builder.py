@@ -1567,3 +1567,98 @@ class TestModelBuilder(unittest.TestCase):
         self.model_builder.set_local_files([SystemFile("a.rar", 400, False)])
         model = self.model_builder.build_model()
         self.assertEqual(ModelFile.State.DEFAULT, model.get_file("a.rar").state)
+
+    def test_hold_reason_applied_to_default_root(self):
+        """A held remote-only root (DEFAULT) carries the gate's reason code."""
+        self.model_builder.set_remote_files([SystemFile("A", 1000, False)])
+        self.model_builder.set_hold_reasons({"A": "still_downloading"})
+        model = self.model_builder.build_model()
+        m_a = model.get_file("A")
+        self.assertEqual(ModelFile.State.DEFAULT, m_a.state)
+        self.assertEqual("still_downloading", m_a.hold_reason)
+
+    def test_hold_reason_not_applied_to_transferring_root(self):
+        """A root with an lftp status never carries a stale hold reason."""
+        self.model_builder.set_remote_files([SystemFile("A", 1000, False)])
+        self.model_builder.set_hold_reasons({"A": "still_downloading"})
+        s_running = LftpJobStatus(0, LftpJobStatus.Type.PGET, LftpJobStatus.State.RUNNING, "A", "")
+        s_running.total_transfer_state = LftpJobStatus.TransferState(100, 1000, 10, 50, 90)
+        self.model_builder.set_lftp_statuses([s_running])
+        model = self.model_builder.build_model()
+        m_a = model.get_file("A")
+        self.assertEqual(ModelFile.State.DOWNLOADING, m_a.state)
+        self.assertIsNone(m_a.hold_reason)
+
+        s_queued = LftpJobStatus(0, LftpJobStatus.Type.PGET, LftpJobStatus.State.QUEUED, "A", "")
+        self.model_builder.set_lftp_statuses([s_queued])
+        model = self.model_builder.build_model()
+        self.assertEqual(ModelFile.State.QUEUED, model.get_file("A").state)
+        self.assertIsNone(model.get_file("A").hold_reason)
+
+    def test_hold_reason_not_applied_to_downloaded_root(self):
+        """A completed (non-DEFAULT) root never carries a hold reason."""
+        self.model_builder.set_remote_files([SystemFile("A", 1000, False)])
+        self.model_builder.set_local_files([SystemFile("A", 1000, False)])
+        self.model_builder.set_hold_reasons({"A": "ambiguous_match"})
+        model = self.model_builder.build_model()
+        self.assertEqual(ModelFile.State.DOWNLOADED, model.get_file("A").state)
+        self.assertIsNone(model.get_file("A").hold_reason)
+
+    def test_hold_reason_not_applied_to_children(self):
+        """Hold reasons are a root-level attribute only."""
+        r_d = SystemFile("d", 100, True)
+        r_d.add_child(SystemFile("x", 100, False))
+        self.model_builder.set_remote_files([r_d])
+        self.model_builder.set_hold_reasons({"d": "no_queue_entry", "x": "no_queue_entry"})
+        model = self.model_builder.build_model()
+        m_d = model.get_file("d")
+        self.assertEqual("no_queue_entry", m_d.hold_reason)
+        self.assertIsNone(m_d.get_children()[0].hold_reason)
+
+    def test_set_hold_reasons_invalidates_cache_only_on_change(self):
+        """The cached model is invalidated only when the hold mapping changes."""
+        self.model_builder.set_remote_files([SystemFile("A", 1000, False)])
+        self.model_builder.build_model()
+        self.assertFalse(self.model_builder.has_changes())
+
+        self.model_builder.set_hold_reasons({"A": "still_downloading"})
+        self.assertTrue(self.model_builder.has_changes())
+        self.model_builder.build_model()
+
+        self.model_builder.set_hold_reasons({"A": "still_downloading"})
+        self.assertFalse(self.model_builder.has_changes())
+
+        self.model_builder.set_hold_reasons({"A": "ambiguous_match"})
+        self.assertTrue(self.model_builder.has_changes())
+        model = self.model_builder.build_model()
+        self.assertEqual("ambiguous_match", model.get_file("A").hold_reason)
+
+        self.model_builder.set_hold_reasons({})
+        self.assertTrue(self.model_builder.has_changes())
+        model = self.model_builder.build_model()
+        self.assertIsNone(model.get_file("A").hold_reason)
+
+    def test_set_hold_reasons_copies_input(self):
+        """Mutating the caller's dict after the call does not leak into the builder."""
+        reasons = {"A": "still_downloading"}
+        self.model_builder.set_hold_reasons(reasons)
+        reasons["A"] = "ambiguous_match"
+        self.model_builder.set_remote_files([SystemFile("A", 1000, False)])
+        model = self.model_builder.build_model()
+        self.assertEqual("still_downloading", model.get_file("A").hold_reason)
+
+    def test_clear_resets_hold_reasons(self):
+        """clear() drops the hold reasons."""
+        self.model_builder.set_hold_reasons({"A": "still_downloading"})
+        self.model_builder.clear()
+        self.model_builder.set_remote_files([SystemFile("A", 1000, False)])
+        model = self.model_builder.build_model()
+        self.assertIsNone(model.get_file("A").hold_reason)
+
+    def test_hold_reason_for_unknown_name_is_ignored(self):
+        """A reason for a name not in the model is ignored."""
+        self.model_builder.set_remote_files([SystemFile("A", 1000, False)])
+        self.model_builder.set_hold_reasons({"ghost": "no_queue_entry"})
+        model = self.model_builder.build_model()
+        self.assertEqual(["A"], sorted(model.get_file_names()))
+        self.assertIsNone(model.get_file("A").hold_reason)

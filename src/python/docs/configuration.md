@@ -29,7 +29,7 @@ SeedSyncarr stores its configuration in `~/.seedsyncarr/settings.cfg` (INI forma
 | `num_max_connections_per_root_file` | int | LFTP connections per root-level file (must be > 0) |
 | `num_max_connections_per_dir_file` | int | LFTP connections per directory-level file (must be > 0) |
 | `num_max_total_connections` | int | Total maximum LFTP connections. Set to 0 for unlimited. |
-| `use_temp_file` | bool | Use `.lftp` temporary files during download |
+| `use_temp_file` | bool | Ignored since 1.7.5 — `.lftp` temporary files are always used during download; the key is still accepted for compatibility |
 
 ## [Controller]
 

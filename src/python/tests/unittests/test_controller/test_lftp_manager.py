@@ -1,6 +1,8 @@
+import threading
 import unittest
 from unittest.mock import MagicMock, patch
 
+from common import Constants
 from controller import LftpManager
 from lftp import LftpError, LftpJobStatus, LftpJobStatusParserError
 
@@ -316,6 +318,47 @@ class TestLftpManager(unittest.TestCase):
         self.assertEqual(["a.rar"], manager.submitted_unobserved_file_names())
 
     @patch('controller.lftp_manager.Lftp')
+    def test_submitted_set_snapshot_is_lock_protected(self, mock_lftp_class):
+        """DEL-01: the auto-delete Timer thread reads the submitted set while
+        the controller thread mutates it, so every access goes through a
+        lock and readers get a fresh snapshot list."""
+        mock_lftp = MagicMock()
+        mock_lftp_class.return_value = mock_lftp
+
+        manager = LftpManager(self.mock_context)
+        manager.queue("a", False)
+        self.assertEqual(["a"], manager.submitted_unobserved_file_names())
+
+        lock = getattr(manager, "_LftpManager__submitted_lock", None)
+        self.assertIsNotNone(lock, "submitted set must be guarded by a lock")
+        self.assertIsInstance(lock, type(threading.Lock()))
+        self.assertIsNot(
+            manager.submitted_unobserved_file_names(),
+            manager.submitted_unobserved_file_names()
+        )
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_queue_adds_name_before_lftp_queue_and_discards_on_error(self, mock_lftp_class):
+        """DEL-01: the name is tracked BEFORE lftp gets the job, so the Timer
+        can never observe lftp holding a job the set does not; a rejected
+        QUEUE discards it again and the error propagates."""
+        mock_lftp = MagicMock()
+        mock_lftp_class.return_value = mock_lftp
+        manager = LftpManager(self.mock_context)
+
+        seen_during_queue = []
+        mock_lftp.queue.side_effect = \
+            lambda name, is_dir: seen_during_queue.append(manager.submitted_unobserved_file_names())
+        manager.queue("a", False)
+        self.assertEqual([["a"]], seen_during_queue)
+        self.assertEqual(["a"], manager.submitted_unobserved_file_names())
+
+        mock_lftp.queue.side_effect = LftpError("rejected")
+        with self.assertRaises(LftpError):
+            manager.queue("b", False)
+        self.assertEqual(["a"], manager.submitted_unobserved_file_names())
+
+    @patch('controller.lftp_manager.Lftp')
     def test_successful_kill_reconciles_submitted_name(self, mock_lftp_class):
         """New-contract (XFER-02, codex pass-3): Lftp.kill polls status
         directly, so a kill that returned reconciles the killed name (and only
@@ -403,6 +446,37 @@ class TestLftpManager(unittest.TestCase):
         result = manager.lftp
 
         self.assertIs(result, mock_lftp)
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_use_temp_file_forced_true_when_config_false(self, mock_lftp_class):
+        """IMP-01 / D-18: in-flight copies are always *.lftp, whatever the
+        legacy use_temp_file key says; the ignored key is logged once."""
+        mock_lftp = MagicMock()
+        mock_lftp_class.return_value = mock_lftp
+        self.mock_context.config.lftp.use_temp_file = False
+        manager_logger = self.mock_context.logger.getChild.return_value
+
+        LftpManager(self.mock_context)
+
+        self.assertIs(True, mock_lftp.use_temp_file)
+        self.assertEqual("*" + Constants.LFTP_TEMP_FILE_SUFFIX, mock_lftp.temp_file_name)
+        notices = [c for c in manager_logger.info.call_args_list + manager_logger.warning.call_args_list
+                   if "use_temp_file" in str(c[0][0])]
+        self.assertEqual(1, len(notices))
+        self.assertIn("ignored", str(notices[0][0][0]))
+
+    @patch('controller.lftp_manager.Lftp')
+    def test_use_temp_file_true_logs_no_ignored_notice(self, mock_lftp_class):
+        mock_lftp = MagicMock()
+        mock_lftp_class.return_value = mock_lftp
+        manager_logger = self.mock_context.logger.getChild.return_value
+
+        LftpManager(self.mock_context)
+
+        self.assertIs(True, mock_lftp.use_temp_file)
+        notices = [c for c in manager_logger.info.call_args_list + manager_logger.warning.call_args_list
+                   if "use_temp_file" in str(c[0][0])]
+        self.assertEqual([], notices)
 
 
 if __name__ == '__main__':

@@ -37,7 +37,21 @@
 - ✅ v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra - Phases 107-109 (shipped 2026-06-02; v1.3.0 tag cut)
 - ✅ v1.4.0 — Launch-Hardening for Public Release - Phases 110-113 (shipped 2026-06-03; merged to `main`, `v1.4.0` tag)
 - ✅ v1.4.1 — Scanner Auto-Recovery - Phases 114-115 (shipped 2026-06-22; tagged `v1.5.0`)
-- 🔨 v1.7.4 Safety Patch - Phases 116-118 (in progress)
+- ✅ v1.7.4 Safety Patch - Phases 116-118 (shipped 2026-10-09; tagged `v1.7.4`; archive: `milestones/v1.7.4-ROADMAP.md`)
+- 🚧 v1.7.5 Safety Release - Phase 119 (in progress, started 2026-10-14)
+
+## Agreed milestone sequence
+
+1. **Safety Patch — complete:** v1.7.4, Phases 116–118.
+2. **v1.7.5 Safety Release — in progress:** Phase 119 only. Owner decision 2026-10-14: 1.7.5 is its own milestone (previously planned as the opening phase of Reliability), so the orchestrator's milestone-end walkthrough, audit and `v1.7.5` tag apply to it directly.
+3. **Reliability — next:** starts at Phase 120 after v1.7.5 ships. Covers import/cleanup recovery across scan timing and restarts, shutdown/resource cleanup, bounded scanner-result buffering, and useful memory diagnostics; detailed phases and the final release version remain to be planned.
+4. **Performance and usability — later:** retain the previously discussed targeted UI/backend efficiency and usability work after reliability. No scope expansion or transfer-engine replacement.
+
+### 🚧 v1.7.5 Safety Release (In Progress)
+
+- [ ] **Phase 119: Safety Follow-ups and 1.7.5 Release** — close the two carried-forward safety gaps, stop incomplete-file imports, recover early per-episode import notices, and restore PyPI publishing.
+
+**Release ordering:** Phase 119 → verify and release 1.7.5 (milestone v1.7.5 complete) → Reliability milestone (Phase 120+) → Performance and usability.
 
 ## Phases
 
@@ -383,7 +397,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
   - **Plans:** 1 plan (1 wave)
   - [x] 115-01-PLAN.md — Re-verify live PR/alert state, then squash-merge all 7 Dependabot PRs CI-green-gated one-at-a-time in security-first order (#64→#65→#66→#60→#61→#62→#63), then end-state gate: 0 open alerts + 7 MERGED + local whole-tree ruff 0.15.17 clean (wave 1)
 
-🔨 v1.7.4 — Safety Patch (Phases 116-118) — IN PROGRESS
+✅ v1.7.4 — Safety Patch (Phases 116-118) — SHIPPED 2026-10-09 (tagged `v1.7.4`)
 
 **Milestone Goal:** Protect users from incorrect deletion and transfer-state decisions, shipped promptly as patch release 1.7.4. Five confirmed defects, grouped into three phases ordered by risk: (1) **deletion safety** — `Controller.__check_webhook_imports` builds `name_to_root` last-writer-wins, so a webhook import whose basename matches more than one model path can be credited to the wrong release or satisfy per-child coverage for a file that was never imported, arming auto-delete wrongly; the patch conservatively rejects ambiguous matches. (2) **transfer-state safety** — `PgetJobParser.parse_header` pops the line after `sftp` unconditionally (a pget with no data line swallows the next job's header), `Lftp.status()` returns `[]` on tolerated parse errors (active transfers lose protection), and `latest_remote_scan_time` / `latest_local_scan_time` advance on failed scans (stability "established" with no fresh evidence). (3) **durable state** — `Persist.to_file` truncates in place, so a failed save corrupts `settings.cfg`, the controller persist, or the auto-queue persist; writes become temp-file + fsync + `os.replace` + directory fsync. All three are Python-only, behavior-narrowing fixes with no on-disk format change and no UI work.
 
@@ -393,7 +407,7 @@ Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at
 
 - [x] **Phase 116: Import Safety** - `name_to_root` keeps every distinct model path per lowercased basename; a webhook import resolving to two or more distinct paths (across releases, case-only root differences, root-equals-child-basename, or repeated basenames inside one release) is rejected with no import record, no coverage credit, no badge, no auto-delete timer, and one sanitized warning naming the candidate roots; a unique match (including repeated references to the same path) behaves exactly as before (IMPORT-01, IMPORT-02) (completed 2026-10-08)
 - [x] **Phase 117: Transfer-State Safety** - LFTP parser never consumes the next job's header (other next-line-consuming sites audited); unparseable status is reported as *unavailable* (`None`), never `[]`, with the existing `MAX_CONSECUTIVE_STATUS_ERRORS` boundary pinned exactly and no downstream consumer collapsing unavailable into "no jobs"; remote and local stability clocks advance only on successful scans while the UI "last scan" timestamp keeps its meaning (XFER-01, XFER-02, XFER-03, XFER-04, XFER-05) (completed 2026-10-09)
-- [ ] **Phase 118: Durable State** - `Persist.to_file` writes atomically (serialize first → 0600 temp in target dir → write/flush/fsync → `os.replace` commit point → best-effort directory fsync) so any pre-replace failure leaves the original byte-for-byte intact with no temp file left behind; then the 1.7.4 release gate — regressions fail-before/pass-after, full suite + ruff, release-image smoke test, `:1.7.4` NAS deploy with scanner recovery confirmed by a subsequent successful scan (PERSIST-01, PERSIST-02, REL-01)
+- [x] **Phase 118: Durable State** - `Persist.to_file` writes atomically (serialize first → 0600 temp in target dir → write/flush/fsync → `os.replace` commit point → best-effort directory fsync) so any pre-replace failure leaves the original byte-for-byte intact with no temp file left behind; then the 1.7.4 release gate — regressions fail-before/pass-after, full suite + ruff, release-image smoke test, `:1.7.4` NAS deploy with scanner recovery confirmed by a subsequent successful scan (PERSIST-01, PERSIST-02, REL-01) (completed 2026-10-09)
 
 ## Phase Details
 
@@ -787,11 +801,73 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 118-04-PLAN.md — Owner approval checkpoint, push main, history-preserving merge, annotated v1.7.4 tag, CI green, image digest (REL-01)
+- [x] 118-04-PLAN.md — Owner approval checkpoint, push main, history-preserving merge, annotated v1.7.4 tag, CI green, image digest (REL-01)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 118-05-PLAN.md — NAS smoke test of :1.7.4, deploy approval, same-digest NAS deploy with scanner-recovery gate (REL-01)
+- [x] 118-05-PLAN.md — NAS smoke test of :1.7.4, deploy approval, same-digest NAS deploy with scanner-recovery gate (REL-01)
+
+### Phase 119: Safety Follow-ups and 1.7.5 Release
+
+**Milestone:** v1.7.5 Safety Release (sole phase)
+**Goal:** Deliver the contained safety follow-ups, the two Done-group incident fixes, and the packaging repair as 1.7.5 before the Reliability milestone begins.
+**Depends on:** Phase 118 (v1.7.4 shipped)
+**Requirements:** XFER-06, DEL-01, IMP-01, IMP-02, IMP-03, REL-02, REL-03 (see `.planning/REQUIREMENTS.md`). Sources: backlog 999.2, backlog 999.3, the v1.7.4 PyPI publishing failure, and the Done-group incidents (debug session `.planning/debug/done-group-no-auto-delete.md`). Plan grouping: IMP-01 + IMP-02 in one plan with its own regression tests; IMP-03 in a separate plan with its own regression tests.
+**Scope:**
+
+1. Re-establish a trustworthy LFTP command boundary after a timeout. Until synchronized, status remains unavailable; a delayed prompt or stale output must not clear active/submitted-transfer protection (promotes 999.2).
+2. Add the explicit submitted-but-unobserved transfer check to the auto-delete timer, with safe defer/re-arm behavior and a regression covering unavailable status (promotes 999.3).
+3. Repair the PyPI archive packaging failure and verify the built distribution. Evaluate the already-linked Dependabot #93 only as relevant to this packaging repair; no general dependency-upgrade sweep.
+4. Prevent incomplete-file imports (Obsession incident, 2026-10-13: a copy taken while the seedbox was still downloading stalled ~800 MB short, passed the 90 s size-stability check, and Radarr imported the short file). Unchanged size and modification time are supporting evidence only, never proof of completion. The arr download-queue check must identify the release reliably, and absence from the queue must not by itself mean complete. If Sonarr/Radarr is unavailable, hold or retry visibly; a timeout must never fall through to an unsafe copy. An unverified copy must stay unavailable for arr import until the completion checks pass — a recheck just before marking the copy complete is not sufficient on its own. Separate plan and tests.
+5. Recover early per-episode import notices (Days of Hope incident, 2026-10-09: Sonarr notices for parts 1–3 arrived while part 4 was still transferring, were rejected for "no transfer evidence" and never reconsidered, so the all-children coverage gate could never pass). Persist import credit for each demonstrably complete episode while its siblings continue transferring. Whole-folder deletion stays gated on transfer completion and coverage of every required video. Retain the ambiguous-filename protections. Separate plan and tests.
+
+**Success criteria:**
+
+1. A delayed prompt from a timed-out command cannot turn the next status into a trusted empty job list; normal status resumes after verified synchronization.
+2. A pending auto-delete timer cannot delete a submitted-but-unobserved transfer; it defers and can safely retry once transfer status is successfully observed (the job need not appear active if it already finished) and the existing deletion guards pass.
+3. Built distributions have valid member paths, pass packaging checks, and install successfully in a clean environment; the 1.7.5 PyPI publication succeeds.
+4. An incomplete or unverified copy is never exposed at an importable path — during transfer, retries, crashes, or restart recovery. Completion requires reliable evidence; stable size and modification time alone are insufficient. With Sonarr or Radarr integration enabled, each of these is a reason to hold, never to release: no configured service able to confirm the release (an unavailable service holds only when no other configured service provides strong-identity completion evidence), an ambiguous queue match, a missing queue entry. With both integrations disabled, stability-based syncing is retained as a documented compatibility exception; incomplete local copies stay hidden until copying finishes in both modes. The copy is held and retried visibly, and elapsed time never grants completion. Queue/API semantics are verified during planning.
+5. An import notice for a uniquely identified, fully transferred episode is credited and persisted while sibling episodes are still transferring and survives a restart; that credit alone never authorizes whole-folder deletion, which requires both a complete transfer of the folder and import coverage of every required video. Ambiguous-filename protections still reject unsafe matches.
+6. Targeted regressions fail before their fixes and pass after; the full Python suite, Ruff, and release CI gates pass. The release image passes startup, real-transfer, import visibility and webhook handling, automatic cleanup, settings-persistence and restart smoke checks.
+7. Release 1.7.5 through the established Docker/GitHub/PyPI process and verify the tested image on the NAS, including a successful scan after any startup scanner error (any other startup error needs its own resolution before release), before the Reliability milestone begins.
+
+**Scope boundary:** No transfer-engine replacement, broad refactor, UI feature, or unrelated dependency churn in this patch release. Owner-approved exceptions: held items show as waiting with their reason in the existing file list, and a manual release requires an explicit confirmation ("Completion could not be verified. Transfer and release this item anyway?") valid for one transfer attempt only. Items 4 and 5 are in scope only as far as needed to stop incomplete imports and incorrect cleanup; any broader path-aware import redesign stays out. Backlog 999.1 (payload-size evidence) stays deferred as defense in depth; payload-size evidence alone would not satisfy the new completion requirements.
+**Plans:** 10/12 plans executed
+
+Plans:
+
+**Wave 1**
+
+- [x] 119-01-PLAN.md — XFER-06: LFTP sentinel resync after a status timeout (RED-first fake-pty regression)
+- [x] 119-02-PLAN.md — REL-02: hatch `only-include` packaging fix, member-path checker, `verify-python-package` CI job
+- [x] 119-03-PLAN.md — DEL-01: lock-protected submitted-unobserved set + auto-delete Timer guard (RED-first)
+- [x] 119-04-PLAN.md — IMP-02 foundation: ArrQueueClient (`/api/v3/queue/details`) + CompletionGate (D-16/D-17 verdicts, capped backoff, hold registry)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 119-05-PLAN.md — IMP-03: early per-episode import credit, pending-notice re-evaluation, arm-on-commit, immediate atomic persist (Days of Hope replay RED-first)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 119-06-PLAN.md — IMP-01 + IMP-02: forced temp files, sweep + execution-time completion gate, one-shot manual release flag (Obsession replay RED-first)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 119-07-PLAN.md — IMP-02 hold visibility backend: `ModelFile.hold_reason` → builder → pipeline → SSE
+- [x] 119-08-PLAN.md — IMP-02 UI: Waiting badge + reason, 428 → confirm → release re-dispatch
+- [x] 119-12-PLAN.md — IMP-01/IMP-02 settings + docs: remove `use_temp_file` toggle (D-19), e2e seed release flag, CONFIGURATION docs (wave 4, sibling of 119-08)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 119-09-PLAN.md — REL-03 (1/3): 1.7.5 version bumps, Dependabot #93/#123/#124, CHANGELOG/notes, gate evidence, CI green, owner approval checkpoint
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 119-10-PLAN.md — REL-03 (2/3): wud pause, tag v1.7.5, tag CI (Docker/GitHub/PyPI), smoke on the exact `:1.7.5` digest, deploy go-ahead checkpoint
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 119-11-PLAN.md — REL-03 (3/3): NAS deploy by digest with verified backups, scan recovery + arr reachability, wud restore, owner confirmation
 
 ## Progress
 
@@ -833,11 +909,12 @@ Plans:
 | 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
 | 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
-| 118. Durable State | v1.7.4 | 3/5 | In Progress|  |
+| 118. Durable State | v1.7.4 | 5/5 | Complete    | 2026-10-09 |
+| 119. Safety Follow-ups and 1.7.5 Release | v1.7.5 | 10/12 | In Progress|  |
 
 ---
 
-*Last updated: 2026-10-08 — Milestone v1.7.4 (Safety Patch) added with **3 phases** (116-118), continuing from v1.4.1's last phase (115). Owner-approved split from the design spec, ordered by risk: Phase 116 Import Safety (IMPORT-01/02 — reject ambiguous webhook import matches in `Controller.__check_webhook_imports`), Phase 117 Transfer-State Safety (XFER-01..05 — parser header consumption, status-unavailable ≠ empty with the error boundary pinned, success-only stability clocks), Phase 118 Durable State (PERSIST-01/02 — atomic `Persist.to_file`; plus REL-01, the 1.7.4 release gate, mapped to the final phase as the milestone close). Phases are sequenced 116→117→118 but touch disjoint code paths; per the spec, 116 may ship alone if 117/118 slip. CI gate per phase: full Python suite green AND `ruff check src/python/` clean whole-tree (separate CI gate from pytest). 100% requirement coverage (10/10 mapped, no orphans, no duplicates).*
+*Last updated: 2026-10-14 — Milestone v1.7.5 Safety Release started with Phase 119 as its sole phase (owner decision: 1.7.5 is its own milestone; Reliability follows at Phase 120); requirements XFER-06, DEL-01, IMP-01..03, REL-02, REL-03 mapped. Earlier 2026-10-14 — Owner expanded Phase 119 with scope items 4 (prevent incomplete-file imports) and 5 (recover early per-episode import notices), each with its own plan and tests, after the Obsession and Days of Hope Done-group incidents. 2026-10-09 — Owner approved Phase 119 as the opening phase of the next Reliability milestone; release 1.7.5 before resuming its remaining phases. v1.7.4 remains shipped and archived. Backlog 999.2 and 999.3 are promoted into Phase 119.*
 
 ## Backlog
 
@@ -851,12 +928,12 @@ Plans:
 
 - [ ] TBD (promote with /gsd:review-backlog when ready)
 
-### Phase 999.2: LFTP command-stream resync after timeout — a delayed prompt from a timed-out command must not make the next status look like "no jobs" (BACKLOG)
+### Phase 999.2: LFTP command-stream resync after timeout — a delayed prompt from a timed-out command must not make the next status look like "no jobs" (PROMOTED TO PHASE 119)
 
 **Goal:** [Captured for future planning] After any pexpect TIMEOUT in `Lftp.__run_command` (180 s, `src/python/lftp/lftp.py`), a delayed prompt from the timed-out command can satisfy the next command's `expect`, so the next `jobs -v` looks successful with empty/stale output and could clear observed or submitted-transfer protection. Fix: mark the stream unsynchronized after a timeout and re-establish a verified command boundary (e.g. sentinel echo) before trusting another status result; return `None` (unavailable) until then. Add a regression with a delayed previous-command prompt followed by the real jobs output, asserting stale output cannot clear observed or submitted-transfer protection. Source: codex adversarial pass 4 on Phase 117 (`.orchestrator/codex/v1.7.4/117/pass-4.out`), accepted by owner 2026-10-08 as a known follow-up to keep the 1.7.4 safety patch scoped. Pre-existing in the lftp wrapper (affects all commands, not just status).
-**Requirements:** TBD
-**Plans:** 0 plans
+**Status:** Promoted into Phase 119 on 2026-10-09. Retained here for provenance only; plan and track implementation in Phase 119, not as a separate backlog phase.
 
-Plans:
+### Phase 999.3: Auto-delete timer — explicit submitted-unobserved guard, matching the manual Delete/Extract 409 (PROMOTED TO PHASE 119)
 
-- [ ] TBD (promote with /bm:review-backlog when ready)
+**Goal:** [Captured for future planning] `Controller.__execute_auto_delete` (the Timer-based auto-delete added around Phase 116) has no explicit `LftpManager.submitted_unobserved_file_names()` check analogous to `CommandProcessor._is_submitted_unobserved` (which returns 409 for manual extract/delete on a just-submitted, not-yet-observed transfer). Today protection is indirect — the evidence gate on `downloaded_file_names` membership plus `deletable_states` reading the last-built (stale-retained) model state. The v1.7.4 integration check traced the realistic race (user re-queue vs a pending auto-delete Timer) and found it defused in practice, but the Timer auto-delete × None-status/submitted-unobserved combination is untested, and `downloaded_file_names`/`imported_children` are mutated from the command thread outside `__model_lock` while the Timer reads under it (narrow TOCTOU in principle). Fix: add the explicit guard inside `__execute_auto_delete` (defer/re-arm when the root is submitted-unobserved) plus a regression test combining Timer auto-delete with an unavailable status and a submitted-unobserved root. Source: v1.7.4 milestone audit (`.planning/v1.7.4-MILESTONE-AUDIT.md`), accepted by owner 2026-10-09 as backlog for 1.7.5; pair with the 1.7.5 PyPI packaging fix (Dependabot #93).
+**Status:** Promoted into Phase 119 on 2026-10-09. Retained here for provenance only; plan and track implementation in Phase 119, not as a separate backlog phase.

@@ -93,6 +93,39 @@ jobs:
       - name: Python lint
         run: ruff check src/python/
 
+  verify-python-package:
+    name: Verify Python package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: pip install build twine
+
+      - name: Build wheel and sdist
+        run: python -m build
+        working-directory: src/python
+
+      - name: Check package metadata
+        run: twine check dist/*
+        working-directory: src/python
+
+      - name: Check archive member paths
+        run: python scripts/verify-python-package.py src/python/dist
+
+      - name: Install wheel in a clean venv
+        run: |
+          python -m venv /tmp/pkgvenv
+          /tmp/pkgvenv/bin/pip install src/python/dist/*.whl
+          /tmp/pkgvenv/bin/seedsyncarr --help
+
   lint-angular:
     name: Lint (Angular)
     runs-on: ubuntu-latest
@@ -118,7 +151,7 @@ jobs:
     name: Build Docker Image
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    needs: [ unittests-release-metadata, unittests-python, unittests-angular, lint-python, lint-angular, verify-release-metadata ]
+    needs: [ unittests-release-metadata, unittests-python, unittests-angular, lint-python, lint-angular, verify-release-metadata, verify-python-package ]
     permissions:
       packages: write
     steps:
@@ -309,7 +342,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [ e2etests-docker-image, verify-release-metadata ]
+    needs: [ e2etests-docker-image, verify-release-metadata, verify-python-package ]
     permissions:
       id-token: write
     steps:

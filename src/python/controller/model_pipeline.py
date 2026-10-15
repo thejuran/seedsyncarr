@@ -1,6 +1,6 @@
 import copy
 import time
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from common import Context, sanitize_log_value
 from model import ModelError, ModelFile, Model, ModelDiff, ModelDiffUtil
@@ -39,11 +39,19 @@ class ModelPipeline:
                  scan_manager,
                  lftp_manager,
                  file_op_manager,
-                 logger):
+                 logger,
+                 completion_gate=None,
+                 on_lifecycle_reset: Optional[Callable[[str, str], None]] = None):
         """
         Receive already-constructed manager instances from Controller.__init__ (D-05).
         Do NOT construct any manager class here; that would break mock.patch binding.
         model_lock must be the SAME threading.Lock held by Controller (D-03).
+
+        completion_gate (already constructed, D-05) supplies the current holds
+        that are fed to the model builder every cycle. on_lifecycle_reset is
+        called with (root_name, cause) when a root starts a new download
+        lifecycle or leaves the model; it runs with the model lock held and
+        must not acquire it.
         """
         self._context = context
         self._persist = persist
@@ -54,7 +62,18 @@ class ModelPipeline:
         self._scan_manager = scan_manager
         self._lftp_manager = lftp_manager
         self._file_op_manager = file_op_manager
+        self._completion_gate = completion_gate
+        self._on_lifecycle_reset = on_lifecycle_reset
         self.logger = logger.getChild("ModelPipeline")
+
+    def _notify_lifecycle_reset(self, name: str, cause: str) -> None:
+        """Tell the owner that per-root caches for `name` belong to a finished
+        download lifecycle. Called with the model lock held."""
+        if self._on_lifecycle_reset is not None:
+            self._on_lifecycle_reset(name, cause)
+        else:
+            self.logger.debug("Lifecycle reset for '{}' ({}) with no listener".format(
+                sanitize_log_value(name), cause))
 
     # =========================================================================
     # Public pipeline entry point
@@ -168,6 +187,10 @@ class ModelPipeline:
         # cycle's status was a list, so only names still awaiting their first
         # successful status are marked QUEUED (XFER-02).
         self._model_builder.set_submitted_files(self._lftp_manager.submitted_unobserved_file_names())
+        # Synced every cycle; the gate clears a hold when its verdict flips or
+        # the name leaves the candidate set, so a stale reason never lingers.
+        if self._completion_gate is not None:
+            self._model_builder.set_hold_reasons(self._completion_gate.holds)
         if extract_statuses is not None:
             self._model_builder.set_extract_statuses(extract_statuses.statuses)
         if extracted_results:
@@ -271,6 +294,7 @@ class ModelPipeline:
                     self._persist.downloaded_file_names.discard(file_name)
                     self._persist.imported_file_names.discard(file_name)
                     self._persist.imported_children.pop(file_name, None)
+                    self._notify_lifecycle_reset(file_name, "new lifecycle after long absence")
                     self._model_builder.set_downloaded_files(self._persist.downloaded_file_names)
             else:
                 absent_since.setdefault(file_name, now)
@@ -340,6 +364,7 @@ class ModelPipeline:
                 self._model.add_file(diff.new_file)
             elif diff.change == ModelDiff.Change.REMOVED:
                 self._model.remove_file(diff.old_file.name)
+                self._notify_lifecycle_reset(diff.old_file.name, "root removed from model")
             elif diff.change == ModelDiff.Change.UPDATED:
                 self._model.update_file(diff.new_file)
 

@@ -28,6 +28,7 @@ import pexpect
 
 from common import Config
 from controller import AutoQueue, AutoQueuePersist, Controller, LftpManager
+from controller.completion_gate import Verdict
 from controller.controller_persist import ControllerPersist
 from controller.model_builder import ModelBuilder
 from controller.model_pipeline import ModelPipeline
@@ -208,6 +209,7 @@ class TestStatusUnavailableKeepsTransferProtection(unittest.TestCase):
         )
 
         self.controller = MagicMock()
+        self.controller.evaluate_completion = MagicMock(side_effect=lambda c: {n: Verdict.proven() for n in c})
 
         def _queue_command(cmd):
             # What CommandProcessor._handle_queue does for an accepted QUEUE
@@ -437,6 +439,10 @@ class TestSameCycleCommandOrderingProtectsSubmittedTransfers(unittest.TestCase):
         mock_context = MagicMock()
         mock_context.logger = logging.getLogger("TestSameCycleCommandOrdering")
         mock_context.config.autodelete.enabled = False
+        # No arr integration: the real completion gate does not apply (D-16),
+        # so these tests exercise command ordering only.
+        mock_context.config.sonarr.enabled = False
+        mock_context.config.radarr.enabled = False
         self.persist = ControllerPersist(max_tracked_files=100)
         self.controller = Controller(
             context=mock_context,

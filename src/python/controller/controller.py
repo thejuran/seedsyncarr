@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 import collections
 import threading
-from typing import Dict, List, Optional, Tuple
+import time
+from typing import Callable, Dict, List, Mapping, NamedTuple, Optional, Tuple
 from threading import Lock
 from queue import Queue
 from enum import Enum
@@ -10,6 +11,9 @@ from .scan_manager import ScanManager
 from .lftp_manager import LftpManager
 from .file_operation_manager import FileOperationManager
 from .command_processor import CommandProcessor
+from .root_reservation import RootReservations
+from .arr_queue import ArrQueueClient
+from .completion_gate import CompletionGate, Verdict
 from .auto_delete_manager import AutoDeleteManager
 from .model_pipeline import ModelPipeline
 from .webhook_manager import WebhookManager
@@ -21,6 +25,7 @@ from common import Context, AppError, MultiprocessingLogger, sanitize_log_value
 from model import ModelError, ModelFile, Model, ModelDiff, IModelListener
 from lftp import LftpJobStatus
 from .controller_persist import ControllerPersist
+from .webhook_manager import _format_capped
 
 # Upper bound on consecutive re-arms of one root's auto-delete Timer after a
 # retriable skip (root or a child still mid-lifecycle, pack not fully imported
@@ -43,6 +48,29 @@ _AUTO_DELETE_DEFER_REASONS = {
 # stranded; safety does not depend on that record because the guard runs
 # before coverage on every firing.
 _AUTO_DELETE_TERMINAL_SKIPS = frozenset({"bfs_limit", "duplicate_basename"})
+
+# Webhook import notices that cannot be credited yet (the root is still
+# transferring and the named child is not yet visible as fully transferred,
+# usually scan lag) are kept in memory and re-evaluated every cycle. Bounded
+# in count and age so repeated or bogus webhooks cannot grow it without limit.
+_PENDING_NOTICE_MAX = 1000
+_PENDING_NOTICE_TTL_SECS = 6 * 3600
+
+
+class _PendingNotice(NamedTuple):
+    """A webhook import notice waiting for its child to finish transferring.
+
+    path is the single case-preserving model path the name resolved to when
+    the notice arrived ("Root/sub/child.mkv", or the root name itself for a
+    root-level match). generation is the root's transfer-lifecycle generation
+    at insertion; a notice from an older generation is never replayed.
+    """
+    root_name: str
+    matched_name: str
+    path: str
+    generation: int
+    inserted_at: float
+
 
 class ControllerError(AppError):
     """
@@ -93,15 +121,23 @@ class Controller:
                         - 400: Bad request (invalid state, validation error)
                         - 404: Resource not found
                         - 409: Conflict (resource in wrong state)
+                        - 428: Precondition required (completion could not be
+                               verified; resend with release_unverified)
                         - 500: Internal server error
                 """
                 pass
 
         def __init__(self, action: Action, filename: str,
-                     origin: "Controller.Command.Origin" = None):
+                     origin: "Controller.Command.Origin" = None,
+                     release_unverified: bool = False):
             self.action = action
             self.filename = filename
             self.origin = origin if origin is not None else Controller.Command.Origin.USER
+            # One-shot user confirmation to transfer a root whose completion
+            # could not be verified. Lives only on this command and is never
+            # persisted, so the approval is never remembered (D-08). Honored
+            # for USER queue commands only.
+            self.release_unverified = bool(release_unverified)
             self.callbacks = []
 
         def add_callback(self, callback: ICallback):
@@ -110,10 +146,23 @@ class Controller:
     def __init__(self,
                  context: Context,
                  persist: ControllerPersist,
-                 webhook_manager: WebhookManager):
+                 webhook_manager: WebhookManager,
+                 persist_callback: Optional[Callable[[], None]] = None):
         self.__context = context
         self.__persist = persist
         self.__webhook_manager = webhook_manager
+        # Writes the controller persist to disk right away. Called after an
+        # early import credit so a crash before the periodic save cannot lose
+        # it. Invoked on the controller thread with no controller lock held.
+        self.__persist_callback = persist_callback
+        # Pending webhook import notices keyed (root_name, matched_name);
+        # controller thread only.
+        self.__pending_child_notices: "collections.OrderedDict[Tuple[str, str], _PendingNotice]" = \
+            collections.OrderedDict()
+        # Per-root transfer-lifecycle generation, bumped whenever the root's
+        # lifecycle resets (USER requeue, re-grab, removal) so a pending
+        # notice from the previous lifecycle can never be replayed.
+        self.__root_lifecycle_generation: Dict[str, int] = collections.defaultdict(int)
         self.logger = context.logger.getChild("Controller")
         # Set logger for persist to enable eviction logging
         self.__persist.set_base_logger(self.logger)
@@ -142,6 +191,13 @@ class Controller:
 
         # Setup the LFTP manager
         self.__lftp_manager = LftpManager(context=self.__context)
+
+        # Completion gate: decides from Sonarr/Radarr queue evidence whether a
+        # remote root has finished downloading before any transfer may start.
+        # Constructed here (D-05) so patch('controller.controller.CompletionGate')
+        # and patch('controller.controller.ArrQueueClient') bind in tests.
+        self.__arr_queue_client = ArrQueueClient(context=self.__context)
+        self.__completion_gate = CompletionGate(context=self.__context, client=self.__arr_queue_client)
 
         # Setup the scan manager
         self.__scan_manager = ScanManager(
@@ -206,6 +262,12 @@ class Controller:
         # Consecutive deferrals per root (see __defer_auto_delete); guarded by
         # __auto_delete_lock like the Timer dict it shadows.
         self.__auto_delete_rearms: Dict[str, int] = {}
+        # Per-root auto-delete epoch, guarded by __auto_delete_lock. Every
+        # Timer is stamped with the epoch current when it was armed; a USER
+        # requeue or a lifecycle reset bumps it (see _cancel_auto_delete), so
+        # a Timer from the previous lifecycle that is already running can
+        # neither delete nor re-arm itself.
+        self.__auto_delete_epochs: Dict[str, int] = collections.defaultdict(int)
         self.__auto_delete_lock = threading.Lock()
         # BUG-03 criterion #2: dedicated shutdown signal for the auto-delete path.
         # exit() sets this UNDER __auto_delete_lock (same lock window as the
@@ -218,11 +280,17 @@ class Controller:
         # Command dispatch collaborator — receives already-constructed manager instances
         # (D-05: mock.patch targets resolve against controller.controller where they are
         # constructed; CommandProcessor constructs none of them)
+        # Per-root reservation shared by queue submission (CommandProcessor) and
+        # both deletion paths (auto-delete Timer, manual Delete Local) so a
+        # deletion and a submission for the same root can never overlap.
+        self.__root_reservations = RootReservations()
         self.__command_processor = CommandProcessor(
             lftp_manager=self.__lftp_manager,
             file_op_manager=self.__file_op_manager,
             persist=self.__persist,
             logger=self.logger,
+            root_reservations=self.__root_reservations,
+            completion_gate=self.__completion_gate,
         )
 
         # Auto-delete BFS+coverage collaborator — receives already-constructed instances
@@ -252,6 +320,8 @@ class Controller:
             lftp_manager=self.__lftp_manager,
             file_op_manager=self.__file_op_manager,
             logger=self.logger,
+            completion_gate=self.__completion_gate,
+            on_lifecycle_reset=self._on_root_lifecycle_reset,
         )
 
         self.__started = False
@@ -306,10 +376,17 @@ class Controller:
                 self.__pending_auto_deletes.clear()
                 self.__auto_delete_rearms.clear()
 
-            self.__lftp_manager.exit()
-            self.__scan_manager.stop()
-            self.__file_op_manager.stop()
-            self.__mp_logger.stop()
+            # Each cleanup runs independently: a failure in one (e.g. lftp's
+            # graceful exit failing on an unsynchronized command stream) must
+            # never leave the remaining child processes running.
+            for component, stop in (("lftp", self.__lftp_manager.exit),
+                                    ("scanner", self.__scan_manager.stop),
+                                    ("file operations", self.__file_op_manager.stop),
+                                    ("multiprocessing logger", self.__mp_logger.stop)):
+                try:
+                    stop()
+                except Exception:
+                    self.logger.exception("Error stopping {} during controller exit".format(component))
             self.__started = False
             self.logger.info("Exited controller")
 
@@ -350,6 +427,26 @@ class Controller:
                 )
             )
         return result
+
+    def evaluate_completion(self, candidates: Mapping[str, Optional[int]]) -> Dict[str, Verdict]:
+        """
+        Completion verdicts for every auto-queue candidate (name -> remote size).
+
+        Runs on the controller thread (AutoQueue shares it) and never waits on
+        an arr: the gate starts queue fetches on daemon workers and decides
+        from the latest completed snapshots, so a first or forced fetch still
+        in flight yields a hold for this cycle and a verdict on a later one.
+        The gate owns refresh and backoff, so calling this every cycle is safe.
+        Names absent from `candidates` leave the hold registry.
+        """
+        return self.__completion_gate.evaluate(candidates)
+
+    def completion_verdict(self, name: str, remote_size: Optional[int]) -> Verdict:
+        """
+        Completion verdict for one root, with the same thread and non-blocking
+        guarantees as evaluate_completion(). Other roots' holds are untouched.
+        """
+        return self.__completion_gate.verdict(name, remote_size)
 
     def add_model_listener(self, listener: IModelListener):
         """
@@ -570,6 +667,23 @@ class Controller:
         so nothing in Window 2 can record, badge or arm auto-delete for it.
         The webhook_manager.process() call and auto-delete scheduling run
         outside the lock (thread-safe Queue and Timer operations respectively).
+
+        Early child credit (IMP-03): when the root is not yet committed but is
+        a remote release SeedSyncarr is transferring (QUEUED/DOWNLOADING), a
+        child-level notice whose child is the unique file of that name and is
+        DOWNLOADED with local_size == remote_size is credited to
+        imported_children[root] and persisted immediately via the persist
+        callback. A notice whose child is not complete yet is kept pending
+        (bounded by _PENDING_NOTICE_MAX and _PENDING_NOTICE_TTL_SECS), bound
+        to its resolved model path and the root's lifecycle generation, and
+        revalidated every cycle before either acceptance path: it must still
+        resolve to exactly one path, equal to its stored path under its stored
+        root, in the current generation. Pending notices are discarded on a
+        USER requeue, a lifecycle reset or root removal (_discard_pending_notices).
+        Credit alone never authorizes deletion (D-14): it never commits the
+        root or marks it imported. When a credited root later commits to
+        downloaded, the arm-on-commit pass marks it imported and arms
+        auto-delete, whose coverage guard then decides.
         """
         # Window 1: Build the basename lookup under lock
         # lowercased basename -> {case-preserving relative path -> root model file name}
@@ -598,36 +712,86 @@ class Controller:
                 except ModelError:
                     self.logger.debug("ModelError looking up '{}' for webhook mapping".format(sanitize_log_value(root_name)))
 
-        # Process outside lock -- webhook_manager only touches its own thread-safe Queue
-        newly_imported = self.__webhook_manager.process(name_to_paths)
+        # Revalidate every pending notice against the CURRENT lookup before it
+        # can reach either acceptance path below. A replayed notice must pass
+        # the same exactly-one-path rule WebhookManager.process applies to a
+        # fresh event, still resolve to the path it was bound to, and belong
+        # to the root's current transfer lifecycle.
+        now = time.monotonic()
+        for key, notice in list(self.__pending_child_notices.items()):
+            if self._revalidate_pending_notice(notice, name_to_paths, now) is not None:
+                self.__pending_child_notices.pop(key, None)
 
-        if newly_imported:
-            # Roots that passed the evidence gate below; only these are
-            # recorded and scheduled for auto-delete.
-            accepted_roots = set()
-            # Window 2: Update model import status for all newly imported files under single lock
-            with self.__model_lock:
-                for root_name, matched_name in newly_imported:
-                    # Evidence gate: only record imports for releases with
-                    # download evidence — already committed to downloaded, or a
-                    # complete local copy of a remote release (committed here,
-                    # covering the race where the arr imports before the next
-                    # model build runs the commit pass). A match with no
-                    # evidence (incident 2026-08-21: a foreign local-only dir
-                    # like 'iplayer' matched via a child basename) is logged
-                    # and ignored so it can never arm auto-delete.
-                    if root_name not in self.__persist.downloaded_file_names:
-                        try:
-                            root_file = self.__model.get_file(root_name)
-                        except ModelError:
-                            root_file = None
-                        has_evidence = (
+        # Process outside lock -- webhook_manager only touches its own thread-safe Queue
+        fresh = self.__webhook_manager.process(name_to_paths)
+
+        # Pending notices first, then fresh events; one entry per
+        # (root, matched) key. Value = the resolved model path, or None when
+        # the name has no single path under the root (only possible for an
+        # injected event); a None path is never kept pending.
+        events: "collections.OrderedDict[Tuple[str, str], Optional[str]]" = collections.OrderedDict()
+        for key, notice in self.__pending_child_notices.items():
+            events[key] = notice.path
+        for root_name, matched_name in fresh:
+            key = (root_name, matched_name)
+            if key not in events:
+                events[key] = self.__resolve_path(name_to_paths, root_name, matched_name)
+
+        # Roots that passed the evidence gate (or committed holding credits);
+        # only these are recorded as imported and scheduled for auto-delete.
+        accepted_roots = set()
+        persist_changed = False
+        transferring_states = (ModelFile.State.DOWNLOADING, ModelFile.State.QUEUED)
+        # Window 2: credit / record imports under a single lock
+        with self.__model_lock:
+            for (root_name, matched_name), path in events.items():
+                key = (root_name, matched_name)
+                # Evidence gate: only record imports for releases with
+                # download evidence — already committed to downloaded, or a
+                # complete local copy of a remote release (committed here,
+                # covering the race where the arr imports before the next
+                # model build runs the commit pass). A match with no
+                # evidence (incident 2026-08-21: a foreign local-only dir
+                # like 'iplayer' matched via a child basename) is logged
+                # and ignored so it can never arm auto-delete.
+                if root_name not in self.__persist.downloaded_file_names:
+                    try:
+                        root_file = self.__model.get_file(root_name)
+                    except ModelError:
+                        root_file = None
+                    has_evidence = (
+                        root_file is not None and
+                        root_file.remote_size is not None and
+                        root_file.local_size is not None and
+                        root_file.local_size >= root_file.remote_size
+                    )
+                    if not has_evidence:
+                        # The root may still be transferring (incident
+                        # 2026-10-09, Days of Hope: three episode notices
+                        # arrived ~1 min before the pack committed and were
+                        # lost). Credit a fully transferred child now; keep a
+                        # notice whose child is not visible as complete yet.
+                        # A credit writes imported_children ONLY: it never
+                        # commits the root, never marks it imported and never
+                        # arms auto-delete, so whole-folder deletion still
+                        # needs the root committed plus full coverage.
+                        transferring = (
                             root_file is not None and
                             root_file.remote_size is not None and
-                            root_file.local_size is not None and
-                            root_file.local_size >= root_file.remote_size
+                            root_file.state in transferring_states
                         )
-                        if not has_evidence:
+                        # A root-level notice for a directory root carries
+                        # no per-child information: replayed at commit it
+                        # would mark the pack imported with no
+                        # imported_children entry, and the coverage guard
+                        # would grandfather the whole pack for deletion.
+                        # Only child-level notices are credited or kept.
+                        root_level_dir = (
+                            transferring and root_file.is_dir and
+                            matched_name.lower() == root_name.lower()
+                        )
+                        if not transferring or path is None or root_level_dir:
+                            self.__pending_child_notices.pop(key, None)
                             self.logger.warning(
                                 "Ignoring webhook import for '{}': not downloaded "
                                 "by SeedSyncarr (no transfer evidence)".format(
@@ -635,47 +799,271 @@ class Controller:
                                 )
                             )
                             continue
-                        self.logger.info(
-                            "Committing '{}' to downloaded list on import evidence".format(
-                                sanitize_log_value(root_name)
-                            )
-                        )
-                        self.__persist.downloaded_file_names.add(root_name)
-                    accepted_roots.add(root_name)
-                    # Backward-compat root tracking (D-05) -- drives UI badge + existing dedup
-                    self.__persist.imported_file_names.add(root_name)
-                    # Per-child tracking (D-07) -- lowercased basename for case-insensitive
-                    # comparison in the coverage guard. See matched_name comment in
-                    # WebhookManager.process docstring.
-                    #
-                    # WR-01 guard: skip add_imported_child when the webhook's matched_name
-                    # is the root itself (e.g. Sonarr's releaseTitle/series.title fallback
-                    # chain when episodeFile.sourcePath is absent from the payload). A
-                    # root-level match carries no per-child information; recording the
-                    # root name as a "child" would poison imported_children[root] with a
-                    # useless value and block auto-delete indefinitely on real packs.
-                    # Leaving the key absent lets D-14 grandfather the root as fully
-                    # imported, preserving pre-phase-75 auto-delete behavior for the
-                    # releaseTitle/series.title fallback paths.
-                    if matched_name.lower() != root_name.lower():
-                        self.__persist.add_imported_child(root_name, matched_name.lower())
-                    # Sanitize webhook-supplied matched_name and remote-scanner-sourced
-                    # root_name before logging to prevent log-injection (CWE-117).
-                    safe_matched = sanitize_log_value(matched_name)
+                        if matched_name.lower() != root_name.lower() and \
+                                self.__credit_early_child(root_file, root_name, matched_name):
+                            self.__pending_child_notices.pop(key, None)
+                            persist_changed = True
+                            continue
+                        self.__keep_pending_notice(root_name, matched_name, path, now)
+                        continue
                     self.logger.info(
-                        "Recorded webhook import: '{}' (child: '{}')".format(
-                            sanitize_log_value(root_name), safe_matched
+                        "Committing '{}' to downloaded list on import evidence".format(
+                            sanitize_log_value(root_name)
                         )
                     )
-                    self._set_import_status(self.__model, root_name)
+                    self.__persist.downloaded_file_names.add(root_name)
+                # Accepted. A replayed notice only gets here after passing
+                # revalidation this cycle, so it is consumed now.
+                self.__pending_child_notices.pop(key, None)
+                accepted_roots.add(root_name)
+                persist_changed = True
+                # Backward-compat root tracking (D-05) -- drives UI badge + existing dedup
+                self.__persist.imported_file_names.add(root_name)
+                # Per-child tracking (D-07) -- lowercased basename for case-insensitive
+                # comparison in the coverage guard. See matched_name comment in
+                # WebhookManager.process docstring.
+                #
+                # WR-01 guard: skip add_imported_child when the webhook's matched_name
+                # is the root itself (e.g. Sonarr's releaseTitle/series.title fallback
+                # chain when episodeFile.sourcePath is absent from the payload). A
+                # root-level match carries no per-child information; recording the
+                # root name as a "child" would poison imported_children[root] with a
+                # useless value and block auto-delete indefinitely on real packs.
+                # Leaving the key absent lets D-14 grandfather the root as fully
+                # imported, preserving pre-phase-75 auto-delete behavior for the
+                # releaseTitle/series.title fallback paths.
+                if matched_name.lower() != root_name.lower():
+                    self.__persist.add_imported_child(root_name, matched_name.lower())
+                # Sanitize webhook-supplied matched_name and remote-scanner-sourced
+                # root_name before logging to prevent log-injection (CWE-117).
+                safe_matched = sanitize_log_value(matched_name)
+                self.logger.info(
+                    "Recorded webhook import: '{}' (child: '{}')".format(
+                        sanitize_log_value(root_name), safe_matched
+                    )
+                )
+                self._set_import_status(self.__model, root_name)
 
-            # Schedule auto-deletes outside lock -- Timer operations only.
-            # Only roots that passed the evidence gate are scheduled; the set
-            # also de-duplicates roots (two child webhooks in one cycle would
-            # otherwise re-arm the same root's timer -- benign but wasteful).
-            if self.__context.config.autodelete.enabled:
-                for root_name in accepted_roots:
-                    self.__schedule_auto_delete(root_name)
+            # Arm on commit (level-triggered every cycle, so it also covers a
+            # restart): a root holding early credits that has since committed
+            # to downloaded is marked imported and scheduled like a webhook
+            # accept. Coverage still decides whether the Timer deletes.
+            model_names = self.__model.get_file_names()
+            for root_name in list(self.__persist.imported_children.keys()):
+                if root_name not in self.__persist.downloaded_file_names or \
+                        root_name in self.__persist.imported_file_names or \
+                        root_name not in model_names:
+                    continue
+                self.__persist.imported_file_names.add(root_name)
+                self._set_import_status(self.__model, root_name)
+                self.logger.info(
+                    "Import credit for '{}' applied on commit".format(sanitize_log_value(root_name))
+                )
+                accepted_roots.add(root_name)
+                persist_changed = True
+
+        # Persist outside every controller lock (the callback takes only the
+        # persist-file lock). A failure is logged; the periodic save retries.
+        if persist_changed and self.__persist_callback is not None:
+            try:
+                self.__persist_callback()
+            except Exception as e:
+                self.logger.warning(
+                    "Immediate persist after import credit failed: {}".format(type(e).__name__)
+                )
+
+        # Schedule auto-deletes outside lock -- Timer operations only.
+        # Only roots that passed the evidence gate are scheduled; the set
+        # also de-duplicates roots (two child webhooks in one cycle would
+        # otherwise re-arm the same root's timer -- benign but wasteful).
+        if accepted_roots and self.__context.config.autodelete.enabled:
+            for root_name in accepted_roots:
+                self.__schedule_auto_delete(root_name)
+
+    @staticmethod
+    def __resolve_path(name_to_paths: Dict[str, Dict[str, str]],
+                       root_name: str, matched_name: str) -> Optional[str]:
+        """The single model path matched_name resolves to under root_name, or None."""
+        candidates = name_to_paths.get(matched_name.lower()) or {}
+        if len(candidates) != 1:
+            return None
+        path, owner = next(iter(candidates.items()))
+        return path if owner == root_name else None
+
+    def __credit_early_child(self, root_file: ModelFile, root_name: str, matched_name: str) -> bool:
+        """Credit matched_name to imported_children[root_name] if that child is
+        fully transferred. Caller holds __model_lock and has checked that the
+        root is a remote release SeedSyncarr is transferring.
+
+        The child must be the unique non-directory descendant with that name,
+        in state DOWNLOADED with local_size == remote_size.
+        """
+        target = matched_name.lower()
+        matches = []
+        frontier = collections.deque(root_file.get_children())
+        while frontier:
+            node = frontier.popleft()
+            if not node.is_dir and node.name.lower() == target:
+                matches.append(node)
+            frontier.extend(node.get_children())
+        if len(matches) != 1:
+            return False
+        child = matches[0]
+        if child.state != ModelFile.State.DOWNLOADED or child.remote_size is None or \
+                child.local_size != child.remote_size:
+            return False
+        self.__persist.add_imported_child(root_name, target)
+        self.logger.info(
+            "Credited early import of '{}' in '{}' (root still transferring)".format(
+                sanitize_log_value(matched_name), sanitize_log_value(root_name)
+            )
+        )
+        return True
+
+    def __keep_pending_notice(self, root_name: str, matched_name: str, path: str, now: float) -> None:
+        """Hold a notice that cannot be credited yet (controller thread only)."""
+        key = (root_name, matched_name)
+        if key not in self.__pending_child_notices:
+            self.__pending_child_notices[key] = _PendingNotice(
+                root_name, matched_name, path,
+                self.__root_lifecycle_generation[root_name], now,
+            )
+            while len(self.__pending_child_notices) > _PENDING_NOTICE_MAX:
+                (old_root, old_matched), _ = self.__pending_child_notices.popitem(last=False)
+                self.logger.warning(
+                    "Dropping oldest pending webhook import '{}' for '{}': more than {} "
+                    "pending notices".format(
+                        sanitize_log_value(old_matched), sanitize_log_value(old_root),
+                        _PENDING_NOTICE_MAX
+                    )
+                )
+        self.logger.debug(
+            "Deferring webhook notice '{}' for '{}': root still transferring".format(
+                sanitize_log_value(matched_name), sanitize_log_value(root_name)
+            )
+        )
+
+    def _revalidate_pending_notice(self, notice: _PendingNotice,
+                                   name_to_paths: Dict[str, Dict[str, str]],
+                                   now: float) -> Optional[str]:
+        """Check a pending notice against the current model lookup.
+
+        Returns None if the notice may be replayed this cycle, otherwise the
+        reason it must be discarded (already logged). Applies the same
+        exactly-one-path rule WebhookManager.process uses for fresh events,
+        then requires that path to be the one the notice was bound to, under
+        the same root, in the root's current lifecycle generation. Controller
+        thread only.
+        """
+        safe_child = sanitize_log_value(notice.matched_name)
+        safe_root = sanitize_log_value(notice.root_name)
+        if notice.generation != self.__root_lifecycle_generation[notice.root_name]:
+            self.logger.debug(
+                "Discarding pending webhook import '{}' for '{}': lifecycle generation "
+                "changed".format(safe_child, safe_root)
+            )
+            return "lifecycle generation changed"
+        candidates = name_to_paths.get(notice.matched_name.lower()) or {}
+        if len(candidates) > 1:
+            self.logger.warning(
+                "Pending webhook import '{}' is ambiguous: matches {} distinct SeedSyncarr "
+                "paths in release(s) {} ({}); "
+                "no import credit or automatic cleanup authorized".format(
+                    safe_child, len(candidates),
+                    _format_capped(sorted(set(candidates.values()))),
+                    _format_capped(sorted(candidates)),
+                )
+            )
+            return "ambiguous"
+        if candidates.get(notice.path) != notice.root_name:
+            self.logger.warning(
+                "Discarding pending webhook import '{}': it no longer resolves to '{}' in "
+                "'{}' (no import credit or automatic cleanup authorized)".format(
+                    safe_child, sanitize_log_value(notice.path), safe_root
+                )
+            )
+            return "path gone"
+        if now - notice.inserted_at >= _PENDING_NOTICE_TTL_SECS:
+            self.logger.warning(
+                "Pending webhook import '{}' for '{}' expired after {} s without the "
+                "file being seen fully transferred; no import credit recorded".format(
+                    safe_child, safe_root, _PENDING_NOTICE_TTL_SECS
+                )
+            )
+            return "expired"
+        return None
+
+    def _on_root_lifecycle_reset(self, name: str, cause: str) -> None:
+        """Single reset entry point for the per-root caches that must not
+        survive into a new download lifecycle: the completion gate's cached
+        proof (dropped and fenced) and the root's pending import notices.
+
+        Called by ModelPipeline on the same-name re-grab reset and when a root
+        leaves the model. Runs on the controller thread with __model_lock
+        already held, so it must not acquire that lock.
+        """
+        self.__completion_gate.invalidate(name, cause)
+        self._discard_pending_notices(name, cause)
+        self._cancel_auto_delete(name, cause)
+
+    def _cancel_auto_delete(self, root_name: str, cause: str) -> None:
+        """Cancel root_name's pending auto-delete and forget its deferrals.
+
+        Called on a USER requeue and on a root lifecycle reset: a Timer armed
+        for the previous lifecycle must never fire against the new copy (it
+        would see no per-child tracking and grandfather the root as fully
+        imported). Bumping the epoch also neutralizes a Timer that has
+        already started running. Takes only __auto_delete_lock, so it is safe
+        under __model_lock (lock order __model_lock -> __auto_delete_lock).
+        """
+        with self.__auto_delete_lock:
+            self.__auto_delete_epochs[root_name] += 1
+            timer = self.__pending_auto_deletes.pop(root_name, None)
+            if timer is not None:
+                timer.cancel()
+            self.__auto_delete_rearms.pop(root_name, None)
+        if timer is not None:
+            self.logger.info(
+                "Cancelled pending auto-delete of '{}': {}".format(
+                    sanitize_log_value(root_name), cause
+                )
+            )
+
+    def __auto_delete_stale(self, file_name: str, epoch: Optional[int]) -> bool:
+        """True if a Timer stamped with epoch belongs to a cancelled lifecycle.
+
+        Caller MUST hold __auto_delete_lock. epoch None (a direct call, not a
+        Timer firing) is never stale.
+        """
+        return epoch is not None and epoch != self.__auto_delete_epochs[file_name]
+
+    def _discard_pending_notices(self, root_name: str, cause: str) -> int:
+        """Drop every pending import notice for root_name and start a new
+        transfer-lifecycle generation for it. Returns the number dropped.
+
+        Controller thread only. Called after a USER QUEUE (an explicit
+        transfer reset that clears the root's import tracking), and on the
+        same-name re-grab lifecycle reset and root removal. The generation is
+        bumped even when nothing was pending, so no notice recorded under the
+        previous lifecycle can ever be credited to the new one.
+        """
+        keys = [k for k, n in self.__pending_child_notices.items() if n.root_name == root_name]
+        for key in keys:
+            del self.__pending_child_notices[key]
+        self.__root_lifecycle_generation[root_name] += 1
+        if keys:
+            self.logger.info(
+                "Discarded {} pending import notice(s) for '{}': {}".format(
+                    len(keys), sanitize_log_value(root_name), cause
+                )
+            )
+        else:
+            self.logger.debug(
+                "No pending import notices to discard for '{}': {}".format(
+                    sanitize_log_value(root_name), cause
+                )
+            )
+        return len(keys)
 
     def __schedule_auto_delete(self, file_name: str):
         """Schedule auto-delete of local file after safety delay.
@@ -701,13 +1089,14 @@ class Controller:
             del self.__pending_auto_deletes[file_name]
 
         delay = self.__context.config.autodelete.delay_seconds
-        timer = threading.Timer(delay, self.__execute_auto_delete, args=[file_name])
+        timer = threading.Timer(delay, self.__execute_auto_delete,
+                                args=[file_name, self.__auto_delete_epochs[file_name]])
         timer.daemon = True  # Don't prevent process exit
         self.__pending_auto_deletes[file_name] = timer
         timer.start()
         return delay
 
-    def __defer_auto_delete(self, file_name: str, reason: str):
+    def __defer_auto_delete(self, file_name: str, reason: str, epoch: Optional[int] = None):
         """Re-arm the auto-delete Timer after a retriable skip.
 
         Bounded by _AUTO_DELETE_MAX_REARMS consecutive deferrals per root; on
@@ -720,6 +1109,8 @@ class Controller:
         with self.__auto_delete_lock:
             if self.__shutdown_event.is_set():
                 return
+            if self.__auto_delete_stale(file_name, epoch):
+                return  # lifecycle cancelled while this Timer ran: never re-arm
             attempt = self.__auto_delete_rearms.get(file_name, 0) + 1
             if attempt > _AUTO_DELETE_MAX_REARMS:
                 self.__auto_delete_rearms.pop(file_name, None)
@@ -743,11 +1134,20 @@ class Controller:
 
         Safe to call while holding __model_lock: the lock order is __model_lock
         THEN __auto_delete_lock, and exit() never takes __model_lock.
+
+        The per-root reservation (__root_reservations) is the OUTERMOST lock:
+        __execute_auto_delete takes it before __model_lock, so the full order
+        is reservation -> __model_lock -> __auto_delete_lock. exit() never
+        takes it. __defer_auto_delete may run while it is held (it only takes
+        __auto_delete_lock). On the delete path the reservation outlives
+        __execute_auto_delete: it is handed to delete_local and released by
+        FileOperationManager.cleanup_completed_processes from process() once
+        the deletion child has exited.
         """
         with self.__auto_delete_lock:
             self.__auto_delete_rearms.pop(file_name, None)
 
-    def __execute_auto_delete(self, file_name: str):
+    def __execute_auto_delete(self, file_name: str, epoch: Optional[int] = None):
         """Execute auto-delete of local file (called by Timer after delay).
 
         Thread safety: the model.get_file() call is protected by __model_lock.
@@ -764,12 +1164,18 @@ class Controller:
         (feature disabled, dry-run, file gone from the model, no download
         evidence, BFS node limit, duplicate video basenames) never re-arm and
         clear the deferral counter.
+
+        epoch is the root's auto-delete epoch when the Timer was armed; a
+        Timer whose lifecycle was cancelled (_cancel_auto_delete) is a no-op.
         """
         # Remove from tracking dict; entry guard for shutdown (BUG-03 criterion #2).
         # Checking __shutdown_event inside __auto_delete_lock is the fast-path:
         # if exit() has already set the event under the same lock, we can return
         # immediately without doing any model read — the callback is a no-op.
         with self.__auto_delete_lock:
+            if self.__auto_delete_stale(file_name, epoch):
+                # Cancelled lifecycle: leave any newer Timer and counter alone.
+                return
             self.__pending_auto_deletes.pop(file_name, None)
             if self.__shutdown_event.is_set():
                 return
@@ -790,111 +1196,150 @@ class Controller:
             self.__clear_auto_delete_rearms(file_name)
             return
 
-        # Get file from model under lock -- ensures file still exists in model
-        # at the moment we read it, preventing use of a stale reference.
-        # State guards also run under the lock so we check against a consistent
-        # snapshot of the model (states can flip as scanners update).
-        deletable_states = (
-            ModelFile.State.DEFAULT,
-            ModelFile.State.DOWNLOADED,
-            ModelFile.State.EXTRACTED,
-        )
-        # Set to a human-readable reason when the delete must be retried later;
-        # the re-arm itself happens after __model_lock is released.
-        defer_reason = None
-        with self.__model_lock:
-            try:
-                file = self.__model.get_file(file_name)
-            except ModelError:
-                self.logger.debug(
-                    "File '{}' no longer in model, skipping auto-delete".format(sanitize_log_value(file_name))
-                )
-                self.__clear_auto_delete_rearms(file_name)
-                return
-
-            # Evidence gate: refuse to delete anything SeedSyncarr never
-            # downloaded. Membership in downloaded_file_names is the required
-            # evidence — without it a webhook child-match under a foreign
-            # directory (incident 2026-08-21: 'iplayer') would arm deletion of
-            # data this app does not own.
-            if file_name not in self.__persist.downloaded_file_names:
-                self.logger.warning(
-                    "Auto-delete refused for '{}': not downloaded by SeedSyncarr".format(
-                        sanitize_log_value(file_name)
-                    )
-                )
-                self.__clear_auto_delete_rearms(file_name)
-                return
-
-            # State guard: do not delete a file that is mid-lifecycle. Mirrors
-            # __handle_delete_command so the Timer path cannot race an in-flight
-            # sync, queue, or extract when a re-download arrives between
-            # scheduling and firing (e.g., Deluge re-seed triggers a re-sync).
-            # Retriable: the root will become deletable once the transfer or
-            # extraction finishes (incident 2026-09-16: webhook accepted while
-            # the root was EXTRACTING; the one-shot skip stranded the copy).
-            if file.state not in deletable_states:
-                defer_reason = "file is in state {}".format(str(file.state))
-
-            # Pack guard + coverage-basename collection: delegated to AutoDeleteManager.
-            # run_bfs_and_coverage performs BFS over descendants in a single pass:
-            # (a) Pack guard: skip if ANY child is in an active state. Prevents wiping
-            #     a season pack while a sibling is still being downloaded or extracted
-            #     (Sonarr's per-episode webhook schedules the pack root).
-            # (b) Coverage collection: gather lowercased basenames of all on-disk
-            #     video children for the coverage guard (D-08, D-09).
-            # Caller holds __model_lock; AutoDeleteManager acquires NO lock (D-03).
-            elif file.is_dir:
-                skip, reason, _on_disk_videos = self.__auto_delete_mgr.run_bfs_and_coverage(
-                    file, file_name, deletable_states
-                )
-                if skip:
-                    if reason in _AUTO_DELETE_TERMINAL_SKIPS:
-                        # Terminal skip: Timer does not re-arm. Clear the
-                        # per-child entry so imported_children isn't stranded
-                        # on a permanently-oversized pack or a pack with
-                        # duplicate video basenames. All other skip paths are
-                        # retriable and leave the entry intact.
-                        self.__persist.imported_children.pop(file_name, None)
-                        self.__clear_auto_delete_rearms(file_name)
-                        return
-                    defer_reason = _AUTO_DELETE_DEFER_REASONS.get(reason, reason)
-
-            # Final commit: serialize BOTH against exit()'s shutdown signal AND the
-            # webhook path's add_imported_child. Lock order is __model_lock THEN
-            # __auto_delete_lock (exit() takes ONLY __auto_delete_lock and never
-            # __model_lock, so this ordering cannot deadlock). The pop runs under
-            # __model_lock so it is mutually exclusive with add_imported_child
-            # (controller.py:804), which also mutates imported_children under
-            # __model_lock. The shutdown re-check stays under __auto_delete_lock so
-            # it remains ordered against exit()'s __shutdown_event.set() (both use
-            # the same lock — set() cannot interleave between check and pop).
-            #
-            # WR-02 semantics: the coverage guard above already committed the "delete
-            # is final" decision. Any child added by a concurrent webhook between the
-            # coverage guard and the pop is for a future import cycle. The pop here
-            # is inside __model_lock so add_imported_child (also under __model_lock)
-            # cannot race it — no TOCTOU window between guard and pop.
-            if defer_reason is None:
-                with self.__auto_delete_lock:
-                    if self.__shutdown_event.is_set():
-                        return  # no pop, no dispatch (D-02: shutdown has committed)
-                    # WR-02: clear the per-child entry before dispatching delete_local.
-                    self.__persist.imported_children.pop(file_name, None)
-                    # Success: forget any deferrals from earlier firings.
-                    self.__auto_delete_rearms.pop(file_name, None)
-
-        if defer_reason is not None:
-            # Retriable skip: re-arm OUTSIDE __model_lock (Timer operations only,
-            # same pattern as the webhook path) so a later firing can retry.
-            self.__defer_auto_delete(file_name, defer_reason)
+        # Per-root reservation, taken BEFORE __model_lock (outermost lock). It
+        # serializes this decision-to-deletion window against a QUEUE
+        # submission for the same root: both this method and
+        # __process_commands release __model_lock before acting, so the model
+        # lock alone cannot stop a QUEUE landing between the guards below and
+        # delete_local. Non-blocking: a held root defers (retriable, bounded
+        # by the re-arm budget).
+        reservation = self.__root_reservations.acquire(file_name, "auto-delete")
+        if reservation is None:
+            self.__defer_auto_delete(file_name, "root operation in progress", epoch)
             return
+        # Set once the reservation is handed to delete_local, which then owns
+        # it until the deletion child exits. Every other path releases it in
+        # the finally below.
+        handed_off = False
+        try:
+            # Get file from model under lock -- ensures file still exists in model
+            # at the moment we read it, preventing use of a stale reference.
+            # State guards also run under the lock so we check against a consistent
+            # snapshot of the model (states can flip as scanners update).
+            deletable_states = (
+                ModelFile.State.DEFAULT,
+                ModelFile.State.DOWNLOADED,
+                ModelFile.State.EXTRACTED,
+            )
+            # Set to a human-readable reason when the delete must be retried later;
+            # the re-arm itself happens after __model_lock is released.
+            defer_reason = None
+            with self.__model_lock:
+                try:
+                    file = self.__model.get_file(file_name)
+                except ModelError:
+                    self.logger.debug(
+                        "File '{}' no longer in model, skipping auto-delete".format(sanitize_log_value(file_name))
+                    )
+                    self.__clear_auto_delete_rearms(file_name)
+                    return
 
-        # delete_local is safe outside lock -- it spawns a subprocess; holding
-        # __model_lock across a blocking subprocess call would starve model updates.
-        # `file` is captured above; ModelFile is frozen/immutable after add.
-        self.__file_op_manager.delete_local(file)
-        self.logger.info("Auto-deleted local file '{}'".format(sanitize_log_value(file_name)))
+                # Evidence gate: refuse to delete anything SeedSyncarr never
+                # downloaded. Membership in downloaded_file_names is the required
+                # evidence — without it a webhook child-match under a foreign
+                # directory (incident 2026-08-21: 'iplayer') would arm deletion of
+                # data this app does not own.
+                if file_name not in self.__persist.downloaded_file_names:
+                    self.logger.warning(
+                        "Auto-delete refused for '{}': not downloaded by SeedSyncarr".format(
+                            sanitize_log_value(file_name)
+                        )
+                    )
+                    self.__clear_auto_delete_rearms(file_name)
+                    return
+
+                # State guard: do not delete a file that is mid-lifecycle. Mirrors
+                # __handle_delete_command so the Timer path cannot race an in-flight
+                # sync, queue, or extract when a re-download arrives between
+                # scheduling and firing (e.g., Deluge re-seed triggers a re-sync).
+                # Retriable: the root will become deletable once the transfer or
+                # extraction finishes (incident 2026-09-16: webhook accepted while
+                # the root was EXTRACTING; the one-shot skip stranded the copy).
+                if file.state not in deletable_states:
+                    defer_reason = "file is in state {}".format(str(file.state))
+
+                # Submitted-but-unobserved guard (DEL-01): lftp accepted a
+                # QUEUE for this root but no successful status has observed
+                # the job yet, so the model may still show the stale-retained
+                # DOWNLOADED state (XFER-02). Never delete a copy lftp is about
+                # to overwrite. Retriable through __defer_auto_delete: once a
+                # successful status (even an empty one) clears the set, the
+                # next firing proceeds if the other guards pass -- the job
+                # need not appear active. Runs before the pack/coverage scan so
+                # a submitted directory root defers without walking children.
+                elif file_name in self.__lftp_manager.submitted_unobserved_file_names():
+                    defer_reason = "transfer submitted, awaiting lftp status"
+
+                # Pack guard + coverage-basename collection: delegated to AutoDeleteManager.
+                # run_bfs_and_coverage performs BFS over descendants in a single pass:
+                # (a) Pack guard: skip if ANY child is in an active state. Prevents wiping
+                #     a season pack while a sibling is still being downloaded or extracted
+                #     (Sonarr's per-episode webhook schedules the pack root).
+                # (b) Coverage collection: gather lowercased basenames of all on-disk
+                #     video children for the coverage guard (D-08, D-09).
+                # Caller holds __model_lock; AutoDeleteManager acquires NO lock (D-03).
+                elif file.is_dir:
+                    skip, reason, _on_disk_videos = self.__auto_delete_mgr.run_bfs_and_coverage(
+                        file, file_name, deletable_states
+                    )
+                    if skip:
+                        if reason in _AUTO_DELETE_TERMINAL_SKIPS:
+                            # Terminal skip: Timer does not re-arm. Clear the
+                            # per-child entry so imported_children isn't stranded
+                            # on a permanently-oversized pack or a pack with
+                            # duplicate video basenames. All other skip paths are
+                            # retriable and leave the entry intact.
+                            self.__persist.imported_children.pop(file_name, None)
+                            self.__clear_auto_delete_rearms(file_name)
+                            return
+                        defer_reason = _AUTO_DELETE_DEFER_REASONS.get(reason, reason)
+
+                # Final commit: serialize BOTH against exit()'s shutdown signal AND the
+                # webhook path's add_imported_child. Lock order is __model_lock THEN
+                # __auto_delete_lock (exit() takes ONLY __auto_delete_lock and never
+                # __model_lock, so this ordering cannot deadlock). The pop runs under
+                # __model_lock so it is mutually exclusive with add_imported_child
+                # (controller.py:804), which also mutates imported_children under
+                # __model_lock. The shutdown re-check stays under __auto_delete_lock so
+                # it remains ordered against exit()'s __shutdown_event.set() (both use
+                # the same lock — set() cannot interleave between check and pop).
+                #
+                # WR-02 semantics: the coverage guard above already committed the "delete
+                # is final" decision. Any child added by a concurrent webhook between the
+                # coverage guard and the pop is for a future import cycle. The pop here
+                # is inside __model_lock so add_imported_child (also under __model_lock)
+                # cannot race it — no TOCTOU window between guard and pop.
+                if defer_reason is None:
+                    with self.__auto_delete_lock:
+                        if self.__shutdown_event.is_set():
+                            return  # no pop, no dispatch (D-02: shutdown has committed)
+                        if self.__auto_delete_stale(file_name, epoch):
+                            # USER requeue / lifecycle reset since this Timer
+                            # was armed: the copy belongs to a new lifecycle.
+                            return
+                        # WR-02: clear the per-child entry before dispatching delete_local.
+                        self.__persist.imported_children.pop(file_name, None)
+                        # Success: forget any deferrals from earlier firings.
+                        self.__auto_delete_rearms.pop(file_name, None)
+
+            if defer_reason is not None:
+                # Retriable skip: re-arm OUTSIDE __model_lock (Timer operations only,
+                # same pattern as the webhook path) so a later firing can retry.
+                self.__defer_auto_delete(file_name, defer_reason, epoch)
+                return
+
+            # delete_local is safe outside lock -- it spawns a subprocess; holding
+            # __model_lock across a blocking subprocess call would starve model updates.
+            # `file` is captured above; ModelFile is frozen/immutable after add.
+            # Ownership of the reservation transfers at entry: delete_local
+            # releases it when the child is observed dead, on launch failure,
+            # or on stop(), so it outlives this method.
+            handed_off = True
+            self.__file_op_manager.delete_local(file, reservation=reservation)
+            self.logger.info("Auto-deleted local file '{}'".format(sanitize_log_value(file_name)))
+        finally:
+            if not handed_off:
+                reservation.release()
 
     def __process_commands(self):
         def _notify_failure(_command: Controller.Command, _msg: str, _code: int = 400):
@@ -922,6 +1367,21 @@ class Controller:
             if not success:
                 _notify_failure(command, error_msg, error_code)
                 continue
+
+            # A USER QUEUE is an explicit transfer reset: CommandProcessor has
+            # just cleared the root's downloaded/imported/per-child tracking.
+            # Pending import notices from the previous attempt must not
+            # outlive that reset, or a scan-lag notice could credit the
+            # replacement copy without a new import webhook. Same thread, and
+            # __check_webhook_imports runs later in this process() call, so
+            # nothing can replay a notice in between. AUTO queues (resume or
+            # retry of the same attempt) keep their notices.
+            if command.action == Controller.Command.Action.QUEUE and \
+                    (getattr(command, "origin", None) is None or command.origin.name != 'AUTO'):
+                self._discard_pending_notices(command.filename, "user requeue")
+                # The previous lifecycle's auto-delete Timer must not fire
+                # against the re-queued copy (its tracking was just cleared).
+                self._cancel_auto_delete(command.filename, "user requeue")
 
             # If we get here, it was a success
             for callback in command.callbacks:

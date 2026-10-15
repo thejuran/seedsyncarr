@@ -61,6 +61,52 @@ describe("BulkCommandService", () => {
             }));
         });
 
+        it("should send release_unverified only when releaseUnverified is requested", fakeAsync(() => {
+            service.executeBulkAction("queue", ["held.mkv"], {releaseUnverified: true}).subscribe();
+
+            const req = httpMock.expectOne("/server/command/bulk");
+            expect(req.request.body).toEqual({action: "queue", files: ["held.mkv"], release_unverified: true});
+            req.flush({
+                results: [{file: "held.mkv", success: true}],
+                summary: {total: 1, succeeded: 1, failed: 0}
+            } as BulkActionResponse);
+            tick();
+        }));
+
+        it("should omit release_unverified from the body by default", fakeAsync(() => {
+            service.executeBulkAction("queue", ["a.mkv"]).subscribe();
+            service.executeBulkAction("queue", ["b.mkv"], {releaseUnverified: false}).subscribe();
+
+            const reqs = httpMock.match("/server/command/bulk");
+            expect(reqs.length).toBe(2);
+            for (const req of reqs) {
+                expect("release_unverified" in req.request.body).toBeFalse();
+                req.flush({results: [], summary: {total: 0, succeeded: 0, failed: 0}});
+            }
+            tick();
+        }));
+
+        it("should surface a 428 per-file result unchanged as a non-transient partial failure", fakeAsync(() => {
+            let result: BulkActionResult | undefined;
+            service.executeBulkAction("queue", ["a.mkv", "held.mkv"]).subscribe(r => result = r);
+
+            const req = httpMock.expectOne("/server/command/bulk");
+            req.flush({
+                results: [
+                    {file: "a.mkv", success: true},
+                    {file: "held.mkv", success: false,
+                     error: "Completion could not be verified: Still downloading", error_code: 428}
+                ],
+                summary: {total: 2, succeeded: 1, failed: 1}
+            } as BulkActionResponse);
+            tick();
+
+            expect(result?.success).toBeTrue();
+            expect(result?.hasPartialFailure).toBeTrue();
+            expect(result?.isTransientFailure).toBeFalse();
+            expect(result?.response?.results[1].error_code).toBe(428);
+        }));
+
         it("should handle successful response with all files succeeded", fakeAsync(() => {
             const files = ["file1.txt", "file2.txt", "file3.txt"];
             let result: BulkActionResult | undefined;

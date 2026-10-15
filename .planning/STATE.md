@@ -1,38 +1,42 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.7.4
-milestone_name: Safety Patch
+milestone: v1.7.5
+milestone_name: Safety Release
 status: executing
-stopped_at: Completed 118-01-PLAN.md
-last_updated: "2026-10-09T13:26:50.254Z"
-last_activity: 2026-10-09 -- Completed 118-01 (RED atomic-write regressions)
+stopped_at: Completed 119-09-PLAN.md
+last_updated: "2026-10-15T11:32:30.358Z"
+last_activity: 2026-10-15 -- Phase 119 execution started
 progress:
-  total_phases: 20
-  completed_phases: 4
-  total_plans: 19
-  completed_plans: 17
-  percent: 20
+  total_phases: 22
+  completed_phases: 5
+  total_plans: 31
+  completed_plans: 29
+  percent: 23
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-08)
+See: .planning/PROJECT.md (updated 2026-10-09)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 118 — durable-state
+**Current focus:** Phase 119 — Safety Follow-ups and 1.7.5 Release
 
 ## Current Position
 
-Phase: 118 (durable-state) — EXECUTING
-Plan: 4 of 5
-Status: Executing Phase 118
-Last activity: 2026-10-09 -- Completed 118-01 (RED atomic-write regressions)
-
-Progress: [█████████░] 89%
+Phase: 119 (Safety Follow-ups and 1.7.5 Release) — EXECUTING
+Plan: 10 of 12 (119-09 complete; next 119-10 tag, merge, publish, NAS deploy)
+Status: Executing Phase 119
+Last activity: 2026-10-15 -- Phase 119 execution started
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- 2026-10-14: Milestone v1.7.5 Safety Release started (owner decision): 1.7.5 is its own milestone with Phase 119 as sole phase; Reliability becomes the next milestone at Phase 120. Milestone-start phase-dir cleanup skipped by owner (keep 119 and backlog 999.1–999.3; archive completed phases selectively later).
+- 2026-10-14: Expanded Phase 119 (owner-approved) with two Done-group incident fixes, each with separate plans and tests: (4) prevent incomplete-file imports — size/mtime are supporting evidence only, reliable arr-queue release identification, absence from queue is not completion, arr unavailable → visible hold/retry never unsafe copy, unverified copy unavailable for import until checks pass; (5) persist per-episode import credit for complete episodes while siblings transfer, whole-folder delete still gated on completion + full video coverage, restart recovery tested, ambiguous-filename protections retained. Diagnosis: `.planning/debug/done-group-no-auto-delete.md`. 999.1 stays separate.
+- 2026-10-09: Added Phase 119, Safety Follow-ups and 1.7.5 Release, as the opening phase of the next Reliability milestone. Promotes 999.2 and 999.3 and includes the PyPI packaging repair. Release 1.7.5 before executing later reliability phases; no separate patch milestone. Detailed milestone initialization and plans remain pending.
 
 ### Decisions
 
@@ -53,6 +57,10 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 118]: Host coverage 86.36% vs fail_under 88 is informational only (CI runs no --cov); surfaced at 118-04 checkpoint
 - [Phase 118]: Owner (2026-10-09): 1.7.4 public release notes are plain English (stop, copy 3 files, upgrade; rollback sets [AutoDelete] enabled = False in restored settings.cfg); loader-based backup check lives only in 118-05
 - [Phase 118]: Public rollback target is :1.7.2 (1.7.3 never published); owner confirms at 118-04
+- [Phase 118]: 118-04: Owner approved 1.7.4 as drafted; (a)-(e) confirmed (rollback 1.7.2, CHANGELOG fold, coverage informational, wud semver filter in 118-05, inode-preserving compose edit)
+- [Phase 118]: 118-04: Tag CI PyPI publish failed (./-prefixed archive paths, nothing uploaded); owner chose ship 1.7.4 via Docker/GitHub only, PyPI fix + Dependabot #93 in 1.7.5; tag not moved
+- [Phase 118]: 118-05: owner go-ahead 'deploy keep pin'; NAS on :1.7.4@sha256:682d129d with compose digest pin kept and wud.tag.include semver filter; backup checker runs with --user 1026:100
+- [Phase 119]: 1.7.5 approved as drafted by owner 2026-10-15; CI green on PR #127 head cbd99dc; tag/merge/publish in 119-10
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -86,7 +94,12 @@ None.
 | todo | test-hardening-backlog A-01..A-06 | test-infra (DEFER-TESTHARDEN — deferred v1.4.0) |
 | quick_task | 260528-khw-triage-and-merge-dependabot-prs | housekeeping (prior session, SUMMARY missing; acknowledged + deferred at v1.4.0 close) |
 | backlog | 999.1 webhook import evidence (payload size == remote size) | v2 requirement IMPORT-F1; defense in depth, not in v1.7.4 scope |
+| promoted | 999.2 LFTP command-stream resync after timeout | Phase 119; opening 1.7.5 patch |
+| promoted | 999.3 auto-delete timer explicit submitted-unobserved guard | Phase 119; opening 1.7.5 patch |
+| debug | extract-staging-autodel-rearm | awaiting_human_verify (fixes applied + self-verified 2026-09-16; acknowledged + deferred at v1.7.4 close) |
 
+> Acknowledged + deferred at v1.7.4 milestone close (2026-10-09): debug session extract-staging-autodel-rearm and todo webob-cgi-upstream-unblock (both pre-existing, outside v1.7.4 scope).
+>
 > Acknowledged + deferred at v1.4.0 milestone close (2026-06-03): webob-cgi-upstream-unblock (still blocked on upstream webob 2.0) and the 260528-khw dependabot quick-task (prior-session housekeeping).
 
 ## Tech Debt
@@ -113,13 +126,15 @@ None.
 | v1.3.0 Slice 4 (Backend Arch Refactor + Test Infra) | Phases 107-109 | 2026-06-01 to 2026-06-02 (v1.3.0 tag cut) |
 | v1.4.0 Launch-Hardening for Public Release | Phases 110-113 | 2026-06-02 to 2026-06-03 (v1.4.0 tag cut) |
 | v1.4.1 Scanner Auto-Recovery | Phases 114-115 | 2026-06-19 to 2026-06-22 (tagged v1.5.0) |
+| v1.7.4 Safety Patch | Phases 116-118 | 2026-10-08 to 2026-10-09 (tagged v1.7.4) |
 
 ## Session Continuity
 
-Last session: 2026-10-09T13:26:41.468Z
-Stopped at: Completed 118-01-PLAN.md
-Next action: Execute Plan 118-02 (atomic Persist.to_file fix; turn the 9 RED tests GREEN)
+Last session: 2026-10-15T11:32:25.853Z
+Stopped at: Completed 119-09-PLAN.md (owner approved 1.7.5 as drafted; CI green on PR #127)
+Next action: Discuss and plan Phase 119 (milestone orchestrator), then execute, verify and release 1.7.5.
 
 ## Operator Next Steps
 
-- `/bm:plan-phase 116` — Import Safety (IMPORT-01, IMPORT-02); design spec Phase A is the planning source
+- Discuss and plan Phase 119 (requirements XFER-06, DEL-01, IMP-01..03, REL-02, REL-03); verify Sonarr/Radarr queue/API completion semantics during planning.
+- Implement, verify and release 1.7.5; then start the Reliability milestone at Phase 120.

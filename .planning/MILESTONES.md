@@ -1,5 +1,22 @@
 # Project Milestones: SeedSync
 
+## v1.7.4 Safety Patch (Shipped: 2026-10-09, tagged `v1.7.4`)
+
+**Phases completed:** 3 phases (116-118), 16 plans. Patch release protecting users from wrong deletion and wrong transfer-state decisions. Python-only, behavior-narrowing, no on-disk format change, no UI work.
+
+**Key accomplishments:**
+
+- **Import safety (116):** a Sonarr/Radarr webhook import whose basename matches more than one distinct model path (across releases, case-only root differences, root-equals-child-basename, repeated basenames inside one pack) is now rejected — no import record, no coverage credit, no badge, no auto-delete timer, one sanitized warning; unique matches behave exactly as before. Delete-time duplicate-basename guard added as defense in depth.
+- **Transfer-state safety (117):** the LFTP `jobs -v` parser never swallows the next job's header; unparseable/timed-out status is reported as *unavailable* (`None`), never `[]`, through every consumer; transfers submitted but not yet observed stay protected (no re-queue, no false DOWNLOADED, manual extract/delete return 409); remote and local stability clocks advance only on successful scans while the UI "last scan" keeps its meaning.
+- **Durable state (118):** `Persist.to_file` is atomic (serialize first → 0600 temp in target dir → fsync → `os.replace` → best-effort directory fsync), so a failed save can no longer corrupt `settings.cfg`, the controller persist or the auto-queue persist.
+- **Release gate (REL-01):** every targeted regression shown fail-before/pass-after; full suite + whole-tree ruff green; `ghcr.io/thejuran/seedsyncarr:1.7.4` (`sha256:682d129d…`) smoke-tested on the NAS with a real SSH→LFTP transfer, then deployed to production by the same digest (79 s downtime, first post-deploy scan succeeded).
+
+**Known deferred items at close:** 2 pre-existing (debug session `extract-staging-autodel-rearm` awaiting human verify; todo `webob-cgi-upstream-unblock`) — see STATE.md Deferred Items.
+
+**Tech debt carried:** PyPI publish failed for 1.7.4 (fix + Dependabot #93 in 1.7.5); Timer auto-delete lacks an explicit submitted-unobserved guard (backlog 999.3); LFTP command-stream resync after timeout (backlog 999.2); parser sites #1/#6/#8 deferred (D-09). Audit: `milestones/v1.7.4-MILESTONE-AUDIT.md`.
+
+---
+
 ## v1.4.1 Scanner Auto-Recovery (Shipped: 2026-06-22, tagged `v1.5.0`)
 
 **Phases completed:** 2 phases (114-115), 3 plans, 6 tasks. Tagged `v1.5.0` — the GSD `v1.4.1` milestone label predates the earlier `v1.4.1`/`v1.4.2` git tags (cut 2026-06-15 for separate spawn-hang/security work); this delta is a new minor release.

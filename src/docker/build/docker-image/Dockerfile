@@ -42,8 +42,12 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
-# Install Poetry
-RUN pip3 install poetry && \
+# Install Poetry into its own isolated venv so `poetry install` into the
+# system interpreter never modifies Poetry's own dependencies (a newer cffi
+# pulled in by an unpinned Poetry install broke `poetry install` mid-run).
+RUN python3 -m venv /opt/poetry && \
+    /opt/poetry/bin/pip install --no-cache-dir poetry==2.3.4 && \
+    ln -s /opt/poetry/bin/poetry /usr/local/bin/poetry && \
     poetry config virtualenvs.create false
 COPY src/python/pyproject.toml /app/python/
 COPY src/python/poetry.lock /app/python/
@@ -94,8 +98,12 @@ RUN sed -i 's/Components: main/Components: main contrib non-free non-free-firmwa
         libxml2-dev libxslt-dev libffi-dev \
     && apt-get clean
 
-# Install Poetry using pip (more reliable than installer script in CI)
-RUN pip3 install poetry && \
+# Install Poetry into its own isolated venv so `poetry install` into the
+# system interpreter never modifies Poetry's own dependencies (a newer cffi
+# pulled in by an unpinned Poetry install broke `poetry install` mid-run).
+RUN python3 -m venv /opt/poetry && \
+    /opt/poetry/bin/pip install --no-cache-dir poetry==2.3.4 && \
+    ln -s /opt/poetry/bin/poetry /usr/local/bin/poetry && \
     poetry config virtualenvs.create false
 
 ENV LC_ALL=C.UTF-8

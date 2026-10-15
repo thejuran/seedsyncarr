@@ -1,11 +1,16 @@
+import threading
 import time
 from unittest.mock import MagicMock
 
 from controller import Controller
-from controller.controller import ControllerError
+from controller.arr_queue import ArrTarget, QueueRecord
+from controller.completion_gate import CompletionGate, Verdict
+from controller.controller import ControllerError, _PendingNotice
+from controller.model_pipeline import ModelPipeline
 from model import ModelFile, IModelListener, ModelDiff, Model
 from lftp import LftpError, LftpJobStatus, LftpJobStatusParserError
 from tests.unittests.test_controller.base import BaseControllerTestCase
+from tests.unittests.test_controller.test_completion_gate import FakeArrClient
 
 
 class TestControllerInit(BaseControllerTestCase):
@@ -71,6 +76,17 @@ class TestControllerLifecycle(BaseControllerTestCase):
         self.mock_scan_manager.stop.assert_called_once()
         self.mock_file_op_manager.stop.assert_called_once()
         self.mock_mp_logger.stop.assert_called_once()
+
+    def test_exit_stops_every_manager_even_when_lftp_exit_fails(self):
+        self.controller.start()
+        self.mock_lftp_manager.exit.side_effect = LftpError("lftp command stream not synchronized")
+        self.mock_scan_manager.stop.side_effect = RuntimeError("scanner stop failed")
+        self.controller.exit()  # failures are logged, never abort the remaining cleanup
+        self.mock_lftp_manager.exit.assert_called_once()
+        self.mock_scan_manager.stop.assert_called_once()
+        self.mock_file_op_manager.stop.assert_called_once()
+        self.mock_mp_logger.stop.assert_called_once()
+        self.assertEqual(2, self.controller.logger.exception.call_count)
 
     def test_exit_without_start_is_safe(self):
         self.controller.exit()  # should not raise
@@ -628,6 +644,33 @@ class TestControllerFeedModelBuilder(BaseControllerTestCase):
         )
         self.mock_model_builder.set_active_files.assert_not_called()
 
+    def test_feed_syncs_completion_holds(self):
+        """IMP-02: the gate's current holds feed the builder every cycle."""
+        self.mock_completion_gate.holds = {"X": "no_queue_entry"}
+        self.controller._feed_model_builder(None, None, None, None, None, [])
+        self.mock_model_builder.set_hold_reasons.assert_called_once_with({"X": "no_queue_entry"})
+
+    def test_process_syncs_completion_holds_once_per_cycle(self):
+        """IMP-02: one process() cycle syncs the hold reasons exactly once."""
+        self._make_controller_started()
+        self.mock_completion_gate.holds = {"X": "no_queue_entry"}
+        self.controller.process()
+        self.mock_model_builder.set_hold_reasons.assert_called_once_with({"X": "no_queue_entry"})
+
+
+def _seed_pending_notice(controller, root_name, matched_name):
+    """Insert a pending import notice for root_name under its current generation."""
+    generation = controller._Controller__root_lifecycle_generation[root_name]
+    controller._Controller__pending_child_notices[(root_name, matched_name)] = _PendingNotice(
+        root_name, matched_name, "{}/{}".format(root_name, matched_name), generation, time.time()
+    )
+    return generation
+
+
+def _pending_roots(controller):
+    return {n.root_name for n in controller._Controller__pending_child_notices.values()}
+
+
 class TestControllerNoTrackingBeforeCompletion(BaseControllerTestCase):
     """Regression tests: files must NOT be tracked as downloaded before completion.
 
@@ -735,6 +778,36 @@ class TestControllerLifecycleReset(BaseControllerTestCase):
         self.assertNotIn("file", self.persist.imported_children)
         self.assertNotIn("file", self.persist.absent_since)
         self.assertFalse(self.controller.is_file_downloaded("file"))
+
+    def test_regrab_after_long_absence_resets_proof_and_pending_notices(self):
+        """A same-name re-grab must not inherit the previous lifecycle's
+        completion proof or pending import notices."""
+        self.persist.downloaded_file_names.add("file")
+        self.persist.absent_since["file"] = self._absent_for(self.OLD)
+        self._add_file_to_model("file", remote_size=1000)
+        old_generation = _seed_pending_notice(self.controller, "file", "child.mkv")
+        _seed_pending_notice(self.controller, "other", "child.mkv")
+
+        self.pipeline._prune_downloaded_files(self.ok_scan)
+
+        self.mock_completion_gate.invalidate.assert_called_once()
+        name, cause = self.mock_completion_gate.invalidate.call_args[0]
+        self.assertEqual("file", name)
+        self.assertIn("lifecycle", cause)
+        self.assertEqual({"other"}, _pending_roots(self.controller))
+        self.assertEqual(old_generation + 1,
+                         self.controller._Controller__root_lifecycle_generation["file"])
+
+    def test_reappearance_within_threshold_does_not_reset_proof(self):
+        self.persist.downloaded_file_names.add("file")
+        self.persist.absent_since["file"] = self._absent_for(self.RECENT)
+        self._add_file_to_model("file", remote_size=1000)
+        _seed_pending_notice(self.controller, "file", "child.mkv")
+
+        self.pipeline._prune_downloaded_files(self.ok_scan)
+
+        self.mock_completion_gate.invalidate.assert_not_called()
+        self.assertEqual({"file"}, _pending_roots(self.controller))
 
     def test_reappearance_within_threshold_keeps_tracking(self):
         # A transient empty remote scan (flap) must NOT clear tracking,
@@ -936,6 +1009,112 @@ class TestControllerApplyModelDiff(BaseControllerTestCase):
         diff = ModelDiff(ModelDiff.Change.ADDED, None, f)
         self.controller._apply_model_diff([diff])
         self.assertIn("dl_file", self.persist.downloaded_file_names)
+
+    def test_removed_root_resets_proof_and_pending_notices(self):
+        """A root leaving the model drops its completion proof and its
+        pending import notices."""
+        self._add_file_to_model("X", remote_size=1000)
+        old_f = self.controller._Controller__model.get_file("X")
+        old_generation = _seed_pending_notice(self.controller, "X", "child.mkv")
+
+        self.controller._apply_model_diff([ModelDiff(ModelDiff.Change.REMOVED, old_f, None)])
+
+        self.mock_completion_gate.invalidate.assert_called_once()
+        name, cause = self.mock_completion_gate.invalidate.call_args[0]
+        self.assertEqual("X", name)
+        self.assertIn("removed", cause)
+        self.assertEqual(set(), _pending_roots(self.controller))
+        self.assertEqual(old_generation + 1,
+                         self.controller._Controller__root_lifecycle_generation["X"])
+
+    def test_added_and_updated_roots_do_not_reset(self):
+        self._add_file_to_model("U", remote_size=1000)
+        old_u = self.controller._Controller__model.get_file("U")
+        new_u = ModelFile("U", False)
+        new_u.remote_size = 2000
+        new_a = ModelFile("A", False)
+        new_a.remote_size = 10
+        _seed_pending_notice(self.controller, "U", "child.mkv")
+        _seed_pending_notice(self.controller, "A", "child.mkv")
+        gens = dict(self.controller._Controller__root_lifecycle_generation)
+
+        self.controller._apply_model_diff([
+            ModelDiff(ModelDiff.Change.ADDED, None, new_a),
+            ModelDiff(ModelDiff.Change.UPDATED, old_u, new_u),
+        ])
+
+        self.mock_completion_gate.invalidate.assert_not_called()
+        self.assertEqual({"U", "A"}, _pending_roots(self.controller))
+        self.assertEqual(gens, dict(self.controller._Controller__root_lifecycle_generation))
+
+
+class TestRootLifecycleResetCallback(BaseControllerTestCase):
+    """Controller._on_root_lifecycle_reset is the single reset entry point for
+    the per-root caches that must not survive a new download lifecycle."""
+
+    def test_callback_invalidates_proof_and_discards_notices(self):
+        old_generation = _seed_pending_notice(self.controller, "X", "child.mkv")
+
+        result = self.controller._on_root_lifecycle_reset("X", "why")
+
+        self.assertIsNone(result)
+        self.mock_completion_gate.invalidate.assert_called_once_with("X", "why")
+        self.assertEqual(set(), _pending_roots(self.controller))
+        self.assertEqual(old_generation + 1,
+                         self.controller._Controller__root_lifecycle_generation["X"])
+
+    def test_callback_does_not_take_model_lock(self):
+        """Both pipeline call sites hold the model lock; re-taking it would deadlock."""
+        lock = self.controller._Controller__model_lock
+        with lock:
+            worker = threading.Thread(
+                target=self.controller._on_root_lifecycle_reset, args=("X", "under lock"), daemon=True
+            )
+            worker.start()
+            worker.join(timeout=2)
+            self.assertFalse(worker.is_alive(), "callback blocked on the model lock")
+        self.mock_completion_gate.invalidate.assert_called_once_with("X", "under lock")
+
+
+class TestModelPipelineWithoutLifecycleCallback(BaseControllerTestCase):
+    """A pipeline built without on_lifecycle_reset or a gate never raises."""
+
+    def _pipeline(self):
+        model = Model()
+        return model, ModelPipeline(
+            context=self.mock_context,
+            persist=self.persist,
+            model=model,
+            model_lock=threading.Lock(),
+            model_builder=MagicMock(),
+            scan_manager=MagicMock(),
+            lftp_manager=MagicMock(),
+            file_op_manager=MagicMock(),
+            logger=MagicMock(),
+        )
+
+    def test_removed_diff_without_callback(self):
+        model, pipeline = self._pipeline()
+        f = ModelFile("X", False)
+        f.remote_size = 1
+        model.add_file(f)
+        pipeline.apply_model_diff([ModelDiff(ModelDiff.Change.REMOVED, f, None)])
+        self.assertNotIn("X", model.get_file_names())
+
+    def test_new_lifecycle_without_callback(self):
+        model, pipeline = self._pipeline()
+        f = ModelFile("X", False)
+        f.remote_size = 1
+        model.add_file(f)
+        self.persist.downloaded_file_names.add("X")
+        self.persist.absent_since["X"] = time.time() - 25 * 3600
+        pipeline._prune_downloaded_files(MagicMock(failed=False))
+        self.assertNotIn("X", self.persist.downloaded_file_names)
+
+    def test_feed_without_gate_does_not_sync_holds(self):
+        _, pipeline = self._pipeline()
+        pipeline.feed_model_builder(None, None, None, None, None, [])
+        pipeline._model_builder.set_hold_reasons.assert_not_called()
 
 
 class TestControllerActiveFileTracking(BaseControllerTestCase):
@@ -1517,3 +1696,244 @@ class TestControllerCommandSubmittedUnobservedGuard(BaseControllerTestCase):
         mock_cb.on_success.assert_called_once()
         mock_cb.on_failure.assert_not_called()
         self.assertNotIn("file", self.persist.stopped_file_names)
+
+
+class TestQueueCompletionGate(BaseControllerTestCase):
+    """
+    IMP-02 execution-time gate (incident 2026-10-13, Obsession): every QUEUE
+    re-checks the completion verdict inside the per-root reservation. AUTO
+    skips quietly while held; USER gets 428 unless that one command carries
+    release_unverified (D-08, never remembered). A proof authorizes exactly
+    one transfer start, and no call site ever waits on an arr fetch.
+    """
+
+    NAME = "Obsession.2025.1080p.WEB.H264-CiNEPHiLES.mkv"
+    SIZE = 55477377022
+
+    def setUp(self):
+        super().setUp()
+        self._make_controller_started()
+        self._add_file_to_model(self.NAME, remote_size=self.SIZE)
+
+    def _queue(self, origin=None, release_unverified=None):
+        kwargs = {}
+        if origin is not None:
+            kwargs["origin"] = origin
+        if release_unverified is not None:
+            kwargs["release_unverified"] = release_unverified
+        cmd = Controller.Command(Controller.Command.Action.QUEUE, self.NAME, **kwargs)
+        cb = MagicMock(spec=Controller.Command.ICallback)
+        cmd.add_callback(cb)
+        self.controller.queue_command(cmd)
+        started = time.monotonic()
+        self.controller.process()
+        elapsed = time.monotonic() - started
+        return cb, elapsed
+
+    def _processor_logger(self):
+        return self.controller._Controller__command_processor.logger
+
+    def _warnings_containing(self, text):
+        return [c for c in self._processor_logger().warning.call_args_list if text in str(c)]
+
+    def _assert_428(self, cb, label):
+        cb.on_success.assert_not_called()
+        cb.on_failure.assert_called_once()
+        message, code = cb.on_failure.call_args[0][0], cb.on_failure.call_args[0][1]
+        self.assertEqual(428, code)
+        self.assertEqual("Completion could not be verified: {}".format(label), message)
+
+    # ------------------------------------------------------- mocked verdicts
+
+    def test_user_queue_unverified_returns_428(self):
+        self.mock_completion_gate.verdict.return_value = Verdict.hold("still_downloading")
+        cb, _ = self._queue()
+        self._assert_428(cb, "Still downloading")
+        self.mock_lftp_manager.queue.assert_not_called()
+        self.mock_completion_gate.invalidate.assert_not_called()
+
+    def test_user_queue_with_release_flag_submits_once_with_warning(self):
+        self.mock_completion_gate.verdict.return_value = Verdict.hold("still_downloading")
+        cb, _ = self._queue(release_unverified=True)
+        cb.on_success.assert_called_once()
+        self.mock_lftp_manager.queue.assert_called_once_with(self.NAME, False)
+        self.assertEqual(1, len(self._warnings_containing("Manual release of unverified")))
+
+    def test_release_approval_is_not_remembered(self):
+        self.mock_completion_gate.verdict.return_value = Verdict.hold("still_downloading")
+        cb, _ = self._queue(release_unverified=True)
+        cb.on_success.assert_called_once()
+        cb, _ = self._queue()
+        self._assert_428(cb, "Still downloading")
+        self.mock_lftp_manager.queue.assert_called_once()
+
+    def test_release_flag_defaults_false_on_command(self):
+        cmd = Controller.Command(Controller.Command.Action.QUEUE, self.NAME)
+        self.assertIs(False, cmd.release_unverified)
+        cmd = Controller.Command(Controller.Command.Action.QUEUE, self.NAME, release_unverified=True)
+        self.assertIs(True, cmd.release_unverified)
+
+    def test_auto_queue_unverified_is_quiet_skip(self):
+        self.mock_completion_gate.verdict.return_value = Verdict.hold("still_downloading")
+        cb, _ = self._queue(origin=Controller.Command.Origin.AUTO)
+        cb.on_success.assert_called_once()
+        cb.on_failure.assert_not_called()
+        self.mock_lftp_manager.queue.assert_not_called()
+
+    def test_auto_queue_ignores_release_flag(self):
+        self.mock_completion_gate.verdict.return_value = Verdict.hold("still_downloading")
+        cb, _ = self._queue(origin=Controller.Command.Origin.AUTO, release_unverified=True)
+        cb.on_success.assert_called_once()
+        self.mock_lftp_manager.queue.assert_not_called()
+
+    def test_not_required_verdict_queues_without_flag(self):
+        self.mock_completion_gate.verdict.return_value = Verdict.not_required()
+        cb, _ = self._queue()
+        cb.on_success.assert_called_once()
+        self.mock_lftp_manager.queue.assert_called_once_with(self.NAME, False)
+
+    def test_verdict_receives_name_and_remote_size(self):
+        self._queue()
+        self.mock_completion_gate.verdict.assert_called_once_with(self.NAME, self.SIZE)
+
+    def test_proof_consumed_on_successful_submission(self):
+        # USER
+        cb, _ = self._queue()
+        cb.on_success.assert_called_once()
+        self.mock_lftp_manager.queue.assert_called_once()
+        self.mock_completion_gate.invalidate.assert_called_once_with(self.NAME, "transfer submitted")
+        # AUTO
+        self.mock_lftp_manager.queue.reset_mock()
+        self.mock_completion_gate.invalidate.reset_mock()
+        cb, _ = self._queue(origin=Controller.Command.Origin.AUTO)
+        cb.on_success.assert_called_once()
+        self.mock_lftp_manager.queue.assert_called_once()
+        self.mock_completion_gate.invalidate.assert_called_once_with(self.NAME, "transfer submitted")
+        # lftp refuses: nothing was submitted, the proof stays
+        self.mock_lftp_manager.queue.reset_mock()
+        self.mock_completion_gate.invalidate.reset_mock()
+        self.mock_lftp_manager.queue.side_effect = LftpError("connection failed")
+        cb, _ = self._queue()
+        self.assertEqual(500, cb.on_failure.call_args[0][1])
+        self.mock_completion_gate.invalidate.assert_not_called()
+
+    def test_proof_not_consumed_when_submission_skipped_as_unobserved(self):
+        self.mock_lftp_manager.submitted_unobserved_file_names.return_value = {self.NAME}
+        cb, _ = self._queue()
+        cb.on_success.assert_called_once()
+        self.mock_lftp_manager.queue.assert_not_called()
+        self.mock_completion_gate.invalidate.assert_not_called()
+
+    def test_gate_recheck_runs_inside_root_reservation(self):
+        reservations = self.controller._Controller__root_reservations
+        holders = []
+
+        def verdict(name, remote_size):
+            holders.append(reservations.holder_of(name))
+            return Verdict.proven()
+
+        self.mock_completion_gate.verdict.side_effect = verdict
+        cb, _ = self._queue()
+        cb.on_success.assert_called_once()
+        self.assertEqual(["queue"], holders)
+        self.mock_lftp_manager.queue.assert_called_once()
+        self.assertIsNone(reservations.holder_of(self.NAME))
+
+    # ----------------------------------------- real gate behind the patcher
+
+    def _real_gate(self):
+        self.fake_now = 0.0
+        self.fake_client = FakeArrClient(targets=[
+            ArrTarget("Sonarr", "sonarr", "http://sonarr", "k1"),
+            ArrTarget("Radarr", "radarr", "http://radarr", "k2"),
+        ])
+        gate = CompletionGate(context=MagicMock(), client=self.fake_client, clock=lambda: self.fake_now)
+        self.mock_completion_gate.verdict.side_effect = gate.verdict
+        self.mock_completion_gate.invalidate.side_effect = gate.invalidate
+        self.mock_completion_gate.label.side_effect = gate.label
+        return gate
+
+    def _done_record(self):
+        return QueueRecord(self.NAME, "ABC", "completed", 0, True, None)
+
+    def _assert_requeue_scenario(self, radarr_refresh_proves):
+        gate = self._real_gate()
+        self.fake_client.responses = {"sonarr": None, "radarr": [self._done_record()]}
+        # Pre-warm exactly like an AutoQueue sweep: start, then apply.
+        gate.evaluate({self.NAME: self.SIZE})
+        gate.evaluate({self.NAME: self.SIZE})
+
+        # (1) Radarr proves the release on its own while Sonarr is down (D-17).
+        cb, _ = self._queue()
+        cb.on_success.assert_called_once()
+        self.assertEqual(1, self.mock_lftp_manager.queue.call_count)
+        self.assertNotIn(self.NAME, gate._proofs, "submission consumes the proof")
+
+        # (2) The transfer is interrupted (root DEFAULT again); Sonarr's backoff
+        # has elapsed and Radarr's forced refresh is due.
+        self.fake_now = 31.0
+
+        # (3a) The verdict starts both fetches and answers at once with a
+        # provisional hold: 428, never a wait on the controller thread. The
+        # label names Radarr, whose pre-invalidation record is the evidence
+        # waiting on its forced refresh.
+        cb, elapsed = self._queue()
+        self._assert_428(cb, "Radarr unavailable")
+        self.assertEqual({}, gate.holds, "the 3a hold is provisional")
+        self.assertEqual(1, self.mock_lftp_manager.queue.call_count)
+        self.assertLess(elapsed, 0.1)
+
+        # (3b) The forced refreshes complete.
+        self.fake_now = 32.0
+        if not radarr_refresh_proves:
+            self.fake_client.responses = {"sonarr": None, "radarr": None}
+        cb, elapsed = self._queue()
+        self.assertLess(elapsed, 0.1)
+        return cb
+
+    def test_requeue_after_submission_reproves_from_responding_arr_while_other_unavailable(self):
+        cb = self._assert_requeue_scenario(radarr_refresh_proves=True)
+        cb.on_failure.assert_not_called()
+        cb.on_success.assert_called_once()
+        self.assertEqual(2, self.mock_lftp_manager.queue.call_count)
+
+    def test_requeue_after_submission_stays_held_when_nothing_fresh_proves(self):
+        cb = self._assert_requeue_scenario(radarr_refresh_proves=False)
+        self._assert_428(cb, "Sonarr unavailable")
+        self.assertEqual(1, self.mock_lftp_manager.queue.call_count)
+
+    def test_user_queue_returns_428_immediately_while_fetch_pending(self):
+        gate = self._real_gate()
+        self.fake_client.stalled = {"sonarr", "radarr"}
+
+        cb, elapsed = self._queue()
+        self._assert_428(cb, "Sonarr unavailable")
+        self.assertLess(elapsed, 0.1)
+        self.mock_lftp_manager.queue.assert_not_called()
+        self.assertEqual({}, gate.holds, "provisional holds are not registered")
+        hold_lines = [c for c in gate.logger.info.call_args_list if "hold" in str(c)]
+        self.assertEqual([], hold_lines)
+
+        cb, elapsed = self._queue(origin=Controller.Command.Origin.AUTO)
+        cb.on_success.assert_called_once()
+        self.assertLess(elapsed, 0.1)
+        self.mock_lftp_manager.queue.assert_not_called()
+
+        # Confirmed manual release works while evidence is still pending.
+        cb, elapsed = self._queue(release_unverified=True)
+        cb.on_success.assert_called_once()
+        self.assertLess(elapsed, 0.1)
+        self.assertEqual(1, self.mock_lftp_manager.queue.call_count)
+        self.assertEqual(1, len(self._warnings_containing("Manual release of unverified")))
+
+        # The arrs answer; the sweep applies the results and the forced
+        # post-submission refresh, then the next click succeeds.
+        self.fake_client.stalled = set()
+        self.fake_client.responses = {"sonarr": [], "radarr": [self._done_record()]}
+        gate.evaluate({self.NAME: self.SIZE})
+        gate.evaluate({self.NAME: self.SIZE})
+        cb, elapsed = self._queue()
+        cb.on_failure.assert_not_called()
+        cb.on_success.assert_called_once()
+        self.assertLess(elapsed, 0.1)
+        self.assertEqual(2, self.mock_lftp_manager.queue.call_count)

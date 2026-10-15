@@ -7,6 +7,7 @@ import json
 from common import overrides, PersistError, Config
 from controller import AutoQueue, AutoQueuePersist, IAutoQueuePersistListener, AutoQueuePattern
 from controller import Controller
+from controller.completion_gate import Verdict
 from model import IModelListener, ModelFile
 
 
@@ -299,6 +300,8 @@ class TestAutoQueue(unittest.TestCase):
         self.context.status.controller.latest_successful_remote_scan_time = None
         self.context.status.controller.latest_successful_local_scan_time = None
         self.controller = MagicMock()
+        self.controller.evaluate_completion = MagicMock(side_effect=lambda c: {n: Verdict.proven() for n in c})
+        self.controller.completion_verdict = MagicMock(return_value=Verdict.proven())
         self.controller.get_model_files_and_add_listener = MagicMock()
         self.controller.queue_command = MagicMock()
         self.model_listener = None
@@ -1781,6 +1784,8 @@ class TestAutoQueueCommandOrigin(unittest.TestCase):
         self.context.status.controller.latest_successful_remote_scan_time = None
         self.context.status.controller.latest_successful_local_scan_time = None
         self.controller = MagicMock()
+        self.controller.evaluate_completion = MagicMock(side_effect=lambda c: {n: Verdict.proven() for n in c})
+        self.controller.completion_verdict = MagicMock(return_value=Verdict.proven())
         self.controller.get_model_files_and_add_listener.return_value = []
         self.controller.is_file_stopped.return_value = False
         self.controller.is_file_downloaded.return_value = False
@@ -1840,6 +1845,8 @@ class TestAutoQueueComposedPipeline(unittest.TestCase):
         self.builder.set_downloaded_files(set())
 
         self.controller = MagicMock()
+        self.controller.evaluate_completion = MagicMock(side_effect=lambda c: {n: Verdict.proven() for n in c})
+        self.controller.completion_verdict = MagicMock(return_value=Verdict.proven())
         self.controller.queue_command = MagicMock()
         self.controller.is_file_stopped.side_effect = lambda name: False
         self.controller.is_file_downloaded.side_effect = lambda name: False
@@ -1958,6 +1965,8 @@ class TestAutoQueueStabilityAndSweep(unittest.TestCase):
         self.context.status.controller.latest_successful_local_scan_time = None
 
         self.controller = MagicMock()
+        self.controller.evaluate_completion = MagicMock(side_effect=lambda c: {n: Verdict.proven() for n in c})
+        self.controller.completion_verdict = MagicMock(return_value=Verdict.proven())
         self.controller.queue_command = MagicMock()
         self.model_files = []
         self.stopped_files = set()
@@ -2298,6 +2307,8 @@ class TestAutoQueueLocalStabilityGate(unittest.TestCase):
         self.context.status.controller.latest_successful_local_scan_time = None
 
         self.controller = MagicMock()
+        self.controller.evaluate_completion = MagicMock(side_effect=lambda c: {n: Verdict.proven() for n in c})
+        self.controller.completion_verdict = MagicMock(return_value=Verdict.proven())
         self.controller.queue_command = MagicMock()
         self.model_files = []
         self.model_listener = None
@@ -2578,3 +2589,123 @@ class TestAutoQueueLocalStabilityGate(unittest.TestCase):
                          "partial must be swept once the restarted window elapses")
         command = self.controller.queue_command.call_args[0][0]
         self.assertEqual(Controller.Command.Action.QUEUE, command.action)
+
+
+class TestAutoQueueCompletionGate(unittest.TestCase):
+    """
+    IMP-02 (incident 2026-10-13, Obsession): remote size/mtime stability is a
+    prerequisite only. The sweep must ask the completion gate once per cycle
+    and must neither queue a held root nor stamp its requeue cooldown, so the
+    first cycle after the arr reports completed/0 queues it at once.
+    """
+
+    OBSESSION = "Obsession.2025.1080p.WEB.H264-CiNEPHiLES.mkv"
+    OBSESSION_SIZE = 55477377022
+
+    def setUp(self):
+        self.context = MagicMock()
+        self.context.logger = MagicMock()
+        self.context.config.autoqueue.enabled = True
+        self.context.config.autoqueue.patterns_only = False
+        self.context.config.autoqueue.auto_extract = False
+        self.context.config.autoqueue.remote_stability_seconds = 0
+        self.context.config.autoqueue.local_stability_seconds = 0
+        self.context.status.controller.latest_remote_scan_time = None
+        self.context.status.controller.latest_local_scan_time = None
+        self.context.status.controller.latest_successful_remote_scan_time = None
+        self.context.status.controller.latest_successful_local_scan_time = None
+        self.controller = MagicMock()
+        self.controller.evaluate_completion = MagicMock(side_effect=lambda c: {n: Verdict.proven() for n in c})
+        self.controller.completion_verdict = MagicMock(return_value=Verdict.proven())
+        self.controller.get_model_files_and_add_listener.return_value = []
+        self.controller.is_file_stopped.return_value = False
+        self.controller.is_file_downloaded.return_value = False
+        self.model_files = []
+        self.controller.get_model_files.side_effect = lambda: list(self.model_files)
+
+    def _add(self, name, remote_size, local_size=None):
+        f = ModelFile(name, False)
+        f.remote_size = remote_size
+        f.local_size = local_size
+        self.model_files.append(f)
+        return f
+
+    def _auto_queue(self):
+        return AutoQueue(self.context, AutoQueuePersist(), self.controller)
+
+    def _queued_names(self):
+        return [c[0][0].filename for c in self.controller.queue_command.call_args_list]
+
+    def _set_verdict(self, verdict):
+        self.controller.evaluate_completion.side_effect = lambda c: {n: verdict for n in c}
+
+    def test_obsession_sweep_holds_while_still_downloading(self):
+        # Radarr reports status downloading, sizeleft 800430078: the gate holds.
+        self._add(self.OBSESSION, self.OBSESSION_SIZE)
+        self._set_verdict(Verdict.hold("still_downloading"))
+        auto_queue = self._auto_queue()
+        auto_queue.process()
+        self.controller.queue_command.assert_not_called()
+        self.assertNotIn(self.OBSESSION, auto_queue._AutoQueue__last_queue_attempt)
+
+    def test_obsession_sweep_queues_once_proven(self):
+        self._add(self.OBSESSION, self.OBSESSION_SIZE)
+        self._set_verdict(Verdict.hold("still_downloading"))
+        auto_queue = self._auto_queue()
+        auto_queue.process()
+        self.controller.queue_command.assert_not_called()
+        # Radarr now reports completed / sizeleft 0
+        self._set_verdict(Verdict.proven())
+        auto_queue.process()
+        self.assertEqual([self.OBSESSION], self._queued_names())
+        command = self.controller.queue_command.call_args[0][0]
+        self.assertEqual(Controller.Command.Action.QUEUE, command.action)
+        self.assertEqual(Controller.Command.Origin.AUTO, command.origin)
+
+    def test_gate_called_once_per_cycle_with_all_candidates(self):
+        self._add("a.mkv", 100)
+        self._add("b.mkv", 200)
+        self._add("c.mkv", 300, local_size=10)
+        auto_queue = self._auto_queue()
+        auto_queue.process()
+        self.controller.evaluate_completion.assert_called_once()
+        candidates = self.controller.evaluate_completion.call_args[0][0]
+        self.assertEqual({"a.mkv": 100, "b.mkv": 200, "c.mkv": 300}, dict(candidates))
+        self.assertEqual(["a.mkv", "b.mkv", "c.mkv"], sorted(self._queued_names()))
+
+    def test_gate_called_even_with_no_candidates(self):
+        auto_queue = self._auto_queue()
+        auto_queue.process()
+        self.controller.evaluate_completion.assert_called_once()
+        self.assertEqual({}, dict(self.controller.evaluate_completion.call_args[0][0]))
+
+    def test_stopped_or_downloaded_files_are_not_gate_candidates(self):
+        self._add("stopped.mkv", 100)
+        self._add("done.mkv", 100)
+        self._add("open.mkv", 100)
+        self.controller.is_file_stopped.side_effect = lambda n: n == "stopped.mkv"
+        self.controller.is_file_downloaded.side_effect = lambda n: n == "done.mkv"
+        auto_queue = self._auto_queue()
+        auto_queue.process()
+        self.assertEqual({"open.mkv": 100}, dict(self.controller.evaluate_completion.call_args[0][0]))
+
+    def test_not_required_verdict_keeps_stability_path(self):
+        # D-16: no arr enabled, stability alone decides (satisfied here).
+        self._add(self.OBSESSION, self.OBSESSION_SIZE)
+        self._set_verdict(Verdict.not_required())
+        auto_queue = self._auto_queue()
+        auto_queue.process()
+        self.assertEqual([self.OBSESSION], self._queued_names())
+
+    def test_held_item_not_cooldown_stamped_then_queued_immediately_when_proven(self):
+        self._add(self.OBSESSION, self.OBSESSION_SIZE)
+        auto_queue = self._auto_queue()
+        self.context.status.controller.latest_remote_scan_time = 1000.0
+        self._set_verdict(Verdict.hold("still_downloading"))
+        auto_queue.process()
+        self.controller.queue_command.assert_not_called()
+        # 10 s later the arr reports completed/0: no 300 s cooldown penalty.
+        self.context.status.controller.latest_remote_scan_time = 1010.0
+        self._set_verdict(Verdict.proven())
+        auto_queue.process()
+        self.assertEqual([self.OBSESSION], self._queued_names())

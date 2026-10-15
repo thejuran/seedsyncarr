@@ -1,67 +1,64 @@
-# Requirements: SeedSyncarr
+# Requirements: SeedSyncarr — v1.7.5 Safety Release
 
-**Defined:** 2026-10-08
+**Defined:** 2026-10-14
 **Core Value:** Reliable file sync from seedbox to local with automated media library integration
-**Milestone:** v1.7.4 Safety Patch — design spec `docs/superpowers/specs/2026-10-08-safety-patch-design.md`
 
-## v1 Requirements
+## v1.7.5 Requirements
 
-### Import Safety (deletion path)
+Requirements for the 1.7.5 safety release. All map to Phase 119.
 
-- [x] **IMPORT-01**: A webhook import whose file name matches more than one distinct model path — across releases, roots differing only by case, a root name equal to a child basename elsewhere, or repeated basenames within one release (e.g. `Pack/Disc1/movie.mkv` + `Pack/Disc2/movie.mkv`) — is rejected: no imported record, no per-child coverage credit, no import badge, no auto-delete timer, and one sanitized warning naming the candidate roots.
-- [x] **IMPORT-02**: A webhook import whose file name matches exactly one distinct model path (including repeated references to that same path) behaves exactly as before: recorded, badged, and armed for auto-delete when evidence allows.
+### Transfer State
 
-### Transfer-State Safety
+- [ ] **XFER-06**: After an LFTP status command times out, SeedSyncarr treats transfer status as unavailable until the command stream is verifiably resynchronized; a delayed prompt or stale output can never become a trusted empty job list, so active and submitted-transfer protection stays in force. Normal status resumes after verified synchronization. *(promotes backlog 999.2)*
 
-- [x] **XFER-01**: A pget job with no data line yet never consumes the following job's header; every job in `jobs -v` output appears in the parsed status with its correct name and state (the parser's other next-line-consuming sites are audited for the same flaw).
-- [x] **XFER-02**: When LFTP status cannot be parsed, it is reported as *unavailable* (never as an empty job list) and actively transferring files keep their last-known state and protection — nothing is re-queued or deleted because of the failure; no downstream consumer converts unavailable back into "no jobs".
-- [x] **XFER-03**: The existing status-error boundary is preserved exactly: failures 1..`MAX_CONSECUTIVE_STATUS_ERRORS` are tolerated (each reported unavailable) and the next failure raises; a successful parse resets the counter; a genuinely empty status still clears active state.
-- [x] **XFER-04**: A file's remote size is considered stable only on the clock of successful remote scans — failed scans spanning the stability window never make a file auto-queue eligible; the UI "last scan" timestamp keeps its current meaning.
-- [x] **XFER-05**: The local-size stability gate likewise advances only on successful local scans.
+### Auto-Delete
 
-### Durable State
+- [ ] **DEL-01**: A pending auto-delete timer cannot delete a transfer that was submitted but not yet observed in transfer status; it defers and can safely retry once transfer status is successfully observed (the job need not appear active if it already finished) and the existing deletion guards pass. Covered by a regression combining the timer with unavailable status and a submitted-unobserved root. *(promotes backlog 999.3)*
 
-- [x] **PERSIST-01**: Saving settings.cfg, the controller persist, or the auto-queue persist never leaves a truncated or partial file: any failure before the atomic replace (serialization, temp creation, write, fsync, replace) leaves the original byte-for-byte intact and removes the temp file.
-- [x] **PERSIST-02**: A successful save produces the correct content with `0600` permissions; after the `os.replace` commit point the new file is committed and the containing directory is fsynced best-effort (a directory-fsync failure is logged, not raised).
+### Import Safety
+
+- [ ] **IMP-01**: An incomplete or unverified copy of a seedbox file is never exposed at a path Sonarr/Radarr can import from — including during transfer, retries, crashes, and restart recovery. A copy becomes importable only after the completion checks pass; a recheck immediately before marking the copy complete is not sufficient on its own. *(Obsession incident, 2026-10-13)*
+- [ ] **IMP-02**: Completion is established from reliable evidence; stable size and modification time alone are insufficient. The release is identified reliably in the Sonarr/Radarr download queue, using queue/API semantics verified during planning. An unavailable API, an ambiguous queue match, or a missing queue entry each mean completion remains unproven: SeedSyncarr holds and retries visibly, and elapsed time never grants completion. *(Obsession incident)*
+  - **Scope of enforcement (owner-approved 2026-10-14):** verification applies when Sonarr or Radarr integration is enabled. An unavailable service holds an item only when no other configured service provides sufficient completion evidence (strong identity match + completed) for that release. With both integrations disabled, stability-based automatic syncing is retained as a documented compatibility exception — it cannot prove the seedbox download is complete, and disabling integration does not prove no external app watches the folder. Temp-file transfer (incomplete copies hidden until copying finishes) applies in both modes.
+  - **Explicit exception (owner-approved 2026-10-14):** the user may deliberately release a held item after confirming "Completion could not be verified. Transfer and release this item anyway?"; the approval covers only that one transfer attempt. Normal automatic transfers keep the strict IMP-01/IMP-02 checks.
+- [ ] **IMP-03**: An import notice for a uniquely identified, fully transferred episode is credited and persisted while sibling episodes are still transferring, and the credit survives a restart. That credit alone can never authorize whole-folder deletion: deletion requires both a complete transfer of the folder and import coverage of every required video. Ambiguous-filename protections still reject unsafe matches. *(Days of Hope incident, 2026-10-09)*
 
 ### Release
 
-- [ ] **REL-01**: Release 1.7.4 ships only after: each targeted regression fails against the old behavior and passes with its fix; the full Python suite and `ruff check src/python/` pass; the built release image passes a smoke test (startup, transfer status, settings persistence, restart); and the `:1.7.4` tag is deployed to the NAS with startup and config loading verified — a post-deploy scanner error is accepted as the known warm-up condition only after a subsequent successful scan confirms recovery.
+- [ ] **REL-02**: The 1.7.5 built distributions have valid member paths, pass packaging checks, install successfully in a clean environment, and publish to PyPI. Dependabot #93 is evaluated only as relevant to this packaging repair.
+- [ ] **REL-03**: 1.7.5 ships through the established Docker/GitHub/PyPI process. Each targeted regression fails before its fix and passes after; the full Python suite, whole-tree Ruff, and release CI gates pass. The release image passes smoke checks for startup, a real transfer, import visibility and webhook handling, automatic cleanup, settings persistence, and restart. The tested image is verified on the NAS, including a successful scan after any startup scanner error; any other startup error needs its own resolution before release.
 
-## v2 Requirements
+## Future Requirements
 
-- **IMPORT-F1**: Accept a webhook import whose payload file size equals the remote release size (backlog 999.1).
+Deferred to the Reliability milestone (Phase 120+): import/cleanup recovery across scan timing and restarts, shutdown/resource cleanup, bounded scanner-result buffering, useful memory diagnostics.
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Path-mapping redesign for webhook imports | Patch conservatively rejects ambiguity; full path mapping is a larger change |
-| Persistence migration / format changes | Atomic writes only; on-disk format unchanged |
-| Backup system / load-side recovery changes | Existing corrupt-file backup-and-reset behavior stays as-is |
+| Transfer-engine replacement | Patch release; fixes stay within the existing LFTP pipeline |
+| Broad path-aware import redesign | Import changes limited to what IMP-01..03 need to stop incomplete imports and incorrect cleanup |
+| Broad refactor, UI features, unrelated dependency churn | Patch scope |
+| Backlog 999.1 payload-size evidence | Stays deferred as defense in depth; payload-size evidence alone would not satisfy the new completion requirements |
+| Reliability milestone work | Next milestone, starting Phase 120 |
 
 ## Traceability
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| IMPORT-01 | Phase 116 | Complete |
-| IMPORT-02 | Phase 116 | Complete |
-| XFER-01 | Phase 117 | Complete |
-| XFER-02 | Phase 117 | Complete |
-| XFER-03 | Phase 117 | Complete |
-| XFER-04 | Phase 117 | Complete |
-| XFER-05 | Phase 117 | Complete |
-| PERSIST-01 | Phase 118 | Complete |
-| PERSIST-02 | Phase 118 | Complete |
-| REL-01 | Phase 118 | Pending |
+| Requirement | Phase | Plan grouping | Status |
+|-------------|-------|---------------|--------|
+| XFER-06 | Phase 119 | — | Pending |
+| DEL-01 | Phase 119 | — | Pending |
+| IMP-01 | Phase 119 | Incomplete-import plan (with IMP-02), own regression tests | Pending |
+| IMP-02 | Phase 119 | Incomplete-import plan (with IMP-01), own regression tests | Pending |
+| IMP-03 | Phase 119 | Early-episode-credit plan, own regression tests | Pending |
+| REL-02 | Phase 119 | — | Pending |
+| REL-03 | Phase 119 | — | Pending |
 
 **Coverage:**
-- v1 requirements: 10 total
-- Mapped to phases: 10 (100% — no orphans, no duplicates)
-- Phase 116 Import Safety: IMPORT-01, IMPORT-02
-- Phase 117 Transfer-State Safety: XFER-01, XFER-02, XFER-03, XFER-04, XFER-05
-- Phase 118 Durable State: PERSIST-01, PERSIST-02, REL-01 (release gate = milestone close)
+- v1.7.5 requirements: 7 total
+- Mapped to phases: 7
+- Unmapped: 0 ✓
 
 ---
-*Requirements defined: 2026-10-08*
-*Last updated: 2026-10-08 after roadmap creation (traceability mapped to Phases 116-118)*
+*Requirements defined: 2026-10-14*
+*Last updated: 2026-10-14 after owner approval*

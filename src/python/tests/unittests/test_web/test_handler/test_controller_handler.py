@@ -40,9 +40,48 @@ class TestControllerHandlerSingleAction(unittest.TestCase):
         self.mock_controller = MagicMock(spec=Controller)
         self.handler = ControllerHandler(self.mock_controller)
 
-    def _call_queue_handler(self, file_name: str):
-        """Call the queue action handler directly."""
-        return self.handler._ControllerHandler__handle_action_queue(file_name)
+    def _call_queue_handler(self, file_name: str, query=None):
+        """Call the queue action handler directly with an optional query string dict."""
+        with patch('web.handler.controller.request') as mock_request:
+            mock_request.query = dict(query or {})
+            return self.handler._ControllerHandler__handle_action_queue(file_name)
+
+    def _capture_commands(self, error=None, error_code=400):
+        captured = []
+
+        def side_effect(command):
+            captured.append(command)
+            for callback in command.callbacks:
+                if error is None:
+                    callback.on_success()
+                else:
+                    callback.on_failure(error, error_code)
+
+        self.mock_controller.queue_command.side_effect = side_effect
+        return captured
+
+    def test_single_queue_release_unverified_query_sets_flag(self):
+        captured = self._capture_commands()
+        response = self._call_queue_handler("test_file.mkv", {"release_unverified": "true"})
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(1, len(captured))
+        self.assertIs(True, captured[0].release_unverified)
+
+    def test_single_queue_without_query_leaves_flag_false(self):
+        captured = self._capture_commands()
+        self._call_queue_handler("test_file.mkv")
+        self.assertIs(False, captured[0].release_unverified)
+
+    def test_single_queue_non_true_query_leaves_flag_false(self):
+        captured = self._capture_commands()
+        self._call_queue_handler("test_file.mkv", {"release_unverified": "yes"})
+        self.assertIs(False, captured[0].release_unverified)
+
+    def test_single_queue_428_reaches_client(self):
+        self._capture_commands("Completion could not be verified: Still downloading", 428)
+        response = self._call_queue_handler("test_file.mkv")
+        self.assertEqual(428, response.status_code)
+        self.assertEqual("Completion could not be verified: Still downloading", response.body)
 
     def test_action_timeout_returns_504(self):
         """Mock the controller to NOT call any callback (simulating a stuck controller).
@@ -659,6 +698,61 @@ class TestControllerHandlerBulkCommand(unittest.TestCase):
         # should still show all commands were processed.
         self.assertEqual(3, self.mock_controller.queue_command.call_count)
 
+
+    def _capture_bulk_commands(self, error=None, error_code=400):
+        captured = []
+
+        def side_effect(command):
+            captured.append(command)
+            for callback in command.callbacks:
+                if error is None:
+                    callback.on_success()
+                else:
+                    callback.on_failure(error, error_code)
+
+        self.mock_controller.queue_command.side_effect = side_effect
+        return captured
+
+    def test_bulk_queue_release_unverified_sets_flag_on_each_command(self):
+        captured = self._capture_bulk_commands()
+        response = self._call_bulk_handler({
+            "action": "queue", "files": ["file1", "file2"], "release_unverified": True
+        })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(2, len(captured))
+        self.assertTrue(all(c.release_unverified is True for c in captured))
+
+    def test_bulk_queue_without_release_unverified_defaults_false(self):
+        captured = self._capture_bulk_commands()
+        self._call_bulk_handler({"action": "queue", "files": ["file1"]})
+        self.assertIs(False, captured[0].release_unverified)
+
+    def test_bulk_release_unverified_must_be_boolean(self):
+        self._capture_bulk_commands()
+        response = self._call_bulk_handler({
+            "action": "queue", "files": ["file1"], "release_unverified": "yes"
+        })
+        self.assertEqual(400, response.status_code)
+        self.assertEqual({"error": "release_unverified must be a boolean"}, json.loads(response.body))
+        self.mock_controller.queue_command.assert_not_called()
+
+    def test_bulk_release_unverified_only_valid_for_queue(self):
+        self._capture_bulk_commands()
+        response = self._call_bulk_handler({
+            "action": "stop", "files": ["file1"], "release_unverified": True
+        })
+        self.assertEqual(400, response.status_code)
+        self.assertEqual({"error": "release_unverified is only valid for action queue"},
+                         json.loads(response.body))
+        self.mock_controller.queue_command.assert_not_called()
+
+    def test_bulk_per_file_428_reaches_client(self):
+        self._capture_bulk_commands("Completion could not be verified: Sonarr unavailable", 428)
+        response = self._call_bulk_handler({"action": "queue", "files": ["file1"]})
+        body = json.loads(response.body)
+        self.assertEqual(428, body["results"][0]["error_code"])
+        self.assertEqual("Completion could not be verified: Sonarr unavailable", body["results"][0]["error"])
+        self.assertFalse(body["results"][0]["success"])
 
 
 class TestControllerHandlerRateLimit(unittest.TestCase):

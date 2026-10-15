@@ -73,6 +73,17 @@ make docker-image STAGING_REGISTRY=localhost:5000 STAGING_VERSION=dev
 | `npm run verify:release-metadata -- <version>` | Verify release metadata matches a release version or tag, for example `1.2.2` or `v1.2.2` |
 | `npm run test:release-metadata` | Run focused unit tests for the release metadata verifier |
 
+### Dependency alerts before a release
+
+When planning a release, before the version-bump commit, review open Dependabot alerts and PRs and roll the fixes into the release:
+
+```bash
+gh api repos/thejuran/seedsyncarr/dependabot/alerts --jq '.[] | select(.state=="open")'
+gh pr list --author app/dependabot
+```
+
+Fix anything that ships in the Docker image or Python package in the release. Development-only and build-time dependencies (for example Angular build or test tooling) are rolled in when the fix is cheap, such as an npm `overrides` pin; on their own they never justify a separate patch release.
+
 ### Release metadata guard
 
 Before publishing a release tag, ensure the app-facing release metadata matches the tag:

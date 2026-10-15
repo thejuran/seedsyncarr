@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "seedsyncarr"
-version = "1.7.4"
+version = "1.7.5"
 description = "Fast file syncing from remote servers with a web UI, powered by LFTP"
 authors = [{name = "thejuran"}]
 requires-python = ">=3.11,<3.13"
@@ -36,11 +36,15 @@ dev = [
 seedsyncarr = "seedsyncarr:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
+only-include = ["common", "controller", "lftp", "model", "ssh", "system", "web", "seedsyncarr.py", "scan_fs.py"]
+exclude = ["**/__pycache__"]
+
+[tool.hatch.build.targets.sdist]
+only-include = ["common", "controller", "lftp", "model", "ssh", "system", "web", "seedsyncarr.py", "scan_fs.py", "pyproject.toml"]
 
 [tool.poetry]
 name = "seedsyncarr"
-version = "1.7.4"
+version = "1.7.5"
 description = "Fast file syncing from remote servers with a web UI, powered by LFTP"
 authors = ["thejuran"]
 package-mode = false

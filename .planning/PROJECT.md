@@ -297,8 +297,26 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ CI coverage ratchet: Python `fail_under` 84→88 (container-inclusive 89.27%), net-new Karma `check.global` (83/68/79/83) + Angular Dockerfile `--code-coverage` so the gate bites; before/after recorded in ROADMAP + RETROSPECTIVE — v1.3.0
 - ✓ Ambiguous webhook import matches rejected (no credit/badge/auto-delete) and delete-time duplicate-video-basename guard that legacy coverage records cannot bypass; unique matches unchanged (IMPORT-01/02) — Validated in Phase 116: Import Safety (v1.7.4)
 - ✓ LFTP parser never swallows another job's header; unparseable or timed-out status reported as unavailable (never "no jobs") with the error boundary unchanged; transfers submitted but not yet observed stay Queued and protected (incl. same-cycle command guard, Stop reconcile); remote/local stability measured only on successful-scan clocks with the UI "last scan" unchanged (XFER-01..05) — Validated in Phase 117: Transfer-State Safety (v1.7.4)
+- ✓ Settings, controller persist and auto-queue persist written atomically (serialize first, same-dir 0600 temp, fsync, `os.replace` commit point, best-effort logged directory fsync) so a failed save leaves the previous file byte-for-byte intact (PERSIST-01/02); 1.7.4 release gate met — 42 regressions fail-before/pass-after, full suite + whole-tree ruff, digest-pinned smoke test with a real transfer, NAS deployed at `:1.7.4@sha256:682d…` with clean post-deploy scan (REL-01; PyPI publish deferred to 1.7.5 by owner) — Validated in Phase 118: Durable State (v1.7.4)
 
-## Current Milestone: v1.7.4 Safety Patch
+## Current State
+
+v1.7.4 Safety Patch shipped 2026-10-09 (tagged `v1.7.4`; `ghcr.io/thejuran/seedsyncarr:1.7.4` running on the NAS by digest). Milestone v1.7.5 Safety Release is in progress (single Phase 119). Owner decision 2026-10-14: v1.7.5 is its own milestone; the Reliability milestone follows it starting at Phase 120, then Performance and usability. Backlog 999.1 stays deferred and does not substitute for the 1.7.5 import fixes.
+
+## Current Milestone: v1.7.5 Safety Release
+
+**Goal:** Close the carried-forward safety gaps from v1.7.4 and the two 2026-10 Done-group incidents (an incomplete file imported into the library; early per-episode import notices discarded), and ship 1.7.5 to Docker/GitHub/PyPI with the tested image verified on the NAS.
+
+**Target features:**
+- LFTP command-boundary resync after a timeout — a delayed prompt or stale output cannot become a trusted empty job list (promotes 999.2).
+- Explicit submitted-but-unobserved guard in the auto-delete timer, with safe defer/re-arm (promotes 999.3).
+- PyPI packaging repair and verified distribution (Dependabot #93 only as relevant).
+- Incomplete-import prevention (Obsession, 2026-10-13): an unverified copy stays unavailable for Sonarr/Radarr import until completion checks pass; size/mtime are supporting evidence only; arr-queue release identification must be reliable and absence from the queue is not completion; arr unavailable → visible hold/retry, never an unsafe copy after a timeout. Separate plan and tests.
+- Early per-episode import credit (Days of Hope, 2026-10-09): notices for demonstrably complete episodes are credited and persisted while siblings transfer; whole-folder deletion stays gated on transfer completion and full video coverage; restart recovery tested; ambiguous-filename protections retained. Separate plan and tests.
+
+**Key context:** Diagnosis in `.planning/debug/done-group-no-auto-delete.md`. Broad research skipped; planning must verify the specific Sonarr/Radarr queue/API semantics needed to establish completion — the incident diagnosis establishes the problem, not every detail of the solution. Release gate: targeted regressions fail-before/pass-after, full suite + whole-tree ruff + release CI, release-image smoke (startup, real transfer, settings persistence, restart), Docker/GitHub/PyPI publication, and NAS verification of the tested image including a successful scan after any startup scanner error.
+
+## Previous Milestone: v1.7.4 Safety Patch (Shipped 2026-10-09, tagged v1.7.4)
 
 **Goal:** Protect users from incorrect deletion and transfer-state decisions. Ship promptly as patch release 1.7.4.
 
@@ -348,9 +366,15 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ### Active
 
-<!-- v1.7.4 — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
+- [ ] LFTP status cannot be trusted as "no jobs" after a timed-out command until the command stream is verifiably resynchronized (Phase 119)
+- [ ] A pending auto-delete timer cannot delete a submitted-but-unobserved transfer (Phase 119)
+- [ ] 1.7.5 publishes to PyPI from a valid, verified distribution (Phase 119)
+- [ ] Sonarr/Radarr cannot import an incomplete copy of a seedbox file (Phase 119)
+- [ ] Import notices for fully transferred episodes are credited while siblings still transfer, survive restart, and let auto-delete complete (Phase 119)
 
-v1.7.4 closes five defects that can cause incorrect deletion or transfer-state decisions: ambiguous webhook import matches, the LFTP parser consuming the next job's header, status-unavailable collapsing to "no jobs", stability established from failed scans, and non-atomic state/config writes. See `.planning/REQUIREMENTS.md`.
+<!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
+
+v1.7.4 closes five defects that can cause incorrect deletion or transfer-state decisions: ambiguous webhook import matches, the LFTP parser consuming the next job's header, status-unavailable collapsing to "no jobs", stability established from failed scans, and non-atomic state/config writes. All 10 requirements validated (see Validated above; archive `.planning/milestones/v1.7.4-REQUIREMENTS.md`).
 
 <!-- v1.4.1 (shipped 2026-06-22) — Scanner Auto-Recovery. -->
 
@@ -418,6 +442,10 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| Reject ambiguous webhook import matches instead of path-mapping (v1.7.4) | Conservative: a basename matching 2+ distinct model paths can never arm auto-delete; full path mapping is a larger change | ✓ Good |
+| LFTP status unavailable = `None`, never `[]` (v1.7.4) | "No jobs" and "couldn't tell" must be distinct so protection survives parse failures; error boundary kept exactly | ✓ Good |
+| Atomic `Persist.to_file` via same-dir temp + `os.replace` (v1.7.4) | A failed save must never destroy the last valid settings/persist; relies on `/config` being a directory mount (documented setup) | ✓ Good |
+| Ship 1.7.4 via Docker/GitHub despite PyPI publish failure (v1.7.4) | Safety fixes reach NAS users promptly; packaging fix deferred to 1.7.5 | — Pending (1.7.5) |
 | Use teal (secondary) for all selections | Teal is more distinctive than blue, already used in bulk selection | ✓ Good |
 | Migrate to Bootstrap `btn` classes | Reduces custom CSS, leverages Bootstrap's states | ✓ Good |
 | Keep @import for Bootstrap SCSS | Mixing @use/@import creates namespace conflicts | ✓ Good |
@@ -461,7 +489,7 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 
 ## Project Status
 
-**Status:** v1.2.0 shipped (2026-04-28). Test & quality hardening — 68 items across 10 phases.
+**Status:** v1.7.5 Safety Release in progress (started 2026-10-14). v1.7.4 Safety Patch shipped 2026-10-09 and runs on the NAS at `:1.7.4`.
 
 31 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit + v1.2.0 test hardening as SeedSyncarr).
 
@@ -483,4 +511,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-08 after Phase 117 (Transfer-State Safety)*
+*Last updated: 2026-10-14 after starting milestone v1.7.5*
