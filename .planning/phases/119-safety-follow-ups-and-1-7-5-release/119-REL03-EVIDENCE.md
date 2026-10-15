@@ -437,3 +437,148 @@ completes). All NAS auto-updates are paused meanwhile.
 Also present on the NAS and NOT touched by this plan: `seedsyncarr-test` (compose project `v5test`,
 `/volume1/docker/v5test/docker-compose.yml`, image `:1.7.4`, host port 8801). The 1.7.5 smoke
 therefore uses host port 8802.
+
+## Merge and tag (Plan 119-10)
+
+Run after the owner approval and the verified wud suspension above (committed as `0928017` before
+the first push of this plan).
+
+1. Pushed `0928017` (planning-docs delta only: ROADMAP, STATE, 119-09-SUMMARY, this file) to
+   `origin/release/1.7.5` (fast-forward `cbd99dc..0928017`).
+2. PR #127 checks re-ran on `092801725d55dd212de72238a28a64914f1fadd5`:
+   CI https://github.com/thejuran/seedsyncarr/actions/runs/38728273194 — `success` (9 gate jobs
+   success, 5 publish jobs skipped); CodeQL run 38728265144 — all three Analyze jobs pass.
+3. `gh pr merge 127 --merge --subject "Merge 1.7.5 safety release (#127)"` → merge commit
+   `7ebfac9622abd284084f2c32ee405a117fbbcd75`, parents `f6ff78a` (previous `origin/main`) and
+   `0928017` (release head). History kept. `git diff 0928017 7ebfac9` is empty (same tree as the
+   tested release head). Local `main` fast-forwarded to `origin/main` = `7ebfac9`.
+4. Annotated tag:
+
+```
+$ git tag -a v1.7.5 -m "SeedSyncarr 1.7.5 — safety release" 7ebfac9
+$ git cat-file -t v1.7.5
+tag
+$ git rev-parse v1.7.5 v1.7.5^{commit}
+cb1c33ed616690e9f7bafb99c6096e9e61619f54
+7ebfac9622abd284084f2c32ee405a117fbbcd75
+$ git push origin v1.7.5
+ * [new tag]         v1.7.5 -> v1.7.5
+$ ssh nas "sudo /usr/local/bin/docker inspect wud --format '{{.State.Status}}'"   # after the tag push
+exited
+```
+
+## Tag and CI (Plan 119-10)
+
+Tag CI run: https://github.com/thejuran/seedsyncarr/actions/runs/38729554457 (event `push`,
+ref `v1.7.5`, head `7ebfac9622abd284084f2c32ee405a117fbbcd75`) — conclusion `success`.
+(The `main` push CI run 38729547458 for the same commit also ran; it publishes `:dev` and docs.)
+
+| Job | Conclusion |
+|-----|------------|
+| Release metadata verifier tests | success |
+| Verify release metadata | success |
+| Angular unit tests | success |
+| Lint (Angular) | success |
+| Lint (Python) | success |
+| Python unit tests | success |
+| Verify Python package | success |
+| Build Docker Image | success |
+| End-to-end tests on Docker Image (amd64) | success |
+| End-to-end tests on Docker Image (arm64) | success |
+| Publish Docker Image | success |
+| Publish GitHub Release | success |
+| Publish to PyPI | success |
+| Publish Documentation | success |
+| Publish Docker Image (:dev) | skipped (tag ref) |
+
+### GitHub Release
+
+```
+$ gh release view v1.7.5 --json name,tagName,url,isDraft,isPrerelease
+{"isDraft":false,"isPrerelease":false,"name":"v1.7.5 — SeedSyncarr","tagName":"v1.7.5","url":"https://github.com/thejuran/seedsyncarr/releases/tag/v1.7.5"}
+```
+
+### PyPI
+
+Clean venv (`/opt/homebrew/bin/python3.12 -m venv <scratchpad>/pypi`, no cache):
+
+```
+$ pip index versions seedsyncarr
+seedsyncarr (1.7.5)
+Available versions: 1.7.5, 1.7.2, 1.7.1, 1.6.0, ...
+$ pip install --no-cache-dir seedsyncarr==1.7.5
+Successfully installed bottle-0.13.4 certifi-2026.7.22 cffi-2.1.1 charset_normalizer-3.5.2 cryptography-50.0.2 idna-3.20 paste-3.10.1 patool-4.1.0 pexpect-4.9.0 ptyprocess-0.7.0 pycparser-3.11 pytz-2026.5 requests-2.34.2 seedsyncarr-1.7.5 setuptools-84.0.0 tblib-3.2.2 urllib3-2.8.0
+INSTALL_EXIT=0
+$ pip show seedsyncarr
+Name: seedsyncarr
+Version: 1.7.5
+$ seedsyncarr --help   (tail)
+Seedsyncarr daemon
+
+options:
+  -h, --help            show this help message and exit
+  -c CONFIG_DIR, --config_dir CONFIG_DIR
+                        Path to config directory
+  --logdir LOGDIR       Directory for log files
+  -d, --debug           Enable debug logs
+  --exit                Exit on error
+  --html HTML           Path to directory containing html resources
+  --scanfs SCANFS       Path to scanfs executable
+HELP_EXIT=0
+```
+
+REL-02 (PyPI publication of 1.7.5) is satisfied. 1.7.4 never reached PyPI (118-04); 1.7.5 is the
+first release on PyPI since 1.7.2.
+
+### GHCR digest
+
+`gh api .../packages/...` needs `read:packages` (not in the gh token, HTTP 403) and the NAS docker
+has no `buildx`, so the digest was read from the registry API with an anonymous pull token
+(`HEAD /v2/thejuran/seedsyncarr/manifests/<tag>`, Accept OCI index):
+
+```
+1.7.5:  content-type: application/vnd.oci.image.index.v1+json
+1.7.5:  docker-content-digest: sha256:b061d95a50aad29d00d623191bebbb61290195b7b5eea6ec53d0b99af98bb3de
+latest: docker-content-digest: sha256:d2f06b49c30a63a83a23aacd5036082895fb0cde038f69070f1946bfe49d743f
+1.7.5 index children:
+  sha256:85e8e08cc1feaf14e726c598f7abdf894697e100525821a0e47966fc1a29fa13 linux/amd64
+  sha256:3ab66702376197edcf91da440766c1c96f4d000f2a3a80eb758d54571cc61c11 linux/arm64
+  sha256:04ef3cf7… / sha256:3cc09bfa…  unknown/unknown (attestations)
+latest index children:
+  sha256:85e8e08cc1feaf14e726c598f7abdf894697e100525821a0e47966fc1a29fa13 linux/amd64
+  sha256:3ab66702376197edcf91da440766c1c96f4d000f2a3a80eb758d54571cc61c11 linux/arm64
+  sha256:b08ddd52… / sha256:e462913f…  unknown/unknown (attestations)
+```
+
+`:latest` has a different index digest only because the publish job pushes it in a second step,
+which writes new attestation manifests. The amd64 and arm64 image manifests are identical, so the
+images are the same. The deploy pins the `:1.7.5` index digest.
+
+RELEASE_DIGEST=sha256:b061d95a50aad29d00d623191bebbb61290195b7b5eea6ec53d0b99af98bb3de
+Platforms: linux/amd64, linux/arm64.
+
+```
+$ ssh nas uname -m
+x86_64
+$ ssh nas 'sudo /usr/local/bin/docker pull -q ghcr.io/thejuran/seedsyncarr:1.7.5@sha256:b061d95a50aad29d00d623191bebbb61290195b7b5eea6ec53d0b99af98bb3de'
+$ ssh nas 'sudo /usr/local/bin/docker image inspect <IMG> --format "{{.Id}} {{.Architecture}} {{json .RepoDigests}}"'
+sha256:ade5863fef7d27ab01ecdd38f2124b44e142da1feafeceb8200f6b832d14b4b3 amd64 ["ghcr.io/thejuran/seedsyncarr@sha256:b061d95a50aad29d00d623191bebbb61290195b7b5eea6ec53d0b99af98bb3de"]
+```
+
+NAS_IMAGE_ID=sha256:ade5863fef7d27ab01ecdd38f2124b44e142da1feafeceb8200f6b832d14b4b3
+
+Checked right after the pull: wud `exited`; production
+`ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129d… running` (not touched).
+
+### Dependabot PRs (owner item c)
+
+```
+$ gh pr close 123 --comment "Rolled into 1.7.5 (commit 7ebfac9, tag v1.7.5: https://github.com/thejuran/seedsyncarr/releases/tag/v1.7.5)."
+✓ Closed pull request thejuran/seedsyncarr#123 (chore(deps): bump cryptography from 50.0.1 to 50.0.2 in /src/python)
+$ gh pr close 124 --comment "Rolled into 1.7.5 (...)"
+✓ Closed pull request thejuran/seedsyncarr#124 (chore(deps): bump pytz from 2026.3.post1 to 2026.5 in /src/python)
+$ gh api repos/thejuran/seedsyncarr/dependabot/alerts/93 --jq .state
+fixed
+```
+
+#126 left open (owner item e).
