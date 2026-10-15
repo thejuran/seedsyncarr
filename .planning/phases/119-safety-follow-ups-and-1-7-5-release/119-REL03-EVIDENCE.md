@@ -582,3 +582,330 @@ fixed
 ```
 
 #126 left open (owner item e).
+
+## Smoke test on NAS (Plan 119-10, REL-03)
+
+Run 2026-10-15 06:45 to 07:09 -0500 (NAS `date`; app-log/UTC times below are NAS + 5 h).
+Scratch only: containers `seedsyncarr-smoke` (host port **8802**; 8801 belongs to the untouched
+`seedsyncarr-test`) and `seedsyncarr-smoke-remote`, network `seedsyncarr-smoke-net`, dir
+`/volume1/docker/seedsync-smoke-1.7.5`. Nothing touched `/volume1/docker/seedsync`, the compose
+file, the production `seedsyncarr` container, `seedsyncarr-test`, or wud. The scratch sshd password
+and the scratch webhook secret were generated on the NAS (`openssl rand`), held in an owner-only
+(0700/0600) dir, passed into JSON bodies with `jq --arg` and into `chpasswd` over stdin, never
+printed, and deleted at teardown. They are not in this file.
+
+DIGEST=sha256:b061d95a50aad29d00d623191bebbb61290195b7b5eea6ec53d0b99af98bb3de
+IMG=ghcr.io/thejuran/seedsyncarr:1.7.5@sha256:b061d95a50aad29d00d623191bebbb61290195b7b5eea6ec53d0b99af98bb3de
+SMOKE_IMAGE_ID=sha256:ade5863fef7d27ab01ecdd38f2124b44e142da1feafeceb8200f6b832d14b4b3
+
+SMOKE_IMAGE_ID equals NAS_IMAGE_ID from §GHCR digest (`docker inspect seedsyncarr-smoke --format '{{.Image}}'`).
+
+### Step 0: preconditions
+
+```
+wud: exited
+prod: ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595 running
+no seedsyncarr-smoke* containers; scratch dir absent; port 8802 free
+```
+
+Disposable remote: `debian:bookworm-slim` + openssh-server, label `wud.watch=false`, no published
+port (scratch bridge only). Files: `/home/smokeuser/files/smoke-a.bin` (209715200 bytes) and
+`/home/smokeuser/staging/smoke-b.bin` (5242880 bytes, moved into `files/` at step 7).
+
+```
+REMOTE sha256 smoke-a.bin = 6743336a5e0ac98b2d71c1aa3d829cc51093af010ea93ac098ab4abd62555165
+REMOTE sha256 smoke-b.bin = 7fe011740f2228c79cc98b0f4c5e2a2c4525ac2a69825dcf5e41e1ec0befa369
+Server listening on 0.0.0.0 port 22.
+```
+
+(A first checksum read was taken while `/dev/urandom` was still writing the file and is
+discarded. The values above were read after `Server listening`, which the container only reaches
+after both files are complete.)
+
+### Step 1: startup (D-16 path: both integrations disabled) and D-19 line
+
+```
+$ sudo /usr/local/bin/docker run -d --name seedsyncarr-smoke --label wud.watch=false --network seedsyncarr-smoke-net -e PUID=1026 -e PGID=100 -p 8802:8800 -v $D/config:/config -v $D/downloads:/downloads $IMG
+SMOKE container .Image: sha256:ade5863fef7d27ab01ecdd38f2124b44e142da1feafeceb8200f6b832d14b4b3
+BEFORE: {"up":false,"error_msg":"The settings are not fully configured."}
+set lftp/remote_address=seedsyncarr-smoke-remote -> HTTP 200
+set lftp/remote_username=smokeuser -> HTTP 200
+set lftp/remote_password=<redacted> -> HTTP 200
+set lftp/remote_port=22 -> HTTP 200
+set lftp/remote_path=/home/smokeuser/files -> HTTP 200
+set lftp/local_path=/downloads -> HTTP 200
+set lftp/use_ssh_key=false -> HTTP 200
+set lftp/use_temp_file=False -> HTTP 200
+set lftp/rate_limit=8388608 -> HTTP 200
+set autoqueue/enabled=True -> HTTP 200
+set autoqueue/patterns_only=True -> HTTP 200
+set autoqueue/remote_stability_seconds=0 -> HTTP 200
+set autoqueue/local_stability_seconds=0 -> HTTP 200
+set autodelete/enabled=True -> HTTP 200
+set autodelete/dry_run=False -> HTTP 200
+set autodelete/delay_seconds=20 -> HTTP 200
+set general/webhook_secret=<redacted> -> HTTP 200
+set sonarr/enabled=False -> HTTP 200
+set radarr/enabled=False -> HTTP 200
+$ sudo /usr/local/bin/docker restart seedsyncarr-smoke
+STARTUP: server.up == true
+AFTER: {"up":true,"error_msg":null}
+2026-10-15 11:58:51,851 - INFO - seedsyncarr (MainProcess/MainThread) - Starting SeedSyncarr
+2026-10-15 11:58:52,412 - INFO - seedsyncarr.LftpManager (MainProcess/MainThread) - Temp-file transfers are always on in 1.7.5; use_temp_file=False in config is ignored
+status.controller: {"latest_local_scan_time":"1792065542.543252","latest_remote_scan_time":"1792065532.546979","latest_remote_scan_failed":false,"latest_remote_scan_error":null}
+```
+
+The D-19 line also appeared on the very first boot (default config, 11:58:34), because a freshly
+generated default config carries `use_temp_file = False`. The first boot's
+`ERROR - Config is incomplete` is the expected BEFORE state.
+
+Verdict, startup + D-19: **PASS**.
+
+### Step 2: real transfer with the `.lftp` temp name
+
+```
+add pattern: Added auto-queue pattern 'smoke-a'. HTTP 200
+06:59:06 ls: 10354688 smoke-a.bin.lftp;
+06:59:06 ls: 159318016 smoke-a.bin.lftp;
+06:59:07 ls: 170510128 smoke-a.bin.lftp;
+...
+06:59:12 ls: 208994304 smoke-a.bin.lftp;
+06:59:12 ls: 209715200 smoke-a.bin;
+SEEN_LFTP=1
+-rwxrwxrwx+ 1 jule1651 users 209715200 Oct 15 06:52 smoke-a.bin
+local sha256:  6743336a5e0ac98b2d71c1aa3d829cc51093af010ea93ac098ab4abd62555165
+remote sha256: 6743336a5e0ac98b2d71c1aa3d829cc51093af010ea93ac098ab4abd62555165
+```
+
+Model stream (`/server/stream`, `model-updated` new_file, uniq):
+
+```
+{"name":"smoke-a.bin","state":"downloading","import_status":"none","hold_reason":null,"local_size":12255232}
+... downloading ... local_size 204722597
+{"name":"smoke-a.bin","state":"default","import_status":"none","hold_reason":null,"local_size":204722597}
+{"name":"smoke-a.bin","state":"downloaded","import_status":"none","hold_reason":null,"local_size":209715200}
+```
+
+Verdict, real transfer: **PASS**. The in-flight file was only ever `smoke-a.bin.lftp`, it was
+renamed on completion, the sha256 matches, and the final state is `downloaded` with
+`hold_reason: null`. Observation: one `default` update sits between the last `downloading` and
+`downloaded` (lftp finished, local scan not yet at full size). See step 7.
+
+### Step 3: webhook import (HMAC-signed, Sonarr-style)
+
+Payload: `{"eventType":"Download","series":{"title":"Smoke Show"},"episodeFile":{"relativePath":"Season 01/smoke-a.bin","sourcePath":"/downloads/smoke-a.bin"},"release":{"releaseTitle":"smoke-a.bin"}}`,
+signature `X-Webhook-Signature: <hex HMAC-SHA256 of the body with the scratch secret>` (computed on
+the NAS with `openssl dgst -hmac`, not printed).
+
+```
+unsigned: HTTP 401
+07:01:30 signed: OK HTTP 200
+2026-10-15 12:01:29,476 - INFO - web_access - "POST /server/webhook/sonarr HTTP/1.1" 401 25
+2026-10-15 12:01:30,499 - INFO - seedsyncarr.WebhookManager - Sonarr webhook import enqueued: 'smoke-a.bin' (eventType=Download, episodeFile.sourcePath)
+2026-10-15 12:01:30,916 - INFO - seedsyncarr.Controller - Recorded webhook import: 'smoke-a.bin' (child: 'smoke-a.bin')
+model: {"name":"smoke-a.bin","state":"downloaded","import_status":"imported","hold_reason":null}
+```
+
+Verdict, import visibility + webhook: **PASS** (`import_status: "imported"`; unsigned request refused 401).
+
+### Step 4: automatic cleanup
+
+```
+2026-10-15 12:01:31,556 - INFO - seedsyncarr.Controller - Scheduled auto-delete of 'smoke-a.bin' in 20 seconds
+2026-10-15 12:01:51,559 - INFO - seedsyncarr.Controller (MainProcess/Thread-4) - Auto-deleted local file 'smoke-a.bin'
+07:01:30 ls downloads: [smoke-a.bin ]
+07:01:51 ls downloads: []
+model: {"name":"smoke-a.bin","state":"deleted","import_status":"imported","hold_reason":null}
+```
+
+Verdict, automatic cleanup: **PASS**.
+
+### Step 5: settings persistence
+
+```
+set lftp/num_max_parallel_downloads=3 -> HTTP 200
+set sonarr/sonarr_url=http://127.0.0.1:9 -> HTTP 200
+set sonarr/sonarr_api_key=<redacted> -> HTTP 200     (dummy scratch value)
+controller.persist keys: {"downloaded":1,"extracted":0,"stopped":0,"imported":1,"imported_children":0,"absent_since":0}
+autoqueue.persist: {"patterns": ["{\"pattern\": \"smoke-a\"}"]}
+.tmp files in config dir: 0
+```
+
+The config API updates the in-memory config, and `settings.cfg` is written at shutdown. Before the
+restart, the file still showed `num_max_parallel_downloads = 2` / `sonarr_url = `. After the step 6
+restart:
+
+```
+$ grep -E '^num_max_parallel_downloads = |^sonarr_url = ' settings.cfg
+num_max_parallel_downloads = 3
+sonarr_url = http://127.0.0.1:9
+sonarr_api_key non-empty: 1
+-rw------- 1 jule1651 users 1245 Oct 15 07:04 settings.cfg
+```
+
+Verdict, settings persistence: **PASS**.
+
+### Step 6: restart
+
+```
+$ sudo /usr/local/bin/docker restart seedsyncarr-smoke
+RESTART: server.up == true
+config/get num_max_parallel_downloads: 3
+config/get sonarr: {"enabled":false,"sonarr_url":"http://127.0.0.1:9","key_set":true}
+autoqueue/get: [{"pattern": "smoke-a"}]
+status.controller after 45 s: {"latest_local_scan_time":"1792065863.962692","latest_remote_scan_time":"1792065863.96334","latest_remote_scan_failed":false,"latest_remote_scan_error":null}
+downloads after 45 s (smoke-a must NOT be re-downloaded): []
+model: {"name":"smoke-a.bin","state":"deleted","import_status":"imported","hold_reason":null}
+2026-10-15 12:03:53,273 - INFO - seedsyncarr - Starting SeedSyncarr
+2026-10-15 12:03:53,835 - INFO - seedsyncarr.LftpManager - Temp-file transfers are always on in 1.7.5; use_temp_file=False in config is ignored
+2026-10-15 12:03:54,015 - INFO - seedsyncarr.Controller.MemoryMonitor - Memory stats: process=50.0MB, downloaded_files=1, ...
+2026-10-15 12:03:54,942 - INFO - RemoteScanner.RemoteScanner - Skipping remote scanfs installation: already installed
+```
+
+Persist loader check: the 118 checker (`118-05-parse_check.py`, sha256 `920363ac…dd53`, unchanged)
+was run with the 1.7.5 image on the scratch files, using the 119-11 flags:
+
+```
+$ sudo /usr/local/bin/docker run --rm -i --read-only --user 1026:100 --network none --cap-drop ALL --entrypoint python3 -w /app/python -v /volume1/docker/seedsync-smoke-1.7.5/config:/c:ro $IMG - settings.cfg controller.persist autoqueue.persist < 118-05-parse_check.py
+PASS settings.cfg loader=Config
+AutoDelete.enabled=True
+PASS controller.persist loader=ControllerPersist
+PASS autoqueue.persist loader=AutoQueuePersist
+PARSE_OK
+EXIT=0
+```
+
+The one traceback around the restart is the known shutdown race from 118-05, not a startup error:
+
+```
+2026-10-15 12:03:38,806 - INFO - seedsyncarr - Exiting Seedsyncarr
+2026-10-15 12:03:39,000 - ERROR - seedsyncarr.ScanManager - Scanner process(es) died unexpectedly: RemoteScanner, LocalScanner, ActiveScanner
+2026-10-15 12:03:39,000 - ERROR - seedsyncarr.ControllerJob - Caught exception in job ControllerJob
+2026-10-15 12:03:41,013 - INFO - seedsyncarr - Exited successfully
+```
+
+Verdict, restart: **PASS**. The setting persisted, all three persist files loaded, and the
+`downloaded`/`imported` memory survived, so the deleted file was not fetched again.
+
+### Step 7: held item + manual release (1.7.5)
+
+```
+T0=2026-10-15T12:05:36Z
+set lftp/rate_limit=1048576 -> HTTP 200
+set sonarr/enabled=True -> HTTP 200            (sonarr_url = http://127.0.0.1:9, dummy key — unreachable)
+add pattern: Added auto-queue pattern 'smoke-b'. HTTP 200
+07:05:36 placed smoke-b.bin on remote
+07:06:04 {"name":"smoke-b.bin","state":"default","import_status":"none","hold_reason":"sonarr_unavailable"}
+local downloads: []
+-- 3+ further remote-scan cycles (95 s) --
+07:07:39 {"name":"smoke-b.bin","state":"default","import_status":"none","hold_reason":"sonarr_unavailable"}
+hold-start lines for smoke-b since T0: 1
+2026-10-15 12:05:56,543 - WARNING - seedsyncarr.ArrQueueClient (ArrQueueFetch-sonarr) - Sonarr queue check failed: ConnectionError
+2026-10-15 12:05:57,091 - INFO - seedsyncarr.CompletionGate - Completion hold for 'smoke-b.bin': Sonarr unavailable
+2026-10-15 12:06:27,482 - WARNING - seedsyncarr.ArrQueueClient (ArrQueueFetch-sonarr) - Sonarr queue check failed: ConnectionError
+2026-10-15 12:07:28,129 - WARNING - seedsyncarr.ArrQueueClient (ArrQueueFetch-sonarr) - Sonarr queue check failed: ConnectionError
+local downloads (must be empty, held): []
+```
+
+One hold-start INFO line over 12:05:57 to 12:07:45, about 108 s at a 30 s remote-scan interval,
+with no per-cycle repeats. The Sonarr fetch failures back off (30 s, then 61 s).
+
+```
+-- bulk queue without release flag --
+{"results": [{"file": "smoke-b.bin", "success": false, "error": "Completion could not be verified: Sonarr unavailable", "error_code": 428}], "summary": {"total": 1, "succeeded": 0, "failed": 1}} HTTP 200
+-- bulk queue with release_unverified --
+{"results": [{"file": "smoke-b.bin", "success": true}], "summary": {"total": 1, "succeeded": 1, "failed": 0}} HTTP 200
+2026-10-15 12:07:45,861 - WARNING - seedsyncarr.Controller.CommandProcessor - Manual release of unverified 'smoke-b.bin' (Sonarr unavailable); source-completion check bypassed for this transfer only
+2026-10-15 12:07:45,861 - INFO - seedsyncarr.LftpManager - rate_limit changed: 8388608 -> 1048576
+2026-10-15 12:07:46,083 - INFO - seedsyncarr.CompletionGate - Completion hold cleared for 'smoke-b.bin'
+07:07:47 ls: 1222283 smoke-b.bin.lftp;
+07:07:47 ls: 1506553 smoke-b.bin.lftp;
+07:07:48 ls: 1792575 smoke-b.bin.lftp;
+07:07:48 ls: 5103200 smoke-b.bin.lftp;
+07:07:48 ls: 5242880 smoke-b.bin.lftp;
+07:07:49 ls: 5242880 smoke-b.bin;
+local sha256 smoke-b:  7fe011740f2228c79cc98b0f4c5e2a2c4525ac2a69825dcf5e41e1ec0befa369  (= remote)
+2026-10-15 12:07:48,917 - INFO - seedsyncarr.CompletionGate - Completion hold for 'smoke-b.bin': Sonarr unavailable
+2026-10-15 12:07:54,485 - INFO - seedsyncarr.CompletionGate - Completion hold cleared for 'smoke-b.bin'
+07:08:01 {"name":"smoke-b.bin","state":"downloaded","import_status":"none","hold_reason":null}
+-- disable Sonarr --
+set sonarr/enabled=False -> HTTP 200
+07:08:45 {"name":"smoke-b.bin","state":"downloaded","import_status":"none","hold_reason":null}
+holds in model (any file with non-null hold_reason): 0
+Traceback since T0: 0
+```
+
+**Observation (not a failure):** after the manual release, the gate logged one more
+`Completion hold for 'smoke-b.bin'` at 12:07:48.917, the moment lftp finished. It cleared at
+12:07:54 when the local scan saw the full file as `downloaded`. This is the same transient
+`default` state between `downloading` and `downloaded` as in step 2: for about 5 s the gate
+re-evaluates the root as not-yet-downloaded. Nothing was re-transferred, and the file ended
+`downloaded`, `hold_reason: null`. In production with Sonarr reachable, a just-finished file could
+briefly show a hold label. It is cosmetic and logged once.
+
+**Badge "Waiting":** the badge is drawn in the browser from `hold_reason`
+(`transfer-row.component.ts`: `if (this.isHeld) { return "Waiting"; }`, label from
+`Localization.Hold`). The shipped bundle `/app/html/main-C3GCEDMV.js` in the image contains the
+`Waiting` literal and the `Sonarr unavailable` label. The model JSON carried
+`hold_reason: "sonarr_unavailable"`. **Not verified:** the badge was not looked at in a browser.
+That is for the batched pre-release walkthrough.
+
+Verdict, held item + manual release: **PASS**.
+
+### Step 8: scanner errors
+
+```
+$ docker logs seedsyncarr-smoke | grep -nE "Scanner process|scan.*(fail|error)|Caught exception|Exiting|Starting SeedSyncarr|Config is incomplete"
+139: ERROR - Config is incomplete                     (first boot, default config — expected BEFORE state)
+260: ERROR - ScanManager - Scanner process(es) died unexpectedly ...   (12:03:39, 194 ms after "Exiting Seedsyncarr" — shutdown race)
+261: ERROR - ControllerJob - Caught exception in job ControllerJob     (same)
+scanner errors after the 12:03:53 start: 0; latest_remote_scan_failed: false throughout
+```
+
+No startup scanner error occurred, so no recovery line is needed. Verdict: **PASS**.
+
+### Teardown and end state
+
+```
+NAS Thu Oct 15 07:09:20 -05 2026
+$ sudo /usr/local/bin/docker rm -f seedsyncarr-smoke seedsyncarr-smoke-remote && sudo /usr/local/bin/docker network rm seedsyncarr-smoke-net
+smoke containers left: 0
+wud: exited
+prod: ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595 sha256:0e33b030… running started=2026-10-09T14:10:14Z   (unchanged)
+test: ghcr.io/thejuran/seedsyncarr:1.7.4 running started=2026-10-12T23:18:54Z   (unchanged)
+```
+
+Scratch dir `/volume1/docker/seedsync-smoke-1.7.5/{config,downloads}` kept until 119-11 completes
+(secret files removed; the scratch `settings.cfg` holds only scratch credentials for the destroyed
+remote).
+
+### Finding outside this plan's scope: secrets in container stdout (pre-existing since v1.0.0)
+
+The `grep` in step 3 showed that `src/docker/build/docker-image/setup_default_config.sh` runs
+`cat ${SETTINGS_FILE}` twice on every container start (lines 27 and 36, unchanged since
+`98871f5` "Initial commit: SeedSyncarr v1.0.0", present in v1.7.4 and v1.7.5). So `docker logs`
+contains every `settings.cfg` value. Read-only counts on the NAS (no values printed):
+
+```
+production seedsyncarr (1.7.4) docker logs, non-empty lines:  remote_password 1, sonarr_api_key 1, radarr_api_key 1
+  of which Fernet ciphertext (gAAAAA…): 0   → plaintext;  [Encryption] enabled = True: 0
+/volume1/docker/seedsync/log/* (app plain-file logs): no match
+```
+
+The deploy will not change this: the 1.7.5 container prints the same dump at start. It is not a
+1.7.5 regression and is not fixed here (it needs a new release). It is logged in
+`deferred-items.md` and raised at the 119-10 checkpoint. The scratch webhook secret seen once in
+this session's terminal output was destroyed with the scratch setup.
+
+### Smoke verdict summary
+
+| # | Check | Verdict |
+|---|-------|---------|
+| 1 | Startup (D-16, integrations off) + D-19 ignored-config line | PASS |
+| 2 | Real transfer: `smoke-a.bin.lftp` → `smoke-a.bin`, sha256 match | PASS |
+| 3 | Webhook (signed) → `import_status: "imported"`; unsigned 401 | PASS |
+| 4 | Auto-cleanup: "Auto-deleted local file 'smoke-a.bin'" after 20 s | PASS |
+| 5 | Settings persistence (file written at shutdown) | PASS |
+| 6 | Restart: settings + persist files load (PARSE_OK), no re-download | PASS |
+| 7 | Held `sonarr_unavailable`, single hold log line, 428, manual release WARNING, `.lftp` → rename, no holds after disable | PASS (one cosmetic re-hold blip, noted) |
+| 8 | No startup scanner error (shutdown race only, as in 118) | PASS |
