@@ -355,22 +355,55 @@ stale) is also 1.7.5.
 
 ## CI
 
-**Pending — not pushed.** The release tree is 90 commits ahead of `origin/main` and has not been
-pushed; this executor was instructed not to push before the owner checkpoint. CI on the exact
-release tree (jobs unittests-release-metadata, unittests-python, unittests-angular, lint-python,
-lint-angular, verify-python-package, build-docker-image, e2etests-docker-image, and
-verify-release-metadata — which only does real work on a tag) is an awaited item in the 119-09
-checkpoint. Run URL and per-job conclusions to be recorded here once CI has run:
+Release branch `release/1.7.5`, PR #127 (https://github.com/thejuran/seedsyncarr/pull/127) into
+`main`. Nothing was published: on a PR the publish jobs are skipped, and no tag exists.
 
-- CI run URL: _pending_
-- Per-job conclusions: _pending_
-- Dependabot alert #93 state after CI: _pending_
+- Final head: `cbd99dc386afc35c9071dfd7153a10b9d2d79ad3` (same as local `main` HEAD and
+  `origin/release/1.7.5`).
+- CI run URL: https://github.com/thejuran/seedsyncarr/actions/runs/38726397226 — conclusion `success`.
+- CodeQL run: https://github.com/thejuran/seedsyncarr/actions/runs/38726392573 — conclusion `success`
+  (Analyze actions / javascript-typescript / python).
+- Per-job conclusions (CI run, `gh run view 38726397226`, observed 2026-10-15):
 
-Note: a push to `main` also runs `publish-docker-image-dev` (`:dev`) and `publish-docs`; pushing the
-same commits to a non-main branch with a PR to `main` runs every gate above without publishing
-anything.
+| Job | Conclusion |
+|-----|------------|
+| Lint (Python) | success |
+| Lint (Angular) | success |
+| Python unit tests | success |
+| Angular unit tests | success |
+| Verify Python package | success |
+| Verify release metadata | success |
+| Release metadata verifier tests | success |
+| Build Docker Image | success |
+| End-to-end tests on Docker Image (amd64) | success |
+| Publish Docker Image / Publish Docker Image (:dev) / Publish to PyPI / Publish Documentation / Publish GitHub Release | skipped (PR) |
+
+- Dependabot alert #93 state after CI: `open` — expected; GitHub rescans once the lockfile change
+  reaches `main` (119-10).
+
+### Release-gate catches (two earlier CI attempts on PR #127 failed; fixed on the release branch)
+
+1. **Build Docker Image failed.** The image build ran an unpinned `pip3 install poetry` into the
+   system interpreter, which pulled the newly published cffi 2.1.1; `poetry install`
+   (`virtualenvs.create=false`) then tried to downgrade cffi/certifi to the lock's versions while
+   running on them (`FileNotFoundError` on `cffi-2.1.1.dist-info`). Fix: install Poetry 2.3.4 into an
+   isolated `/opt/poetry` venv in `src/docker/build/docker-image/Dockerfile`. Landed in commit
+   `6a323ee` (whose message names only the HMAC change; `cbd99dc`'s message records the Dockerfile fix).
+2. **CodeQL high alert `py/weak-sensitive-data-hashing`** on the arr API-key change-detection
+   fingerprint (first SHA-256, then HMAC-SHA256 in `6a323ee`). Fix in `cbd99dc`: replace hashing
+   with opaque in-memory per-key counter tokens — no hash of the key exists, the identity never
+   carries the raw key, and it is never logged. Tests updated; 94 targeted tests pass; ruff clean.
+   CodeQL on the final head: success.
 
 ## Coverage (informational)
 
 The host run does not print coverage (no `--cov` in the default options); CI runs no `--cov`
 either. Not recorded.
+
+## Owner decision (2026-10-15)
+
+Verbatim: "Approve as drafted" — items (a) limitation/cleanup wording as drafted, (b) rollback to
+1.7.4 with .pre-1.7.5 suffix, (c) close #123/#124 after the tag with a "rolled into 1.7.5" comment,
+(e) leave #126 out. Item (d): CI via branch + PR (chosen).
+
+Recorded before any tag. Tag, merge, push and publish are plan 119-10.

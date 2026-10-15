@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.7.5
 milestone_name: Safety Release
 status: executing
-stopped_at: Phase 119 context gathered
-last_updated: "2026-10-15T10:29:28.456Z"
+stopped_at: Completed 119-09-PLAN.md
+last_updated: "2026-10-15T11:32:30.358Z"
 last_activity: 2026-10-15 -- Phase 119 execution started
 progress:
   total_phases: 22
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-10-09)
 ## Current Position
 
 Phase: 119 (Safety Follow-ups and 1.7.5 Release) — EXECUTING
-Plan: 1 of 12
+Plan: 10 of 12 (119-09 complete; next 119-10 tag, merge, publish, NAS deploy)
 Status: Executing Phase 119
 Last activity: 2026-10-15 -- Phase 119 execution started
 
@@ -60,6 +60,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 118]: 118-04: Owner approved 1.7.4 as drafted; (a)-(e) confirmed (rollback 1.7.2, CHANGELOG fold, coverage informational, wud semver filter in 118-05, inode-preserving compose edit)
 - [Phase 118]: 118-04: Tag CI PyPI publish failed (./-prefixed archive paths, nothing uploaded); owner chose ship 1.7.4 via Docker/GitHub only, PyPI fix + Dependabot #93 in 1.7.5; tag not moved
 - [Phase 118]: 118-05: owner go-ahead 'deploy keep pin'; NAS on :1.7.4@sha256:682d129d with compose digest pin kept and wud.tag.include semver filter; backup checker runs with --user 1026:100
+- [Phase 119]: 1.7.5 approved as drafted by owner 2026-10-15; CI green on PR #127 head cbd99dc; tag/merge/publish in 119-10
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -129,8 +130,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-10-15T10:29:28.452Z
-Stopped at: Phase 119 context gathered
+Last session: 2026-10-15T11:32:25.853Z
+Stopped at: Completed 119-09-PLAN.md (owner approved 1.7.5 as drafted; CI green on PR #127)
 Next action: Discuss and plan Phase 119 (milestone orchestrator), then execute, verify and release 1.7.5.
 
 ## Operator Next Steps
