@@ -1,4 +1,5 @@
 import configparser
+import io
 import os
 import shutil
 import tempfile
@@ -6,6 +7,7 @@ import traceback
 import unittest
 import uuid
 from typing import Optional
+from unittest.mock import patch
 
 import common
 from common import Config, ConfigError, PersistError
@@ -1466,3 +1468,115 @@ class TestConfigUnreadableSecretValue(unittest.TestCase):
         # classes exercised above must be covered by it.
         self.assertTrue(issubclass(configparser.InterpolationMissingOptionError, configparser.Error))
         self.assertTrue(issubclass(configparser.InterpolationSyntaxError, configparser.Error))
+
+
+class TestConfigPercentRoundTrip(unittest.TestCase):
+    """Every value must survive write -> read unchanged, including values that
+    contain '%' (BasicInterpolation treats a bare '%' as syntax). Any failure
+    while serializing must be value-free and must not touch the file on disk.
+    Failure messages name fields and exception classes only, never values."""
+
+    @staticmethod
+    def _config() -> Config:
+        return Config.from_str(_build_config_ini())
+
+    def _to_str_or_fail(self, config: Config) -> str:
+        output, raised = None, None
+        try:
+            output = config.to_str()
+        except Exception as e:
+            raised = type(e).__name__
+        self.assertIsNone(raised, "to_str raised {}".format(raised))
+        return output
+
+    def test_to_str_escapes_bare_percent_and_round_trips(self):
+        sentinel = "SENT%INEL-" + uuid.uuid4().hex
+        config = self._config()
+        config.lftp.remote_password = sentinel
+        output = self._to_str_or_fail(config)
+        self.assertTrue("remote_password = " + sentinel.replace("%", "%%") in output.splitlines(),
+                        "remote_password was not written with an escaped percent")
+        reread = Config.from_str(output)
+        self.assertTrue(reread.lftp.remote_password == sentinel, "remote_password changed across write/read")
+
+    def test_to_str_round_trips_interpolation_like_value(self):
+        value = "a%(x)s"
+        config = self._config()
+        config.lftp.remote_password = value
+        output = self._to_str_or_fail(config)
+        reread, raised = None, None
+        try:
+            reread = Config.from_str(output)
+        except Exception as e:
+            raised = type(e).__name__
+        self.assertIsNone(raised, "from_str raised {} on to_str output".format(raised))
+        self.assertTrue(reread.lftp.remote_password == value, "remote_password changed across write/read")
+
+    def test_from_str_to_str_preserves_escaped_percent_bytes(self):
+        config = Config.from_str(_build_config_ini(remote_password="a%%b"))
+        self.assertEqual("a%b", config.lftp.remote_password)
+        output = self._to_str_or_fail(config)
+        self.assertIn("remote_password = a%%b", output.splitlines())
+
+    def test_to_str_without_percent_is_unchanged(self):
+        config = self._config()
+        output = self._to_str_or_fail(config)
+        self.assertNotIn("%", output)
+        self.assertEqual(config.as_dict(), Config.from_str(output).as_dict())
+        # Byte-identical to a plain ConfigParser serialization of the same dict
+        expected_parser = configparser.ConfigParser()
+        for section, options in config.as_dict().items():
+            expected_parser.add_section(section)
+            for key, value in options.items():
+                expected_parser.set(section, key, str(value))
+        expected_io = io.StringIO()
+        expected_parser.write(expected_io)
+        self.assertEqual(expected_io.getvalue(), output)
+
+    def test_to_str_serialization_failure_is_value_free_and_writes_nothing(self):
+        token = uuid.uuid4().hex
+        sentinel = "SENT-" + token
+        config = self._config()
+
+        temp_dir = tempfile.mkdtemp(prefix="test_config_serialize_")
+        self.addCleanup(shutil.rmtree, temp_dir, ignore_errors=True)
+        path = os.path.join(temp_dir, "settings.cfg")
+        config.to_file(path)
+        with open(path, "rb") as f:
+            before = f.read()
+
+        original_set = configparser.ConfigParser.set
+
+        def failing_set(parser, section, option, value=None):
+            if option == "remote_password":
+                raise ValueError("boom " + sentinel)
+            return original_set(parser, section, option, value)
+
+        exc_cls = getattr(common, "ConfigSerializationError", None)
+        with patch.object(configparser.ConfigParser, "set", failing_set):
+            raised = None
+            try:
+                config.to_str()
+            except Exception as e:
+                raised = e
+            self.assertTrue(raised is not None, "to_str did not raise")
+            name = type(raised).__name__
+            self.assertIsNotNone(exc_cls, "common.ConfigSerializationError is not defined (raised {})".format(name))
+            self.assertTrue(isinstance(raised, exc_cls), "to_str raised {}, not ConfigSerializationError".format(name))
+            self.assertIn("Lftp.remote_password", str(raised))
+            self.assertFalse(token in str(raised), "value appeared in the error message")
+            self.assertTrue(raised.__cause__ is None, "error chains a cause")
+            self.assertTrue(raised.__suppress_context__, "error does not suppress its context")
+            formatted = "".join(traceback.format_exception(raised))
+            self.assertFalse(token in formatted, "value appeared in the formatted traceback")
+
+            file_raised = None
+            try:
+                config.to_file(path)
+            except Exception as e:
+                file_raised = e
+            self.assertTrue(isinstance(file_raised, exc_cls), "to_file did not raise ConfigSerializationError")
+
+        with open(path, "rb") as f:
+            self.assertTrue(f.read() == before, "settings.cfg was modified by a failed serialization")
+        self.assertEqual(["settings.cfg"], sorted(os.listdir(temp_dir)))
