@@ -72,6 +72,9 @@ class TrickleHandler(BaseHTTPRequestHandler):
 def start_trickle_server() -> Tuple[ThreadingHTTPServer, int, threading.Event, List]:
     """Start a TrickleHandler server on 127.0.0.1 at an ephemeral port."""
     server = ThreadingHTTPServer(("127.0.0.1", 0), TrickleHandler)
+    # Handler threads are daemons and stop on their own once stop_event is set;
+    # server_close() must not join them (teardown waits are bounded elsewhere).
+    server.block_on_close = False
     server.stop_event = threading.Event()
     server.connections = []
     port = server.server_address[1]
