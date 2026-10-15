@@ -1,3 +1,4 @@
+import threading
 import time
 from typing import List, Optional, Set
 
@@ -27,8 +28,10 @@ class LftpManager:
     Lftp.kill returns, because Lftp.kill polls the lftp status directly and
     never passes through status(). Consumers treat membership as "transfer
     state not yet observed" and must not re-queue, mark downloaded, extract or
-    delete such a file. The set is never persisted and is only touched from
-    the controller thread.
+    delete such a file. The set is never persisted. It is mutated on the
+    controller thread and read from the auto-delete Timer thread, so every
+    access goes through __submitted_lock and readers get a snapshot list
+    (DEL-01). The lock is a leaf: it is never held while calling into lftp.
     """
 
     # Status circuit breaker: a wedged lftp makes every status() call block
@@ -89,9 +92,10 @@ class LftpManager:
         # Names whose QUEUE lftp accepted but which have not yet been seen by a
         # successful status. While status is unavailable these must stay
         # protected (XFER-02): an unobserved transfer is neither absent nor
-        # complete. In-process only, never persisted; accessed only on the
-        # controller thread.
+        # complete. In-process only, never persisted. Guarded by
+        # __submitted_lock because the auto-delete Timer thread reads it.
         self.__submitted_unobserved: Set[str] = set()
+        self.__submitted_lock = threading.Lock()
 
     @property
     def lftp(self) -> Lftp:
@@ -140,8 +144,17 @@ class LftpManager:
             LftpError: If LFTP fails to queue the file
         """
         self.__sync_rate_limit()
-        self.__lftp.queue(file_name, is_dir)
-        self.__submitted_unobserved.add(file_name)
+        # Track the name BEFORE lftp gets the job, so the auto-delete Timer
+        # can never observe a window where lftp holds a job the set does not
+        # (DEL-01). A rejected QUEUE was never submitted: drop it again.
+        with self.__submitted_lock:
+            self.__submitted_unobserved.add(file_name)
+        try:
+            self.__lftp.queue(file_name, is_dir)
+        except LftpError:
+            with self.__submitted_lock:
+                self.__submitted_unobserved.discard(file_name)
+            raise
 
     def kill(self, file_name: str) -> None:
         """
@@ -162,7 +175,8 @@ class LftpManager:
         # next QUEUE into a silent no-op. Reached only when Lftp.kill returned
         # (True or False); if it raised, nothing was observed and the name
         # keeps its protection.
-        self.__submitted_unobserved.discard(file_name)
+        with self.__submitted_lock:
+            self.__submitted_unobserved.discard(file_name)
 
     def status(self) -> Optional[List[LftpJobStatus]]:
         """
@@ -180,7 +194,8 @@ class LftpManager:
             if statuses is not None:
                 # A successful status (including a genuinely empty one) has
                 # observed every submitted job: listed, finished or dropped.
-                self.__submitted_unobserved.clear()
+                with self.__submitted_lock:
+                    self.__submitted_unobserved.clear()
             return statuses
         except (LftpError, LftpJobStatusParserError) as e:
             self.logger.warning("Caught lftp error: {}".format(str(e)))
@@ -209,7 +224,8 @@ class LftpManager:
         Returns:
             A new sorted list; mutating it does not affect the tracked set.
         """
-        return sorted(self.__submitted_unobserved)
+        with self.__submitted_lock:
+            return sorted(self.__submitted_unobserved)
 
     def exit(self) -> None:
         """

@@ -1,5 +1,5 @@
 import threading
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -108,7 +108,7 @@ class TestAutoDeleteDeferral(BaseAutoDeleteRearmTestCase):
         # Extraction finished -> next fire deletes and clears the counter
         mock_file.state = ModelFile.State.EXTRACTED
         self._fire(INCIDENT_ROOT)
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         self.assertNotIn(INCIDENT_ROOT, self._pending())
         self.assertNotIn(INCIDENT_ROOT, self._rearms())
         self.assertNotIn(INCIDENT_ROOT, self.persist.imported_children)
@@ -129,7 +129,7 @@ class TestAutoDeleteDeferral(BaseAutoDeleteRearmTestCase):
 
         child.state = ModelFile.State.EXTRACTED
         self._fire("Pack.S01")
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         self.assertNotIn("Pack.S01", self._pending())
         self.assertNotIn("Pack.S01", self._rearms())
 
@@ -154,7 +154,7 @@ class TestAutoDeleteDeferral(BaseAutoDeleteRearmTestCase):
         # Sonarr imports the second episode
         self.persist.add_imported_child("Pack.S01", "ep02.mkv")
         self._fire("Pack.S01")
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         self.assertNotIn("Pack.S01", self._pending())
         self.assertNotIn("Pack.S01", self._rearms())
 
@@ -224,7 +224,7 @@ class TestAutoDeleteDeferral(BaseAutoDeleteRearmTestCase):
 
         self._fire("test_file.mkv")
 
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         self.assertNotIn("test_file.mkv", self._rearms())
         self.assertNotIn("test_file.mkv", self._pending())
 
@@ -352,7 +352,7 @@ class TestAutoDeleteDeferralTimerIntegration(BaseAutoDeleteRearmTestCase):
         mock_file = self._make_file(state=ModelFile.State.EXTRACTING)
         self._set_model_file(mock_file)
         deleted = threading.Event()
-        self.mock_file_op_manager.delete_local.side_effect = lambda _file: deleted.set()
+        self.mock_file_op_manager.delete_local.side_effect = lambda _file, reservation=None: deleted.set()
 
         # First firing defers and arms a real 50 ms Timer
         self._fire("test_file.mkv")
@@ -361,7 +361,7 @@ class TestAutoDeleteDeferralTimerIntegration(BaseAutoDeleteRearmTestCase):
         mock_file.state = ModelFile.State.EXTRACTED
 
         self.assertTrue(deleted.wait(5), "re-armed Timer never fired")
-        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file)
+        self.mock_file_op_manager.delete_local.assert_called_once_with(mock_file, reservation=ANY)
         self.assertNotIn("test_file.mkv", self._rearms())
 
 

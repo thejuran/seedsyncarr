@@ -15,11 +15,17 @@ class CommandProcessor:
     - Executing queue/stop/extract/delete operations against the injected managers
     - Returning (success, error_msg, error_code) triples to the caller
 
-    Thread-safety: None of the _handle_* methods acquire any lock. They are
-    called from Controller.__process_commands AFTER __model_lock is released,
-    so subprocess-spawning operations (delete_local) run with no lock held.
-    The injected managers are themselves thread-safe; CommandProcessor adds no
-    synchronization of its own.
+    Thread-safety: The _handle_* methods never take a Controller lock. They
+    are called from Controller.__process_commands AFTER __model_lock is
+    released, so subprocess-spawning operations (delete_local) run with no
+    Controller lock held. QUEUE and DELETE_LOCAL take the per-root reservation
+    (RootReservations, shared with the auto-delete Timer) so a submission and a
+    local deletion for the same root can never overlap. QUEUE holds it across
+    the submitted-unobserved check and lftp.queue; DELETE_LOCAL transfers it to
+    FileOperationManager.delete_local, which keeps it until the deletion child
+    exits, so it outlives the handler. A held root is refused with 409 for a
+    USER command and skipped quietly for an AUTO one. The injected managers
+    are themselves thread-safe.
 
     Ordering: Controller.__process_commands drains every pending command
     against the ModelFile frozen at the last model build, before the model is
@@ -38,7 +44,8 @@ class CommandProcessor:
                  lftp_manager,
                  file_op_manager,
                  persist,
-                 logger):
+                 logger,
+                 root_reservations):
         """
         Create the command processor.
 
@@ -47,10 +54,12 @@ class CommandProcessor:
             file_op_manager: FileOperationManager instance, already constructed
             persist: ControllerPersist instance, already constructed
             logger: Parent logger; a child logger named "CommandProcessor" is created
+            root_reservations: RootReservations shared with the auto-delete Timer
         """
         self.__lftp_manager = lftp_manager
         self.__file_op_manager = file_op_manager
         self.__persist = persist
+        self.__root_reservations = root_reservations
         self.logger = logger.getChild("CommandProcessor")
 
     def handle(self, file: ModelFile, command) -> Tuple[bool, Optional[str], Optional[int]]:
@@ -132,21 +141,42 @@ class CommandProcessor:
                 )
                 return True, None, None
 
-        try:
-            # Already submitted and awaiting its first status: do not hand lftp
-            # a duplicate job. The next successful status clears the set, after
-            # which a re-queue is admissible.
-            if not self._is_submitted_unobserved(file):
-                self.__lftp_manager.queue(file.name, file.is_dir)
-            if not is_auto:
-                # User explicitly wants a fresh download lifecycle
-                self.__persist.stopped_file_names.discard(file.name)
-                self.__persist.downloaded_file_names.discard(file.name)
-                self.__persist.imported_file_names.discard(file.name)
-                self.__persist.imported_children.pop(file.name, None)
-            return True, None, None
-        except LftpError as e:
-            return False, "Lftp error: {}".format(str(e)), 500
+        # Hold the root for the whole check-and-submit so a local deletion
+        # (auto-delete Timer or Delete Local) cannot start between the
+        # submitted-unobserved check and lftp.queue, nor run while a deletion
+        # child still owns the root. Any further pre-submit verdict (e.g. a
+        # completion-gate re-check) belongs INSIDE this reservation so the
+        # verdict and the submission are atomic with respect to deletion.
+        reservation = self.__root_reservations.acquire(file.name, "queue")
+        if reservation is None:
+            holder = self.__root_reservations.holder_of(file.name)
+            if is_auto:
+                self.logger.info(
+                    "Skipping auto-queue of '{}': root operation in progress ({})".format(
+                        sanitize_log_value(file.name), holder
+                    )
+                )
+                return True, None, None
+            return False, "File '{}' has an operation in progress ({}); retry shortly".format(
+                command.filename, holder
+            ), 409
+
+        with reservation:
+            try:
+                # Already submitted and awaiting its first status: do not hand lftp
+                # a duplicate job. The next successful status clears the set, after
+                # which a re-queue is admissible.
+                if not self._is_submitted_unobserved(file):
+                    self.__lftp_manager.queue(file.name, file.is_dir)
+                if not is_auto:
+                    # User explicitly wants a fresh download lifecycle
+                    self.__persist.stopped_file_names.discard(file.name)
+                    self.__persist.downloaded_file_names.discard(file.name)
+                    self.__persist.imported_file_names.discard(file.name)
+                    self.__persist.imported_children.pop(file.name, None)
+                return True, None, None
+            except LftpError as e:
+                return False, "Lftp error: {}".format(str(e)), 500
 
     def _handle_stop(self, file: ModelFile, command) -> Tuple[bool, Optional[str], Optional[int]]:
         """
@@ -209,8 +239,18 @@ class CommandProcessor:
                                "(submitted, awaiting lftp status)").format(command.filename), 409
             elif file.local_size is None:
                 return False, "File '{}' does not exist locally".format(command.filename), 404
-            else:
-                self.__file_op_manager.delete_local(file)
+            reservation = self.__root_reservations.acquire(file.name, "delete")
+            if reservation is None:
+                return False, "File '{}' has an operation in progress ({}); retry shortly".format(
+                    command.filename, self.__root_reservations.holder_of(file.name)
+                ), 409
+            handed_off = False
+            try:
+                # Ownership transfers at entry: the manager releases the
+                # reservation when the deletion child exits (or on launch
+                # failure / stop()), so it outlives this handler.
+                handed_off = True
+                self.__file_op_manager.delete_local(file, reservation=reservation)
                 # Track as stopped to prevent auto-queuing on restart
                 self.__persist.stopped_file_names.add(command.filename)
                 # Record the deletion durably: membership in downloaded means
@@ -220,6 +260,9 @@ class CommandProcessor:
                 # copy persists (incident 2026-08-27).
                 self.__persist.downloaded_file_names.add(command.filename)
                 return True, None, None
+            finally:
+                if not handed_off:
+                    reservation.release()
 
         elif command.action.name == 'DELETE_REMOTE':
             if file.state not in (
