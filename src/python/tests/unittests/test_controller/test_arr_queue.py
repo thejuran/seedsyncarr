@@ -301,6 +301,33 @@ class TestArrQueueFetch(BaseArrQueueTestCase):
         self.assertEqual(fid, outcome.fetch_id)
         self.assertEqual([], outcome.records)
 
+    def test_poll_recovers_result_posted_between_pop_and_liveness_check(self, mock_requests):
+        """A worker that posts and exits just after poll()'s first pop keeps its good snapshot."""
+        _bind_exceptions(mock_requests)
+        mock_requests.get.return_value = _response(200, _json_chunks([_record()], 1))
+        fid = self.client.start_fetch(self.sonarr)
+        self.assertTrue(settle(self.client, "sonarr"))
+
+        class FirstPopMisses(dict):
+            """Simulates the post landing after poll()'s first pop: that pop sees nothing."""
+            missed = False
+
+            def pop(self, key, default=None):
+                if not self.missed:
+                    self.missed = True
+                    return default
+                return super().pop(key, default)
+
+        self.client._ArrQueueClient__results = FirstPopMisses(self.client._ArrQueueClient__results)
+        outcome = self.client.poll("sonarr")
+
+        self.assertEqual(FETCH_DONE, outcome.state)
+        self.assertEqual(fid, outcome.fetch_id)
+        self.assertEqual([QueueRecord("Show.S01E01.mkv", "ABC123", "completed", 0, True, None)],
+                         outcome.records)
+        self.assertFalse(any("ended without a result" in m for m in _calls(self.logger, "warning")))
+        self.assertEqual(FETCH_IDLE, self.client.poll("sonarr").state)
+
     def test_poll_without_fetch_is_idle(self, mock_requests):
         outcome = self.client.poll("sonarr")
         self.assertEqual(FETCH_IDLE, outcome.state)

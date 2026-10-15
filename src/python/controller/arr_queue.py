@@ -226,8 +226,15 @@ class ArrQueueClient:
             return FetchOutcome(FETCH_OVERRUN, f.fetch_id, None)
         if f.thread.is_alive():
             return FetchOutcome(FETCH_PENDING, f.fetch_id, None)
-        self.logger.warning("%s queue fetch ended without a result; treating as unavailable", f.label)
+        # The worker may have posted its result and exited between the pop at
+        # the top of this call and the liveness check above; re-check the slot
+        # before declaring that it ended without a result.
+        with self.__results_lock:
+            late = self.__results.pop(code, None)
         del self.__fetches[code]
+        if late is not None and late[0] == f.fetch_id:
+            return FetchOutcome(FETCH_DONE, late[0], late[1])
+        self.logger.warning("%s queue fetch ended without a result; treating as unavailable", f.label)
         return FetchOutcome(FETCH_DONE, f.fetch_id, None)
 
     def abandon(self, code: str) -> bool:
