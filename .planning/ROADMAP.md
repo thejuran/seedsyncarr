@@ -966,3 +966,12 @@ Plans:
 
 **Goal:** [Captured for future planning] `Controller.__execute_auto_delete` (the Timer-based auto-delete added around Phase 116) has no explicit `LftpManager.submitted_unobserved_file_names()` check analogous to `CommandProcessor._is_submitted_unobserved` (which returns 409 for manual extract/delete on a just-submitted, not-yet-observed transfer). Today protection is indirect — the evidence gate on `downloaded_file_names` membership plus `deletable_states` reading the last-built (stale-retained) model state. The v1.7.4 integration check traced the realistic race (user re-queue vs a pending auto-delete Timer) and found it defused in practice, but the Timer auto-delete × None-status/submitted-unobserved combination is untested, and `downloaded_file_names`/`imported_children` are mutated from the command thread outside `__model_lock` while the Timer reads under it (narrow TOCTOU in principle). Fix: add the explicit guard inside `__execute_auto_delete` (defer/re-arm when the root is submitted-unobserved) plus a regression test combining Timer auto-delete with an unavailable status and a submitted-unobserved root. Source: v1.7.4 milestone audit (`.planning/v1.7.4-MILESTONE-AUDIT.md`), accepted by owner 2026-10-09 as backlog for 1.7.5; pair with the 1.7.5 PyPI packaging fix (Dependabot #93).
 **Status:** Promoted into Phase 119 on 2026-10-09. Retained here for provenance only; plan and track implementation in Phase 119, not as a separate backlog phase.
+
+### Phase 999.4: Angular test-runner dev dependency advisory — braces via karma (BACKLOG)
+
+**Goal:** [Captured for future planning] `braces` <=3.0.3 (GHSA-vfj7-8cjw-p6xm, high, stack-exhaustion DoS) reaches `src/angular` only through `karma@6.4.4` → `chokidar@3.6.0` — a dev/test-only dependency, not shipped in the Docker image or PyPI package. Flagged by the Phase 119.1 post-fix security re-scan (gate record `020-security-scan.json`) when the 1.7.6 version bump touched the Angular lockfile; pre-existing since before 1.7.4. Owner accepted the risk for 1.7.6 (2026-10-15). npm's suggested fix is a breaking karma change — evaluate an npm `overrides` pin or a test-runner update. Resolve alongside the deferred Dependabot PRs #128/#125/#117 in the Reliability milestone.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /bm:review-backlog when ready)
