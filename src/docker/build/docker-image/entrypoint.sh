@@ -90,9 +90,10 @@ done
 
 # --- First-run config setup (runs at runtime, after /config is mounted) ----
 # setup_default_config.sh is idempotent for an existing settings.cfg: the
-# default-generation step is guarded with `|| true` and the replace step is a
-# no-op once the placeholder is gone. Run it as the target user so any files it
-# creates are owned correctly.
+# default-generation step is guarded with `|| true` and the local_path replace
+# runs only while the first-run placeholder is present. It prints a single
+# status line and never echoes settings.cfg values. Run it as the target user so
+# any files it creates are owned correctly.
 if [ -x /scripts/setup_default_config.sh ]; then
     log "Running config setup as uid ${PUID}"
     gosu "${PUID}:${PGID}" /scripts/setup_default_config.sh || \

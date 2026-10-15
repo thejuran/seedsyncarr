@@ -7,30 +7,28 @@ CONFIG_DIR="/config"
 SETTINGS_FILE="${CONFIG_DIR}/settings.cfg"
 SCRIPT_PATH="/app/python/seedsyncarr.py"
 
-replace_setting() {
-    NAME=$1
-    OLD_VALUE=$2
-    NEW_VALUE=$3
+# This script's output goes to the container log. It must never print a value
+# read from settings.cfg (the file holds passwords, API keys and tokens).
 
-    echo "Replacing ${NAME} from ${OLD_VALUE} to ${NEW_VALUE}"
-    sed -i "s/${NAME} = ${OLD_VALUE}/${NAME} = ${NEW_VALUE}/" ${SETTINGS_FILE} && \
-        grep -q "${NAME} = ${NEW_VALUE}" ${SETTINGS_FILE}
-}
+if [ -f "${SETTINGS_FILE}" ]; then
+    CONFIG_STATE="existing config kept"
+else
+    CONFIG_STATE="default config generated"
+fi
 
-# Generate default config
+# Generate default config. All app output is discarded: an error message from
+# parsing the config could quote a settings value.
 python ${SCRIPT_PATH} \
     -c ${CONFIG_DIR} \
     --html / \
     --scanfs / \
-    --exit > /dev/null 2>&1 > /dev/null || true
+    --exit > /dev/null 2>&1 || true
 
-cat ${SETTINGS_FILE}
+# Replace the first-run placeholder only while it is still present, so an
+# existing config is left untouched and does not trip `set -e`.
+if grep -qF 'local_path = <replace me>' "${SETTINGS_FILE}" 2>/dev/null; then
+    echo "Setting local_path to /downloads"
+    sed -i 's/local_path = <replace me>/local_path = \/downloads\//' "${SETTINGS_FILE}"
+fi
 
-
-# Replace default values
-replace_setting 'local_path' '<replace me>' '\/downloads\/'
-
-echo
-echo
-echo "Done configuring seedsyncarr"
-cat ${SETTINGS_FILE}
+echo "Config ready at ${SETTINGS_FILE} (${CONFIG_STATE})"
