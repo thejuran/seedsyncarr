@@ -49,7 +49,7 @@
 
 ### 🚧 v1.7.5 Safety Release (In Progress)
 
-- [ ] **Phase 119: Safety Follow-ups and 1.7.5 Release** — close the two carried-forward safety gaps, stop incomplete-file imports, recover early per-episode import notices, and restore PyPI publishing.
+- [x] **Phase 119: Safety Follow-ups and 1.7.5 Release** — close the two carried-forward safety gaps, stop incomplete-file imports, recover early per-episode import notices, and restore PyPI publishing. (completed 2026-10-15)
 - [ ] **Phase 119.1: Startup log secrets fix and 1.7.6 release** (INSERTED) — stop printing config secrets at startup; release 1.7.6; deploy 1.7.6 to the NAS (replaces the held 1.7.5 deploy).
 
 **Release ordering:** Phase 119 → verify and release 1.7.5 (milestone v1.7.5 complete) → Reliability milestone (Phase 120+) → Performance and usability.
