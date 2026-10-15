@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import collections
 import threading
 import time
-from typing import Callable, Dict, List, NamedTuple, Optional, Tuple
+from typing import Callable, Dict, List, Mapping, NamedTuple, Optional, Tuple
 from threading import Lock
 from queue import Queue
 from enum import Enum
@@ -12,6 +12,8 @@ from .lftp_manager import LftpManager
 from .file_operation_manager import FileOperationManager
 from .command_processor import CommandProcessor
 from .root_reservation import RootReservations
+from .arr_queue import ArrQueueClient
+from .completion_gate import CompletionGate, Verdict
 from .auto_delete_manager import AutoDeleteManager
 from .model_pipeline import ModelPipeline
 from .webhook_manager import WebhookManager
@@ -181,6 +183,13 @@ class Controller:
 
         # Setup the LFTP manager
         self.__lftp_manager = LftpManager(context=self.__context)
+
+        # Completion gate: decides from Sonarr/Radarr queue evidence whether a
+        # remote root has finished downloading before any transfer may start.
+        # Constructed here (D-05) so patch('controller.controller.CompletionGate')
+        # and patch('controller.controller.ArrQueueClient') bind in tests.
+        self.__arr_queue_client = ArrQueueClient(context=self.__context)
+        self.__completion_gate = CompletionGate(context=self.__context, client=self.__arr_queue_client)
 
         # Setup the scan manager
         self.__scan_manager = ScanManager(
@@ -394,6 +403,26 @@ class Controller:
                 )
             )
         return result
+
+    def evaluate_completion(self, candidates: Mapping[str, Optional[int]]) -> Dict[str, Verdict]:
+        """
+        Completion verdicts for every auto-queue candidate (name -> remote size).
+
+        Runs on the controller thread (AutoQueue shares it) and never waits on
+        an arr: the gate starts queue fetches on daemon workers and decides
+        from the latest completed snapshots, so a first or forced fetch still
+        in flight yields a hold for this cycle and a verdict on a later one.
+        The gate owns refresh and backoff, so calling this every cycle is safe.
+        Names absent from `candidates` leave the hold registry.
+        """
+        return self.__completion_gate.evaluate(candidates)
+
+    def completion_verdict(self, name: str, remote_size: Optional[int]) -> Verdict:
+        """
+        Completion verdict for one root, with the same thread and non-blocking
+        guarantees as evaluate_completion(). Other roots' holds are untouched.
+        """
+        return self.__completion_gate.verdict(name, remote_size)
 
     def add_model_listener(self, listener: IModelListener):
         """

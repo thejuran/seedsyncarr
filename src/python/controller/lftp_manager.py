@@ -74,7 +74,14 @@ class LftpManager:
         self.__lftp.num_connections_per_root_file = context.config.lftp.num_max_connections_per_root_file
         self.__lftp.num_connections_per_dir_file = context.config.lftp.num_max_connections_per_dir_file
         self.__lftp.num_max_total_connections = context.config.lftp.num_max_total_connections
-        self.__lftp.use_temp_file = context.config.lftp.use_temp_file
+        # In-flight copies always carry the temp suffix and are renamed only
+        # when lftp finishes, so a partial copy never sits at an importable
+        # name. The legacy config key still loads but no longer applies.
+        self.__lftp.use_temp_file = True
+        if context.config.lftp.use_temp_file is False:
+            self.logger.info(
+                "Temp-file transfers are always on in 1.7.5; use_temp_file=False in config is ignored"
+            )
         self.__lftp.temp_file_name = "*" + Constants.LFTP_TEMP_FILE_SUFFIX
         self.__lftp.set_verbose_logging(context.config.general.verbose)
 
