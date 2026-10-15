@@ -13,7 +13,7 @@ import threading
 
 from common import ServiceExit, Context, Constants, Config, Args, AppError
 from common import ServiceRestart
-from common import Localization, Status, ConfigError, Persist, PersistError
+from common import Localization, Status, ConfigError, ConfigUnreadableError, Persist, PersistError
 from common import EncryptionError
 from common.encryption import is_ciphertext
 from controller import Controller, ControllerJob, ControllerPersist, AutoQueue, AutoQueuePersist
@@ -636,6 +636,16 @@ def main():
                 getattr(restart, "reset", False),
                 consecutive_restarts, RESTART_CAP)
             continue
+        except ConfigUnreadableError as exc:
+            # Fatal: never reset to defaults (empty api_token = open API) and
+            # never start the web server. The message is value-free, so no
+            # traceback is printed.
+            message = "Fatal: {} — settings.cfg was left unchanged; fix the file and restart".format(str(exc))
+            if Seedsyncarr.logger:
+                Seedsyncarr.logger.error(message)
+            else:
+                print(message, file=sys.stderr)
+            sys.exit(2)
         except Exception:
             Seedsyncarr.logger.exception("Caught exception")
             raise

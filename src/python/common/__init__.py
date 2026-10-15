@@ -4,7 +4,7 @@ from .context import Context as Context, Args as Args
 from .error import AppError as AppError, ServiceExit as ServiceExit, ServiceRestart as ServiceRestart
 from .encryption import EncryptionError as EncryptionError, DecryptionError as DecryptionError
 from .constants import Constants as Constants
-from .config import Config as Config, ConfigError as ConfigError
+from .config import Config as Config, ConfigError as ConfigError, ConfigUnreadableError as ConfigUnreadableError
 from .persist import Persist as Persist, PersistError as PersistError, Serializable as Serializable
 from .localization import Localization as Localization
 from .multiprocessing_logger import MultiprocessingLogger as MultiprocessingLogger
