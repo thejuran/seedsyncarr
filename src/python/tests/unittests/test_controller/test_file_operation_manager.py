@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from controller import FileOperationManager
 from controller.command_processor import CommandProcessor
+from controller.completion_gate import Verdict
 from controller.controller import Controller
 from controller.root_reservation import RootReservations
 from controller.delete.delete_process import DeleteRemoteProcess
@@ -561,6 +562,7 @@ class TestFileOperationManager(unittest.TestCase):
             persist=MagicMock(),
             logger=logging.getLogger("test_launch_window"),
             root_reservations=reservations,
+            completion_gate=MagicMock(**{"verdict.return_value": Verdict.proven()}),
         )
         mock_file = self._named_file()
         mock_file.remote_size = 1234

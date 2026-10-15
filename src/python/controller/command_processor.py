@@ -14,6 +14,9 @@ class CommandProcessor:
     - Routing a command to the correct _handle_* method via handle()
     - Executing queue/stop/extract/delete operations against the injected managers
     - Returning (success, error_msg, error_code) triples to the caller
+      (error codes: 404 not found, 409 conflict / root busy, 428 completion
+      could not be verified and the USER command did not carry
+      release_unverified, 500 lftp or internal error)
 
     Thread-safety: The _handle_* methods never take a Controller lock. They
     are called from Controller.__process_commands AFTER __model_lock is
@@ -45,7 +48,8 @@ class CommandProcessor:
                  file_op_manager,
                  persist,
                  logger,
-                 root_reservations):
+                 root_reservations,
+                 completion_gate):
         """
         Create the command processor.
 
@@ -55,11 +59,14 @@ class CommandProcessor:
             persist: ControllerPersist instance, already constructed
             logger: Parent logger; a child logger named "CommandProcessor" is created
             root_reservations: RootReservations shared with the auto-delete Timer
+            completion_gate: CompletionGate, already constructed; re-checked
+                inside the root reservation before every queue submission
         """
         self.__lftp_manager = lftp_manager
         self.__file_op_manager = file_op_manager
         self.__persist = persist
         self.__root_reservations = root_reservations
+        self.__completion_gate = completion_gate
         self.logger = logger.getChild("CommandProcessor")
 
     def handle(self, file: ModelFile, command) -> Tuple[bool, Optional[str], Optional[int]]:
@@ -125,6 +132,12 @@ class CommandProcessor:
         - USER: an explicit re-download; clear all tracking that would
           suppress or misrepresent the fresh lifecycle (stopped, downloaded,
           imported, per-child imports).
+
+        Completion gate (both origins, inside the root reservation): a held
+        root is skipped quietly for AUTO and refused with 428 for USER unless
+        the command carries release_unverified, which submits this one
+        transfer with a WARNING. Every successful submission consumes the
+        root's completion proof.
         """
         if file.remote_size is None:
             return False, "File '{}' does not exist remotely".format(command.filename), 404
@@ -162,12 +175,38 @@ class CommandProcessor:
             ), 409
 
         with reservation:
+            # Completion re-check at execution time, taken while the root is
+            # reserved so no deletion can interleave between "proven" and
+            # "submitted". verdict() never waits on an arr: while a fetch is in
+            # flight it returns a hold at once, so a USER queue in that window
+            # gets 428 immediately and succeeds on a later attempt.
+            verdict = self.__completion_gate.verdict(file.name, file.remote_size)
+            if verdict.held:
+                label = self.__completion_gate.label(verdict.reason)
+                if is_auto:
+                    self.logger.info(
+                        "Skipping auto-queue of '{}': completion not verified ({})".format(
+                            sanitize_log_value(file.name), label
+                        )
+                    )
+                    return True, None, None
+                if not getattr(command, "release_unverified", False):
+                    return False, "Completion could not be verified: {}".format(label), 428
+                self.logger.warning(
+                    "Manual release of unverified '{}' ({}); source-completion check "
+                    "bypassed for this transfer only".format(
+                        sanitize_log_value(file.name), label
+                    )
+                )
             try:
                 # Already submitted and awaiting its first status: do not hand lftp
                 # a duplicate job. The next successful status clears the set, after
                 # which a re-queue is admissible.
                 if not self._is_submitted_unobserved(file):
                     self.__lftp_manager.queue(file.name, file.is_dir)
+                    # A proof authorizes exactly one transfer start: a later
+                    # re-queue of this root must re-prove from live evidence.
+                    self.__completion_gate.invalidate(file.name, "transfer submitted")
                 if not is_auto:
                     # User explicitly wants a fresh download lifecycle
                     self.__persist.stopped_file_names.discard(file.name)

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import collections
 import threading
 import time
-from typing import Callable, Dict, List, NamedTuple, Optional, Tuple
+from typing import Callable, Dict, List, Mapping, NamedTuple, Optional, Tuple
 from threading import Lock
 from queue import Queue
 from enum import Enum
@@ -12,6 +12,8 @@ from .lftp_manager import LftpManager
 from .file_operation_manager import FileOperationManager
 from .command_processor import CommandProcessor
 from .root_reservation import RootReservations
+from .arr_queue import ArrQueueClient
+from .completion_gate import CompletionGate, Verdict
 from .auto_delete_manager import AutoDeleteManager
 from .model_pipeline import ModelPipeline
 from .webhook_manager import WebhookManager
@@ -119,15 +121,23 @@ class Controller:
                         - 400: Bad request (invalid state, validation error)
                         - 404: Resource not found
                         - 409: Conflict (resource in wrong state)
+                        - 428: Precondition required (completion could not be
+                               verified; resend with release_unverified)
                         - 500: Internal server error
                 """
                 pass
 
         def __init__(self, action: Action, filename: str,
-                     origin: "Controller.Command.Origin" = None):
+                     origin: "Controller.Command.Origin" = None,
+                     release_unverified: bool = False):
             self.action = action
             self.filename = filename
             self.origin = origin if origin is not None else Controller.Command.Origin.USER
+            # One-shot user confirmation to transfer a root whose completion
+            # could not be verified. Lives only on this command and is never
+            # persisted, so the approval is never remembered (D-08). Honored
+            # for USER queue commands only.
+            self.release_unverified = bool(release_unverified)
             self.callbacks = []
 
         def add_callback(self, callback: ICallback):
@@ -181,6 +191,13 @@ class Controller:
 
         # Setup the LFTP manager
         self.__lftp_manager = LftpManager(context=self.__context)
+
+        # Completion gate: decides from Sonarr/Radarr queue evidence whether a
+        # remote root has finished downloading before any transfer may start.
+        # Constructed here (D-05) so patch('controller.controller.CompletionGate')
+        # and patch('controller.controller.ArrQueueClient') bind in tests.
+        self.__arr_queue_client = ArrQueueClient(context=self.__context)
+        self.__completion_gate = CompletionGate(context=self.__context, client=self.__arr_queue_client)
 
         # Setup the scan manager
         self.__scan_manager = ScanManager(
@@ -267,6 +284,7 @@ class Controller:
             persist=self.__persist,
             logger=self.logger,
             root_reservations=self.__root_reservations,
+            completion_gate=self.__completion_gate,
         )
 
         # Auto-delete BFS+coverage collaborator — receives already-constructed instances
@@ -394,6 +412,26 @@ class Controller:
                 )
             )
         return result
+
+    def evaluate_completion(self, candidates: Mapping[str, Optional[int]]) -> Dict[str, Verdict]:
+        """
+        Completion verdicts for every auto-queue candidate (name -> remote size).
+
+        Runs on the controller thread (AutoQueue shares it) and never waits on
+        an arr: the gate starts queue fetches on daemon workers and decides
+        from the latest completed snapshots, so a first or forced fetch still
+        in flight yields a hold for this cycle and a verdict on a later one.
+        The gate owns refresh and backoff, so calling this every cycle is safe.
+        Names absent from `candidates` leave the hold registry.
+        """
+        return self.__completion_gate.evaluate(candidates)
+
+    def completion_verdict(self, name: str, remote_size: Optional[int]) -> Verdict:
+        """
+        Completion verdict for one root, with the same thread and non-blocking
+        guarantees as evaluate_completion(). Other roots' holds are untouched.
+        """
+        return self.__completion_gate.verdict(name, remote_size)
 
     def add_model_listener(self, listener: IModelListener):
         """

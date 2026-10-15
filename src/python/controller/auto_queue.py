@@ -2,10 +2,10 @@ import json
 import threading
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Set, List, Callable, Tuple, Optional
+from typing import Callable, Dict, List, Optional, Set, Tuple
 import fnmatch
 
-from common import overrides, Constants, Context, Persist, PersistError, Serializable
+from common import overrides, Constants, Context, Persist, PersistError, Serializable, sanitize_log_value
 from model import IModelListener, ModelFile
 from .controller import Controller
 
@@ -181,6 +181,15 @@ class AutoQueue:
     regardless of size history (a sparse pget temp file can sit at an
     unchanged apparent size for minutes), so a completed transfer is always
     re-read by a fresh scan -- as DOWNLOADED -- before the sweep may act.
+
+    Size and mtime stability are prerequisites only, never proof that the
+    seedbox finished the download (incident 2026-10-13, Obsession: a sparse
+    preallocated file sat at its full size, unchanged, while still
+    downloading). Every cycle the surviving candidates go to the completion
+    gate in one batch (Controller.evaluate_completion): a root is queued only
+    when the Sonarr/Radarr queue proves it completed (D-03), or when no arr
+    integration is enabled and the gate does not apply (D-16). A held root is
+    not cooldown-stamped, so it queues on the first cycle after it is proven.
     """
 
     # Minimum remote-scan-clock seconds between repeated sweep attempts for the
@@ -312,7 +321,8 @@ class AutoQueue:
         # downloaded previously (prevents re-queueing files that were
         # moved/deleted by external tools like Sonarr), and files attempted
         # within the cooldown window.
-        files_to_queue = []
+        remote_sizes = {f.name: f.remote_size for f in model_files}
+        survivors = []
         for name, pattern in sweep_matches:
             is_stopped = self.__controller.is_file_stopped(name)
             is_downloaded = self.__controller.is_file_downloaded(name)
@@ -322,6 +332,27 @@ class AutoQueue:
                 )
             )
             if is_stopped or is_downloaded:
+                continue
+            survivors.append((name, pattern))
+
+        # Completion gate: one batched verdict per cycle, called even with no
+        # candidates so the gate can drop holds of roots that left the sweep.
+        # A held root is skipped BEFORE the cooldown stamp, so the first cycle
+        # after the arr reports completion queues it without a cooldown wait.
+        gate_candidates: Dict[str, Optional[int]] = {
+            name: remote_sizes.get(name) for name, _ in survivors
+        }
+        verdicts = self.__controller.evaluate_completion(gate_candidates)
+
+        files_to_queue = []
+        for name, pattern in survivors:
+            verdict = verdicts.get(name)
+            if verdict is not None and verdict.held:
+                self.logger.debug(
+                    "Completion not verified for '{}' ({}); not queueing yet".format(
+                        sanitize_log_value(name), verdict.reason
+                    )
+                )
                 continue
             # Cooldown applies whenever a scan clock exists, INDEPENDENT of the
             # stability gate: with the gate disabled the sweep would otherwise

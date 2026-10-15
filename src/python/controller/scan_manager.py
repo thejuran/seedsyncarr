@@ -42,14 +42,15 @@ class ScanManager:
         # Decide the password here
         password = context.config.lftp.remote_password if not context.config.lftp.use_ssh_key else None
 
-        # Create the scanners
+        # Create the scanners. In-flight copies are always *.lftp (temp-file
+        # transfers are forced on), so the local scanners always map the suffix.
         self.__active_scanner = ActiveScanner(
             context.config.lftp.local_path,
-            use_temp_file=context.config.lftp.use_temp_file
+            use_temp_file=True
         )
         self.__local_scanner = LocalScanner(
             local_path=context.config.lftp.local_path,
-            use_temp_file=context.config.lftp.use_temp_file
+            use_temp_file=True
         )
         self.__remote_scanner = RemoteScanner(
             remote_address=context.config.lftp.remote_address,
