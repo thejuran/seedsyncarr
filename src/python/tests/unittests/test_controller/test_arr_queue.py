@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import threading
 import time
@@ -225,10 +226,11 @@ class TestArrQueueTargets(BaseArrQueueTestCase):
 
     def test_target_identity_fingerprints_key_and_normalizes_url(self):
         t = ArrTarget("Sonarr", "sonarr", "http://h:8989/", "k")
-        self.assertEqual(
-            ("sonarr", "http://h:8989", hashlib.sha256(b"k").hexdigest()[:16]),
-            t.identity,
-        )
+        from controller import arr_queue
+        expected = hmac.new(arr_queue._FINGERPRINT_SECRET, b"k", hashlib.sha256).hexdigest()[:16]
+        self.assertEqual(("sonarr", "http://h:8989", expected), t.identity)
+        # Stable within the process, so key-rotation detection works.
+        self.assertEqual(t.identity, ArrTarget("Sonarr", "sonarr", "http://h:8989", "k").identity)
         other = ArrTarget("Sonarr", "sonarr", "http://h:8989/", "k2")
         self.assertNotEqual(t.identity, other.identity)
         self.assertNotIn("k", t.identity)

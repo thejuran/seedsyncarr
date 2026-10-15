@@ -19,7 +19,9 @@ The api key, URL, request headers and response bodies are never logged.
 """
 
 import hashlib
+import hmac
 import json
+import os
 import threading
 import time
 import urllib.parse
@@ -40,6 +42,13 @@ DEFECT_BAD_STATUS = "bad_status"
 DEFECT_BAD_SIZELEFT = "bad_sizeleft"
 
 
+# Per-process random secret for the API-key change-detection fingerprint (an
+# HMAC, not a stored password hash). It only has to be stable within one
+# process, because the fingerprint is compared in memory and never persisted
+# or logged.
+_FINGERPRINT_SECRET = os.urandom(32)
+
+
 class ArrTarget(NamedTuple):
     label: str
     code: str
@@ -53,7 +62,8 @@ class ArrTarget(NamedTuple):
         The fingerprint lets a rotated key be detected without keeping or
         comparing the raw key; it is never logged.
         """
-        fingerprint = hashlib.sha256(self.api_key.encode("utf-8")).hexdigest()[:16]
+        fingerprint = hmac.new(_FINGERPRINT_SECRET, self.api_key.encode("utf-8"),
+                               hashlib.sha256).hexdigest()[:16]
         return self.code, self.url.rstrip("/"), fingerprint
 
 
