@@ -42,16 +42,30 @@ class TestScanManager(unittest.TestCase):
 
         # Verify scanners were created with correct arguments
         mock_active_scanner.assert_called_once_with(
-            "/local/path", use_temp_file=False
+            "/local/path", use_temp_file=True
         )
         mock_local_scanner.assert_called_once_with(
             local_path="/local/path",
-            use_temp_file=False
+            use_temp_file=True
         )
         mock_remote_scanner.assert_called_once()
 
         # Verify scanner processes were created (3 total)
         self.assertEqual(mock_scanner_process.call_count, 3)
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_scanners_constructed_with_temp_file_forced(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """IMP-01 / D-18: in-flight copies are always *.lftp, so both local
+        scanners must map the suffix even though config says False."""
+        self.assertFalse(self.mock_context.config.lftp.use_temp_file)
+        ScanManager(self.mock_context, self.mock_mp_logger)
+        self.assertIs(True, mock_active_scanner.call_args.kwargs["use_temp_file"])
+        self.assertIs(True, mock_local_scanner.call_args.kwargs["use_temp_file"])
 
     @patch('controller.scan_manager.ScannerProcess')
     @patch('controller.scan_manager.ActiveScanner')

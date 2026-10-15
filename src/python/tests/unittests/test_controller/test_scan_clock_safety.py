@@ -20,6 +20,7 @@ from unittest.mock import MagicMock
 
 from common import Config, Status
 from controller import AutoQueue, AutoQueuePersist, Controller, ScannerResult
+from controller.completion_gate import Verdict
 from model import ModelFile
 
 
@@ -59,6 +60,7 @@ class TestStabilityOnSuccessfulScanClock(unittest.TestCase):
         self.aq_ctx.logger = self.logger
 
         self.aq_controller = MagicMock()
+        self.aq_controller.evaluate_completion = MagicMock(side_effect=lambda c: {n: Verdict.proven() for n in c})
         self.aq_controller.queue_command = MagicMock()
         self.model_files = []
         self.model_listener = None

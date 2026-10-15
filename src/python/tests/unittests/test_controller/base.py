@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from controller import Controller
+from controller.completion_gate import REASON_LABELS, Verdict
 from controller.controller_persist import ControllerPersist
 from model import ModelFile
 
@@ -36,6 +37,20 @@ class BaseControllerTestCase(unittest.TestCase):
         self.mock_file_op_manager = self.mock_file_op_manager_cls.return_value
         self.mock_mp_logger = self.mock_mp_logger_cls.return_value
         self.mock_memory_monitor = self.mock_memory_monitor_cls.return_value
+
+        # Completion gate: patched to PROVEN by default so queue tests keep
+        # testing queue behavior; gate-specific tests override the verdicts or
+        # forward the mock to a real CompletionGate.
+        self.patcher_cg = patch('controller.controller.CompletionGate', create=True)
+        self.patcher_aq = patch('controller.controller.ArrQueueClient', create=True)
+        self.mock_completion_gate = self.patcher_cg.start().return_value
+        self.mock_arr_queue_client = self.patcher_aq.start().return_value
+        self.mock_completion_gate.verdict.return_value = Verdict.proven()
+        self.mock_completion_gate.evaluate.side_effect = \
+            lambda candidates: {n: Verdict.proven() for n in candidates}
+        self.mock_completion_gate.holds = {}
+        self.mock_completion_gate.invalidate.return_value = False
+        self.mock_completion_gate.label.side_effect = lambda code: REASON_LABELS.get(code, code)
         # Create mock WebhookManager (not patched, passed as parameter)
         self.mock_webhook_manager = MagicMock()
         # Default: process returns empty list (no imports)
@@ -52,6 +67,8 @@ class BaseControllerTestCase(unittest.TestCase):
         self.patcher_fom.stop()
         self.patcher_mpl.stop()
         self.patcher_mm.stop()
+        self.patcher_cg.stop()
+        self.patcher_aq.stop()
 
     def _make_controller_started(self):
         """Helper: set __started flag and configure no-op model update mocks."""
