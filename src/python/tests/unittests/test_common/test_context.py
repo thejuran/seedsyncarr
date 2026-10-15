@@ -1,9 +1,10 @@
 import unittest
 import logging
 import collections
-from unittest.mock import MagicMock
+import uuid
+from unittest.mock import MagicMock, patch
 
-from common import overrides, Context, Args
+from common import overrides, Context, Args, Config
 
 
 class TestArgs(unittest.TestCase):
@@ -116,3 +117,41 @@ class TestContext(unittest.TestCase):
         self.assertTrue(mock_logger.debug.called)
         # At least 3 calls: "Config:", one config line, "Args:"
         self.assertGreaterEqual(mock_logger.debug.call_count, 3)
+
+    def _sentinel_config(self):
+        config = Config()
+        sentinels = {}
+        for attr, field, _section in Config.secret_fields():
+            value = "SENTINEL-" + field + "-" + uuid.uuid4().hex
+            setattr(getattr(config, attr), field, value)
+            sentinels[field] = value
+        config.lftp.local_path = "/sentinel-free/path"
+        self.context.config = config
+        return config, sentinels
+
+    def test_print_to_log_redacts_every_secret_field(self):
+        _config, sentinels = self._sentinel_config()
+        self.assertGreaterEqual(len(sentinels), 5)
+        with self.assertLogs("TestContext", level="DEBUG") as cm:
+            self.context.print_to_log()
+        joined = "\n".join(cm.output)
+        for field, value in sentinels.items():
+            self.assertFalse(value in joined, "secret field {} printed by print_to_log".format(field))
+        redacted_lines = [line for line in cm.output if "***REDACTED***" in line]
+        self.assertGreaterEqual(len(redacted_lines), len(sentinels))
+        self.assertTrue(any("Lftp.local_path: /sentinel-free/path" in line for line in cm.output),
+                        "non-secret option lftp.local_path was not printed")
+
+    def test_print_to_log_redacts_future_secret_field(self):
+        config, _sentinels = self._sentinel_config()
+        future_value = "FUTURE-SECRET-" + uuid.uuid4().hex
+        config.lftp.remote_address = future_value
+        real_fields = Config.secret_fields()
+        extended = real_fields + [("lftp", "remote_address", "Lftp")]
+        with patch.object(Config, "secret_fields", return_value=extended):
+            with self.assertLogs("TestContext", level="DEBUG") as cm:
+                self.context.print_to_log()
+        joined = "\n".join(cm.output)
+        self.assertFalse(future_value in joined, "future secret field remote_address printed by print_to_log")
+        self.assertTrue(any("Lftp.remote_address: ***REDACTED***" in line for line in cm.output),
+                        "future secret field remote_address was not redacted")

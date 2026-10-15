@@ -34,6 +34,18 @@ class ConfigError(AppError):
     """
     pass
 
+class ConfigUnreadableError(AppError):
+    """
+    Exception indicating the config file could not be read at all.
+
+    Fatal: the caller must stop rather than back up the file and fall back to
+    defaults, because defaults carry an empty api_token. Deliberately NOT a
+    ConfigError/PersistError subclass so that reset path never catches it.
+    The message names section.option and the parser error class only, never
+    the value.
+    """
+    pass
+
 InnerConfigType = Dict[str, str]
 OuterConfigType = Dict[str, InnerConfigType]
 
@@ -434,7 +446,13 @@ class Config(Persist):
         for section in config_parser.sections():
             config_dict[section] = {}
             for option in config_parser.options(section):
-                config_dict[section][option] = config_parser.get(section, option)
+                try:
+                    config_dict[section][option] = config_parser.get(section, option)
+                except configparser.Error as e:
+                    # Interpolation errors embed the raw value (which may be a
+                    # secret) in their message; report the location and class only.
+                    raise ConfigUnreadableError("Bad config: {}.{} could not be read ({})".format(
+                        section, option, type(e).__name__)) from None
 
         # ── Decrypt hook (SEC-02 criterion #2) ───────���────────────────────────
         # Resolve encryption flag BEFORE from_dict so plaintext values reach the

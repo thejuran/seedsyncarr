@@ -1,14 +1,22 @@
 import configparser
+import contextlib
+import io
+import logging
 import os
 import shutil
+import signal
+import sys
 import tempfile
+import traceback
 import unittest
+import uuid
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-from common import AppError, Config, ServiceRestart
+import common
+from common import AppError, Config, Constants, ServiceRestart
 from common.encryption import is_ciphertext
-from seedsyncarr import Seedsyncarr
+from seedsyncarr import Seedsyncarr, main
 
 
 class TestSeedsyncarr(unittest.TestCase):
@@ -789,3 +797,194 @@ class TestSeedsyncarrCreateLogger(unittest.TestCase):
         self.assertTrue(os.path.isfile(
             os.path.join(logdir, "{}.log".format(self.logger_name))
         ))
+
+
+class _StartupEnvMixin:
+    """Temp config dir, patched argv and cleanup of the global state that
+    Seedsyncarr() touches (app loggers, signal handlers, keyfile path, the
+    class-level logger reference)."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp(prefix="test_startup_log_")
+        self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
+        self.addCleanup(Config.set_keyfile_path, None)
+        self.settings_path = os.path.join(self.temp_dir, "settings.cfg")
+
+        # Global state touched by Seedsyncarr(): app loggers, signal handlers,
+        # the class-level logger reference.
+        for name in (Constants.SERVICE_NAME, Constants.WEB_ACCESS_LOG_NAME):
+            log = logging.getLogger(name)
+            self.addCleanup(log.setLevel, log.level)
+            self.addCleanup(self._clear_handlers, log)
+        self.addCleanup(signal.signal, signal.SIGTERM, signal.getsignal(signal.SIGTERM))
+        self.addCleanup(signal.signal, signal.SIGINT, signal.getsignal(signal.SIGINT))
+        self.addCleanup(setattr, Seedsyncarr, "logger", Seedsyncarr.logger)
+
+        argv_patch = patch.object(sys, "argv", [
+            "seedsyncarr", "-c", self.temp_dir, "--html", self.temp_dir, "--scanfs", self.temp_dir
+        ])
+        argv_patch.start()
+        self.addCleanup(argv_patch.stop)
+
+    @staticmethod
+    def _clear_handlers(log):
+        for handler in log.handlers[:]:
+            handler.close()
+            log.removeHandler(handler)
+
+
+class TestSeedsyncarrStartupLogSentinels(_StartupEnvMixin, unittest.TestCase):
+    """Startup and settings-reload logging must never print a secret value.
+
+    Builds a real settings.cfg with a unique sentinel in every secret field and
+    debug on, then constructs Seedsyncarr() twice (startup, then the fresh
+    construction main() performs after ServiceRestart) with stdout and stderr
+    captured. Failure messages name the field only, never the value.
+    """
+
+    def _build_sentinel_config(self):
+        config = Seedsyncarr._create_default_config()
+        config.general.debug = True
+        config.lftp.local_path = self.temp_dir
+        sentinels = {}
+        for attr, field, _section in Config.secret_fields():
+            value = "SENTINEL-" + field + "-" + uuid.uuid4().hex
+            setattr(getattr(config, attr), field, value)
+            sentinels[field] = value
+        self.assertGreaterEqual(len(sentinels), 5)
+        # One distinct sentinel per discovered secret field (no name collisions)
+        self.assertEqual(len(Config.secret_fields()), len(sentinels))
+        return config, sentinels
+
+    @staticmethod
+    def _construct_and_run_startup_helpers():
+        app = Seedsyncarr()
+        logger = app.context.logger
+        config = app.context.config
+        Seedsyncarr._reencrypt_plaintext_if_needed(config, app.config_path, logger)
+        Seedsyncarr._emit_startup_warnings(logger, config)
+        Seedsyncarr._emit_decrypt_warnings(logger, config)
+        return app
+
+    def test_startup_and_reload_log_no_secret_sentinels(self):
+        config, sentinels = self._build_sentinel_config()
+        config.to_file(self.settings_path)
+
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            # Startup
+            self._construct_and_run_startup_helpers()
+            # Settings reload: main() builds a fresh Seedsyncarr() after ServiceRestart
+            self._construct_and_run_startup_helpers()
+
+        output = out.getvalue() + err.getvalue()
+        for field, value in sentinels.items():
+            self.assertFalse(value in output, "secret field {} appeared in startup/reload log".format(field))
+        # The debug config dump actually ran, so the negative checks are not vacuous
+        self.assertIn("Config:", out.getvalue())
+        self.assertIn("***REDACTED***", out.getvalue())
+        self.assertGreaterEqual(out.getvalue().count("Config:"), 2)
+
+
+class TestSeedsyncarrUnreadableConfigIsFatal(_StartupEnvMixin, unittest.TestCase):
+    """A settings.cfg whose secret value trips configparser interpolation must
+    stop the process: non-zero exit, file left byte-identical, no .bak, no
+    default config written, run() (the web server) never reached, and the
+    value never printed. Authentication is configured so a silent reset to
+    defaults (empty api_token = open API) would be a security regression."""
+
+    _PASSWORD_PLACEHOLDER = "PLACEHOLDER-REMOTE-PASSWORD"
+
+    def _authenticated_config_text(self, remote_password: str) -> str:
+        config = Seedsyncarr._create_default_config()
+        config.general.debug = True
+        config.general.api_token = "token-" + uuid.uuid4().hex
+        config.general.webhook_secret = "webhook-" + uuid.uuid4().hex
+        config.general.webhook_require_secret = True
+        config.lftp.local_path = self.temp_dir
+        config.lftp.remote_password = self._PASSWORD_PLACEHOLDER
+        text = config.to_str()
+        self.assertEqual(1, text.count(self._PASSWORD_PLACEHOLDER))
+        return text.replace(self._PASSWORD_PLACEHOLDER, remote_password)
+
+    def _write(self, text: str) -> bytes:
+        data = text.encode("utf-8")
+        with open(self.settings_path, "wb") as f:
+            f.write(data)
+        return data
+
+    def _read(self) -> bytes:
+        with open(self.settings_path, "rb") as f:
+            return f.read()
+
+    def _bak_files(self):
+        return [n for n in os.listdir(self.temp_dir) if n.startswith("settings.cfg.") and n.endswith(".bak")]
+
+    def _run_main_captured(self, run_mock):
+        out, err = io.StringIO(), io.StringIO()
+        raised = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), \
+                patch.object(Seedsyncarr, "run", run_mock):
+            try:
+                main()
+            except BaseException as e:  # SystemExit is the expected outcome
+                raised = e
+        text = out.getvalue() + err.getvalue()
+        if raised is not None:
+            text += "".join(traceback.format_exception(raised))
+        return raised, text
+
+    def _assert_fatal_exit(self, raised):
+        self.assertTrue(raised is not None, "main() returned instead of exiting")
+        self.assertTrue(isinstance(raised, SystemExit),
+                        "main() raised {}, not SystemExit".format(type(raised).__name__))
+        self.assertNotIn(raised.code, (0, None))
+
+    def _assert_unreadable_on_disk(self):
+        exc_cls = getattr(common, "ConfigUnreadableError", None)
+        self.assertIsNotNone(exc_cls, "common.ConfigUnreadableError is not defined")
+        raised = None
+        try:
+            Config.from_file(self.settings_path)
+        except Exception as e:
+            raised = e
+        self.assertTrue(raised is not None and isinstance(raised, exc_cls),
+                        "settings.cfg no longer raises ConfigUnreadableError (was it rewritten?)")
+
+    def test_startup_with_auth_and_interpolating_password_is_fatal_without_reset(self):
+        token = uuid.uuid4().hex
+        before = self._write(self._authenticated_config_text("SENTINEL-" + token + "%(missing)s"))
+        Seedsyncarr.logger = None  # first start: no app logger exists yet
+        run_mock = MagicMock()
+
+        raised, text = self._run_main_captured(run_mock)
+
+        self.assertFalse(token in text, "secret value appeared in startup stdout/stderr/traceback")
+        self._assert_fatal_exit(raised)
+        self.assertTrue(before == self._read(), "settings.cfg was modified")
+        self.assertEqual([], self._bak_files())
+        run_mock.assert_not_called()
+        self._assert_unreadable_on_disk()
+
+    def test_reload_with_interpolating_password_is_fatal_without_reset(self):
+        token = uuid.uuid4().hex
+        self._write(self._authenticated_config_text("valid-" + uuid.uuid4().hex))
+        bad_text = self._authenticated_config_text("SENTINEL-" + token + "%(missing)s")
+        written = {}
+
+        def first_run_then_reload(*_args, **_kwargs):
+            # The running app's settings.cfg now holds the bad value; a UI
+            # restart re-enters main()'s loop and constructs a fresh app.
+            written["bytes"] = self._write(bad_text)
+            raise ServiceRestart()
+
+        run_mock = MagicMock(side_effect=first_run_then_reload)
+
+        raised, text = self._run_main_captured(run_mock)
+
+        self.assertFalse(token in text, "secret value appeared in reload stdout/stderr/traceback")
+        self._assert_fatal_exit(raised)
+        self.assertEqual(1, run_mock.call_count)
+        self.assertTrue(written.get("bytes") == self._read(), "settings.cfg was modified")
+        self.assertEqual([], self._bak_files())
+        self._assert_unreadable_on_disk()
