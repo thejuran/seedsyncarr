@@ -11,10 +11,17 @@ export interface SeedPlanItem {
     target: SeedTarget;
 }
 
-// Backend command endpoints (controller.py:66-72). encodeURIComponent on every
+// Backend command endpoints (controller.py). encodeURIComponent on every
 // file name — harness fixtures include Unicode names (e.g. 'áßç déÀ.mp4', 'üæÒ').
+//
+// queue sends release_unverified=true: the backend completion gate holds
+// transfers while a Sonarr/Radarr integration is enabled and cannot confirm the
+// download finished. The harness enables no arr integration, so the gate is not
+// required and the flag is ignored; settings-error.spec enables Sonarr
+// transiently with a non-fatal cleanup, and the flag keeps seeding
+// deterministic if that cleanup ever fails.
 const ENDPOINT = {
-    queue:        (n: string) => `/server/command/queue/${encodeURIComponent(n)}`,
+    queue:        (n: string) => `/server/command/queue/${encodeURIComponent(n)}?release_unverified=true`,
     stop:         (n: string) => `/server/command/stop/${encodeURIComponent(n)}`,
     extract:      (n: string) => `/server/command/extract/${encodeURIComponent(n)}`,
     deleteLocal:  (n: string) => `/server/command/delete_local/${encodeURIComponent(n)}`,
