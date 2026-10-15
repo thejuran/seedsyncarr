@@ -30,7 +30,7 @@ Requirements for the 1.7.5 safety release. All map to Phase 119.
 
 ### Startup log hygiene (Phase 119.1)
 
-- [ ] **SEC-01**: The container does not print configuration secrets (seedbox password, Sonarr/Radarr API keys, webhook secret, api_token, any secret-marked setting) to its stdout/container log at startup or on settings reload; non-secret startup diagnostics remain. Regression test fails before the fix.
+- [x] **SEC-01**: The container does not print configuration secrets (seedbox password, Sonarr/Radarr API keys, webhook secret, api_token, any secret-marked setting) to its stdout/container log at startup or on settings reload; non-secret startup diagnostics remain. Regression test fails before the fix.
 - [x] **REL-04**: 1.7.6 ships through the 1.7.5 gates (release PR CI green, tag publish Docker/GitHub/PyPI, smoke on the exact digest incl. no-secrets-in-log) and is deployed to the NAS production container by digest; the owner is reminded to rotate the seedbox password and both arr API keys.
 
 ## Future Requirements
@@ -51,15 +51,15 @@ Deferred to the Reliability milestone (Phase 120+): import/cleanup recovery acro
 
 | Requirement | Phase | Plan grouping | Status |
 |-------------|-------|---------------|--------|
-| XFER-06 | Phase 119 | — | Pending |
-| DEL-01 | Phase 119 | — | Pending |
-| IMP-01 | Phase 119 | Incomplete-import plan (with IMP-02), own regression tests | Pending |
-| IMP-02 | Phase 119 | Incomplete-import plan (with IMP-01), own regression tests | Pending |
-| IMP-03 | Phase 119 | Early-episode-credit plan, own regression tests | Pending |
+| XFER-06 | Phase 119 | — | Complete |
+| DEL-01 | Phase 119 | — | Complete |
+| IMP-01 | Phase 119 | Incomplete-import plan (with IMP-02), own regression tests | Complete |
+| IMP-02 | Phase 119 | Incomplete-import plan (with IMP-01), own regression tests | Complete |
+| IMP-03 | Phase 119 | Early-episode-credit plan, own regression tests | Complete |
 | REL-02 | Phase 119 | 119-10 | Complete |
-| REL-03 | Phase 119 (NAS portion → 119.1) | — | Pending |
-| SEC-01 | Phase 119.1 | — | Pending |
-| REL-04 | Phase 119.1 | — | Pending |
+| REL-03 | Phase 119 (NAS portion → 119.1) | — | Complete |
+| SEC-01 | Phase 119.1 | — | Complete |
+| REL-04 | Phase 119.1 | — | Complete |
 
 **Coverage:**
 - v1.7.5 requirements: 7 total
