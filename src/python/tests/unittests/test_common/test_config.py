@@ -2,9 +2,12 @@ import configparser
 import os
 import shutil
 import tempfile
+import traceback
 import unittest
+import uuid
 from typing import Optional
 
+import common
 from common import Config, ConfigError, PersistError
 from common.config import InnerConfig, Checkers, Converters
 from common.encryption import load_or_create_key, encrypt_field, is_ciphertext
@@ -1417,3 +1420,49 @@ class TestSecretFieldDiscovery(unittest.TestCase):
         finally:
             # tearDown handles cleanup of the injected PROP and __prop_addon_map entry
             pass
+
+
+class TestConfigUnreadableSecretValue(unittest.TestCase):
+    """A secret value that trips configparser interpolation must fail the load
+    with a fatal, value-free error that is neither a ConfigError nor a
+    PersistError (those trigger the backup-and-reset-to-defaults path).
+    Failure messages name exception classes only, never the value."""
+
+    def _assert_fatal_and_value_free(self, remote_password: str, token: str):
+        content = _build_config_ini(remote_password=remote_password)
+        raised = None
+        try:
+            Config.from_str(content)
+        except Exception as e:
+            raised = e
+        self.assertTrue(raised is not None, "from_str accepted an interpolation-tripping secret")
+        name = type(raised).__name__
+        exc_cls = getattr(common, "ConfigUnreadableError", None)
+        self.assertIsNotNone(exc_cls, "common.ConfigUnreadableError is not defined (raised {})".format(name))
+        self.assertTrue(isinstance(raised, exc_cls), "from_str raised {}, not ConfigUnreadableError".format(name))
+        self.assertFalse(isinstance(raised, ConfigError), "ConfigUnreadableError must not be a ConfigError")
+        self.assertFalse(isinstance(raised, PersistError), "ConfigUnreadableError must not be a PersistError")
+        self.assertIn("Lftp.remote_password", str(raised))
+        self.assertFalse(token in str(raised), "secret value appeared in the error message")
+        self.assertTrue(raised.__cause__ is None, "error chains a cause")
+        self.assertTrue(raised.__suppress_context__, "error does not suppress its context")
+        formatted = "".join(traceback.format_exception(raised))
+        self.assertFalse(token in formatted, "secret value appeared in the formatted traceback")
+
+    def test_from_str_interpolation_missing_option_in_secret_is_fatal_and_value_free(self):
+        token = uuid.uuid4().hex
+        self._assert_fatal_and_value_free("SENTINEL-" + token + "%(missing)s", token)
+
+    def test_from_str_interpolation_syntax_in_secret_is_fatal_and_value_free(self):
+        token = uuid.uuid4().hex
+        self._assert_fatal_and_value_free("SENT%INEL-" + token, token)
+
+    def test_from_str_double_percent_still_reads_as_percent(self):
+        config = Config.from_str(_build_config_ini(remote_password="a%%b"))
+        self.assertEqual("a%b", config.lftp.remote_password)
+
+    def test_parser_failure_classes_are_configparser_errors(self):
+        # The sanitizing handler catches configparser.Error; both failure
+        # classes exercised above must be covered by it.
+        self.assertTrue(issubclass(configparser.InterpolationMissingOptionError, configparser.Error))
+        self.assertTrue(issubclass(configparser.InterpolationSyntaxError, configparser.Error))
