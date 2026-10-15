@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.7.5
 milestone_name: Safety Release
 status: executing
-stopped_at: "119.1-04 complete (owner go-ahead: Deploy; seedsyncarr-test B recreate on 1.7.6); next 119.1-05 production deploy"
-last_updated: "2026-10-15T22:12:11.426Z"
-last_activity: 2026-10-15 -- 119.1-04 complete, owner go-ahead to deploy 1.7.6
+stopped_at: "119.1-05 paused at Task 2 owner confirmation (1.7.6 deployed and verified on NAS; wud restored)"
+last_updated: "2026-10-15T22:26:46.232Z"
+last_activity: 2026-10-15 -- 119.1-05 1.7.6 deployed to NAS, awaiting owner confirmation
 progress:
   total_phases: 23
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 37
-  completed_plans: 36
-  percent: 26
+  completed_plans: 37
+  percent: 30
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-09)
 Phase: 119.1 (startup-log-secrets-fix-and-1-7-6-release) — EXECUTING
 Plan: 6 of 6 (next: 119.1-05 production deploy; done: 01, 02, 06, 03, 04)
 Status: Executing Phase 119.1
-Last activity: 2026-10-15 -- 119.1-04 complete, owner go-ahead to deploy 1.7.6
+Last activity: 2026-10-15 -- 119.1-05 1.7.6 deployed to NAS, awaiting owner confirmation
 
 ## Accumulated Context
 
@@ -66,6 +66,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 119.1]: 119.1-03: 1.7.6 metadata/notes on release/1.7.6, PR #129 CI + CodeQL green on 03dcee6; paused at owner approval (SECURITY.md item, % rollback caveat); nothing merged or tagged
 - [Phase 119.1]: 119.1-04: 1.7.6 published (tag v1.7.6 -> 26b652e; GHCR :1.7.6@sha256:da6196e0; PyPI 1.7.6); smoke 0-9 PASS on the digest, no-secrets 0/5 with 1.7.5 control 7 (decoded %: 2); CodeQL test-fixture alert #8 dismissed (used in tests); seedsyncarr-test log holds prod seedbox password; paused at owner go-ahead
 - [Phase 119.1]: 119.1-04 complete: owner go-ahead 'Deploy' for :1.7.6@sha256:da6196e0 (119.1-05 executes); seedsyncarr-test choice B (recreate on 1.7.6; shares seedbox password, include in rotation); CodeQL alert #8 dismissal was done without prior owner approval, owner since informed
+- [Phase 119.1]: 119.1-05: 1.7.6 deployed to NAS prod by digest (container 2feb4073db71, .Image 5b801f83); prod log 0/3 secret values; seedsyncarr-test recreated on 1.7.6 (0 matches); wud restored; paused at owner confirmation, rotation reminder after
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -135,9 +136,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-10-15T22:12:06.347Z
-Stopped at: Completed 119.1-04-PLAN.md (owner go-ahead: "Deploy"; seedsyncarr-test choice B, recreate on 1.7.6)
-Next action: Execute 119.1-05: deploy :1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e to production (expect .Image sha256:5b801f83...), recreate seedsyncarr-test on 1.7.6 with the same settings, restore wud last. Rollback runbook carries the % caution. Rotate credentials (seedbox password incl. seedsyncarr-test config, Sonarr/Radarr keys) only after the deploy is confirmed.
+Last session: 2026-10-15T22:26:40.881Z
+Stopped at: 119.1-05 Task 1 done (d3943a6): prod on :1.7.6@sha256:da6196e0 (container 2feb4073db71), seedsyncarr-test recreated on 1.7.6, wud restored; paused at Task 2 owner confirmation
+Next action: Owner confirms the 1.7.6 deploy (UI check) -> record `## Owner confirmation (Plan 119.1-05)` -> Task 3 credential-rotation reminder (seedbox password incl. seedsyncarr-test config, Sonarr/Radarr keys). On a problem: evidence §1j Rollback runbook (% caution, 1.7.4 reprints settings), no rotation reminder.
 
 ## Operator Next Steps
 
