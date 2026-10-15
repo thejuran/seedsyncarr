@@ -46,6 +46,16 @@ class ConfigUnreadableError(AppError):
     """
     pass
 
+class ConfigSerializationError(AppError):
+    """
+    Exception indicating the config could not be serialized for writing.
+
+    Raised before anything is written to disk, so the existing file is left
+    unchanged. The message names section.option and the error class only,
+    never the value.
+    """
+    pass
+
 InnerConfigType = Dict[str, str]
 OuterConfigType = Dict[str, InnerConfigType]
 
@@ -536,13 +546,23 @@ class Config(Persist):
                         config_dict[ini_section][field_name] = encrypt_field(fernet_key, str(value))
         # ────────────────────────��────────────────────────────���────────────────
 
-        for section in config_dict:
-            config_parser.add_section(section)
-            section_dict = config_dict[section]
-            for key in section_dict:
-                config_parser.set(section, key, str(section_dict[key]))
+        # Every '%' is written as '%%' (the BasicInterpolation escape), so
+        # from_str reads each value back unchanged. Values without '%' are
+        # written exactly as before.
+        section, key = "?", "?"
         str_io = StringIO()
-        config_parser.write(str_io)
+        try:
+            for section in config_dict:
+                config_parser.add_section(section)
+                section_dict = config_dict[section]
+                for key in section_dict:
+                    config_parser.set(section, key, str(section_dict[key]).replace("%", "%%"))
+            config_parser.write(str_io)
+        except (ValueError, configparser.Error) as e:
+            # These errors embed the raw value (which may be a secret) in
+            # their message; report the location and class only.
+            raise ConfigSerializationError("Bad config: {}.{} could not be written ({})".format(
+                section, key, type(e).__name__)) from None
         return str_io.getvalue()
 
     @staticmethod
