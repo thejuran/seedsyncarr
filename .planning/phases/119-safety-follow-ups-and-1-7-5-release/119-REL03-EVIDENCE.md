@@ -407,3 +407,33 @@ Verbatim: "Approve as drafted" — items (a) limitation/cleanup wording as draft
 (e) leave #126 out. Item (d): CI via branch + PR (chosen).
 
 Recorded before any tag. Tag, merge, push and publish are plan 119-10.
+
+## Owner approval (Plan 119-09)
+
+Verbatim (2026-10-15): "Approve as drafted" — items (a) limitation/cleanup wording as drafted,
+(b) rollback to 1.7.4 with .pre-1.7.5 suffix, (c) close #123/#124 after the tag with a "rolled into
+1.7.5" comment, (e) leave #126 out. Item (d): CI via branch + PR (chosen; PR #127). No amendments,
+so no `apply owner amendments` commit.
+
+## wud suspension (Plan 119-10)
+
+Run before any push of the 1.7.5 release (NAS `date`: Thu Oct 15 06:33:28 -05 2026).
+
+```
+$ ssh nas 'cd /volume1/docker && sudo /usr/local/bin/docker compose stop wud'
+ Container wud  Stopping
+ Container wud  Stopped
+$ ssh nas "sudo /usr/local/bin/docker inspect wud --format '{{.State.Status}} {{.State.FinishedAt}}'"
+exited 2026-10-15T11:33:41.00746253Z
+$ ssh nas "sudo /usr/local/bin/docker inspect seedsyncarr --format '{{.Config.Image}} {{.State.Status}}'"
+ghcr.io/thejuran/seedsyncarr:1.7.4@sha256:682d129ddfe0da97bd739efe7044ff3cfc30577976550933cbc3b68bb1801595 running
+$ ssh nas "sudo /usr/local/bin/docker inspect seedsyncarr --format '{{.Image}}'"
+sha256:0e33b030b41004f077d05742286b5599506f27e171b624b6c5122d59811c6d45
+```
+
+wud stays stopped until Plan 119-11 restores it (after the deploy is verified or a rollback
+completes). All NAS auto-updates are paused meanwhile.
+
+Also present on the NAS and NOT touched by this plan: `seedsyncarr-test` (compose project `v5test`,
+`/volume1/docker/v5test/docker-compose.yml`, image `:1.7.4`, host port 8801). The 1.7.5 smoke
+therefore uses host port 8802.
