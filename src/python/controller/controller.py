@@ -904,8 +904,8 @@ class Controller:
         if len(candidates) > 1:
             self.logger.warning(
                 "Pending webhook import '{}' is ambiguous: matches {} distinct SeedSyncarr "
-                "paths in release(s) {} ({}); no import credit or automatic cleanup "
-                "authorized".format(
+                "paths in release(s) {} ({}); "
+                "no import credit or automatic cleanup authorized".format(
                     safe_child, len(candidates),
                     _format_capped(sorted(set(candidates.values()))),
                     _format_capped(sorted(candidates)),
