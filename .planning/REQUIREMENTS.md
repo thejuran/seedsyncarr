@@ -31,7 +31,7 @@ Requirements for the 1.7.5 safety release. All map to Phase 119.
 ### Startup log hygiene (Phase 119.1)
 
 - [ ] **SEC-01**: The container does not print configuration secrets (seedbox password, Sonarr/Radarr API keys, webhook secret, api_token, any secret-marked setting) to its stdout/container log at startup or on settings reload; non-secret startup diagnostics remain. Regression test fails before the fix.
-- [ ] **REL-04**: 1.7.6 ships through the 1.7.5 gates (release PR CI green, tag publish Docker/GitHub/PyPI, smoke on the exact digest incl. no-secrets-in-log) and is deployed to the NAS production container by digest; the owner is reminded to rotate the seedbox password and both arr API keys.
+- [x] **REL-04**: 1.7.6 ships through the 1.7.5 gates (release PR CI green, tag publish Docker/GitHub/PyPI, smoke on the exact digest incl. no-secrets-in-log) and is deployed to the NAS production container by digest; the owner is reminded to rotate the seedbox password and both arr API keys.
 
 ## Future Requirements
 

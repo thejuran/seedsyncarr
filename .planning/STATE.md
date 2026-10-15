@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.7.5
 milestone_name: Safety Release
 status: executing
-stopped_at: "119.1-05 paused at Task 2 owner confirmation (1.7.6 deployed and verified on NAS; wud restored)"
-last_updated: "2026-10-15T22:26:46.232Z"
+stopped_at: "119.1-05 complete (7a2a122): 1.7.6 on NAS prod confirmed by owner; credential-rotation checklist delivered"
+last_updated: "2026-10-15T22:30:29.471Z"
 last_activity: 2026-10-15 -- 119.1-05 1.7.6 deployed to NAS, awaiting owner confirmation
 progress:
   total_phases: 23
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-10-09)
 ## Current Position
 
 Phase: 119.1 (startup-log-secrets-fix-and-1-7-6-release) — EXECUTING
-Plan: 6 of 6 (next: 119.1-05 production deploy; done: 01, 02, 06, 03, 04)
-Status: Executing Phase 119.1
+Plan: 6 of 6 (all complete: 01, 02, 06, 03, 04, 05)
+Status: Phase 119.1 plans complete, ready for verification
 Last activity: 2026-10-15 -- 119.1-05 1.7.6 deployed to NAS, awaiting owner confirmation
 
 ## Accumulated Context
@@ -67,6 +67,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 119.1]: 119.1-04: 1.7.6 published (tag v1.7.6 -> 26b652e; GHCR :1.7.6@sha256:da6196e0; PyPI 1.7.6); smoke 0-9 PASS on the digest, no-secrets 0/5 with 1.7.5 control 7 (decoded %: 2); CodeQL test-fixture alert #8 dismissed (used in tests); seedsyncarr-test log holds prod seedbox password; paused at owner go-ahead
 - [Phase 119.1]: 119.1-04 complete: owner go-ahead 'Deploy' for :1.7.6@sha256:da6196e0 (119.1-05 executes); seedsyncarr-test choice B (recreate on 1.7.6; shares seedbox password, include in rotation); CodeQL alert #8 dismissal was done without prior owner approval, owner since informed
 - [Phase 119.1]: 119.1-05: 1.7.6 deployed to NAS prod by digest (container 2feb4073db71, .Image 5b801f83); prod log 0/3 secret values; seedsyncarr-test recreated on 1.7.6 (0 matches); wud restored; paused at owner confirmation, rotation reminder after
+- [Phase 119.1]: 119.1-05 complete: owner 'Confirmed' the 1.7.6 prod deploy (Waiting-badge/manual-release UI UAT not reported, stays open); rotation checklist delivered after confirmation (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys; webhook/api_token unset)
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -136,9 +137,9 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-10-15T22:26:40.881Z
-Stopped at: 119.1-05 Task 1 done (d3943a6): prod on :1.7.6@sha256:da6196e0 (container 2feb4073db71), seedsyncarr-test recreated on 1.7.6, wud restored; paused at Task 2 owner confirmation
-Next action: Owner confirms the 1.7.6 deploy (UI check) -> record `## Owner confirmation (Plan 119.1-05)` -> Task 3 credential-rotation reminder (seedbox password incl. seedsyncarr-test config, Sonarr/Radarr keys). On a problem: evidence §1j Rollback runbook (% caution, 1.7.4 reprints settings), no rotation reminder.
+Last session: 2026-10-15T22:30:24.625Z
+Stopped at: 119.1-05 complete (7a2a122): 1.7.6 on NAS prod confirmed by owner; credential-rotation checklist delivered
+Next action: Phase 119.1 verification, then milestone v1.7.5 completion. Owner rotates credentials on own schedule (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys). Open for the pre-release walkthrough: Phase 119 HUMAN-UAT UI items (Waiting badge, manual-release modal) and Done-group one-time cleanup. Optional: delete /volume1/docker/seedsync-smoke-1.7.6.
 
 ## Operator Next Steps
 
