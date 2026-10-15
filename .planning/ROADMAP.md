@@ -832,16 +832,16 @@ Plans:
 7. Release 1.7.5 through the established Docker/GitHub/PyPI process and verify the tested image on the NAS, including a successful scan after any startup scanner error (any other startup error needs its own resolution before release), before the Reliability milestone begins.
 
 **Scope boundary:** No transfer-engine replacement, broad refactor, UI feature, or unrelated dependency churn in this patch release. Owner-approved exceptions: held items show as waiting with their reason in the existing file list, and a manual release requires an explicit confirmation ("Completion could not be verified. Transfer and release this item anyway?") valid for one transfer attempt only. Items 4 and 5 are in scope only as far as needed to stop incomplete imports and incorrect cleanup; any broader path-aware import redesign stays out. Backlog 999.1 (payload-size evidence) stays deferred as defense in depth; payload-size evidence alone would not satisfy the new completion requirements.
-**Plans:** 12 plans
+**Plans:** 4/12 plans executed
 
 Plans:
 
 **Wave 1**
 
-- [ ] 119-01-PLAN.md — XFER-06: LFTP sentinel resync after a status timeout (RED-first fake-pty regression)
-- [ ] 119-02-PLAN.md — REL-02: hatch `only-include` packaging fix, member-path checker, `verify-python-package` CI job
-- [ ] 119-03-PLAN.md — DEL-01: lock-protected submitted-unobserved set + auto-delete Timer guard (RED-first)
-- [ ] 119-04-PLAN.md — IMP-02 foundation: ArrQueueClient (`/api/v3/queue/details`) + CompletionGate (D-16/D-17 verdicts, capped backoff, hold registry)
+- [x] 119-01-PLAN.md — XFER-06: LFTP sentinel resync after a status timeout (RED-first fake-pty regression)
+- [x] 119-02-PLAN.md — REL-02: hatch `only-include` packaging fix, member-path checker, `verify-python-package` CI job
+- [x] 119-03-PLAN.md — DEL-01: lock-protected submitted-unobserved set + auto-delete Timer guard (RED-first)
+- [x] 119-04-PLAN.md — IMP-02 foundation: ArrQueueClient (`/api/v3/queue/details`) + CompletionGate (D-16/D-17 verdicts, capped backoff, hold registry)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -910,7 +910,7 @@ Plans:
 | 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
 | 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
 | 118. Durable State | v1.7.4 | 5/5 | Complete    | 2026-10-09 |
-| 119. Safety Follow-ups and 1.7.5 Release | v1.7.5 | 0/11 | Planned | — |
+| 119. Safety Follow-ups and 1.7.5 Release | v1.7.5 | 4/12 | In Progress|  |
 
 ---
 
