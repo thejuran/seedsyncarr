@@ -91,6 +91,16 @@ describe("Testing model file initialization", () => {
         expect(baseModelFile.remote_modified_timestamp).toBeNull();
     });
 
+    it("should read hold_reason from the backend JSON", () => {
+        baseJson.hold_reason = "still_downloading";
+        baseModelFile = ModelFile.fromJson(baseJson as unknown as ModelFileJson);
+        expect(baseModelFile.hold_reason).toBe("still_downloading");
+    });
+
+    it("should default hold_reason to null when an older backend omits it", () => {
+        expect(baseModelFile.hold_reason).toBeNull();
+    });
+
     it("should correctly initialize children", () => {
         baseJson.children = [
             {
