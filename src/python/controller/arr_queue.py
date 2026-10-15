@@ -18,10 +18,7 @@ and abandoned, and no new worker is started for that target until it exits.
 The api key, URL, request headers and response bodies are never logged.
 """
 
-import hashlib
-import hmac
 import json
-import os
 import threading
 import time
 import urllib.parse
@@ -42,11 +39,21 @@ DEFECT_BAD_STATUS = "bad_status"
 DEFECT_BAD_SIZELEFT = "bad_sizeleft"
 
 
-# Per-process random secret for the API-key change-detection fingerprint (an
-# HMAC, not a stored password hash). It only has to be stable within one
-# process, because the fingerprint is compared in memory and never persisted
-# or logged.
-_FINGERPRINT_SECRET = os.urandom(32)
+# Opaque per-process tokens for API-key change detection. Each distinct key
+# value maps to a small counter token ("k1", "k2", ...), so the configuration
+# identity can tell a rotated key apart without carrying the raw key or any
+# hash of it. Tokens live in memory only and are never persisted or logged.
+_KEY_TOKENS: Dict[str, str] = {}
+_KEY_TOKENS_LOCK = threading.Lock()
+
+
+def _key_token(api_key: str) -> str:
+    with _KEY_TOKENS_LOCK:
+        token = _KEY_TOKENS.get(api_key)
+        if token is None:
+            token = "k{}".format(len(_KEY_TOKENS) + 1)
+            _KEY_TOKENS[api_key] = token
+        return token
 
 
 class ArrTarget(NamedTuple):
@@ -58,13 +65,11 @@ class ArrTarget(NamedTuple):
     @property
     def identity(self) -> Tuple[str, str, str]:
         """
-        Configuration identity: (code, normalized url, key fingerprint).
-        The fingerprint lets a rotated key be detected without keeping or
-        comparing the raw key; it is never logged.
+        Configuration identity: (code, normalized url, key token).
+        The opaque token lets a rotated key be detected without putting the
+        raw key (or a hash of it) into the identity; it is never logged.
         """
-        fingerprint = hmac.new(_FINGERPRINT_SECRET, self.api_key.encode("utf-8"),
-                               hashlib.sha256).hexdigest()[:16]
-        return self.code, self.url.rstrip("/"), fingerprint
+        return self.code, self.url.rstrip("/"), _key_token(self.api_key)
 
 
 class QueueRecord(NamedTuple):
