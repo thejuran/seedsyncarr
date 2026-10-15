@@ -11,6 +11,18 @@ import {LoggerService} from "../utils/logger.service";
 export type BulkAction = "queue" | "stop" | "extract" | "delete_local" | "delete_remote";
 
 /**
+ * Optional flags for a bulk action request.
+ */
+export interface BulkActionOptions {
+    /**
+     * Queue only: transfer the files even though their download completion
+     * could not be verified. Applies to this single request only and must be
+     * sent only after the user explicitly confirmed it.
+     */
+    releaseUnverified?: boolean;
+}
+
+/**
  * Result for a single file in a bulk operation.
  */
 export interface BulkFileResult {
@@ -109,11 +121,19 @@ export class BulkCommandService {
      * Execute a bulk action on multiple files.
      * @param action The action to perform
      * @param files Array of file names to operate on
+     * @param options Optional per-request flags (see BulkActionOptions)
      * @returns Observable that emits BulkActionResult
      */
-    public executeBulkAction(action: BulkAction, files: string[]): Observable<BulkActionResult> {
+    public executeBulkAction(
+        action: BulkAction,
+        files: string[],
+        options?: BulkActionOptions
+    ): Observable<BulkActionResult> {
         return new Observable<BulkActionResult>(observer => {
-            const body = {action, files};
+            const body: Record<string, unknown> = {action, files};
+            if (options?.releaseUnverified) {
+                body["release_unverified"] = true;
+            }
 
             const sub = this._http.post<BulkActionResponse | BulkErrorResponse>(this.BULK_URL, body)
                 .subscribe({

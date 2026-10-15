@@ -127,6 +127,52 @@ describe("TransferRowComponent", () => {
         expect(component.badgeLabel).toBe("Deleted");
     });
 
+    // A DEFAULT file the completion gate is holding shows as "Waiting" with
+    // the reason, instead of the plain dash.
+    describe("held (Waiting) state", () => {
+        const LABELS: [string, string][] = [
+            ["sonarr_unavailable", "Sonarr unavailable"],
+            ["radarr_unavailable", "Radarr unavailable"],
+            ["ambiguous_match", "Ambiguous match"],
+            ["still_downloading", "Still downloading"],
+            ["no_queue_entry", "No matching queue entry"],
+        ];
+
+        it("shows 'Waiting' with a secondary badge for DEFAULT with a hold reason", () => {
+            setFile(ViewFile.Status.DEFAULT, {holdReason: "still_downloading"});
+            expect(component.isHeld).toBe(true);
+            expect(component.badgeLabel).toBe("Waiting");
+            expect(component.badgeClass).toBe("badge bg-secondary");
+            expect(component.holdReasonLabel).toBe("Still downloading");
+        });
+
+        it("keeps the plain dash for DEFAULT without a hold reason", () => {
+            setFile(ViewFile.Status.DEFAULT, {holdReason: null});
+            expect(component.isHeld).toBe(false);
+            expect(component.badgeLabel).toBe("\u2014");
+            expect(component.badgeClass).toBe("badge bg-dark");
+        });
+
+        it("ignores a stale hold reason outside DEFAULT", () => {
+            setFile(ViewFile.Status.DOWNLOADING, {holdReason: "still_downloading"});
+            expect(component.isHeld).toBe(false);
+            expect(component.badgeLabel).toBe("Syncing");
+        });
+
+        LABELS.forEach(([code, label]) => {
+            it(`maps hold reason '${code}' to '${label}'`, () => {
+                setFile(ViewFile.Status.DEFAULT, {holdReason: code});
+                expect(component.holdReasonLabel).toBe(label);
+            });
+        });
+
+        it("shows an unknown hold code as the code itself", () => {
+            setFile(ViewFile.Status.DEFAULT, {holdReason: "some_new_reason"});
+            expect(component.holdReasonLabel).toBe("some_new_reason");
+            expect(component.badgeLabel).toBe("Waiting");
+        });
+    });
+
     // DASH-08: Badge CSS classes with semantic colors
     it("should return warning badge class for DOWNLOADING", () => {
         setFile(ViewFile.Status.DOWNLOADING);
@@ -256,5 +302,52 @@ describe("TransferRowComponent", () => {
             const unselectedLabel = fixture.debugElement.nativeElement.getAttribute("aria-label") as string;
             expect(unselectedLabel.endsWith(", selected")).toBe(false);
         });
+    });
+});
+
+// Renders the production template so the hold reason markup is covered.
+describe("TransferRowComponent (production template)", () => {
+    let component: TransferRowComponent;
+    let fixture: ComponentFixture<TransferRowComponent>;
+
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [TransferRowComponent]
+        }).compileComponents();
+
+        fixture = TestBed.createComponent(TransferRowComponent);
+        component = fixture.componentInstance;
+    });
+
+    function setFile(status: ViewFile.Status, opts: Partial<ViewFile> = {}): void {
+        component.file = new ViewFile({
+            name: "held.mkv",
+            fullPath: "/held.mkv",
+            status,
+            remoteSize: 5000,
+            ...opts
+        });
+        fixture.detectChanges();
+    }
+
+    it("renders the hold reason in the file meta line and as the badge title", () => {
+        setFile(ViewFile.Status.DEFAULT, {holdReason: "still_downloading"});
+        const el: HTMLElement = fixture.nativeElement;
+
+        const meta = el.querySelector(".file-meta")!;
+        expect(meta.textContent).toContain("Still downloading");
+        expect(el.querySelector(".hold-reason")!.textContent!.trim()).toBe("Still downloading");
+
+        const badge = el.querySelector(".status-badge")!;
+        expect(badge.textContent!.trim()).toBe("Waiting");
+        expect(badge.getAttribute("title")).toBe("Still downloading");
+    });
+
+    it("renders no hold reason or badge title for an unheld file", () => {
+        setFile(ViewFile.Status.DEFAULT, {holdReason: null});
+        const el: HTMLElement = fixture.nativeElement;
+
+        expect(el.querySelector(".hold-reason")).toBeNull();
+        expect(el.querySelector(".status-badge")!.hasAttribute("title")).toBe(false);
     });
 });

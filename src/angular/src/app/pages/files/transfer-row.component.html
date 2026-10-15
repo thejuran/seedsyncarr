@@ -10,10 +10,14 @@
     <span class="file-path">{{ file.fullPath || '/' }}</span>
     <span class="file-meta-dot">&bull;</span>
     <span>{{ file.remoteSize | fileSize:1 }}</span>
+    @if (isHeld) {
+      <span class="file-meta-dot">&bull;</span>
+      <span class="hold-reason">{{ holdReasonLabel }}</span>
+    }
   </div>
 </td>
 <td class="cell-status">
-  <span class="status-badge" [class]="badgeClass">
+  <span class="status-badge" [class]="badgeClass" [attr.title]="isHeld ? holdReasonLabel : null">
     @if (isDownloading) {
       <i class="ph ph-arrow-down"></i>
     }

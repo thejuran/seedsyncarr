@@ -1058,6 +1058,36 @@ describe("Testing view file service", () => {
     // Wave 1 commits these red. Wave 2 drives them green with a minimal
     // edit to the `remoteSize > 0` guard in view-file.service.ts (D-02
     // candidate #1, confirmed by prior analysis).
+    it("should map a ModelFile hold_reason to ViewFile holdReason", fakeAsync(() => {
+        let model = Immutable.Map<string, ModelFile>();
+        model = model.set("held.mkv", new ModelFile({
+            name: "held.mkv",
+            state: ModelFile.State.DEFAULT,
+            remote_size: 1024,
+            hold_reason: "still_downloading"
+        }));
+        model = model.set("free.mkv", new ModelFile({
+            name: "free.mkv",
+            state: ModelFile.State.DEFAULT,
+            remote_size: 1024
+        }));
+        mockModelService._files.next(model);
+        tick();
+
+        let count = 0;
+        const sub = viewService.files.subscribe({
+            next: list => {
+                const byName = new Map(list.toArray().map(f => [f.name, f]));
+                expect(byName.get("held.mkv")!.holdReason).toBe("still_downloading");
+                expect(byName.get("free.mkv")!.holdReason).toBeNull();
+                count++;
+            }
+        });
+        tick();
+        expect(count).toBe(1);
+        sub.unsubscribe();
+    }));
+
     describe("FIX-01 DELETED isQueueable regression", () => {
         it("DELETED + remote_size=null must be queueable (RED target)", fakeAsync(() => {
             let count = -1;

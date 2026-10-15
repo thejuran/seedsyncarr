@@ -43,6 +43,27 @@ export class Localization {
                 return `Are you sure you want to delete ${count} file${plural} ` +
                     `from the remote server? This cannot be undone.`;
             };
+
+        // Manual release of a transfer whose download completion could not be verified
+        public static readonly RELEASE_UNVERIFIED_TITLE = "Release unverified transfer";
+        public static readonly RELEASE_UNVERIFIED_MESSAGE =
+            "Completion could not be verified. Transfer and release this item anyway?";
+    };
+
+    // Display labels for the reasons the completion gate holds a file back
+    static Hold = class {
+        public static readonly LABELS: Readonly<Record<string, string>> = {
+            sonarr_unavailable: "Sonarr unavailable",
+            radarr_unavailable: "Radarr unavailable",
+            ambiguous_match: "Ambiguous match",
+            still_downloading: "Still downloading",
+            no_queue_entry: "No matching queue entry",
+        };
+
+        public static readonly label = (code: string): string =>
+            Object.prototype.hasOwnProperty.call(Localization.Hold.LABELS, code)
+                ? Localization.Hold.LABELS[code]
+                : code;
     };
 
     static Bulk = class {
