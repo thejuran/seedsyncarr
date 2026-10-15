@@ -1,12 +1,18 @@
 import configparser
+import contextlib
+import io
+import logging
 import os
 import shutil
+import signal
+import sys
 import tempfile
 import unittest
+import uuid
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-from common import AppError, Config, ServiceRestart
+from common import AppError, Config, Constants, ServiceRestart
 from common.encryption import is_ciphertext
 from seedsyncarr import Seedsyncarr
 
@@ -789,3 +795,82 @@ class TestSeedsyncarrCreateLogger(unittest.TestCase):
         self.assertTrue(os.path.isfile(
             os.path.join(logdir, "{}.log".format(self.logger_name))
         ))
+
+
+class TestSeedsyncarrStartupLogSentinels(unittest.TestCase):
+    """Startup and settings-reload logging must never print a secret value.
+
+    Builds a real settings.cfg with a unique sentinel in every secret field and
+    debug on, then constructs Seedsyncarr() twice (startup, then the fresh
+    construction main() performs after ServiceRestart) with stdout and stderr
+    captured. Failure messages name the field only, never the value.
+    """
+
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp(prefix="test_startup_log_")
+        self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
+        self.addCleanup(Config.set_keyfile_path, None)
+        self.settings_path = os.path.join(self.temp_dir, "settings.cfg")
+
+        # Global state touched by Seedsyncarr(): app loggers, signal handlers,
+        # the class-level logger reference.
+        for name in (Constants.SERVICE_NAME, Constants.WEB_ACCESS_LOG_NAME):
+            log = logging.getLogger(name)
+            self.addCleanup(log.setLevel, log.level)
+            self.addCleanup(self._clear_handlers, log)
+        self.addCleanup(signal.signal, signal.SIGTERM, signal.getsignal(signal.SIGTERM))
+        self.addCleanup(signal.signal, signal.SIGINT, signal.getsignal(signal.SIGINT))
+        self.addCleanup(setattr, Seedsyncarr, "logger", Seedsyncarr.logger)
+
+        argv_patch = patch.object(sys, "argv", [
+            "seedsyncarr", "-c", self.temp_dir, "--html", self.temp_dir, "--scanfs", self.temp_dir
+        ])
+        argv_patch.start()
+        self.addCleanup(argv_patch.stop)
+
+    @staticmethod
+    def _clear_handlers(log):
+        for handler in log.handlers[:]:
+            handler.close()
+            log.removeHandler(handler)
+
+    def _build_sentinel_config(self):
+        config = Seedsyncarr._create_default_config()
+        config.general.debug = True
+        config.lftp.local_path = self.temp_dir
+        sentinels = {}
+        for attr, field, _section in Config.secret_fields():
+            value = "SENTINEL-" + field + "-" + uuid.uuid4().hex
+            setattr(getattr(config, attr), field, value)
+            sentinels[field] = value
+        self.assertGreaterEqual(len(sentinels), 5)
+        return config, sentinels
+
+    @staticmethod
+    def _construct_and_run_startup_helpers():
+        app = Seedsyncarr()
+        logger = app.context.logger
+        config = app.context.config
+        Seedsyncarr._reencrypt_plaintext_if_needed(config, app.config_path, logger)
+        Seedsyncarr._emit_startup_warnings(logger, config)
+        Seedsyncarr._emit_decrypt_warnings(logger, config)
+        return app
+
+    def test_startup_and_reload_log_no_secret_sentinels(self):
+        config, sentinels = self._build_sentinel_config()
+        config.to_file(self.settings_path)
+
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            # Startup
+            self._construct_and_run_startup_helpers()
+            # Settings reload: main() builds a fresh Seedsyncarr() after ServiceRestart
+            self._construct_and_run_startup_helpers()
+
+        output = out.getvalue() + err.getvalue()
+        for field, value in sentinels.items():
+            self.assertFalse(value in output, "secret field {} appeared in startup/reload log".format(field))
+        # The debug config dump actually ran, so the negative checks are not vacuous
+        self.assertIn("Config:", out.getvalue())
+        self.assertIn("***REDACTED***", out.getvalue())
+        self.assertGreaterEqual(out.getvalue().count("Config:"), 2)
