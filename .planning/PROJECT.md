@@ -303,11 +303,12 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Current State
 
-v1.7.5 Safety Release shipped 2026-10-15 (Phases 119, 119.1; tagged `v1.7.5` and `v1.7.6`). `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` runs on NAS production. The milestone-end walkthrough on the live build passed: no secrets in the startup or app logs, dashboard, settings and logs healthy. Audit: tech_debt, accepted. The two Phase 119 UI checks (held-file "Waiting" badge, manual-release confirm box) have not been seen in a browser yet, because no file was held on production. Next: the Reliability milestone at Phase 120 (import/cleanup recovery across scan timing and restarts, shutdown/resource cleanup, bounded scanner-result buffering, memory diagnostics), then Performance and usability. Backlog 999.1 and 999.4 stay deferred.
+v1.7.5 Safety Release shipped 2026-10-15 (Phases 119, 119.1; tagged `v1.7.5` and `v1.7.6`). `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` runs on NAS production. The milestone-end walkthrough on the live build passed: no secrets in the startup or app logs, dashboard, settings and logs healthy. Audit: tech_debt, accepted. The two Phase 119 UI checks (held-file "Waiting" badge, manual-release confirm box) have not been seen in a browser yet, because no file was held on production. Next: the narrowed Reliability milestone, starting at Phase 120 when activated. Order: credential forwarding, safety acceptance checks, partial-startup/shutdown cleanup, model-stream overflow recovery, then LAN connection tests. Scanner buffering, residual import/restart recovery and performance measurements are separate conditional investigations. Dependency item 999.4 is bounded maintenance. See ROADMAP.md for scope and evidence gates; no implementation has begun as part of this reprioritization.
 
 ## Next Milestone Goals
 
-Reliability (Phase 120+): import/cleanup recovery across scan timing and restarts, shutdown/resource cleanup, bounded scanner-result buffering, and useful memory diagnostics. Carry-forward: confirm the Phase 119 UI hold/release checks in a browser; close the Done-group debug session; the braces dev advisory (999.4).
+Reliability: complete the five ordered, bounded outcomes in ROADMAP.md. Preserve delivered Phase 119 import/deletion safeguards and existing per-component controller cleanup. Close safety checks with evidence, not a generic recovery rewrite. Performance and Usability remains conditional on demonstrated benefit; investigations and dependency maintenance do not automatically expand Reliability's completion criteria.
+
 
 ## Previous Milestone: v1.7.5 Safety Release (Shipped 2026-10-15, tagged v1.7.5 + v1.7.6)
 

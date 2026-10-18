@@ -1,0 +1,1026 @@
+# Roadmap: SeedSync -> SeedSyncarr
+
+## Milestones
+
+- v1.0 Unify UI Styling - Phases 1-5 (shipped 2026-02-03)
+- v1.1 Dropdown & Form Migration - Phases 6-8 (shipped 2026-02-04)
+- v1.2 UI Cleanup - Phase 9 (shipped 2026-02-04)
+- v1.3 Polish & Clarity - Phases 10-11 (shipped 2026-02-04)
+- v1.4 Sass @use Migration - Phases 12-14 (shipped 2026-02-08)
+- v1.5 Backend Testing - Phases 15-19 (shipped 2026-02-08)
+- v1.6 CI Cleanup - Phases 20-21 (shipped 2026-02-10)
+- v1.7 Sonarr Integration - Phases 22-25 (shipped 2026-02-10)
+- v1.8 Radarr + Webhooks - Phases 26-28 (shipped 2026-02-11)
+- v2.0 Dark Mode & Polish - Phases 29-32 (shipped 2026-02-12)
+- v3.0 Terminal UI Overhaul - Phases 33-38 (shipped 2026-02-17)
+- v3.1 Harden & Fix - Phases 39-46 (shipped 2026-02-24)
+- v3.2 Security Hardening II - Phases 47-49 (shipped 2026-02-26, phases 50-51 completed via M002)
+- M001: Angular 21 Migration - 3 slices (shipped 2026-03-21, released as v3.2.0)
+- M002: Finish v3.2 Security - 3 slices (shipped 2026-03-22)
+- M003: UI Redesign -- Earthy Palette - 6 slices (shipped 2026-03-25)
+- M004: Polish & Dependency Updates - 4 slices (shipped 2026-03-24)
+- M005: Dashboard Polish & v3.3.0 - 2 slices (shipped 2026-03-24)
+- M006: Triggarr-Style Layout + Deep Moss Palette - 3 slices (shipped 2026-03-25)
+- M007: Settings Redesign & Multi-Select Polish - 2 slices (shipped 2026-03-26)
+- M008: AutoQueue Migration, Token UI & Toast Polish - 2 slices (shipped 2026-03-27)
+- M009: Full Codebase Deep Review Fixes - 4 slices (shipped 2026-03-28)
+- M010: Screenshots, Docs & v4.0.0 Release - (shipped 2026-03-28, tagged v4.0.0)
+- v4.0.3 Dependency Fixes & CI - Phase 52 (shipped 2026-04-08)
+- v1.0.0 SeedSyncarr Rebrand - Phases 53-61 (shipped 2026-04-13)
+- v1.1.0 UI Redesign — Triggarr Style - Phases 62-74 (shipped 2026-04-19; Phase 71 dropped)
+- v1.1.1 Post-Redesign Cleanup & Outstanding Work - Phases 75-82 (shipped 2026-04-23)
+- v1.1.2 Test Suite Audit - Phases 83-86 (shipped 2026-04-24)
+- ✅ v1.2.0 Test & Quality Hardening - Phases 87-96 (shipped 2026-04-28)
+- ✅ v1.3.0 — Slice 1 of 4: Test Coverage Gaps - Phases 97-100 (shipped 2026-05-31)
+- ✅ v1.3.0 — Slice 2 of 4: Known Bugs + Security - Phases 101-103 (shipped 2026-06-01; no tag until slice 4)
+- ✅ v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code - Phases 104-106 (shipped 2026-06-01; no tag until slice 4)
+- ✅ v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra - Phases 107-109 (shipped 2026-06-02; v1.3.0 tag cut)
+- ✅ v1.4.0 — Launch-Hardening for Public Release - Phases 110-113 (shipped 2026-06-03; merged to `main`, `v1.4.0` tag)
+- ✅ v1.4.1 — Scanner Auto-Recovery - Phases 114-115 (shipped 2026-06-22; tagged `v1.5.0`)
+- ✅ v1.7.4 Safety Patch - Phases 116-118 (shipped 2026-10-09; tagged `v1.7.4`; archive: `milestones/v1.7.4-ROADMAP.md`)
+- ✅ v1.7.5 Safety Release - Phases 119, 119.1 (shipped 2026-10-15; tagged `v1.7.5` + `v1.7.6`, `1.7.6` deployed; archive: `milestones/v1.7.5-ROADMAP.md`)
+
+## Agreed roadmap — status as of 2026-10-17
+
+Status below is reconciled against the archived milestone audits and plan summaries, not a fresh live deployment test. The original three-part roadmap gained a separate safety release; both safety milestones are now closed. Reliability remains next, starting at Phase 120.
+
+### Completed: Safety Patch — 1.7.4 (Phases 116–118)
+
+- [x] Reject ambiguous import matches, including case-only and within-pack filename collisions.
+- [x] Block automatic deletion of packs with duplicate video basenames, including legacy import records.
+- [x] Stop the LFTP parser swallowing the next job's header.
+- [x] Preserve transfer protection when status is unavailable.
+- [x] Measure stability using successful remote and local scans.
+- [x] Write settings and state atomically.
+
+### Completed: Safety Release — 1.7.5 / 1.7.6 (Phases 119 and 119.1)
+
+- [x] Resynchronize the LFTP command stream after a timeout before trusting status.
+- [x] Protect newly submitted, not-yet-observed transfers from automatic deletion.
+- [x] Prevent incomplete imports using completion evidence and temporary-file copying (Obsession incident).
+- [x] Add visible holds, shared queue checks with capped retry backoff, and confirmed one-attempt manual release. Preserve standalone stability-based syncing when both arr integrations are disabled; a strong completed match from one arr can suffice when the other is unavailable.
+- [x] Persist early credit for fully transferred episodes while siblings transfer, re-evaluate eligible pending notices, and arm deletion on completion, including restart with persisted credit (Days of Hope incident).
+- [x] Remove the obsolete temporary-file toggle while retaining legacy config loading.
+- [x] Repair PyPI packaging and publish the safety releases to Docker, GitHub and PyPI.
+- [x] Fix startup/reload secret logging and configuration percent-value round trips in 1.7.6.
+- [x] Deploy and verify 1.7.6 on the NAS, as recorded in the 2026-10-15 release evidence. The 1.7.5 production deployment was superseded, not separately executed.
+
+**Still open from the release:** browser confirmation of the Waiting badge/reason and manual-release confirmation OK/Cancel paths. Implemented and API-tested does not mean these visual checks are complete. Credential rotation and one-time Done-group cleanup are operator follow-ups; their completion is not established by the milestone records.
+
+### Next: Reliability — Phase 120 onward (not yet planned)
+
+- [ ] Reassess the remaining import/cleanup recovery gaps against Phase 119 before planning more fixes. Early-episode credit and restart arm-on-commit are already delivered; specifically check unmatched events that arrive before a model match exists and any remaining restart cleanup gaps.
+- [ ] Ensure shutdown cleans up other processes and queues even when one component fails.
+- [ ] Bound scanner-result buffering when the controller stalls.
+- [ ] Check StreamQueue overflow correctness; bounded memory alone does not prove dropped events are harmless.
+- [ ] Improve memory measurements to distinguish current usage, child-process usage and historical peaks.
+- [ ] Finish the two outstanding browser checks and close the Done-group incident verification.
+- [ ] Address the already-deferred dev/test dependency advisory (999.4, braces via karma) and related dependency maintenance, with scope confirmed during planning.
+
+Detailed phases and the release version remain TBD. Do not repeat fixes already delivered in Phase 119.
+
+### Later: Targeted performance and usability (not yet planned)
+
+- [ ] Reduce unnecessary UI updates and eager debug serialization.
+- [ ] Avoid rebuilding the webhook lookup when no events need processing, while preserving pending-notice re-evaluation.
+- [ ] Recheck and fix remaining LAN connection-test restrictions and unnecessary token forwarding to GitHub.
+- [ ] Update any setup/configuration documentation still inconsistent with actual behavior; account for documentation already updated in Phase 119.
+
+**Scope boundaries:** retain LFTP; no broad architecture rewrite or path-aware import redesign. Payload-size evidence (999.1) and old review-state migration are retired proposals. The webob/cgi warning cleanup is routine dependency maintenance, not a standalone backlog project. Preserve existing phase/backlog folders; no blanket milestone-start cleanup.
+
+**Evidence:** `milestones/v1.7.4-MILESTONE-AUDIT.md`, `milestones/v1.7.5-MILESTONE-AUDIT.md`, and `phases/119-safety-follow-ups-and-1-7-5-release/119-05-SUMMARY.md`.
+
+## Phases
+
+<details>
+<summary>v1.0 Unify UI Styling (Phases 1-5) - SHIPPED 2026-02-03</summary>
+
+- [x] Phase 1: Bootstrap SCSS Setup (1/1 plans) - completed 2026-02-03
+- [x] Phase 2: Color Variable Consolidation (2/2 plans) - completed 2026-02-03
+- [x] Phase 3: Selection Color Unification (1/1 plans) - completed 2026-02-03
+- [x] Phase 4: Button Standardization - File Actions (2/2 plans) - completed 2026-02-03
+- [x] Phase 5: Button Standardization - Other Pages (2/2 plans) - completed 2026-02-03
+
+See `.planning/milestones/v1.0-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v1.1 Dropdown & Form Migration (Phases 6-8) - SHIPPED 2026-02-04</summary>
+
+- [x] Phase 6: Dropdown Migration (1/1 plans) - completed 2026-02-04
+- [x] Phase 7: Form Input Standardization (1/1 plans) - completed 2026-02-04
+- [x] Phase 8: Final Polish (2/2 plans) - completed 2026-02-04
+
+See `.planning/milestones/v1.1-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v1.2 UI Cleanup (Phase 9) - SHIPPED 2026-02-04</summary>
+
+- [x] Phase 9: Remove Obsolete Buttons (1/1 plans) - completed 2026-02-04
+
+See `.planning/milestones/v1.2-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v1.3 Polish & Clarity (Phases 10-11) - SHIPPED 2026-02-04</summary>
+
+- [x] Phase 10: Lint Cleanup (4/4 plans) - completed 2026-02-04
+- [x] Phase 11: Status Dropdown Counts (1/1 plans) - completed 2026-02-04
+
+See `.planning/milestones/v1.3-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v1.4 Sass @use Migration (Phases 12-14) - SHIPPED 2026-02-08</summary>
+
+- [x] Phase 12: Shared Module Migration (1/1 plans) - completed 2026-02-08
+- [x] Phase 13: Styles Entry Point (1/1 plans) - completed 2026-02-08
+- [x] Phase 14: Validation (1/1 plans) - completed 2026-02-08
+
+See `.planning/milestones/v1.4-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v1.5 Backend Testing (Phases 15-19) - SHIPPED 2026-02-08</summary>
+
+- [x] Phase 15: Coverage Tooling & Shared Fixtures (1/1 plans) - completed 2026-02-08
+- [x] Phase 16: Common Module Tests (1/1 plans) - completed 2026-02-08
+- [x] Phase 17: Web Handler Unit Tests (2/2 plans) - completed 2026-02-08
+- [x] Phase 18: Controller Unit Tests (2/2 plans) - completed 2026-02-08
+- [x] Phase 19: Coverage Baseline & Validation (1/1 plans) - completed 2026-02-08
+
+See `.planning/milestones/v1.5-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v1.6 CI Cleanup (Phases 20-21) - SHIPPED 2026-02-10</summary>
+
+- [x] Phase 20: CI Workflow Consolidation (1/1 plans) - completed 2026-02-09
+- [x] Phase 21: Test Runner Cleanup (1/1 plans) - completed 2026-02-10
+
+See `.planning/milestones/v1.6-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v1.7 Sonarr Integration (Phases 22-25) - SHIPPED 2026-02-10</summary>
+
+- [x] Phase 22: Configuration & Settings UI (2/2 plans) - completed 2026-02-10
+- [x] Phase 23: API Client Integration (2/2 plans) - completed 2026-02-10
+- [x] Phase 24: Status Visibility & Notifications (2/2 plans) - completed 2026-02-10
+- [x] Phase 25: Auto-Delete with Safety (2/2 plans) - completed 2026-02-10
+
+See `.planning/milestones/v1.7-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v1.8 Radarr + Webhooks (Phases 26-28) - SHIPPED 2026-02-11</summary>
+
+- [x] Phase 26: Radarr Config & Shared *arr Settings UI (2/2 plans) - completed 2026-02-11
+- [x] Phase 27: Webhook Import Detection (2/2 plans) - completed 2026-02-11
+- [x] Phase 28: Fix Pre-existing Test Failures (1/1 plans) - completed 2026-02-11
+
+See `.planning/milestones/v1.8-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v2.0 Dark Mode & Polish (Phases 29-32) - SHIPPED 2026-02-12</summary>
+
+- [x] Phase 29: Theme Infrastructure (2/2 plans) - completed 2026-02-11
+- [x] Phase 30: SCSS Audit & Color Fixes (2/2 plans) - completed 2026-02-12
+- [x] Phase 31: Theme Toggle UI (1/1 plans) - completed 2026-02-12
+- [x] Phase 32: Cosmetic Fixes (1/1 plans) - completed 2026-02-12
+
+See `.planning/milestones/v2.0-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v3.0 Terminal UI Overhaul (Phases 33-38) - SHIPPED 2026-02-17</summary>
+
+- [x] Phase 33: Foundation (3/3 plans) - completed 2026-02-17
+- [x] Phase 34: Shell (2/2 plans) - completed 2026-02-17
+- [x] Phase 35: Dashboard (3/3 plans) - completed 2026-02-17
+- [x] Phase 36: Secondary Pages (2/2 plans) - completed 2026-02-17
+- [x] Phase 37: Theme Cleanup (1/1 plans) - completed 2026-02-17
+- [x] Phase 38: Terminal Polish & Traceability (1/1 plans) - completed 2026-02-17
+
+See `.planning/milestones/v3.0-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v3.1 Harden & Fix (Phases 39-46) - SHIPPED 2026-02-24</summary>
+
+- [x] Phase 39: Critical Security Chain (2/2 plans) - completed 2026-02-24
+- [x] Phase 40: Credential & Endpoint Security (3/3 plans) - completed 2026-02-24
+- [x] Phase 41: Thread Safety (2/2 plans) - completed 2026-02-24
+- [x] Phase 42: Crash Prevention (3/3 plans) - completed 2026-02-24
+- [x] Phase 43: Frontend Quality (3/3 plans) - completed 2026-02-24
+- [x] Phase 44: Code Quality (5/5 plans) - completed 2026-02-24
+- [x] Phase 45: Documentation & Accessibility (3/3 plans) - completed 2026-02-24
+- [x] Phase 46: Code Review Fixes (4/4 plans) - completed 2026-02-24
+
+See `.planning/milestones/v3.1-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v3.2 Security Hardening II (Phases 47-51) - SHIPPED 2026-02-26 / 2026-03-22</summary>
+
+- [x] Phase 47: Isolated Backend Hardening (3/3 plans) - completed 2026-02-25
+- [x] Phase 48: Config and Webhook Layer (2/2 plans) - completed 2026-02-26
+- [x] Phase 49: Path Traversal Guards (1/1 plans) - completed 2026-02-26
+- [x] Phase 50: API Token Authentication (3/3 plans) - completed 2026-03-22 (via M002)
+- [x] Phase 51: CSP Hardening (1/1 plans) - completed 2026-03-22 (via M002)
+
+</details>
+
+<details>
+<summary>M001-M010 + v4.0.x Hotfixes (Phase 52) - SHIPPED 2026-03-21 to 2026-04-08</summary>
+
+- [x] M001: Angular 21 Migration - 3 slices - completed 2026-03-21
+- [x] M002: Finish v3.2 Security - 3 slices - completed 2026-03-22
+- [x] M003: UI Redesign -- Earthy Palette - 6 slices - completed 2026-03-25
+- [x] M004: Polish & Dependencies - 4 slices - completed 2026-03-24
+- [x] M005: Dashboard Polish - 2 slices - completed 2026-03-24
+- [x] M006: Deep Moss + Layout - 3 slices - completed 2026-03-25
+- [x] M007: Settings Redesign - 2 slices - completed 2026-03-26
+- [x] M008: AutoQueue + Token UI - 2 slices - completed 2026-03-27
+- [x] M009: Deep Review Fixes - 4 slices - completed 2026-03-28
+- [x] M010: Docs & v4.0.0 Release - completed 2026-03-28
+- [x] Phase 52: Dependency Fixes & CI Validation (1/1 plans) - completed 2026-04-08
+
+</details>
+
+<details>
+<summary>v1.0.0 SeedSyncarr Rebrand (Phases 53-61) - SHIPPED 2026-04-13</summary>
+
+- [x] **Phase 53: New Repo & Atomic Rename** - completed 2026-04-08
+- [x] **Phase 54: Archive Old Repo** - completed 2026-04-08
+- [x] **Phase 55: Code Hardening** - completed 2026-04-08
+- [x] **Phase 56: Test Quality** - completed 2026-04-08
+- [x] **Phase 57: README & Community Health** - completed 2026-04-09
+- [x] **Phase 58: Docs Site** - completed 2026-04-09
+- [x] **Phase 59: Community Launch** - completed 2026-04-09
+- [x] **Phase 60: Dependency Updates** - completed 2026-04-09
+- [x] **Phase 61: Branding Integration** - completed 2026-04-13
+
+</details>
+
+<details>
+<summary>v1.1.0 UI Redesign -- Triggarr Style (Phases 62-74) - SHIPPED 2026-04-19</summary>
+
+- [x] Phase 62: Nav Bar Foundation (2/2 plans) - completed 2026-04-15
+- [x] Phase 63: Dashboard -- Stats Strip & Transfer Table (2/2 plans) - completed 2026-04-15
+- [x] Phase 64: Dashboard -- Log Pane (1/1 plans) - completed 2026-04-14
+- [x] Phase 65: Settings Page (2/2 plans) - completed 2026-04-15
+- [x] Phase 66: Logs Page (2/2 plans) - completed 2026-04-15
+- [x] Phase 67: About Page (2/2 plans) - completed 2026-04-14
+- [x] Phase 68: UI Polish (2/2 plans) - completed 2026-04-15
+- [x] Phase 69: E2E Selector Update (1/1 plans) - completed 2026-04-15
+- [x] Phase 70: Drilldown Segment Filters (2/2 plans) - completed 2026-04-15
+- [ ] ~~Phase 71: push stable release~~ -- dropped (never planned)
+- [x] Phase 72: Restore dashboard file selection and action bar (5/5 plans) - completed 2026-04-19
+- [x] Phase 73: Dashboard filter for every torrent status (5/5 plans) - completed 2026-04-19
+- [x] Phase 74: Storage capacity tiles (4/4 plans) - completed 2026-04-19
+
+See `.planning/milestones/v1.1.0-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v1.1.1 Post-Redesign Cleanup & Outstanding Work (Phases 75-82) - SHIPPED 2026-04-23</summary>
+
+- [x] Phase 75: Per-Child Import State (GH #19) (4/4 plans) - completed 2026-04-20
+- [x] Phase 76: Multiselect Bulk-Bar Action Union (4/4 plans) - completed 2026-04-20
+- [x] Phase 77: Deferred Playwright E2E (Phases 72+73) (4/4 plans) - completed 2026-04-21
+- [x] Phase 78: Storage Tile Live-Seedbox UAT (2/2 plans) - completed 2026-04-21
+- [x] Phase 79: Test Infra Cleanup (2/2 plans) - completed 2026-04-22
+- [x] Phase 80: Small Cleanups (Dependabot + arm64 + enum) (3/3 plans) - completed 2026-04-22
+- [x] Phase 81: Optional Fernet Encryption at Rest (3/3 plans) - completed 2026-04-22
+- [x] Phase 82: Release Prep (Retro v1.1.0 Notes + v1.1.1 Tag) (4/4 plans) - completed 2026-04-23
+
+See `.planning/milestones/v1.1.1-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>v1.1.2 Test Suite Audit (Phases 83-86) - SHIPPED 2026-04-24</summary>
+
+**Milestone Goal:** Identify and remove stale, redundant, or dead-path tests inherited from the original SeedSync repo -- lean the test suite to only test current behavior.
+
+- [x] **Phase 83: Python Test Audit** - Identify and remove stale Python backend tests (completed 2026-04-24)
+- [x] **Phase 84: Angular Test Audit** - Identify and remove stale Angular unit tests (completed 2026-04-24)
+- [x] **Phase 85: E2E Test Audit** - Identify and remove redundant Playwright specs (completed 2026-04-24)
+- [x] **Phase 86: Final Validation** - Full CI green and coverage baseline documented (completed 2026-04-24)
+
+See `.planning/milestones/v1.1.2-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>✅ v1.2.0 Test & Quality Hardening (Phases 87-96) — SHIPPED 2026-04-28</summary>
+
+- [x] Phase 87: Python Test Fixes -- Critical & Warning (2/2 plans) — completed 2026-04-25
+- [x] Phase 88: Python Test Fixes -- Medium & Cleanup (3/3 plans) — completed 2026-04-25
+- [x] Phase 89: Python Test Architecture (2/2 plans) — completed 2026-04-25
+- [x] Phase 90: Angular Test Fixes (2/2 plans) — completed 2026-04-27
+- [x] Phase 91: E2E Test Fixes & Platform (2/2 plans) — completed 2026-04-27
+- [x] Phase 92: E2E Infrastructure (2/2 plans) — completed 2026-04-27
+- [x] Phase 93: CI & Docker Hardening (3/3 plans) — completed 2026-04-28
+- [x] Phase 94: Test Coverage -- Backend (2/2 plans) — completed 2026-04-28
+- [x] Phase 95: Test Coverage -- E2E (2/2 plans) — completed 2026-04-28
+- [x] Phase 96: Rate Limiting & Tooling (3/3 plans) — completed 2026-04-28
+
+See `.planning/milestones/v1.2.0-ROADMAP.md` for full details.
+
+</details>
+
+<details>
+<summary>✅ v1.3.0 — Slice 1 of 4: Test Coverage Gaps (Phases 97-100) — SHIPPED 2026-05-31</summary>
+
+**Milestone Goal:** Close the 8 test coverage gaps catalogued in CONCERNS.md — 4 Medium-priority gaps get full path coverage, 4 Low-priority gaps get a targeted regression test. Trivial bugs found while testing (<10 net lines, no public-API or observable-behavior change) are fixed in the same plan; larger findings deferred to v1.4.0. Milestone ends with ratcheted CI coverage thresholds and before/after numbers recorded below.
+
+- [x] **Phase 97: Medium-Priority Python Coverage** - Baseline capture + full-path coverage for MP-logger, SSRF, LFTP parser (completed 2026-05-28)
+- [x] **Phase 98: Medium-Priority Angular Coverage** - Full-path end-to-end XSS coverage for confirm-modal escapeHtml (completed 2026-05-29)
+- [x] **Phase 99: Low-Priority Python Coverage** - Targeted regression tests for auto-delete toggle and BoundedOrderedSet eviction (completed 2026-05-29)
+- [x] **Phase 100: Low-Priority Angular Coverage + CI Ratchet** - SSE timeout + auth interceptor regressions, then ratchet pytest + Karma thresholds (completed 2026-05-29)
+
+### Coverage Ratchet — Before / After
+
+Baseline anchor: `.planning/milestones/v1.3.0-COVERAGE-BASELINE.md` (captured at start of Phase 97, against `main` HEAD).
+
+| Layer | Threshold | Before | After |
+|-------|-----------|--------|-------|
+| Python (`fail_under` in `[tool.coverage.report]`) | line | 85.19% host/provisional (excludes real-lftp suite); floor 84; container-inclusive re-measure = 89.27% (Plan 100-03) | **89.27%** container-inclusive (1278 passed, 62 skipped); floor raised **84 → 88** (margin 1%, floor(89.27)−1=88, strictly > 84) |
+| Angular (Karma `coverageReporter.check.global`) | statements / branches / functions / lines | 83.34% / 69.01% / 79.73% / 84.21% (no Karma global threshold before) | **84.14% / 69.46% / 80.49% / 84.99%** (post-100-01/02); floors set **83 / 68 / 79 / 83** (margin 1%, floor(measured)−1, first thresholds strictly > 0) |
+
+*Filled in during Plan 97-baseline (before) and Plan 100-03 (after). The ratchet is monotonic — only increases.*
+
+</details>
+
+<details>
+<summary>✅ v1.3.0 — Slice 2 of 4: Known Bugs + Security (Phases 101-103) — SHIPPED 2026-06-01</summary>
+
+**Milestone Goal:** Fix the 7 approved Known-Bugs + Security items from CONCERNS.md buckets 2 + 3 (plus rolled-forward test-infra item INFRA-01) — close the webhook fail-open gap and the log-injection surface, add webhook rate-limiting and config-response normalization, harden auto-delete Timer lifecycle, eliminate the Angular `innerHTML` XSS sink and the SSE same-tick subscription leak. Several code paths already have slice-1 (v1.3.0) regression tests pinning current behavior — reuse them and land fixes test-first where feasible. **This slice cuts no git tag**; the single `v1.3.0` tag is cut only after slice 4 of the 4-slice program completes.
+
+**GSD internal label:** `v1.3.0-s2`. Source: `.planning/codebase/CONCERNS.md` (Known Bugs + Security) + `.planning/REQUIREMENTS.md`.
+
+- [x] **Phase 101: Webhook + Log-Injection Security Cluster** - Webhook fails closed without a secret, log-injection sanitizer audit, webhook rate-limiting, config-response normalization (BUG-02, SEC-01, SEC-03, SEC-02) (completed 2026-05-31)
+- [x] **Phase 102: Controller Concurrency** - Auto-delete Timer in-flight shutdown guard (BUG-03). *(INFRA-01 deferred to a later v1.3.0 slice — a spawn-safe fix requires a production-module change to MultiprocessingLogger's queue context, which exceeds INFRA-01's "lowest priority; must not expand the milestone, test-only" constraint. See Phase 102 notes.)* (completed 2026-06-01)
+- [x] **Phase 103: Angular Defects** - Replace ConfirmModal innerHTML sink with Renderer2 (incl. skipCount hardening), SSE registry same-tick subscription teardown (BUG-01, BUG-04) (completed 2026-06-01)
+
+</details>
+
+<details>
+<summary>✅ v1.3.0 — Slice 3 of 4: Frontend Deps + Dead Code (Phases 104-106) — SHIPPED 2026-06-01</summary>
+
+**Milestone Goal:** Remove three end-of-life / unmaintained Angular dependencies (jQuery 4, Font Awesome 4.7, css-element-queries) and move the development-only mock-model fixtures out of the production bundle via Angular `fileReplacements`. Every removal follows an audit → replace/confirm-unused → drop → verify-build-bundle-CI rhythm. No tag is cut; the single `v1.3.0` tag is cut only after slice 4 completes.
+
+**GSD internal label:** `v1.3.0-s3`. Source: `.planning/codebase/CONCERNS.md` (Dependencies at Risk + Tech Debt) + `.planning/REQUIREMENTS.md`.
+
+- [x] **Phase 104: Light Dependency Removals** - Confirm jQuery 4 and css-element-queries have no source usage, then drop both deps; bundle shrinks and Bootstrap interactions are unaffected (DEPS-01a, DEPS-01c) — completed 2026-06-01
+- [x] **Phase 105: Font Awesome → Phosphor Migration** - Inventory every remaining `fa-*` icon class in templates, replace each with its Phosphor equivalent, then remove the font-awesome dep; no icon renders missing (DEPS-01b) (completed 2026-06-01)
+- [x] **Phase 106: Mock-Fixture Bundle Hygiene** - Move `USE_MOCK_MODEL` toggle into `environment.ts`, relocate mock files out of `services/files/`, exclude via `fileReplacements`; production bundle contains none of the mock data (DEPS-02) (completed 2026-06-01)
+
+</details>
+
+✅ v1.3.0 — Slice 4 of 4: Backend Architecture Refactor + Test Infra (Phases 107-109) — SHIPPED 2026-06-02
+
+**Milestone Goal:** Close the four backend architecture and test-infra items promoted from the CONCERNS.md Architecture/Maintainability and Tech Debt sections — fix the MP-logger spawn-context bug that blocks `spawn`-mode analog tests on macOS, make `Config` secret-field discovery declarative via `PROP(secret=True)`, deduplicate the five per-action bulk-handler scaffolds into a shared helper, and decompose the 1115-line `Controller` god-class into cohesive single-responsibility collaborators. All ARCH items are behavior-preserving; the existing test suite is the regression net throughout. This is the **final** slice of the 4-slice v1.3.0 program — the single `v1.3.0` tag is cut when this slice completes, preceded by the batched pre-release walkthrough.
+
+**GSD internal label:** `v1.3.0-s4`. Source: `.planning/codebase/CONCERNS.md` (Architecture/Maintainability + Tech Debt) + `.planning/REQUIREMENTS.md`.
+
+- [x] **Phase 107: MP-Logger Spawn Safety** - Production fix to `multiprocessing_logger.py` so the logger queue is created from a shared `spawn`-compatible context; three previously-failing spawn-context analog tests now pass on both macOS and Linux (INFRA-01) (completed 2026-06-01)
+- [x] **Phase 108: Config + Handler Refactors** - Push `secret=True` into each `PROP` declaration so encrypt/decrypt/redact loops discover secrets dynamically (ARCH-02); extract a shared `_dispatch_command(...)` helper from the five duplicate per-action handlers (ARCH-03) (completed 2026-06-01)
+- [x] **Phase 109: Controller Decomposition** - Decompose the `Controller` god-class into cohesive collaborators with single responsibilities; public surface and all caller contracts are preserved; existing test suite stays green throughout (ARCH-01) (completed 2026-06-02)
+
+✅ v1.4.0 — Launch-Hardening for Public Release (Phases 110-113) — SHIPPED 2026-06-03
+
+**Milestone Goal:** Make SeedSyncarr's public-facing surface — both the code a skeptical engineer reads and the presentation a visitor sees — bulletproof enough to withstand a technical Reddit (r/selfhosted) launch. The work is two largely-disjoint tracks plus one cross-cutting change: a bounded hostile-reader discovery pass that gates fix scope (SCAN), the `/server/config/set` GET→POST hard cutover (CFG — the one breaking HTTP-contract change, credentials no longer in URLs/logs), a defensive-guards/code-hardening cluster (GUARD — unsafe-default warnings, logged delete failures, the AppProcess spawn fix, repo hygiene), and a presentation/launch-readiness rebuild (LAUNCH — cynical-reader teardown + codex pass driving README/SECURITY.md/community-health/release-notes, screenshots at the walkthrough, repo-metadata drafted for manual application). Code substance is already strong (post-v1.3.0 audit found zero active functional bugs); the launch risk is presentation underselling real quality plus a few specific items a hostile reader would find.
+
+**GSD internal label:** `v1.4.0`. Source: `.planning/codebase/CONCERNS.md` (Tech Debt + Security Considerations + Test Coverage Gaps) + the approved design spec + `.planning/REQUIREMENTS.md`.
+
+**CI gates every code phase (110-112) must hold:** Python `fail_under` ≥ 88; Angular Karma `check.global` floors stmts/branches/fns/lines 83/68/79/83; full suite green on amd64 + arm64. **No release/tag/version work happens inside any phase** — the single `v1.4.0` tag is a milestone-end orchestrator/maintainer action on branch `launch-hardening` after the NAS walkthrough, CI green, and maintainer sign-off.
+
+- [x] **Phase 110: Hostile-Reader Discovery Pass** - Bounded "what would a skeptical r/selfhosted engineer flag" audit producing a triaged, severity-ranked findings artifact; each finding marked fold-into-fix-phase (with target) or parked (with rationale); gates fix scope for phases 111-112 (SCAN-01, SCAN-02) (completed 2026-06-02)
+- [x] **Phase 111: Config-Set Endpoint Migration** - The one breaking change: `/server/config/set` GET→POST hard cutover (JSON body), legacy GET path fully removed, Angular `ConfigService` + E2E setup/page-objects updated, on-disk config format unchanged (CFG-01, CFG-02, CFG-03, CFG-04) (completed 2026-06-02)
+- [x] **Phase 112: Defensive Guards & Code Hardening** - Unsafe-default startup warnings (non-loopback bind w/o api_token; webhook w/o secret), logged delete-path failures (replace `ignore_errors=True`), AppProcess spawn-context fix (failing test goes green), `.gitignore` for run artifacts, legacy `~/.seedsync` fallback warning (GUARD-01..06) — 3 plans (1 wave) (completed 2026-06-02)
+- [x] **Phase 113: Presentation & Launch Readiness** - Cynical-reader teardown + codex adversarial pass driving a README / SECURITY.md / community-health / release-notes rebuild; Playwright screenshots captured at the milestone-end walkthrough; repo-metadata text drafted for manual maintainer application (LAUNCH-01..06) — 4 plans (3 waves) (completed 2026-06-03)
+
+✅ v1.4.1 — Scanner Auto-Recovery (Phases 114-115) — SHIPPED 2026-06-22 (tagged `v1.5.0`)
+
+**Milestone Goal:** The seedbox scanner survives transient DNS/network blips and recovers from controller death on its own, instead of silently freezing the file list for days until a manual container restart. Three cohesive behaviors on the same controller/scanner error-handling path: (1) reclassify transient name-resolution failures (`Could not resolve hostname` / `Name or service not known` / a momentary `Bad hostname`) as recoverable so the scanner retries with bounded backoff rather than dying; (2) a bounded-retry guard so a genuinely wrong / persistently-unresolvable hostname or bad credentials still stops and surfaces to the user after a capped number of attempts — no infinite-retry loop that masks a real config error; (3) a controller auto-restart safety net so a permanent-class controller death recovers via the existing `ServiceRestart` path instead of staying down (`server.up=False`) forever. This is a tightly-scoped regression fix that **wires together infrastructure already present in `src/python/`** — no new mechanisms are invented.
+
+**GSD internal label:** `v1.4.1`. Source: resolved debug session `seedbox-files-not-showing` (root-caused 2026-06-19; prior variant `hold-the-dream-not-syncing`) + `.planning/REQUIREMENTS.md`. Two phases: **Phase 114** is the scanner/controller code change (SCAN-01, SCAN-02, SCAN-03, RECOV-01) — one coherent change to the same code path, over-decomposition explicitly avoided. **Phase 115** is a disjoint dependency/security-maintenance track (DEPS-01, DEPS-02) — clearing the open Dependabot security alerts + merging the open Dependabot PRs, each gated on CI green. The two are separated because they have different verification (a code-path regression fix vs. CI-green-per-merge mechanical dependency maintenance with 0 open alerts after).
+
+**CI gate:** Python full suite green AND `ruff check src/python/` clean — note that CI runs ruff as a **separate gate from pytest**, so build-verify must run ruff whole-tree (not just the touched files), not only the test suite. No release/tag/version work happens inside the phase.
+
+- [x] **Phase 114: Scanner Auto-Recovery** - Reclassify transient name-resolution failures as recoverable so the scanner retries with bounded backoff (SCAN-01, SCAN-02); surface the failure to the user unchanged once retries are exhausted so real config errors still stop (SCAN-03); auto-restart the controller via the existing `ServiceRestart` path after a permanent-class death, itself bounded so an unrecoverable condition doesn't become a restart loop (RECOV-01) (completed 2026-06-21)
+  - **Plans:** 2 plans (1 wave)
+  - [x] 114-01-PLAN.md — SCAN-01/02/03: NAME_RESOLUTION_ERROR_PATTERNS tuple + _is_name_resolution_ssh_error matcher + bounded in-scan retry loop in RemoteScanner.scan() with byte-for-byte exhaustion surface (wave 1)
+  - [x] 114-02-PLAN.md — RECOV-01: pure _should_auto_restart helper + bounded consecutive-restart cap with stayed-up reset wired into seedsyncarr.py run()/main() via the existing ServiceRestart path (wave 1)
+- [x] **Phase 115: Dependency & Security Maintenance** - Merge all 7 open Dependabot dependency PRs (#60–#66), each gated on CI green (DEPS-02 ✅). Clear all open Dependabot security alerts (DEPS-01 ✅): **8 of 8 cleared, 0 open.** 7 cleared by #60–#66 (2 HIGH hono/undici + all 5 MEDIUM); the final HIGH — piscina alert #37 (prototype-pollution→RCE), transitively pinned to 5.1.4 by `@angular/build ^22.0.2` — closed by follow-on PR #67 adding npm `overrides` entry `piscina >=5.2.0`, CI-gated (Angular build/Karma/E2E all green confirmed the pin tolerates 5.2.0) and SHA-pin-merged to main (39133ff); alert #37 auto-closed. DEPS-01 fully met. (plans executed 2026-06-22)
+  - **Plans:** 1 plan (1 wave)
+  - [x] 115-01-PLAN.md — Re-verify live PR/alert state, then squash-merge all 7 Dependabot PRs CI-green-gated one-at-a-time in security-first order (#64→#65→#66→#60→#61→#62→#63), then end-state gate: 0 open alerts + 7 MERGED + local whole-tree ruff 0.15.17 clean (wave 1)
+
+✅ v1.7.4 — Safety Patch (Phases 116-118) — SHIPPED 2026-10-09 (tagged `v1.7.4`)
+
+**Milestone Goal:** Protect users from incorrect deletion and transfer-state decisions, shipped promptly as patch release 1.7.4. Five confirmed defects, grouped into three phases ordered by risk: (1) **deletion safety** — `Controller.__check_webhook_imports` builds `name_to_root` last-writer-wins, so a webhook import whose basename matches more than one model path can be credited to the wrong release or satisfy per-child coverage for a file that was never imported, arming auto-delete wrongly; the patch conservatively rejects ambiguous matches. (2) **transfer-state safety** — `PgetJobParser.parse_header` pops the line after `sftp` unconditionally (a pget with no data line swallows the next job's header), `Lftp.status()` returns `[]` on tolerated parse errors (active transfers lose protection), and `latest_remote_scan_time` / `latest_local_scan_time` advance on failed scans (stability "established" with no fresh evidence). (3) **durable state** — `Persist.to_file` truncates in place, so a failed save corrupts `settings.cfg`, the controller persist, or the auto-queue persist; writes become temp-file + fsync + `os.replace` + directory fsync. All three are Python-only, behavior-narrowing fixes with no on-disk format change and no UI work.
+
+**GSD internal label:** `v1.7.4`. Source: approved design spec `docs/superpowers/specs/2026-10-08-safety-patch-design.md` (authoritative for phase split, fix contracts, and regression tests) + `.planning/REQUIREMENTS.md`. Phase A (116) lands first; per the spec it may ship alone if 117/118 slip, otherwise all three ship as one patch.
+
+**CI gate every phase must hold:** full Python suite green AND `ruff check src/python/` clean whole-tree (CI runs ruff as a **separate gate from pytest**); Python `fail_under` ≥ 88 holds. Each targeted regression test must be shown to fail against the old behavior before its fix lands (REL-01 gate 1). No version bump or tag inside Phases 116-117 — the release gate (REL-01) is Phase 118's closing criterion and the milestone close.
+
+- [x] **Phase 116: Import Safety** - `name_to_root` keeps every distinct model path per lowercased basename; a webhook import resolving to two or more distinct paths (across releases, case-only root differences, root-equals-child-basename, or repeated basenames inside one release) is rejected with no import record, no coverage credit, no badge, no auto-delete timer, and one sanitized warning naming the candidate roots; a unique match (including repeated references to the same path) behaves exactly as before (IMPORT-01, IMPORT-02) (completed 2026-10-08)
+- [x] **Phase 117: Transfer-State Safety** - LFTP parser never consumes the next job's header (other next-line-consuming sites audited); unparseable status is reported as *unavailable* (`None`), never `[]`, with the existing `MAX_CONSECUTIVE_STATUS_ERRORS` boundary pinned exactly and no downstream consumer collapsing unavailable into "no jobs"; remote and local stability clocks advance only on successful scans while the UI "last scan" timestamp keeps its meaning (XFER-01, XFER-02, XFER-03, XFER-04, XFER-05) (completed 2026-10-09)
+- [x] **Phase 118: Durable State** - `Persist.to_file` writes atomically (serialize first → 0600 temp in target dir → write/flush/fsync → `os.replace` commit point → best-effort directory fsync) so any pre-replace failure leaves the original byte-for-byte intact with no temp file left behind; then the 1.7.4 release gate — regressions fail-before/pass-after, full suite + ruff, release-image smoke test, `:1.7.4` NAS deploy with scanner recovery confirmed by a subsequent successful scan (PERSIST-01, PERSIST-02, REL-01) (completed 2026-10-09)
+
+✅ v1.7.5 — Safety Release (Phases 119, 119.1) — SHIPPED 2026-10-15 (tagged `v1.7.5`, `v1.7.6`; `1.7.6` deployed)
+
+- [x] **Phase 119: Safety Follow-ups and 1.7.5 Release** — LFTP resync after timeout, auto-delete submitted-unobserved guard, incomplete-import prevention with visible holds + one-shot manual release, persisted per-episode import credit, PyPI packaging repair; 1.7.5 released (XFER-06, DEL-01, IMP-01..03, REL-02, REL-03) (completed 2026-10-15)
+- [x] **Phase 119.1: Startup log secrets fix and 1.7.6 release** (INSERTED) — no config secrets in startup/reload logs; 1.7.6 released and deployed to NAS by digest (SEC-01, REL-03 NAS portion, REL-04) (completed 2026-10-15)
+
+Full details: `milestones/v1.7.5-ROADMAP.md`; audit: `milestones/v1.7.5-MILESTONE-AUDIT.md` (tech_debt accepted).
+
+## Phase Details
+
+### Phase 101: Webhook + Log-Injection Security Cluster
+
+**Goal**: The webhook endpoint and the backend log surface are hardened — an operator can opt in (new flag, default off) to make an unconfigured webhook secret fail closed instead of accepting unauthenticated calls (default behavior unchanged for backward compat), every remote-/user-supplied string is sanitized before it reaches a log line, the webhook endpoint is rate-limited like other mutable endpoints, and the config GET response no longer leaks secret-present vs unset beyond the explicit boolean flag.
+**Depends on**: Phase 100 (slice 1 complete — green CI, ratcheted coverage floors)
+**Requirements**: BUG-02, SEC-01, SEC-03, SEC-02
+**Success Criteria** (what must be TRUE):
+
+  1. **BUG-02 (opt-in fail-closed, highest priority — must NOT break backward compat):** A new config flag (default **off**) gates fail-closed behavior. With the flag **on** and no secret configured, a POST to the webhook endpoint is rejected with **503** before the body is parsed. With the flag **off** (default), existing behavior is preserved exactly — no secret → HMAC skipped + loud startup warning (honors the `Empty webhook_secret skips HMAC` decision). With a secret configured, valid HMAC requests still succeed unchanged. Existing config files load with no new required field. The flag + required-secret expectation are surfaced to the operator (startup warning / docs).
+  2. Every backend log site that interpolates remote-/webhook-/user-supplied strings (controller.py, lftp/job_status_parser.py, controller/webhook_manager.py, and any other audited site) passes the value through a CR/LF/control-char sanitizer — a crafted filename containing `\r\n` can no longer forge a second log line (CWE-117) (SEC-01).
+  3. The webhook endpoint is wrapped with the same v1.2.0 sliding-window rate-limit middleware used on other mutable endpoints, tuned to legitimate *arr callback frequency; over-limit calls get a generic 429 (SEC-03).
+  4. The config GET response shape is identical whether a given secret is set or unset, apart from the existing explicit boolean flag — no length, key-presence, or value-shape difference distinguishes the two (SEC-02).
+  5. **Cross-cutting (COMPAT):** no breaking changes on upgrade — existing config files load unchanged (no new required fields), and status codes/response shapes for already-supported paths are unchanged. CI green on amd64 + arm64 (Python + Angular + E2E); Python `fail_under` ≥ 88 holds or rises; security fixes log no sensitive data and return generic client errors with detail logged server-side. No release/tag/version work in this phase.
+
+**Plans**: 6 plans (3 waves)
+
+- [x] 101-01-PLAN.md — SEC-01: shared `sanitize_log_value()` CWE-117 helper in `common/types.py` (CR/LF + control chars) + unit tests (wave 1, leaf dependency)
+- [x] 101-02-PLAN.md — BUG-02 + SEC-03: opt-in `webhook_require_secret` fail-closed 503 (guard outside rate_limit, before body parse) + first-run default, per-route rate-limit (60/60s → 429), startup warning (wave 1)
+- [x] 101-03-PLAN.md — SEC-02: config GET response always serializes secret value fields as `""` on both auth paths (wave 1)
+- [x] 101-04-PLAN.md — SEC-01: apply `sanitize_log_value()` at the webhook/command cluster (webhook_manager ×2, controller.py:790/792/760/975/1075) (wave 2, depends on 101-01)
+- [x] 101-05-PLAN.md — SEC-01: apply `sanitize_log_value()` at the auto-delete timer cluster (controller.py:229/820/841/848/866/876/897/926/948) + model-layer (model.py:81/97/112) (wave 3, depends on 101-04)
+- [x] 101-06-PLAN.md — SEC-01: apply `sanitize_log_value()` at the lftp cluster (lftp.py kill 356/362/365 + __run_command output 126/129/144/147/148, job_status_parser.py:724/725) (wave 2, depends on 101-01) — lftp sites brought in-scope after adversarial-review round 2
+
+### Phase 102: Controller Concurrency
+
+**Goal**: The auto-delete `threading.Timer` lifecycle is safe across controller shutdown — pending timers are tracked and cancelled, and a callback that has already fired no-ops when shutdown is in progress so no deletion (and no persist-state mutation) runs against a half-torn-down model.
+**Depends on**: Phase 101
+**Requirements**: BUG-03 (INFRA-01 deferred — see note below)
+**Success Criteria** (what must be TRUE):
+
+  1. Every auto-delete `threading.Timer` is registered when scheduled and cancelled on controller shutdown; after shutdown completes, no pending auto-delete Timer remains armed (BUG-03). *(Already shipped in Phase 101 Plan 05 — verified by test in this phase, no new production code.)*
+  2. A Timer callback that fires while shutdown is in progress detects the shutdown flag and no-ops — it performs no model read, no persist-state mutation, and no `delete_local` dispatch against a torn-down model. The shutdown signal (a dedicated `threading.Event`) is **set under `__auto_delete_lock`**, and the callback's final guard + `imported_children.pop` + `delete_local` decision is **serialized on the same lock**, so "shutdown begins before dispatch ⇒ no dispatch" holds strictly (no preempt-after-check race). The existing slice-1 auto-delete toggle/dry-run regression tests still pass (BUG-03).
+  3. **Cross-cutting (COMPAT):** no breaking changes on upgrade — existing config files and on-disk persist formats load unchanged. CI green on amd64 + arm64 (Python); Python `fail_under` ≥ 88 holds or rises; no concurrency fix logs sensitive data; generic client errors with server-side detail. No release/tag/version work in this phase.
+
+> **INFRA-01 deferred (decision 2026-05-31).** Adversarial review (codex, confirmed by a live repro) found the MP-logger spawn-safe fix cannot be done test-only: the `MultiprocessingLogger` queue is created in the default (fork) context, and handing a fork-context queue to a `spawn` child raises `RuntimeError: A SemLock created in a fork context is being shared with a process in a spawn context`. A correct fix requires creating the queue from a shared `spawn` context — a **production-module change** that violates INFRA-01's "lowest priority; include only if it does not expand the milestone" constraint (REQUIREMENTS.md) and the test-only intent (D-08). INFRA-01 is therefore deferred to a later v1.3.0 slice where a production change to `MultiprocessingLogger` is in scope. Phase 102 still delivers its primary requirement, BUG-03.
+
+**Plans**: 1 plan (1 wave)
+
+- [x] 102-01-PLAN.md — BUG-03: add a dedicated `threading.Event` in-flight shutdown guard to `__execute_auto_delete`, with the final guard + persist-pop + `delete_local` serialized under `__auto_delete_lock` and the event set under the same lock in `exit()` (test-first red→green, reusing the real-Timer Event-gated harness); criterion #1 timer-cancel-on-exit verified by test only (already shipped) (wave 1)
+
+### Phase 103: Angular Defects
+
+**Goal**: The confirmation modal renders without any raw `innerHTML` sink — content is built structurally via `Renderer2` (or a standalone Angular component) so escaping is structural rather than string-concatenation dependent (folding in the deferred `skipCount` type-erasure hardening) — and the SSE stream-service registry never leaves an orphaned subscription when a reconnect fires in the same tick as a timeout.
+**Depends on**: Phase 102
+**Requirements**: BUG-01, BUG-04
+**Success Criteria** (what must be TRUE):
+
+  1. `ConfirmModalService` builds modal content with no raw `innerHTML` assignment — content nodes are created via `Renderer2`/`createText` or a structural Angular component; the slice-1 escapeHtml XSS regression suite still passes (no behavioral regression for existing callers) (BUG-01).
+  2. The `skipCount` interpolation is hardened — the value is coerced via `Number()` and/or escaped so a `toString()`-overriding object can no longer inject markup through the `skipMessage` path; the slice-1 skipCount runtime-boundary probe still passes (BUG-01 fold-in).
+  3. When a reconnect fires in the same tick as a timeout in the stream-service registry, the prior EventSource/subscription is torn down before its replacement is created — exactly one active subscription remains, no orphan; the slice-1 SSE heartbeat-vs-timeout race regression test still passes (BUG-04).
+  4. **Cross-cutting (COMPAT):** no breaking changes to existing UI behavior or observable component APIs. CI green on amd64 + arm64 (Angular + E2E); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; no client-visible behavior regression in confirm-modal or SSE reconnect. No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+**UI hint**: yes
+
+### Phase 104: Light Dependency Removals
+
+**Goal**: jQuery 4 and css-element-queries are confirmed unused in Angular source and removed from `package.json`; the production bundle no longer ships either library and all Bootstrap-driven UI interactions remain fully functional.
+**Depends on**: Phase 103 (slice 2 complete — green CI, all Angular floors held)
+**Requirements**: DEPS-01a, DEPS-01c
+**Success Criteria** (what must be TRUE):
+
+  1. A grep/audit of `src/angular/src/` confirms zero direct `import`/`require` of `jquery`, `$`, or `jQuery`, and zero use of `ResizeObserver`-based API from `css-element-queries` — confirming both are exclusively transitive and can be removed without a replacement (DEPS-01a, DEPS-01c).
+  2. `jquery` and `css-element-queries` are removed from `src/angular/package.json`; `npm install` resolves cleanly with no peer-dependency warnings attributable to these removals; `ng build --configuration production` completes without error (DEPS-01a, DEPS-01c).
+  3. The production bundle (`ng build` output) contains no `jquery` chunk and no `css-element-queries` chunk — confirmed by inspecting build stats or `grep` over the dist directory; total bundle size is equal to or smaller than the pre-removal baseline (DEPS-01a, DEPS-01c).
+  4. All Bootstrap-driven interactions — dropdowns, modals, and collapses used in the dashboard, settings, and nav — render and function correctly in a dev-server smoke test; no console errors referencing jQuery or missing dependencies (DEPS-01a).
+  5. CI is green on amd64 + arm64 (Angular unit + E2E; Python unaffected but stays green); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; Python `fail_under` ≥ 88 unchanged. No release/tag/version work in this phase.
+
+**Plans**: 2 plans (2 waves)
+
+- [x] 104-01-PLAN.md — DEPS-01a + DEPS-01c: audit zero-usage + capture pre-removal bundle baseline, then drop jquery and css-element-queries from package.json as two atomic commits (D-03), regenerating package-lock.json (wave 1)
+- [x] 104-02-PLAN.md — DEPS-01a + DEPS-01c: production build + before/after bundle delta (D-02) + dist residual-string grep + Karma floors + manual Bootstrap-interaction smoke test (D-01) (wave 2, depends on 104-01)
+
+**UI hint**: yes
+
+### Phase 105: Font Awesome to Phosphor Migration
+
+**Goal**: Every `fa-*` icon class usage in Angular templates is replaced with its `@phosphor-icons/web` equivalent, the `font-awesome` 4.7 package is removed from `package.json`, and no icon renders missing or visually degraded — only one icon library ships in the production bundle.
+**Depends on**: Phase 104
+**Requirements**: DEPS-01b
+**Success Criteria** (what must be TRUE):
+
+  1. A complete inventory of all `fa-*` class usages in `src/angular/src/` templates (`.html` files and inline templates in `.ts` files) is documented; every usage is mapped to an explicit Phosphor equivalent before any code change lands (DEPS-01b).
+  2. Every former `fa-*` class is replaced with its Phosphor equivalent (`ph ph-*` or `ph-bold ph-*` as appropriate); a grep over the built dist and source confirms zero remaining `fa-` class strings in production-relevant files (DEPS-01b).
+  3. `font-awesome` is removed from `src/angular/package.json`; `npm install` and `ng build --configuration production` complete cleanly; the Font Awesome CSS and font files are absent from the production bundle (DEPS-01b).
+  4. A visual smoke test (dev server or screenshot comparison) confirms every icon location that previously rendered an `fa-*` icon now renders a visible Phosphor icon of comparable intent — no blank squares, no missing glyphs, no layout shifts (DEPS-01b).
+  5. CI is green on amd64 + arm64 (Angular unit + E2E); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; Python `fail_under` ≥ 88 unchanged; production bundle size is equal to or smaller than the Phase 104 baseline. No release/tag/version work in this phase.
+
+**Plans**: 4 plans (3 waves)
+
+- [x] 105-01-PLAN.md — D-01: complete 39-class fa→ph mapping table + 8-ambiguous-icon user sign-off checkpoint (gates ambiguous-icon code) + D-07 BEFORE bundle baseline (wave 1, leaf, autonomous:false) — completed 2026-06-01
+- [x] 105-02-PLAN.md — DEPS-01b: migrate the files cluster (dashboard-log-pane/stats-strip/transfer-row/transfer-table/bulk-actions-bar) incl. the net-new .ph-spin CSS rule + corrected ph-prohibit + 3 specs (wave 2, depends 105-01)
+- [x] 105-03-PLAN.md — DEPS-01b: migrate the settings/logs/main clusters across all 5 edit layers, keeping coordinated dynamic-binding edits (options-list.ts + {{icon}} prefix; NAV_ICONS + [ngClass]) together, incl. corrected ph-computer-tower + notification-bell spec (wave 2, depends 105-01)
+- [x] 105-04-PLAN.md — DEPS-01b: D-06 closing act — drop font-awesome from package.json + both angular.json styles lines + lock regen, AFTER build + dist/source residual grep + D-07 bundle delta + Karma floors + D-04 dev-server smoke test (wave 3, depends 105-02+105-03, autonomous:false)
+
+**UI hint**: yes
+
+### Phase 106: Mock-Fixture Bundle Hygiene
+
+**Goal**: The development-only mock-model fixture data is fully excluded from the production bundle — `USE_MOCK_MODEL` becomes a build-time environment flag, the fixture files move to a non-service directory, and Angular `fileReplacements` ensures the mock data is tree-shaken from production output while the dev-mode toggle still works when the env flag is set.
+**Depends on**: Phase 105
+**Requirements**: DEPS-02
+**Success Criteria** (what must be TRUE):
+
+  1. `USE_MOCK_MODEL` is removed as a hardcoded class field from `view-file.service.ts` and replaced with an import from `src/angular/src/environments/environment.ts`; `environment.prod.ts` sets the flag to `false` (DEPS-02).
+  2. `mock-model-files.ts` and `screenshot-model-files.ts` are relocated out of `services/files/` (e.g. to `src/angular/src/app/tests/fixtures/`) and imported only behind the environment-flag branch; `src/angular/angular.json` includes a `fileReplacements` entry that swaps in a stub or omits the fixture files entirely in the production configuration (DEPS-02).
+  3. A production build (`ng build --configuration production`) produces a dist that contains none of the mock data — confirmed by grepping for a distinctive string from `mock-model-files.ts` (e.g. a mock filename literal) in the bundled JS output (DEPS-02).
+  4. A development build (`ng build` or `ng serve` without `--configuration production`) with the env flag enabled correctly renders mock file rows in the dashboard, confirming the dev-mode path still functions end-to-end (DEPS-02).
+  5. CI is green on amd64 + arm64 (Angular unit + E2E); Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) hold or rise; Python `fail_under` ≥ 88 unchanged; production bundle size is measurably smaller than the Phase 105 baseline (mock data removed). No release/tag/version work in this phase.
+
+**Plans**: 2 plans (2 waves)
+
+- [x] 106-01-PLAN.md — DEPS-02 mechanism + autonomous proof: add `useMockModel` env flag (both env files), repoint `view-file.service.ts` to `environment.useMockModel`, `git mv` `mock-model-files.ts` → `tests/fixtures/`, add empty prod stub, second `angular.json` production `fileReplacements` entry, delete dead `screenshot-model-files.ts`; then AFTER prod build + bundle delta + dist absence-grep (`A Really Cool Video About Cats`) + Karma floors (wave 1)
+- [x] 106-02-PLAN.md — DEPS-02 COMPAT half: dev-mode smoke-test checkpoint — `ng serve` with `useMockModel: true` renders mock rows from the relocated fixture (wave 2, depends 106-01, autonomous:false)
+
+**UI hint**: yes
+
+### Phase 107: MP-Logger Spawn Safety
+
+**Goal**: The `MultiprocessingLogger` queue is created from a shared `spawn`-compatible multiprocessing context so the logger works correctly on both `fork` (Linux default) and `spawn` (macOS default) start methods, and the three previously-failing spawn-context analog tests pass on both platforms.
+**Depends on**: Phase 106 (slice 3 complete — green CI, all floors held)
+**Requirements**: INFRA-01
+**Success Criteria** (what must be TRUE):
+
+  1. `python/common/multiprocessing_logger.py` creates its internal queue via a shared `spawn`-compatible `multiprocessing` context (e.g. `multiprocessing.get_context("spawn").Queue()` or equivalent), so a queue handed to a `spawn`-started child no longer raises `RuntimeError: A SemLock created in a fork context is being shared with a process in a spawn context` (INFRA-01).
+  2. The three `MultiprocessingLogger` analog tests that previously required skipping or failed on macOS (spawn context) now run and pass without modification to the test code; the fix is entirely in the production module (INFRA-01).
+  3. Existing `fork`-based logging behavior is unchanged — the Python test suite (including all existing `MultiprocessingLogger` tests) still passes on Linux (fork default); no test is deleted or skipped to accommodate the fix (INFRA-01, COMPAT).
+  4. **Cross-cutting (COMPAT):** no change to observable logging output, log levels, log destinations, or any public `MultiprocessingLogger` API. CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises (3 previously-uncounted tests now counted; coverage holds or increases); Angular and E2E suites unaffected. No release/tag/version work in this phase.
+
+**Plans**: 1 plan (1 wave)
+
+- [x] 107-01-PLAN.md — INFRA-01: create the MultiprocessingLogger queue from a stored spawn-compatible context (get_context("spawn").Queue) and promote the three analog tests' process_1 closures to module-scope spawn targets launched via that context (wave 1, autonomous)
+
+### Phase 108: Config + Handler Refactors
+
+**Goal**: `Config` secret-field discovery is fully declarative — each secret field carries `secret=True` in its `PROP` declaration and the encrypt/decrypt loops iterate property metadata instead of a hand-maintained tuple — and the five per-action HTTP handlers share a single `_dispatch_command(...)` scaffold eliminating the duplicated boilerplate.
+
+> **Scope amendments (2026-06-01, user-approved during plan-phase review):**
+> - **Redact path descoped from ARCH-02.** The API-response *redaction* path (`web/serialize/serialize_config.py` `_SENSITIVE_FIELDS`) is an **independent, intentional superset** of the 5-field encrypt set — it also redacts the Lftp connection fields `remote_address`/`remote_username`/`remote_path`, which are NOT encrypted-at-rest and NOT secrets. Coupling redaction to the `secret=True` encryption metadata would either drop those 3 from redaction (info-disclosure regression) or wrongly encrypt them. Redaction (info-disclosure) and encryption-at-rest are deliberately kept as separate concerns. ARCH-02 therefore covers the **encrypt + decrypt** declarative discovery only; `_SENSITIVE_FIELDS` stays as-is. Criteria #1/#2 below are amended accordingly.
+> - **Bulk loop descoped from ARCH-03 (per CONTEXT D-03).** `_dispatch_command` backs the five single-action handlers only; `_process_bulk_commands` stays byte-identical (its parallel-queue / per-file-timeout / partial-failure semantics must not change). CONCERNS.md lists bulk sharing the helper as optional. Criterion #4 below is amended accordingly.
+**Depends on**: Phase 107
+**Requirements**: ARCH-02, ARCH-03
+**Success Criteria** (what must be TRUE):
+
+  1. Each of the five secret fields (`api_token`, `webhook_secret`, `sonarr_api_key`, `radarr_api_key`, `remote_password`) has `secret=True` in its `PROP` declaration; the `_SECRET_FIELD_PATHS` hand-maintained tuple (or equivalent) is removed; the encrypt and decrypt code paths discover secret fields dynamically from property metadata and cover exactly the same set of fields as before — no field is silently added or dropped (ARCH-02). *(Redaction is out of scope per the goal's scope amendment — `_SENSITIVE_FIELDS` is an independent superset and stays as-is.)*
+  2. A new secret field can be added by declaring it `secret=True` in its `PROP` without touching any other file; the encrypt/decrypt paths pick it up automatically — verified by adding a temporary `secret=True` field in a test and confirming the dynamic discovery API surfaces it and it round-trips through Fernet encryption (ARCH-02).
+  3. Existing plaintext and Fernet-encrypted config files load, round-trip, and redact identically before and after the refactor — no on-disk format change, no behavioral change for any currently-encrypted field (ARCH-02, COMPAT).
+  4. A shared `_dispatch_command(action, file_name, success_msg, *, guard=False)` helper (or equivalent) is extracted in `web/handler/controller.py` and used by all five `__handle_action_*` methods; the duplicated 15-line scaffold is gone from each individual handler (ARCH-03). *(The bulk-action loop is explicitly deferred per the goal's scope amendment / CONTEXT D-03 — `_process_bulk_commands` stays byte-identical and does NOT route through the helper.)*
+  5. Every single-action and bulk-action endpoint (`/server/command/queue`, `/stop`, `/extract`, `/delete_local`, `/delete_remote`, and their `/bulk` equivalents) returns the same success/partial-failure HTTP response shapes and status codes as before the refactor — confirmed by the existing integration test suite staying green (ARCH-03, COMPAT). CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises; no test deleted. No release/tag/version work in this phase.
+
+**Plans**: 2 plans (1 wave — independent, disjoint files, both autonomous)
+
+- [x] 108-01-PLAN.md — ARCH-02: extend `InnerConfig.PropMetadata` with a `secret` flag, mark the five secret PROPs `secret=True`, build a dynamic `secret_fields()` discovery API (3-tuple `(attr, field, ini_section)`, section derived structurally from the owning subclass), repoint config.py encrypt/decrypt loops + seedsyncarr.py startup hook, delete `_SECRET_FIELD_PATHS` (no alias); new auto-discovery test + Fernet round-trip suite stays green (wave 1, autonomous)
+- [x] 108-02-PLAN.md — ARCH-03: extract `_dispatch_command(action, file_name, success_msg, *, guard=False)` in `web/handler/controller.py`, collapse the five `__handle_action_*` scaffolds to one-line delegates (guard=True for extract/delete_local/delete_remote), leave the bulk path byte-identical; existing single-action + integration suites pass unmodified (wave 1, autonomous)
+
+### Phase 109: Controller Decomposition
+
+**Goal**: The `Controller` god-class (`python/controller/controller.py`, ~1115 lines) is decomposed into cohesive single-responsibility collaborators — the public surface the rest of the app depends on (constructor, `start`/`exit`, command entry points, the model the web layer reads) is preserved unchanged, and the full pre-refactor test suite stays green throughout.
+**Depends on**: Phase 108
+**Requirements**: ARCH-01
+**Success Criteria** (what must be TRUE):
+
+  1. The `controller` package contains clearly-named collaborator modules (e.g. a command-dispatch module, an auto-delete lifecycle module, a model/scan pipeline coordinator) each with a single coherent responsibility; no single new module exceeds ~350 lines; `controller.py` itself is thinned to a facade or coordinator that delegates to these collaborators (ARCH-01).
+  2. The public API the web layer depends on is preserved exactly: the `Controller` constructor signature, `start()`, `exit()`, all command entry-point method names, and the model-access interface (`get_model_files()` or equivalent) are unchanged — no file outside the `controller` package requires modification (ARCH-01, COMPAT).
+  3. The full pre-refactor Python test suite passes without modification or deletion — no test is changed to accommodate the decomposition; all existing `Controller` integration and unit tests continue to exercise the same observable behaviors as before (ARCH-01, COMPAT).
+  4. Thread-safety invariants are preserved — the `__model_lock`, `__auto_delete_lock`, and the documented "release lock before subprocess spawn" contract are maintained across the decomposition; no new lock acquisition ordering is introduced that could create a deadlock (ARCH-01).
+  5. **Cross-cutting (COMPAT):** no user-observable behavior change, no HTTP-contract change, no on-disk config/persist format change. CI green on amd64 + arm64 (Python primary; Angular + E2E unaffected but must stay green); Python `fail_under` ≥ 88 holds or rises; no test deleted. No release/tag/version work in this phase — the single `v1.3.0` tag is a milestone-end action for the orchestrator after the batched pre-release walkthrough.
+
+**Plans**: 3 plans (3 waves — sequential per D-06; all touch controller.py)
+
+- [x] 109-01-PLAN.md — ARCH-01: extract `command_processor.py` (the four `__handle_*_command` bodies → `CommandProcessor.handle()`); `__process_commands` stays on Controller and delegates after releasing `__model_lock` (wave 1, autonomous)
+- [x] 109-02-PLAN.md — ARCH-01: extract `auto_delete_manager.py` (BFS pack-guard + coverage logic → `run_bfs_and_coverage`); `__schedule_auto_delete` + `__execute_auto_delete` stay on Controller as the lock harness, WR-02 ordering preserved verbatim (wave 2, depends_on 109-01, autonomous)
+- [x] 109-03-PLAN.md — ARCH-01: extract `model_pipeline.py` (scan→build→diff→apply stages → `ModelPipeline.update_model`); `__update_model` thins to a delegate, accessors + `_should_update_capacity` + `_update_controller_status` + `__check_webhook_imports` stay on Controller; coordinator thinned toward ~350 lines (wave 3, depends_on 109-02, autonomous)
+
+### Phase 110: Hostile-Reader Discovery Pass
+
+**Goal**: A maintainer has a triaged, severity-ranked findings artifact that captures what a skeptical r/selfhosted engineer reviewing the public repo would flag — produced by a bounded discovery pass over the entry points, the project's existing tooling under launch framing, and the highest-traffic source files — with every finding explicitly marked "fold into a v1.4.0 fix phase" (with target phase) or "parked" (with one-line rationale). This phase **gates the fix scope** for Phases 111-112: it runs first so any genuinely high-visibility findings inform those phases before they are planned in detail.
+**Depends on**: Phase 109 (v1.3.0 shipped — clean main, branch `launch-hardening` cut from it)
+**Requirements**: SCAN-01, SCAN-02
+**Success Criteria** (what must be TRUE):
+
+  1. A written findings artifact exists that lists, organized by severity, what a skeptical engineer reviewing the public repo would flag — produced by reading the entry points (`seedsyncarr.py`, the web app, the Angular shell), running the project's existing tooling under launch framing (ruff whole-tree, Semgrep/Shield, dependency audit), and skimming the highest-traffic source files (SCAN-01).
+  2. Each finding in the artifact carries an explicit disposition: either "fold into a v1.4.0 fix phase" naming the target phase (111 CFG or 112 GUARD), or "parked" with a one-line rationale — so scope decisions are traceable rather than implicit (SCAN-02).
+  3. The pass is bounded — it does not turn into an open-ended refactor hunt; findings that are real but low-visibility for a launch reader are parked with rationale (e.g. the already-deferred shutdown-readiness Event, StreamQueue non-atomic drop), consistent with the milestone's explicit Out-of-Scope and Future-Requirements decisions (SCAN-02, D-3).
+  4. The artifact's fold-in list is reconciled against the already-scoped GUARD/CFG requirements: any high-visibility finding not already covered by a v1.4.0 requirement is surfaced to the maintainer as a scope decision (add to a fix phase, or park) before Phases 111-112 are planned (SCAN-02).
+
+**Plans**: 1 plan (1 wave)
+
+- [x] 110-01-PLAN.md — SCAN-01 + SCAN-02: run the read-only audit tool suite (ruff whole-tree, Semgrep/Shield + gitleaks, pip-audit, npm audit) + the AppProcess red test, read entry points/high-traffic files/README under launch framing, confirm the six pre-named fix items, and synthesize `110-FINDINGS.md` (severity rollup + per-finding FOLD/PARK disposition); maintainer findings checkpoint (autonomous:false)
+
+> **Gating note:** This phase has a findings checkpoint (autonomous:false is appropriate) — the maintainer reviews the triaged artifact and confirms the fold-in vs parked dispositions before Phases 111-112 are planned in detail. No production code changes land in this phase; it produces the discovery artifact only.
+
+### Phase 111: Config-Set Endpoint Migration
+
+**Goal**: The `/server/config/set` endpoint is migrated from the credential-leaking `GET /server/config/set/{section}/{key}/{value}` path-segment form to a `POST` with a JSON body (`{section, key, value}`) — a **hard cutover** (the GET path is fully removed, not deprecated-but-live) — so credential values no longer travel in URLs, server access logs, browser history, or reverse-proxy logs. The change spans the backend handler, the Angular `ConfigService`, and the E2E setup script + page objects. This is the one breaking HTTP-contract change in v1.4.0; the on-disk persisted config format is unchanged.
+**Depends on**: Phase 110 (findings dispositions confirmed — any config-surface finding folded in here is known before planning)
+**Requirements**: CFG-01, CFG-02, CFG-03, CFG-04
+**Success Criteria** (what must be TRUE):
+
+  1. A client sets a config value by sending a `POST` to `/server/config/set` with a JSON body (`{section, key, value}`); credential values no longer appear as URL path segments anywhere — confirmed by inspecting server access logs, and by the absence of value-bearing path segments in the route (CFG-01).
+  2. The legacy `GET /server/config/set/{section}/{key}/{value}` route no longer exists — a request to it returns a not-found / method-not-allowed response; the credential-leaking path is fully removed, not deprecated-but-live (CFG-02).
+  3. The Settings page saves configuration successfully end-to-end against the new POST endpoint — the Angular `ConfigService` (`src/angular/src/app/services/settings/config.service.ts`) and the E2E setup script (`src/docker/test/e2e/configure/setup_seedsyncarr.sh`) + page objects (`src/e2e/tests/settings.page.ts`) all use POST, and a saved setting round-trips and persists across a reload (CFG-03).
+  4. Existing on-disk config files (plaintext and Fernet-encrypted) load unchanged after the migration — there is no config-format change and no user migration step for saved settings; the migration is purely the HTTP transport (CFG-04).
+  5. **Cross-cutting (COMPAT + CI):** the POST endpoint reuses the existing config/set rate-limit (60/60s) and any existing auth/redaction behavior; CI is green on amd64 + arm64 (Python + Angular + E2E — the E2E setup must complete against the new endpoint); Python `fail_under` ≥ 88 holds or rises; Karma `check.global` floors 83/68/79/83 hold or rise. No release/tag/version work in this phase.
+
+**Plans**: 3 plans (2 waves)
+
+Plans:
+
+- [x] 111-01-PLAN.md — Backend contract: POST /server/config/set handler + GET route removal + migrated Python tests (wave 1; CFG-01/02/04)
+- [x] 111-02-PLAN.md — Angular client: RestService.post body + ConfigService.set POST + migrated spec (wave 2; CFG-01/03)
+- [x] 111-03-PLAN.md — E2E: setup-script curls + Playwright page objects/fixtures to POST (wave 2; CFG-01/03)
+
+**UI hint**: yes
+
+### Phase 112: Defensive Guards & Code Hardening
+
+**Goal**: The remaining "a hostile reader will notice this" code items are closed — the app stops being *quietly* unsafe (loud startup warnings for insecure-by-silence defaults), a silently-swallowed local-delete failure now leaves a log signal, the currently-failing `AppProcess` spawn-context test goes green via a production fix, and two cheap repo-hygiene tells are fixed. All default *behavior* stays backward-compatible — these guards add visibility and a test fix, not breaking changes. Any high-visibility finding folded in from Phase 110 that fits this cluster lands here.
+**Depends on**: Phase 110 (findings dispositions confirmed); independent of Phase 111
+**Requirements**: GUARD-01, GUARD-02, GUARD-03, GUARD-04, GUARD-05, GUARD-06
+**Success Criteria** (what must be TRUE):
+
+  1. When the server binds to a non-loopback interface with no `api_token` configured, the operator sees a prominent startup warning that API endpoints are unauthenticated; and when the webhook endpoint is reachable with no `webhook_secret` set and `webhook_require_secret` off, the operator sees a prominent startup warning that webhooks are unauthenticated — in both cases the default behavior is unchanged, the unsafe posture is simply no longer silent (GUARD-01, GUARD-02).
+  2. When a local delete (`shutil.rmtree`) partially fails, the failure is logged with context rather than silently swallowed — `ignore_errors=True` is replaced with explicit error handling so a failed delete leaves an observable signal in the logs; the delete-path tests assert the logged-failure signal (GUARD-03).
+  3. The full Python test suite passes under both `fork` and `spawn` start methods — the previously-failing `test_app_process.py::test_process_with_long_running_thread_terminates_properly` now passes with **no test deleted or skipped**, because `AppProcess` creates its `Queue()`/`Event()` from a spawn-compatible multiprocessing context (same fix pattern as the shipped INFRA-01 MP-logger fix) (GUARD-04).
+  4. Tooling/run artifacts (`.orchestrator.json`, `.playwright-mcp/`) are git-ignored so a repo browser never sees stray local artifacts and they cannot be accidentally committed — `git check-ignore` returns success for both (GUARD-05).
+  5. When startup falls back to the legacy `~/.seedsync` config directory because the configured `--config_dir` is absent, the operator sees a loud one-time warning (or the fallback is gated behind an explicit opt-in) rather than silently loading a pre-fork config (GUARD-06).
+  6. **Cross-cutting (COMPAT + CI):** no default-behavior change beyond added warnings/logging and the test fix; existing config files and on-disk persist formats load unchanged. CI green on amd64 + arm64; Python `fail_under` ≥ 88 holds or rises (GUARD-04 brings a previously-failing test green; coverage holds or increases); no test deleted or skipped. No release/tag/version work in this phase.
+
+**Plans**: 3 plans (1 wave — all file-disjoint, fully parallel)
+
+- [x] 112-01-PLAN.md — GUARD-04 (AppProcess `__getstate__`/`__setstate__` spawn-safe pickling; red test goes green under spawn + fork) + GUARD-05 (`.gitignore` `.orchestrator.json` + `.playwright-mcp/`) (wave 1)
+- [x] 112-02-PLAN.md — GUARD-01 (`[SECURITY]` prominence prefix) + GUARD-02 (accept-any-caller warning suppressed in fail-closed `require_secret=True` state) + GUARD-06 (legacy `~/.seedsync` fallback warning emitted through the configured logger via Option A flag-threading), test-first (wave 1)
+- [x] 112-03-PLAN.md — GUARD-03 (replace `ignore_errors=True` with `try/except OSError` + `logger.exception` + `sanitize_log_value`, best-effort preserved; new `TestDeleteLocalProcess` failure-path test), test-first (wave 1)
+
+### Phase 113: Presentation & Launch Readiness
+
+**Goal**: The project's public-facing surface is rebuilt so its genuine quality is evident in 30 seconds to a skeptical r/selfhosted visitor — a cynical-reader teardown plus a codex adversarial pass produce the hostile critique first, then a README / SECURITY.md / community-health / release-notes rewrite addresses it. Playwright screenshots are captured at the milestone-end walkthrough against the NAS-deployed branch build (not during phase execution), and copy-paste-ready repo-metadata text is drafted for the maintainer to apply manually. This track is independent of the code phases (110-112) and is sequenced last for a clean single-threaded execution order.
+**Depends on**: Phase 112 (sequenced last; presentation reflects the hardened code from 111-112, so the README/SECURITY.md claims are accurate to the shipped state)
+**Requirements**: LAUNCH-01, LAUNCH-02, LAUNCH-03, LAUNCH-04, LAUNCH-05, LAUNCH-06
+**Success Criteria** (what must be TRUE):
+
+  1. A maintainer can read a written "cynical r/selfhosted reader" teardown of the current presentation (README, positioning, first impression), and a codex adversarial pass over the drafted README/docs flags technical-claims accuracy, broken/incomplete install steps, and unsupported assertions — both critiques captured **before** the rewrite is finalized (LAUNCH-01).
+  2. A visitor reading the README understands what SeedSyncarr is within seconds — a clear one-line description, an above-the-fold screenshot, an honest feature list, accurate install/quickstart instructions, the security posture stated plainly as a selling point, and a short note on the relationship to the original SeedSync fork (LAUNCH-02).
+  3. The repo includes a `SECURITY.md` with a vulnerability-reporting policy and a short honest threat-model note (what is protected and what the opt-in security knobs are for), plus accurate community-health files — `CONTRIBUTING.md`, issue templates, a PR template, and a correct `LICENSE` — so their absence does not read as "not a serious project" (LAUNCH-04, LAUNCH-05).
+  4. A clean v1.4.0 release-notes entry exists so the releases page is presentable, and copy-paste-ready GitHub repo-metadata text (About description, topics/tags, homepage link) is drafted for the maintainer to apply manually (LAUNCH-06).
+  5. **Walkthrough-deferred (LAUNCH-03):** the README/docs screenshots showing the redesigned UI are captured via Playwright **at the milestone-end walkthrough against the NAS-deployed branch build** — not during phase execution — and any staged state is flagged so nothing misrepresents real behavior. **Manual maintainer actions outside phase execution:** applying the drafted repo-metadata (part of LAUNCH-06) and the actual git push / publish are done by the maintainer, not inside this phase.
+
+**Plans**: 4 plans (3 waves)
+
+- [x] 113-01-PLAN.md — First-draft README/SECURITY/CONTRIBUTING/CoC/CHANGELOG (claim-accurate to shipped code) + mechanical LICENSE.txt→LICENSE rename + README badge/link fix (wave 1)
+- [x] 113-02-PLAN.md — Cynical-reader teardown artifact (113-TEARDOWN.md) of the current presentation (wave 1, parallel)
+- [x] 113-03-PLAN.md — Codex adversarial content pass over the drafts (113-CODEX-PASS.md) (wave 2, depends on 113-01)
+- [x] 113-04-PLAN.md — Finalize docs addressing both critiques + wire 3 canonical screenshot refs (capture deferred to walkthrough) + repo-metadata draft (113-REPO-METADATA.md) (wave 3, depends on 113-01/02/03)
+
+**UI hint**: yes
+
+### Phase 114: Scanner Auto-Recovery
+
+**Goal**: The seedbox scanner self-heals across transient network/DNS blips and the controller recovers from a permanent-class death on its own — so the file list keeps updating without a manual container restart — while a genuinely wrong hostname or bad credentials still stops and surfaces to the user instead of being masked by an infinite retry loop. This is a single coherent change to the existing controller/scanner error-handling path, reusing infrastructure already present in `src/python/` (`sshcp.py` PERMANENT/TRANSIENT patterns + `_is_transient_ssh_error`; `remote_scanner.py` recoverable classification + `_is_permanent_ssh_error` + `first_run` strictness; `scanner_process.py` `ScannerError` recoverable flag; `scan_manager.py` `propagate_exceptions` / `_check_process_health` / `ScannerProcessDiedError`; `seedsyncarr.py` `run()` `AppError` catch gated on `args.exit`; `common/error.py` `ServiceRestart`) — no new mechanisms are invented.
+**Depends on**: Phase 113 (v1.4.0 shipped on `main`)
+**Requirements**: SCAN-01, SCAN-02, SCAN-03, RECOV-01
+**Success Criteria** (what must be TRUE):
+
+  1. After a transient remote name-resolution blip during a scan (an SSH error matching `Could not resolve hostname` / `Name or service not known`, or a momentary `Bad hostname`), the scanner recovers and resumes updating the file list **without a manual restart** — the failure is classified as recoverable and the scan is retried rather than terminating the scanner (SCAN-01).
+  2. Recoverable scan failures are retried with **bounded backoff** — a capped number of attempts, never an infinite loop — so a flapping name-resolution condition cannot spin forever (SCAN-02).
+  3. A genuinely wrong / persistently-unresolvable hostname or bad credentials still **surfaces an error to the user after the bounded retries are exhausted, exactly as today** (the controller reports the failure / `server.up=False` with the error message) — the retry path never silently masks a permanent configuration error (SCAN-03).
+  4. When the controller dies from a permanent-class error, it **auto-restarts via the existing `ServiceRestart` recovery path** instead of staying down (`server.up=False`) indefinitely; recovery is itself bounded so a genuinely unrecoverable condition does not become a restart loop (RECOV-01).
+  5. **Cross-cutting (regression + CI):** existing scanner/controller behavior for the already-correctly-classified permanent and transient cases is preserved (no functional regression); the full Python suite is green **and** `ruff check src/python/` is clean — note CI runs ruff as a **separate gate from pytest**, so verification must run ruff whole-tree, not only the touched files. No release/tag/version work in this phase.
+
+**Plans**: TBD
+
+### Phase 115: Dependency & Security Maintenance
+
+**Goal**: Every open Dependabot security alert is cleared and every open Dependabot dependency PR is merged, each merge gated on a green CI run — so the public repo shows zero open security alerts and a clean dependency state. This is mechanical dependency/security maintenance kept disjoint from the Phase 114 code change: as of 2026-06-21 the open surface is **8 security alerts** (3 HIGH: `hono` CORS-credentials reflection → patched 4.12.25, `piscina` prototype-pollution→RCE → patched 5.2.0, `undici` TLS-cert-validation bypass → patched 7.28.0; 5 MEDIUM: 4× `hono`, 1× `undici` cross-user info disclosure) and **7 Dependabot PRs** (#60 pyinstaller, #61 ruff, #62 testfixtures, #63 pytest — Python dev-deps; #64 npm_and_yarn group of 18 updates incl. `piscina`; #65 hono; #66 undici — JS), where the open PRs collectively remediate all 8 alerts. Decision: merge **all 7** PRs for a full cleanup. No release/tag/version work happens in-phase — the single `v1.4.1` tag is a milestone-end action.
+**Depends on**: Phase 114 (same milestone; sequenced after the code change so the dependency churn lands on a green, post-fix tree). Independent of Phase 114's code path — disjoint files (manifests/lockfiles vs. `src/python/` scanner/controller).
+**Requirements**: DEPS-01, DEPS-02
+**Success Criteria** (what must be TRUE):
+
+  1. After the upgrades, all **8** Dependabot security alerts show closed/resolved — `0 open` alerts on the repo (the 3 HIGH `hono`/`piscina`/`undici` and the 5 MEDIUM `hono`/`undici` items are all remediated to their patched versions) (DEPS-01).
+  2. All **7** open Dependabot PRs (#60–#66) are merged, and each is merged **only after its own CI run is green** — no PR is merged on a red or pending CI (DEPS-02).
+  3. The 18-update npm group PR (#64) is merged **without regressing the Angular build or the Karma/Playwright E2E gates** — `ng build` succeeds and the Karma `check.global` floors (stmts/branches/fns/lines 83/68/79/83) and the Playwright suite hold on amd64 + arm64 (DEPS-02).
+  4. After the Python dev-dep bumps (#60–#63), the Python suite is green **and** `ruff check src/python/` is clean — note `ruff` itself bumps in #61 and CI runs `ruff` as a **separate gate from pytest**, so verification must run ruff whole-tree, not only pytest, with the new ruff version (DEPS-02).
+  5. **Cross-cutting (scope guard):** no release/tag/version work happens inside this phase — bumping the app version and cutting the single `v1.4.1` tag are milestone-end actions, not part of this dependency-maintenance phase (DEPS-01, DEPS-02).
+
+**Plans**: 1 plan (1 wave)
+
+### Phase 116: Import Safety
+
+**Goal**: A Sonarr/Radarr webhook import can never be credited to the wrong release or satisfy per-child coverage for a file that was not imported — so auto-delete is only ever armed by an unambiguous match — while every unambiguous import keeps today's exact behavior. The fix is contained to the `name_to_root` lookup in `Controller.__check_webhook_imports` (`src/python/controller/controller.py`): the lookup keeps every distinct model path per lowercased basename; a resolution to exactly one distinct path proceeds as before; a resolution to two or more distinct paths is rejected (no `imported_file_names` entry, no `add_imported_child` record, no import badge, no auto-delete timer) with one CWE-117-sanitized warning naming the candidate roots. Ambiguity applies both across releases and within a single release; repeated references to the same path are deduplicated and are not ambiguous.
+**Depends on**: Phase 115 (last GSD phase; `main` currently at release 1.7.3)
+**Requirements**: IMPORT-01, IMPORT-02
+**Success Criteria** (what must be TRUE):
+
+  1. Two releases each containing `sample.mkv`, webhook for `sample.mkv` → **both releases untouched**: no imported record, no per-child coverage credit, no import badge, no auto-delete timer, no persist change — and exactly one sanitized warning naming both candidate roots (IMPORT-01).
+  2. Two roots differing only by case, or a root name equal to a child basename in another release → rejected the same way (IMPORT-01).
+  3. `Pack/Disc1/movie.mkv` + `Pack/Disc2/movie.mkv` inside one release, webhook `movie.mkv` → rejected; per-child coverage is **not** satisfied for either file, so the pack is not armed for auto-delete (IMPORT-01).
+  4. A webhook name matching exactly one distinct model path → recorded, badged, and armed for auto-delete exactly as before when evidence allows (IMPORT-02).
+  5. The same model path referenced twice (the same file seen more than once) → treated as one match, not ambiguous — imports normally (IMPORT-02).
+
+**Owner planning notes (2026-10-08)**: Deduplicate on the complete, case-preserving model path; lowercase only the lookup key, so case-distinct files (e.g. `Movie.mkv` vs `movie.mkv` at different paths) remain ambiguous. If 116 ships independently as 1.7.4 it must still pass the applicable REL-01 release checks; 117/118 would then ship under a subsequent patch version.
+
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+
+- [x] 116-01-PLAN.md — RED: shape-independent e2e ambiguity regressions + delete-guard tests, shown failing on pre-fix code (REL-01 gate 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 116-02-PLAN.md — GREEN import side: multi-path `name_to_paths` lookup + `WebhookManager.process` ambiguity rejection with sanitized warning
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 116-03-PLAN.md — GREEN delete side: video-only `duplicate_basename` guard (terminal skip) + full-suite baseline check + GREEN evidence
+
+### Phase 117: Transfer-State Safety
+
+**Goal**: SeedSyncarr never makes a re-queue, auto-queue, or delete decision from a transfer state it did not actually observe. Three fixes on the LFTP status → model → auto-queue path: **(B1)** `PgetJobParser.parse_header` (`src/python/lftp/job_status_parser.py`) pops the following line only when it matches a chunk/data pattern (`CHUNK_AT`, `CHUNK_AT2`, `CHUNK_GOT`), and the parser's other next-line-consuming sites (e.g. `CHUNK_HEADER`, mirror-empty handling) are audited and fixed for the same flaw; **(B2)** an unparseable status is reported as *unavailable* (`None` at the `LftpManager.status()` contract), never `[]`, with the existing consecutive-error counter and escalation threshold kept unchanged, and every downstream consumer (`ModelPipeline`, `ModelBuilder`, `Controller._update_active_file_tracking`, auto-queue, auto-delete) verified to keep unavailable distinct from empty; **(B3)** remote and local size-stability are measured only on the clock of successful scans (a separate successful-scan time may be added so the UI-facing "last scan" field keeps its meaning).
+**Depends on**: Phase 116 (sequencing only — disjoint code paths: webhook import matching vs. `lftp/` parser, status contract, and scan clocks)
+**Requirements**: XFER-01, XFER-02, XFER-03, XFER-04, XFER-05
+**Success Criteria** (what must be TRUE):
+
+  1. `jobs -v` output in which a pget job has no data line yet and is immediately followed by another job header (pget and mirror variants) → **every job** appears in the parsed status with its correct name and state; no header is swallowed (XFER-01).
+  2. An isolated parse failure during an active download → the file stays active/protected, the active-downloading list is unchanged, and nothing is re-queued or deleted; the status is reported as unavailable (`None`), never as an empty job list, and no downstream consumer converts it back into "no jobs" (XFER-02).
+  3. The status-error boundary is pinned exactly: failures 1..`MAX_CONSECUTIVE_STATUS_ERRORS` are each tolerated and reported unavailable, failure `MAX_CONSECUTIVE_STATUS_ERRORS + 1` raises, a successful parse resets the counter, and a genuinely empty status still clears active state as today (XFER-03).
+  4. Failed remote scans spanning the full remote-stability window → the file is **not** considered stable and is **not** auto-queued; the UI "last scan" timestamp keeps its current meaning (XFER-04).
+  5. Failed local scans spanning the local-stability window → the local gate does not pass; with successful scans, remote and local gating behave exactly as before (XFER-05).
+
+**Owner planning notes (2026-10-08)**: Test downstream behavior, not just the `None` return: active transfers remain protected with no unintended re-queue, extraction, or deletion while status is unavailable.
+
+**Plans**: 8 plans
+
+Plans:
+**Wave 1**
+
+- [x] 117-01-PLAN.md — RED: B1 parser header-swallowing regressions, Lftp status-boundary contract, composed B2 downstream protection tests (observed and submitted-but-unobserved transfers)
+- [x] 117-02-PLAN.md — RED: B3 stability-clock regressions (AutoQueue unit D-03/D-04/D-05 + composed Controller→Status→AutoQueue), harness init
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 117-03-PLAN.md — RED evidence: quick run against unfixed tree recorded in 117-REL01-EVIDENCE.md
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 117-04-PLAN.md — Fix B1: peek-before-pop at pget data line, \chunk follower, mirror-empty header guard (job_status_parser.py)
+- [x] 117-05-PLAN.md — Fix B2: Lftp.status None on tolerated errors, kill() None guard, integration flips, LftpManager pass-through tests
+- [x] 117-06-PLAN.md — Fix B3: successful-scan clocks on ControllerStatus, controller writes, AutoQueue stability reads; serializer keys guard
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 117-08-PLAN.md — Fix B2 (codex findings): hold transfers submitted to lftp but not yet observed by a successful status as QUEUED (LftpManager set -> ModelPipeline sync -> ModelBuilder derivation) and guard CommandProcessor extract/delete/queue handlers against the same set at execution time (same-tick QUEUE-then-destructive ordering) so no re-queue / DOWNLOADED / extract / delete decision is made on them
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 117-07-PLAN.md — GREEN evidence, full host suite vs baseline, whole-tree ruff, validation sign-off, deferred/accepted items record
+
+### Phase 118: Durable State
+
+**Goal**: A failed save can never destroy a previously valid `settings.cfg`, controller persist, or auto-queue persist — so users never lose the downloaded/imported lists that drive re-download and auto-delete — and release 1.7.4 ships only once every fix in the milestone is proven on the real image and the NAS. The fix is contained to `Persist.to_file` (`src/python/common/persist.py`), the sole writer for all three files: serialize (`to_str()`) before touching the filesystem → create a `0600` temp file in the target's directory → write, flush, fsync → `os.replace(temp, target)` as **the commit point** → best-effort directory fsync (logged, not raised). Failure contract: any failure before or during `os.replace` leaves the original byte-for-byte intact, removes the temp file, and raises; after the replace the new file is committed. On-disk format, load-side behavior, and the existing corrupt-file backup-and-reset path are unchanged. This phase closes with the REL-01 release gate because it is the milestone's final code phase.
+**Depends on**: Phase 117 (sequencing — REL-01's gate covers every regression from Phases 116-118, so all prior phases must be complete)
+**Requirements**: PERSIST-01, PERSIST-02, REL-01
+**Success Criteria** (what must be TRUE):
+
+  1. For **each** failure point tested separately — serialization, write, file fsync, replace — the original file is byte-for-byte unchanged, no temp file remains in the directory, and the failure raises (PERSIST-01).
+  2. A successful save of each of the three persist files produces the correct content with `0600` permissions (PERSIST-02).
+  3. A directory-fsync failure after `os.replace` leaves the new file committed with its new content, is logged, and does not raise (PERSIST-02).
+  4. Release gate, code side: every targeted regression from Phases 116-118 is shown to fail against the old behavior and pass with its fix; the full Python suite passes and `ruff check src/python/` is clean whole-tree; the built release image passes a smoke test of startup, transfer status, settings persistence, and restart (REL-01).
+  5. Release gate, deploy side: the `:1.7.4` tag (never `:dev`) is deployed to the NAS with startup and config loading verified; a post-deploy scanner error is accepted as the known warm-up condition **only after** a subsequent successful scan confirms recovery (REL-01).
+
+**Owner planning notes (2026-10-08)**: Run the REL-01 release gates against the combined changes from all three phases, and deploy to the NAS the exact image that passed testing (same tag/digest).
+
+**Plans**: 5 plans
+
+Plans:
+**Wave 1**
+
+- [x] 118-01-PLAN.md — RED atomic-write regressions for Persist.to_file + fail-before evidence (PERSIST-01, PERSIST-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 118-02-PLAN.md — Atomic to_file fix (mkstemp → fsync → os.replace → dir fsync) + GREEN and combined 116-118 regression evidence (PERSIST-01, PERSIST-02, REL-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 118-03-PLAN.md — 1.7.4 release commit: version bumps, CHANGELOG fold, release notes with rollback runbook, metadata gate (REL-01)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 118-04-PLAN.md — Owner approval checkpoint, push main, history-preserving merge, annotated v1.7.4 tag, CI green, image digest (REL-01)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 118-05-PLAN.md — NAS smoke test of :1.7.4, deploy approval, same-digest NAS deploy with scanner-recovery gate (REL-01)
+
+### Phase 119: Safety Follow-ups and 1.7.5 Release
+
+**Milestone:** v1.7.5 Safety Release (sole phase)
+**Goal:** Deliver the contained safety follow-ups, the two Done-group incident fixes, and the packaging repair as 1.7.5 before the Reliability milestone begins.
+**Depends on:** Phase 118 (v1.7.4 shipped)
+**Requirements:** XFER-06, DEL-01, IMP-01, IMP-02, IMP-03, REL-02, REL-03 (see `.planning/REQUIREMENTS.md`). Sources: backlog 999.2, backlog 999.3, the v1.7.4 PyPI publishing failure, and the Done-group incidents (debug session `.planning/debug/done-group-no-auto-delete.md`). Plan grouping: IMP-01 + IMP-02 in one plan with its own regression tests; IMP-03 in a separate plan with its own regression tests.
+**Scope:**
+
+1. Re-establish a trustworthy LFTP command boundary after a timeout. Until synchronized, status remains unavailable; a delayed prompt or stale output must not clear active/submitted-transfer protection (promotes 999.2).
+2. Add the explicit submitted-but-unobserved transfer check to the auto-delete timer, with safe defer/re-arm behavior and a regression covering unavailable status (promotes 999.3).
+3. Repair the PyPI archive packaging failure and verify the built distribution. Evaluate the already-linked Dependabot #93 only as relevant to this packaging repair; no general dependency-upgrade sweep.
+4. Prevent incomplete-file imports (Obsession incident, 2026-10-13: a copy taken while the seedbox was still downloading stalled ~800 MB short, passed the 90 s size-stability check, and Radarr imported the short file). Unchanged size and modification time are supporting evidence only, never proof of completion. The arr download-queue check must identify the release reliably, and absence from the queue must not by itself mean complete. If Sonarr/Radarr is unavailable, hold or retry visibly; a timeout must never fall through to an unsafe copy. An unverified copy must stay unavailable for arr import until the completion checks pass — a recheck just before marking the copy complete is not sufficient on its own. Separate plan and tests.
+5. Recover early per-episode import notices (Days of Hope incident, 2026-10-09: Sonarr notices for parts 1–3 arrived while part 4 was still transferring, were rejected for "no transfer evidence" and never reconsidered, so the all-children coverage gate could never pass). Persist import credit for each demonstrably complete episode while its siblings continue transferring. Whole-folder deletion stays gated on transfer completion and coverage of every required video. Retain the ambiguous-filename protections. Separate plan and tests.
+
+**Success criteria:**
+
+1. A delayed prompt from a timed-out command cannot turn the next status into a trusted empty job list; normal status resumes after verified synchronization.
+2. A pending auto-delete timer cannot delete a submitted-but-unobserved transfer; it defers and can safely retry once transfer status is successfully observed (the job need not appear active if it already finished) and the existing deletion guards pass.
+3. Built distributions have valid member paths, pass packaging checks, and install successfully in a clean environment; the 1.7.5 PyPI publication succeeds.
+4. An incomplete or unverified copy is never exposed at an importable path — during transfer, retries, crashes, or restart recovery. Completion requires reliable evidence; stable size and modification time alone are insufficient. With Sonarr or Radarr integration enabled, each of these is a reason to hold, never to release: no configured service able to confirm the release (an unavailable service holds only when no other configured service provides strong-identity completion evidence), an ambiguous queue match, a missing queue entry. With both integrations disabled, stability-based syncing is retained as a documented compatibility exception; incomplete local copies stay hidden until copying finishes in both modes. The copy is held and retried visibly, and elapsed time never grants completion. Queue/API semantics are verified during planning.
+5. An import notice for a uniquely identified, fully transferred episode is credited and persisted while sibling episodes are still transferring and survives a restart; that credit alone never authorizes whole-folder deletion, which requires both a complete transfer of the folder and import coverage of every required video. Ambiguous-filename protections still reject unsafe matches.
+6. Targeted regressions fail before their fixes and pass after; the full Python suite, Ruff, and release CI gates pass. The release image passes startup, real-transfer, import visibility and webhook handling, automatic cleanup, settings-persistence and restart smoke checks.
+7. Release 1.7.5 through the established Docker/GitHub/PyPI process and verify the tested image on the NAS, including a successful scan after any startup scanner error (any other startup error needs its own resolution before release), before the Reliability milestone begins.
+
+**Scope boundary:** No transfer-engine replacement, broad refactor, UI feature, or unrelated dependency churn in this patch release. Owner-approved exceptions: held items show as waiting with their reason in the existing file list, and a manual release requires an explicit confirmation ("Completion could not be verified. Transfer and release this item anyway?") valid for one transfer attempt only. Items 4 and 5 are in scope only as far as needed to stop incomplete imports and incorrect cleanup; any broader path-aware import redesign stays out. At phase planning, backlog 999.1 was deferred; owner retired that proposal on 2026-10-17. Payload-size evidence alone does not satisfy the completion requirements.
+**Plans:** 12/12 plans complete
+
+Plans:
+
+**Wave 1**
+
+- [x] 119-01-PLAN.md — XFER-06: LFTP sentinel resync after a status timeout (RED-first fake-pty regression)
+- [x] 119-02-PLAN.md — REL-02: hatch `only-include` packaging fix, member-path checker, `verify-python-package` CI job
+- [x] 119-03-PLAN.md — DEL-01: lock-protected submitted-unobserved set + auto-delete Timer guard (RED-first)
+- [x] 119-04-PLAN.md — IMP-02 foundation: ArrQueueClient (`/api/v3/queue/details`) + CompletionGate (D-16/D-17 verdicts, capped backoff, hold registry)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 119-05-PLAN.md — IMP-03: early per-episode import credit, pending-notice re-evaluation, arm-on-commit, immediate atomic persist (Days of Hope replay RED-first)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 119-06-PLAN.md — IMP-01 + IMP-02: forced temp files, sweep + execution-time completion gate, one-shot manual release flag (Obsession replay RED-first)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 119-07-PLAN.md — IMP-02 hold visibility backend: `ModelFile.hold_reason` → builder → pipeline → SSE
+- [x] 119-08-PLAN.md — IMP-02 UI: Waiting badge + reason, 428 → confirm → release re-dispatch
+- [x] 119-12-PLAN.md — IMP-01/IMP-02 settings + docs: remove `use_temp_file` toggle (D-19), e2e seed release flag, CONFIGURATION docs (wave 4, sibling of 119-08)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 119-09-PLAN.md — REL-03 (1/3): 1.7.5 version bumps, Dependabot #93/#123/#124, CHANGELOG/notes, gate evidence, CI green, owner approval checkpoint
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [x] 119-10-PLAN.md — REL-03 (2/3): wud pause, tag v1.7.5, tag CI (Docker/GitHub/PyPI), smoke on the exact `:1.7.5` digest, deploy go-ahead checkpoint
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [x] 119-11-PLAN.md — REL-03 (3/3): NAS deploy by digest with verified backups, scan recovery + arr reachability, wud restore, owner confirmation — SUPERSEDED (owner HOLD 2026-10-15): not executed; replaced by Phase 119.1 (1.7.6 deploy)
+
+### Phase 119.1: Startup log secrets fix and 1.7.6 release (INSERTED)
+
+**Goal:** Stop the container from printing configuration secrets to its log at startup, release that as 1.7.6 through the same gates as 1.7.5, and deploy 1.7.6 (not 1.7.5) to the NAS production container — replacing the held 119-11 deploy (owner decision 2026-10-15).
+**Requirements:** SEC-01, REL-03 (NAS-verification portion carried from Phase 119), REL-04
+**Depends on:** Phase 119
+**Scope:**
+
+1. Startup no longer prints `settings.cfg` secrets (seedbox password, Sonarr/Radarr API keys, webhook secret, api_token, any secret-marked config) to the container/stdout log — redacted or omitted, while non-secret startup diagnostics remain useful. Pre-existing since v1.0.0; found during the 1.7.5 smoke. Regression test fails before the fix.
+2. Release 1.7.6 through the 1.7.5 gates: release branch + PR CI green (incl. Docker build, e2e, CodeQL, packaging check), annotated tag, tag CI publishes Docker/GitHub/PyPI, smoke on the exact digest on the NAS scratch setup (incl. confirming the startup log carries no secrets).
+3. Deploy 1.7.6 to the NAS production container by digest (supersedes 119-11): verified backups + loader check, digest pin, successful scan after any startup scanner error, arr reachability with no steady-state holds, wud restored last, rollback runbook to 1.7.4.
+4. After deploy, remind the owner to rotate the seedbox password and both arr API keys (they have been exposed in container logs); old container logs are discarded with the old container.
+
+**Success criteria:**
+
+1. A fresh container start's log contains none of the configured secret values; a regression test fails before the fix and passes after.
+2. 1.7.6 is published to Docker/GitHub/PyPI from green CI and its exact digest passes the smoke list on the NAS, including a no-secrets-in-startup-log check.
+3. Production runs `:1.7.6@<digest>`, the first post-deploy scan succeeds, both arrs are reachable, wud is restored, and the owner is reminded to rotate credentials.
+
+**Plans:** 6/6 plans complete
+
+Plans:
+- [x] 119.1-01-PLAN.md — RED sentinel test + fix setup_default_config.sh (no settings.cfg dump; status line; CI compose mount)
+- [x] 119.1-02-PLAN.md — print_to_log redaction by Config.secret_fields() + startup/reload sentinel guard tests; unreadable settings.cfg (interpolation error) is fatal and value-free, no default reset
+- [x] 119.1-06-PLAN.md — Config.to_str escapes % on write (round-trip, byte-compatible), value-free serialization errors, RED-first reload-persist test, persist/reload/shutdown leak sweep
+- [x] 119.1-03-PLAN.md — 1.7.6 version bumps, CHANGELOG + release notes (D-06 notice, D-11 full 1.7.5 changes), REL-04 evidence, release PR CI green, owner approval (incl. SECURITY.md decision)
+- [x] 119.1-04-PLAN.md — Merge, tag v1.7.6, tag CI publish, PyPI check, digest; NAS scratch smoke incl. count-only no-secrets check with 1.7.5 positive control; seedsyncarr-test count; owner go-ahead
+- [x] 119.1-05-PLAN.md — Deploy :1.7.6@digest to NAS production (backups, loader checks, recreate, scan/arr/no-secrets checks, wud last, rollback runbook), owner confirmation, rotation reminder
+
+## Progress
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1-5. UI Styling | v1.0 | 8/8 | Complete | 2026-02-03 |
+| 6-8. Dropdown & Form | v1.1 | 4/4 | Complete | 2026-02-04 |
+| 9. UI Cleanup | v1.2 | 1/1 | Complete | 2026-02-04 |
+| 10-11. Polish & Clarity | v1.3 | 5/5 | Complete | 2026-02-04 |
+| 12-14. Sass @use | v1.4 | 3/3 | Complete | 2026-02-08 |
+| 15-19. Backend Testing | v1.5 | 8/8 | Complete | 2026-02-08 |
+| 20-21. CI Cleanup | v1.6 | 2/2 | Complete | 2026-02-10 |
+| 22-25. Sonarr | v1.7 | 8/8 | Complete | 2026-02-10 |
+| 26-28. Radarr + Webhooks | v1.8 | 5/5 | Complete | 2026-02-11 |
+| 29-32. Dark Mode | v2.0 | 6/6 | Complete | 2026-02-12 |
+| 33-38. Terminal UI | v3.0 | 12/12 | Complete | 2026-02-17 |
+| 39-46. Harden & Fix | v3.1 | 25/25 | Complete | 2026-02-24 |
+| 47-51. Security Hardening II | v3.2/M002 | 10/10 | Complete | 2026-03-22 |
+| M001-M010 Slices | M001-M010 | 29 slices | Complete | 2026-03-28 |
+| 52. Dependency Fixes & CI | v4.0.3 | 1/1 | Complete | 2026-04-08 |
+| 53-61. SeedSyncarr Rebrand | v1.0.0 | 14/14 | Complete | 2026-04-13 |
+| 62-74. UI Redesign | v1.1.0 | 30/30 | Complete | 2026-04-19 |
+| 75-82. Post-Redesign Cleanup | v1.1.1 | 22/22 | Complete | 2026-04-23 |
+| 83-86. Test Suite Audit | v1.1.2 | 6/6 | Complete | 2026-04-24 |
+| 87-96. Test & Quality Hardening | v1.2.0 | 23/23 | Complete | 2026-04-28 |
+| 97-100. Test Coverage Gaps (Slice 1) | v1.3.0 | 10/10 | Complete | 2026-05-31 |
+| 101-103. Known Bugs + Security (Slice 2) | v1.3.0-s2 | 9/9 (101: 6/6, 102: 1/1, 103: 2/2) | Complete | 2026-06-01 |
+| 104. Light Dependency Removals (Slice 3) | v1.3.0-s3 | 2/2 | Complete | 2026-06-01 |
+| 105. Font Awesome to Phosphor (Slice 3) | v1.3.0-s3 | 4/4 | Complete   | 2026-06-01 |
+| 106. Mock-Fixture Bundle Hygiene (Slice 3) | v1.3.0-s3 | 2/2 | Complete   | 2026-06-01 |
+| 107. MP-Logger Spawn Safety (Slice 4) | v1.3.0-s4 | 1/1 | Complete   | 2026-06-01 |
+| 108. Config + Handler Refactors (Slice 4) | v1.3.0-s4 | 2/2 | Complete   | 2026-06-01 |
+| 109. Controller Decomposition (Slice 4) | v1.3.0-s4 | 3/3 | Complete   | 2026-06-02 |
+| 110. Hostile-Reader Discovery Pass | v1.4.0 | 1/1 | Complete   | 2026-06-02 |
+| 111. Config-Set Endpoint Migration | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
+| 112. Defensive Guards & Code Hardening | v1.4.0 | 3/3 | Complete   | 2026-06-02 |
+| 113. Presentation & Launch Readiness | v1.4.0 | 4/4 | Complete   | 2026-06-03 |
+| 114. Scanner Auto-Recovery | v1.4.1 | 2/2 | Complete   | 2026-06-21 |
+| 115. Dependency & Security Maintenance | v1.4.1 | 1/1 | Complete (0 open alerts) | 2026-06-22 |
+| 116. Import Safety | v1.7.4 | 3/3 | Complete    | 2026-10-08 |
+| 117. Transfer-State Safety | v1.7.4 | 8/8 | Complete    | 2026-10-09 |
+| 118. Durable State | v1.7.4 | 5/5 | Complete    | 2026-10-09 |
+| 119. Safety Follow-ups and 1.7.5 Release | v1.7.5 | 12/12 | Complete    | 2026-10-15 |
+| 119.1. Startup log secrets fix and 1.7.6 release | v1.7.5 | 6/6 | Complete    | 2026-10-15 |
+
+---
+
+*Last updated: 2026-10-17 — Owner-approved backlog triage applied; see current dispositions below. Release history: 2026-10-15 — Milestone v1.7.5 Safety Release shipped and archived (Phases 119, 119.1; 1.7.6 deployed); next: Reliability at Phase 120. Earlier 2026-10-14 — Milestone v1.7.5 Safety Release started with Phase 119 as its sole phase (owner decision: 1.7.5 is its own milestone; Reliability follows at Phase 120); requirements XFER-06, DEL-01, IMP-01..03, REL-02, REL-03 mapped. Earlier 2026-10-14 — Owner expanded Phase 119 with scope items 4 (prevent incomplete-file imports) and 5 (recover early per-episode import notices), each with its own plan and tests, after the Obsession and Days of Hope Done-group incidents. 2026-10-09 — Owner approved Phase 119 as the opening phase of the next Reliability milestone; release 1.7.5 before resuming its remaining phases. v1.7.4 remains shipped and archived. Backlog 999.2 and 999.3 are promoted into Phase 119.*
+
+## Backlog
+
+### Closed backlog items (owner-approved 2026-10-17)
+
+| Item | Disposition | Reason / evidence |
+|---|---|---|
+| 999.1 — webhook payload-size completion shortcut | Won't do | Equal sizes do not establish identity or complete contents. Phase 119 uses stronger completion evidence and persisted child credit. Investigate any recurrence on its own evidence rather than implementing this shortcut. |
+| 999.2 — LFTP timeout resynchronization | Completed | Shipped in Phase 119, XFER-06; see archived v1.7.5 audit. |
+| 999.3 — submitted-transfer auto-delete guard | Completed | Shipped in Phase 119, DEL-01; see archived v1.7.5 audit. |
+
+Historical phase folders and milestone archives are retained. These are not candidates for promotion.
+
+### Remaining actionable work
+
+- Reliability (Phase 120+): remaining import/restart recovery gaps after Phase 119; shutdown cleanup and startup/shutdown sequencing; bounded scanner-result buffering; current/child-process memory diagnostics; StreamQueue overflow correctness.
+- Verification/operator follow-ups: Waiting badge/reason and manual-release OK/Cancel browser checks; extract-staging/auto-delete and Done-group verification/cleanup; credential rotation completion.
+- Dependency maintenance: 999.4 below, with related deferred dependency PRs.
+- Later targeted performance/usability: UI updates and debug serialization, webhook lookup work when idle, LAN connection testing, external token forwarding, and remaining documentation discrepancies (see the roadmap overview).
+
+### Retired proposals and routine maintenance
+
+**Won't do:** wholesale pytest-fixture migration (A-01), refactoring tests away from private attributes (A-05), blanket dedicated-test-per-module expansion (A-04), old review-tool-state migration, and proactive AutoQueue threading redesign while the single-thread contract holds. Specific demonstrated defects remain eligible for focused fixes.
+
+**Already fixed:** test-hardening C-01 (thread callback), C-02 (rate-limit assertion), A-02 (shared controller test base), A-06 (shared encryption config builder). Current-source evidence and remaining historical findings are recorded in `backlog/TEST-HARDENING-REVIEW.md`.
+
+**Routine maintenance only, no standalone phase:** webob/cgi warning-filter removal during a relevant dependency upgrade; Bootstrap Sass warnings during its normal upgrade; cosmetic test imports/style; removing harmless sleeps solely for speed. Demonstrated flaky tests are not retired. Old missing-summary bookkeeping does not warrant a development phase.
+
+### Phase 999.4: Angular test-runner dev dependency advisory — braces via karma (BACKLOG)
+
+**Goal:** [Captured for future planning] `braces` <=3.0.3 (GHSA-vfj7-8cjw-p6xm, high, stack-exhaustion DoS) reaches `src/angular` only through `karma@6.4.4` → `chokidar@3.6.0` — a dev/test-only dependency, not shipped in the Docker image or PyPI package. Flagged by the Phase 119.1 post-fix security re-scan (gate record `020-security-scan.json`) when the 1.7.6 version bump touched the Angular lockfile; pre-existing since before 1.7.4. Owner accepted the risk for 1.7.6 (2026-10-15). npm's suggested fix is a breaking karma change — evaluate an npm `overrides` pin or a test-runner update. Resolve alongside the deferred Dependabot PRs #128/#125/#117 in the Reliability milestone.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /bm:review-backlog when ready)

@@ -6,6 +6,22 @@
 
 ---
 
+## Current disposition — owner-approved 2026-10-17
+
+This April report is historical evidence, not an active five-wave implementation plan.
+
+| IDs | Disposition | Current evidence / rule |
+|---|---|---|
+| C-01 | Fixed | `test_extract_process.py` passes `_callback_sequence` as the Thread target, without calling it. |
+| C-02 | Fixed | `test_lftp_manager.py` asserts rate_limit was not set to zero. |
+| A-02 | Fixed | `BaseAutoDeleteTestCase` inherits `BaseControllerTestCase`. |
+| A-06 | Fixed | Encryption tests use `_build_plaintext_config`. |
+| A-01 | Won't do as broad migration | Existing helpers suffice; reuse opportunistically. |
+| A-04 | Won't do as blanket coverage project | Retain specific untested safety behavior only when demonstrated; no dedicated-test-file quota. |
+| A-05 | Won't do | Private-attribute testing is an accepted tradeoff. |
+| Cosmetic import/style changes; harmless sleeps solely for speed | Routine maintenance | No separate phase. Real flaky tests remain actionable. |
+| Other historical findings | Revalidate before action | This triage does not establish that every old finding is still present or fixed. Do not execute the five-wave proposal wholesale. |
+
 ## Critical (95-100) — False Coverage
 
 ### C-01: Thread target called instead of passed — concurrency never tested

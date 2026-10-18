@@ -3,36 +3,42 @@ gsd_state_version: 1.0
 milestone: v1.7.5
 milestone_name: Safety Release
 status: Awaiting next milestone
-stopped_at: "119.1-05 complete (7a2a122): 1.7.6 on NAS prod confirmed by owner; credential-rotation checklist delivered"
-last_updated: "2026-10-15T23:42:48.567Z"
-last_activity: 2026-10-15 — Milestone v1.7.5 completed and archived
+stopped_at: "v1.7.5 Safety Release complete (1.7.6 deployed); Phase 119 browser UAT closed 2026-10-18; Reliability priorities agreed, awaiting milestone activation; operator follow-ups remain"
+last_updated: "2026-10-18T18:52:00Z"
+last_activity: 2026-10-18 -- Phase 119 Waiting-badge and manual-release UAT passed on the 1.7.6 sandbox
 progress:
-  total_phases: 24
-  completed_phases: 7
-  total_plans: 37
-  completed_plans: 37
-  percent: 29
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-09)
+See: .planning/PROJECT.md (updated 2026-10-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Milestone complete
+**Current focus:** Between milestones; narrowed Reliability roadmap agreed, implementation not started
 
 ## Current Position
 
-Phase: Milestone v1.7.5 complete
+Phase: 119.1 — complete; last phase of shipped v1.7.5 Safety Release; no active phase
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-15 — Milestone v1.7.5 completed and archived
+Last activity: 2026-10-18 — Phase 119 browser UAT passed on the 1.7.6 sandbox; next milestone remains unstarted
 
 ## Accumulated Context
 
 ### Roadmap Evolution
+
+- 2026-10-18: Phase 119 human UAT closed (2/2 pass) by walkthrough on the 1.7.6 sandbox (seedsyncarr-test) with a remote probe file; prod untouched. Reliability item 2 keeps its extraction/import checks and incident reconciliation. No source changes.
+
+- 2026-10-18: Owner-approved reprioritization: credential forwarding → safety acceptance → partial-startup/shutdown cleanup → model-stream overflow recovery → LAN connection tests. Scanner buffering, residual import/restart gaps and performance measurements are separate conditional investigations; 999.4 is bounded dependency maintenance. No milestone activated or implementation started.
+
+- 2026-10-18: Organized remaining work into Reliability and Performance/Usability; archived the previous roadmap and historical test review outside the active work list. No source changes, deployment, or completion claims added.
+
+- 2026-10-17: Owner-approved backlog triage: retired speculative refactors and 999.1; closed shipped 999.2/999.3 and confirmed stale test findings; separated routine maintenance from actionable reliability/verification work. No source fixes or live checks performed.
+
+- 2026-10-17: Reconciled the roadmap with completed Phases 119/119.1 and the archived audit. 1.7.6 deployment is recorded complete; two browser checks remain open. Reliability at Phase 120 must reassess residual import/restart gaps rather than redo the delivered early-credit and arm-on-commit work. No implementation or live deployment verification performed in this roadmap refresh.
 
 - 2026-10-14: Milestone v1.7.5 Safety Release started (owner decision): 1.7.5 is its own milestone with Phase 119 as sole phase; Reliability becomes the next milestone at Phase 120. Milestone-start phase-dir cleanup skipped by owner (keep 119 and backlog 999.1–999.3; archive completed phases selectively later).
 - 2026-10-14: Expanded Phase 119 (owner-approved) with two Done-group incident fixes, each with separate plans and tests: (4) prevent incomplete-file imports — size/mtime are supporting evidence only, reliable arr-queue release identification, absence from queue is not completion, arr unavailable → visible hold/retry never unsafe copy, unverified copy unavailable for import until checks pass; (5) persist per-episode import credit for complete episodes while siblings transfer, whole-folder delete still gated on completion + full video coverage, restart recovery tested, ambiguous-filename protections retained. Diagnosis: `.planning/debug/done-group-no-auto-delete.md`. 999.1 stays separate.
@@ -91,33 +97,13 @@ None.
 | 260604-g9c | Handle open Dependabot PRs and alerts: merge webob+ruff (security alert resolved); Angular v22 PR #50 istanbul fix pushed (TS migration completed in 260604-gmy) | 2026-06-04 | 957a896 | [260604-g9c-handle-open-dependabot-prs-and-alerts-me](./quick/260604-g9c-handle-open-dependabot-prs-and-alerts-me/) |
 | 260604-gmy | Fix Angular v22 strict-template TS errors (TS2532/TS2339/TS2345/TS2322) and merge Dependabot PR #50 — all Dependabot PRs now cleared, 0 open alerts | 2026-06-04 | ac087a5 | [260604-gmy-fix-angular-v22-typescript-template-type](./quick/260604-gmy-fix-angular-v22-typescript-template-type/) |
 
-## Deferred Items
+## Future Work
 
-| Category | Item | Status |
-|----------|------|--------|
-| todo | webob-cgi-upstream-unblock | testing (upstream — blocked on webob 2.0; DEFER-WEBOB) |
-| todo | shutdown-readiness-event | robustness (DEFER-SHUTDOWN — invisible to launch reader; deferred v1.4.0) |
-| todo | streamqueue-atomic-drop-oldest | robustness (DEFER-STREAMQUEUE — latent, well-mitigated; deferred v1.4.0) |
-| todo | test-hardening-backlog A-01..A-06 | test-infra (DEFER-TESTHARDEN — deferred v1.4.0) |
-| quick_task | 260528-khw-triage-and-merge-dependabot-prs | housekeeping (prior session, SUMMARY missing; acknowledged + deferred at v1.4.0 close) |
-| backlog | 999.1 webhook import evidence (payload size == remote size) | v2 requirement IMPORT-F1; defense in depth, not in v1.7.4 scope |
-| promoted | 999.2 LFTP command-stream resync after timeout | Phase 119; opening 1.7.5 patch |
-| promoted | 999.3 auto-delete timer explicit submitted-unobserved guard | Phase 119; opening 1.7.5 patch |
-| debug | extract-staging-autodel-rearm | awaiting_human_verify (fixes applied + self-verified 2026-09-16; acknowledged + deferred at v1.7.4 close) |
-| debug | done-group-no-auto-delete | diagnosed — fix shipped in Phase 119 (IMP-01/IMP-03); session file not closed (acknowledged at v1.7.5 close) |
-| uat_gap | Phase 119 119-HUMAN-UAT.md (2 scenarios) | held-file "Waiting" badge + manual-release confirm modal not browser-confirmed; no held file on prod at milestone-end walkthrough (acknowledged at v1.7.5 close) |
-| verification_gap | Phase 119 119-VERIFICATION.md human_needed | same two UI checks (acknowledged at v1.7.5 close) |
-| backlog | 999.4 braces advisory via karma | dev-only; deferred to Reliability |
+The authoritative future work list is ROADMAP.md. Reliability is ordered: credential forwarding, safety acceptance, remaining startup/shutdown cleanup, model-stream overflow recovery, then LAN connection tests. Next available phase: 120; no new milestone, phase plans or release version have been activated.
 
-> Acknowledged + deferred at v1.7.5 milestone close (2026-10-15): all 5 open items from the pre-close audit (2 debug sessions, Phase 119 UAT + verification UI checks, webob todo).
->
-> Acknowledged + deferred at v1.7.4 milestone close (2026-10-09): debug session extract-staging-autodel-rearm and todo webob-cgi-upstream-unblock (both pre-existing, outside v1.7.4 scope).
->
-> Acknowledged + deferred at v1.4.0 milestone close (2026-06-03): webob-cgi-upstream-unblock (still blocked on upstream webob 2.0) and the 260528-khw dependabot quick-task (prior-session housekeeping).
+Scanner buffering, residual import/restart gaps, memory measurements and UI/webhook efficiency are separate conditional investigations, not promised fixes or completion gates. Performance and Usability activates only when evidence justifies it. Dependency item 999.4 is a bounded maintenance side task.
 
-## Tech Debt
-
-- Bootstrap 5.3 still uses @import internally (blocked until Bootstrap 6)
+Credential rotation and one-time Done-group cleanup remain operator follow-ups. Routine maintenance: `backlog/MAINTENANCE.md`. Earlier decisions and historical findings: `backlog/archive/2026-10-18/README.md`.
 
 ## Milestones Shipped
 
@@ -145,9 +131,15 @@ None.
 
 Last session: 2026-10-15T22:30:24.625Z
 Stopped at: 119.1-05 complete (7a2a122): 1.7.6 on NAS prod confirmed by owner; credential-rotation checklist delivered
-Next action: Milestone v1.7.5 archived 2026-10-15 (1.7.6 live on NAS). Next: Reliability milestone (Phase 120+) via /bm:new-milestone. Owner rotates credentials on own schedule (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys). Still open: Phase 119 UI checks (Waiting badge, manual-release modal) when a file is next held; Done-group one-time cleanup. Optional: delete /volume1/docker/seedsync-smoke-1.7.6.
+Next action: Milestone v1.7.5 archived 2026-10-15 (1.7.6 live on NAS). Next when authorized: activate the narrowed Reliability milestone (Phase 120+) via $gsd-new-milestone; current work is planning only. Owner rotates credentials on own schedule (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys). Phase 119 UI checks (Waiting badge, manual-release modal) passed 2026-10-18 on the 1.7.6 sandbox. Still open: Done-group one-time cleanup. Optional: delete /volume1/docker/seedsync-smoke-1.7.6.
 
 ## Operator Next Steps
 
-- Start the Reliability milestone (Phase 120+) with /bm:new-milestone.
-- When a file is next held (Sonarr/Radarr unreachable), look at the Waiting badge and the manual-release confirm modal in the browser.
+- When implementation planning is requested, activate the narrowed Reliability milestone (Phase 120+) with $gsd-new-milestone. Do not start it as part of this roadmap update.
+
+## Deferred Items
+
+| Kind | Item | Status |
+|------|------|--------|
+| Operator follow-up | Confirm 1.7.6 credential rotation | Completion unconfirmed |
+| Operator follow-up | Confirm one-time Done-group cleanup | Completion unconfirmed |

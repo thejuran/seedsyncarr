@@ -9,6 +9,10 @@ upstream: https://github.com/Pylons/webob/pull/466
 triggers_on: webob release without stdlib cgi import
 ---
 
+## Disposition (2026-10-17)
+
+Owner-approved: routine maintenance during the next relevant dependency upgrade, not a standalone task or phase. Historical upstream/version claims below are not a current availability check; verify them when upgrading.
+
 ## Problem
 
 `src/docker/test/python/Dockerfile` carries an `ENV PYTHONWARNINGS="ignore::DeprecationWarning:cgi"` line purely to suppress the stdlib `cgi` DeprecationWarning triggered by webob 1.8.9's `from cgi import parse_header` in `src/webob/compat.py`. As of 2026-04-21, webob 1.8.9 is the latest release on PyPI and PR #466 (cgi-removal for webob 2.0) is unmerged. Python pin is `>=3.11,<3.13` so `legacy-cgi` conditional dependency (3.13+ only) does not activate.

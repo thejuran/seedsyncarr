@@ -1,5 +1,7 @@
 # Codebase Concerns
 
+> Backlog triage update (2026-10-17): this older audit contains stale findings. Current dispositions are in ROADMAP.md and backlog/archive/2026-10-18/TEST-HARDENING-REVIEW.md. Broad test migration/coverage/private-API refactors and proactive AutoQueue threading redesign are retired; C-01/C-02/A-02/A-06 are fixed. Warning/style cleanup is routine maintenance. Shutdown sequencing and StreamQueue overflow remain actionable.
+
 **Analysis Date:** 2026-06-09
 
 This audit follows the v1.4.0 launch-hardening milestone (completed 2026-06-03) and the 2026-06-08 production incident (`/downloads` write-permission failure on the NAS deployment). The v1.4.0 milestone resolved most previously folded findings: `/server/config/set` is now POST-only with a JSON body (`src/python/web/handler/config.py:25-26`), local delete failures are logged instead of swallowed (`src/python/controller/delete/delete_process.py:24-30`), `AppProcess` is spawn-picklable via `__getstate__`/`__setstate__` (`src/python/common/app_process.py:124-150`), startup security warnings are state-accurate (`src/python/seedsyncarr.py:375-400`), the legacy-fallback warning is deferred until the logger exists (`src/python/seedsyncarr.py:268-277`), and `.gitignore` covers tooling artifacts. A PUID/PGID-honoring entrypoint now ships (`src/docker/build/docker-image/entrypoint.sh`). The codebase remains clean — zero TODO/FIXME markers in production source, ruff/Semgrep/gitleaks all green per the Phase 110 hostile-reader pass. Remaining concerns are deferred robustness items, deployment fragilities exposed by the June 8 incident, and latent edge-cases.
@@ -26,12 +28,12 @@ This audit follows the v1.4.0 launch-hardening milestone (completed 2026-06-03) 
 
 **`PYTHONWARNINGS` cgi filter pending upstream webob release (DEFER-WEBOB):**
 - Issue: `src/docker/test/python/Dockerfile` carries `ENV PYTHONWARNINGS="ignore::DeprecationWarning:cgi"` solely to suppress webob 1.8.x's stdlib `cgi` import warning. Blocked on upstream webob 2.0 (Pylons/webob PR #466).
-- Files: `src/docker/test/python/Dockerfile`, `src/python/poetry.lock`, tracked in `.planning/todos/pending/2026-04-21-webob-cgi-upstream-unblock.md`
+- Files: `src/docker/test/python/Dockerfile`, `src/python/poetry.lock`, tracked in `.planning/todos/maintenance/2026-04-21-webob-cgi-upstream-unblock.md`
 - Impact: Cosmetic; masks one warning class in the test image. Removal steps are documented in the todo.
 - Fix approach: When webob ships without the `cgi` import — bump webob, regenerate lock, delete the ENV line, re-run `make run-tests-python`.
 
 **Test-suite hardening backlog (DEFER-TESTHARDEN):**
-- Issue: A deep review of the Python test suite (`.planning/backlog/TEST-HARDENING-REVIEW.md`, 2026-04-24) catalogs ~20 findings: two false-coverage tests (thread target invoked instead of passed at `src/python/tests/unittests/test_controller/test_extract/test_extract_process.py:182`; assertion-less test at `tests/unittests/test_controller/test_lftp_manager.py:83-98`), temp files with plaintext test credentials left in `/tmp`, unused conftest fixtures duplicated by hand in 3+ files, ~4.5s of wall-clock sleeps per run, and 100+ name-mangled private-attribute accesses coupling tests to `Controller` internals.
+- Issue: A deep review of the Python test suite (`.planning/backlog/archive/2026-10-18/TEST-HARDENING-REVIEW.md`, 2026-04-24) catalogs ~20 findings: two false-coverage tests (thread target invoked instead of passed at `src/python/tests/unittests/test_controller/test_extract/test_extract_process.py:182`; assertion-less test at `tests/unittests/test_controller/test_lftp_manager.py:83-98`), temp files with plaintext test credentials left in `/tmp`, unused conftest fixtures duplicated by hand in 3+ files, ~4.5s of wall-clock sleeps per run, and 100+ name-mangled private-attribute accesses coupling tests to `Controller` internals.
 - Files: `src/python/tests/` (see backlog doc for line-level detail)
 - Impact: Inflated coverage confidence on two paths; minor CI hygiene/speed issues. No production risk.
 - Fix approach: The backlog doc includes a 5-wave milestone structure; Waves 1-2 (false coverage + temp-file hygiene) are the high-value, low-risk slice.
