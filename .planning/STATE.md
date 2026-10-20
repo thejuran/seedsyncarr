@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.7.7
 milestone_name: Sonarr 5 Compatibility
 status: executing
-stopped_at: Phase 120 Wave 1 complete (120-01, 120-02); Wave 2 next
-last_updated: "2026-10-20T20:10:08.000Z"
-last_activity: 2026-10-20 -- Phase 120 Wave 1 complete (fixture scaffold, sanitizer, webhook sink)
+stopped_at: 120-05 paused at Task 2 D-14 decision (private-only indexers); 120-03/04 complete
+last_updated: "2026-10-20T20:25:07.000Z"
+last_activity: 2026-10-20 -- 120-03, 120-04 complete; 120-05 Task 1 done (SON5-01 live pass), awaiting D-14 owner decision
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
-  percent: 33
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 120 (Sonarr 5 Compatibility) — EXECUTING
-Plan: 3 of 6 (Wave 2: 120-03, 120-04, 120-05)
+Plan: 5 of 6 (120-05 paused at D-14 checkpoint)
 Status: Executing Phase 120
-Last activity: 2026-10-20 -- Phase 120 Wave 1 complete (120-01, 120-02)
+Last activity: 2026-10-20 -- 120-03, 120-04 complete; 120-05 awaiting D-14 decision
 
 ## Accumulated Context
 

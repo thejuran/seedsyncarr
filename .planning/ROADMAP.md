@@ -38,8 +38,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 120-03-PLAN.md — SON5-01 Test Connection and SON5-03 webhook CI tests on fixture bytes
-- [ ] 120-04-PLAN.md — SON5-02 queue hold→release replay and negatives through the real client and gate
+- [x] 120-03-PLAN.md — SON5-01 Test Connection and SON5-03 webhook CI tests on fixture bytes
+- [x] 120-04-PLAN.md — SON5-02 queue hold→release replay and negatives through the real client and gate
 - [ ] 120-05-PLAN.md — Live Sonarr 5 capture on the NAS sandbox; one idempotent teardown script on every exit path (SON5-01..03; D-14 and Deluge-fallback checkpoints)
 
 **Wave 3** *(blocked on Wave 2 completion)*
