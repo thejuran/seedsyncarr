@@ -259,7 +259,8 @@ image `8b59d172e9b4`). No version bump, no tag, no deploy.
 
 Production stays on 1.7.6; it was not touched. No `120-SON5-05-RELEASE-NEEDED.md` is created.
 
-Owner confirmation: pending (Task 3 checkpoint).
+Owner confirmation (Task 3 checkpoint, 2026-10-20, relayed by the phase coordinator): "approved". The owner
+accepts SON5-05 as "verified; no release needed" on Sonarr 5.0.0.2701.
 
 ## Follow-ups (not fixed here)
 

@@ -13,7 +13,7 @@ Live checks run only on the NAS sandbox: `seedsyncarr-test` (1.7.6) against the 
 - [x] **SON5-02**: A held file stays "Waiting" while its tracked download is incomplete in Sonarr 5's queue and is released only once that same download shows complete. Both the incomplete and completed queue states for one tracked download are captured live. A missing queue entry, a Sonarr API error, or an unrelated completed download never releases the hold. (verified on Sonarr 5.0.0.2701)
 - [x] **SON5-03**: Sonarr 5's webhook Test event is accepted and marks nothing imported; a real Sonarr 5 import is accepted and marks exactly the correct file imported. (verified on Sonarr 5.0.0.2701)
 - [x] **SON5-04**: Sanitized fixtures captured from Sonarr 5 (system status, queue details incomplete/complete, Test and Download webhooks) are committed with the Sonarr version and capture scenario recorded alongside each, and CI exercises SeedSyncarr's handling of them without needing the NAS. (verified on Sonarr 5.0.0.2701)
-- [ ] **SON5-05**: If any SON5-01..03 check fails, the smallest compatibility fix ships as 1.7.7 and is deployed to the NAS by release tag; if all pass, no release is cut and the milestone closes as "verified; no release needed" with tests and evidence committed. — Decided 2026-10-20: verified; no release needed (all of SON5-01..04 verified on Sonarr 5.0.0.2701; see 120-SON5-EVIDENCE.md). Awaiting owner confirmation.
+- [x] **SON5-05**: If any SON5-01..03 check fails, the smallest compatibility fix ships as 1.7.7 and is deployed to the NAS by release tag; if all pass, no release is cut and the milestone closes as "verified; no release needed" with tests and evidence committed. — Verified; no release needed (all of SON5-01..04 verified on Sonarr 5.0.0.2701; owner approved 2026-10-20; see 120-SON5-EVIDENCE.md).
 
 ## Future Requirements
 
@@ -36,7 +36,7 @@ Live checks run only on the NAS sandbox: `seedsyncarr-test` (1.7.6) against the 
 | SON5-02 | Phase 120 | Complete (verified on Sonarr 5.0.0.2701) |
 | SON5-03 | Phase 120 | Complete (verified on Sonarr 5.0.0.2701) |
 | SON5-04 | Phase 120 | Complete (verified on Sonarr 5.0.0.2701) |
-| SON5-05 | Phase 120 | Decided (verified; no release needed), awaiting owner confirmation |
+| SON5-05 | Phase 120 | Complete (verified; no release needed, owner approved 2026-10-20) |
 
 **Coverage:**
 - v1 requirements: 5 total
