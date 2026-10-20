@@ -1,13 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.7.5
-milestone_name: Safety Release
-status: Awaiting next milestone
-stopped_at: "v1.7.5 Safety Release complete (1.7.6 deployed); Phase 119 browser UAT closed 2026-10-18; Reliability priorities agreed, awaiting milestone activation; operator follow-ups remain"
-last_updated: "2026-10-18T18:52:00Z"
-last_activity: 2026-10-18 -- Phase 119 Waiting-badge and manual-release UAT passed on the 1.7.6 sandbox
+milestone: v1.7.7
+milestone_name: Sonarr 5 Compatibility
+status: planning
+last_updated: "2026-10-20T18:11:54.236Z"
+last_activity: 2026-10-20
 progress:
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 
 ## Current Position
 
-Phase: 119.1 — complete; last phase of shipped v1.7.5 Safety Release; no active phase
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-18 — Phase 119 browser UAT passed on the 1.7.6 sandbox; next milestone remains unstarted
+Status: Defining requirements
+Last activity: 2026-10-20 — Milestone v1.7.7 started
 
 ## Accumulated Context
 

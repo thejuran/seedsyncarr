@@ -303,11 +303,23 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Current State
 
-v1.7.5 Safety Release shipped 2026-10-15 (Phases 119, 119.1; tagged `v1.7.5` and `v1.7.6`). `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` runs on NAS production. The milestone-end walkthrough on the live build passed: no secrets in the startup or app logs, dashboard, settings and logs healthy. Audit: tech_debt, accepted. The two Phase 119 UI checks (held-file "Waiting" badge, manual-release confirm box) have not been seen in a browser yet, because no file was held on production. Next: the narrowed Reliability milestone, starting at Phase 120 when activated. Order: credential forwarding, safety acceptance checks, partial-startup/shutdown cleanup, model-stream overflow recovery, then LAN connection tests. Scanner buffering, residual import/restart recovery and performance measurements are separate conditional investigations. Dependency item 999.4 is bounded maintenance. See ROADMAP.md for scope and evidence gates; no implementation has begun as part of this reprioritization.
+v1.7.5 Safety Release shipped 2026-10-15 (Phases 119, 119.1; tagged `v1.7.5` and `v1.7.6`). `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` runs on NAS production; Phase 119 browser UAT passed 2026-10-18 on the 1.7.6 sandbox. Active: v1.7.7 Sonarr 5 Compatibility (Phase 120), started 2026-10-20 ahead of Reliability, which now begins at Phase 121.
+
+## Current Milestone: v1.7.7 Sonarr 5 Compatibility
+
+**Goal:** Prove SeedSyncarr works unchanged with Sonarr 5 on the NAS sandbox, and lock that in with regression tests built from real Sonarr 5 responses.
+
+**Target features:**
+- Live sandbox check: `seedsyncarr-test` (1.7.6) against the existing `sonarr-v5` container (Sonarr 5.0.0.2701, NAS port 8990). Production Sonarr and SeedSyncarr untouched.
+- Test Connection, download-queue completion evidence, and the import webhook each verified against Sonarr 5, including the negative cases (Test webhook marks nothing; missing entry, API error or unrelated completed download never releases a hold).
+- Sanitized captured Sonarr 5 fixtures (version and scenario recorded) exercised in CI without the NAS.
+- Conditional release: only if a compatibility fix is needed, ship and deploy 1.7.7 by release tag; otherwise close as "verified; no release needed".
+
+**Key context:** Source review 2026-10-20 of Sonarr `develop` @7ccafd3 (commit of 2026-10-18) shows the three v3 endpoints/payloads SeedSyncarr uses — `GET /api/v3/system/status`, `GET /api/v3/queue/details` (`outputPath`, `downloadId`, `status`, `sizeleft`), and the `Download` webhook (`episodeFile.sourcePath`) — still exist unchanged. Sonarr 5 lists v3 as deprecated, so moving to API v5 is backlog 999.5, not this milestone. Radarr unchanged. Owner decisions 2026-10-20: fix-and-release if broken, sandbox only, label v1.7.7.
 
 ## Next Milestone Goals
 
-Reliability: complete the five ordered, bounded outcomes in ROADMAP.md. Preserve delivered Phase 119 import/deletion safeguards and existing per-component controller cleanup. Close safety checks with evidence, not a generic recovery rewrite. Performance and Usability remains conditional on demonstrated benefit; investigations and dependency maintenance do not automatically expand Reliability's completion criteria.
+Reliability (from Phase 121): complete the five ordered, bounded outcomes in ROADMAP.md. Preserve delivered Phase 119 import/deletion safeguards and existing per-component controller cleanup. Performance and Usability remains conditional on demonstrated benefit.
 
 
 ## Previous Milestone: v1.7.5 Safety Release (Shipped 2026-10-15, tagged v1.7.5 + v1.7.6)
@@ -372,6 +384,8 @@ Reliability: complete the five ordered, bounded outcomes in ROADMAP.md. Preserve
 - Cross-cutting: coverage baseline capture, CI threshold ratchet (pytest --cov-fail-under + Karma global), before/after numbers in ROADMAP.md
 
 ### Active
+
+- [ ] Sonarr 5 compatibility verified live on the sandbox and pinned by CI fixtures (SON5-01..05) — v1.7.7
 
 
 <!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
@@ -494,7 +508,7 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 
 ## Project Status
 
-**Status:** v1.7.5 Safety Release shipped 2026-10-15; 1.7.6 runs on the NAS. Next: Reliability milestone (Phase 120).
+**Status:** v1.7.7 Sonarr 5 Compatibility in planning (Phase 120); 1.7.6 runs on the NAS. Then: Reliability milestone (Phase 121+).
 
 31 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit + v1.2.0 test hardening as SeedSyncarr).
 
@@ -516,4 +530,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-15 after v1.7.5 milestone*
+*Last updated: 2026-10-20 after starting v1.7.7 milestone*
