@@ -9,6 +9,7 @@ rule only, never the matched value.
 The manifest checks accept any recorded 5.x build rather than a hardcoded one
 (D-08), and prove the two queue fixtures show the same download in both states.
 """
+import ipaddress
 import json
 import re
 import unittest
@@ -27,9 +28,85 @@ _VERSION_RE = re.compile(r"^5\.\d+\.\d+\.\d+$")
 _ALLOWED_SOURCES = {"live", "placeholder"}
 
 
+# Documentation and loopback ranges that may appear in sanitized fixtures.
+_IPV4_ALLOWED = tuple(ipaddress.ip_network(n) for n in (
+    "127.0.0.1/32", "192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24",
+))
+# Dotted quads not glued to further digits or dot-digit groups, so a four-part
+# build number such as 5.1.2.3456 never yields a truncated candidate.
+_IPV4_RE = re.compile(r"(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?!\d|\.\d)")
+_HEX32_RE = re.compile(r"(?i)\b[0-9a-f]{32}\b")
+_HOME_RE = re.compile(r"/home/(?!user/)")
+_PERSONAL_RE = re.compile(r"/volume1/|/Users/")
+_URL_HOST_RE = re.compile(r"(?i)https?://([^/:\s\"'\\?#]+)")
+_REAL_TLDS = (
+    "com net org io dev me xyz cc to ws info co uk de nl eu us ch se fi club site top online"
+).split()
+# Lowercase only, so dotted release names like Show.US.S01E01 are not hosts.
+_BARE_FQDN_RE = re.compile(
+    r"(?<![\w.-])((?:[a-z0-9-]+\.)+(?:" + "|".join(_REAL_TLDS) + r"))(?![\w-]|\.[a-z0-9])"
+)
+_ALLOWED_LAST_LABELS = {"invalid", "example", "test", "localhost"}
+_ALLOWED_DOMAINS = ("example.com", "example.org", "example.net")
+_EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+_API_KEY_RE = re.compile(r"(?i)x-api-key|apikey=")
+
+_RULE_ORDER = ("hex32", "ipv4", "home_path", "personal_path", "hostname", "email",
+               "api_key_header")
+
+
+def _manifest_versions() -> set[str]:
+    try:
+        return {e["sonarr_version"] for e in manifest()["fixtures"]}
+    except (OSError, ValueError, KeyError, TypeError):
+        return set()
+
+
+_KNOWN_VERSIONS = _manifest_versions()
+
+
+def _ipv4_hit(text: str) -> bool:
+    for candidate in _IPV4_RE.findall(text):
+        if candidate in _KNOWN_VERSIONS:
+            continue
+        try:
+            addr = ipaddress.ip_address(candidate)
+        except ValueError:
+            continue
+        if not any(addr in net for net in _IPV4_ALLOWED):
+            return True
+    return False
+
+
+def _host_allowed(host: str) -> bool:
+    host = host.lower().rstrip(".")
+    try:
+        ipaddress.ip_address(host)
+        return True  # IP literals are judged by the ipv4 rule
+    except ValueError:
+        pass
+    if host.rsplit(".", 1)[-1] in _ALLOWED_LAST_LABELS:
+        return True
+    return any(host == d or host.endswith("." + d) for d in _ALLOWED_DOMAINS)
+
+
+def _hostname_hit(text: str) -> bool:
+    hosts = _URL_HOST_RE.findall(text) + _BARE_FQDN_RE.findall(text)
+    return any(not _host_allowed(h) for h in hosts)
+
+
 def _scan(text: str) -> list[str]:
     """Return the names of the hygiene rules ``text`` hits (never the values)."""
-    return []
+    hits = {
+        "hex32": bool(_HEX32_RE.search(text)),
+        "ipv4": _ipv4_hit(text),
+        "home_path": bool(_HOME_RE.search(text)),
+        "personal_path": bool(_PERSONAL_RE.search(text)),
+        "hostname": _hostname_hit(text),
+        "email": bool(_EMAIL_RE.search(text)),
+        "api_key_header": bool(_API_KEY_RE.search(text)),
+    }
+    return [rule for rule in _RULE_ORDER if hits[rule]]
 
 
 def _has_placeholders() -> bool:
@@ -59,7 +136,7 @@ class TestScanner(unittest.TestCase):
                 self.assertEqual([], _scan(value))
 
     def test_version_strings_not_flagged_as_ipv4(self):
-        for value in ("5.0.0.2701", '"version": "5.0.0.2701"', "3.46.1", "10.0.13"):
+        for value in (recorded_version(), "5.1.2.3456", '"version": "5.12.0.2999"', "3.46.1", "10.0.13"):
             with self.subTest(value=value):
                 self.assertEqual([], _scan(value))
 
