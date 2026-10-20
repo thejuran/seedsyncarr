@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.7.7
 milestone_name: Sonarr 5 Compatibility
-status: ready_to_execute
+status: executing
 stopped_at: Phase 120 planned (6 plans, 3 waves); ready to execute
-last_updated: "2026-10-20T20:00:53.000Z"
-last_activity: 2026-10-20 — Phase 120 planned (6 plans, 3 waves; owner decisions D-01..D-14 in 120-CONTEXT.md)
+last_updated: "2026-10-20T20:02:02.691Z"
+last_activity: 2026-10-20 -- Phase 120 execution started
 progress:
   total_phases: 1
   completed_phases: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 120 Sonarr 5 Compatibility (milestone v1.7.7); ready to execute
+**Current focus:** Phase 120 — Sonarr 5 Compatibility
 
 ## Current Position
 
-Phase: 120 (Sonarr 5 Compatibility) — planned, not started
-Plan: 0 of 6 complete (next: 120-01, 120-02 in Wave 1)
-Status: Ready to execute
-Last activity: 2026-10-20 — Phase 120 planned (6 plans, 3 waves); plan-checker passed on iteration 2
+Phase: 120 (Sonarr 5 Compatibility) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 120
+Last activity: 2026-10-20 -- Phase 120 execution started
 
 ## Accumulated Context
 
@@ -140,6 +140,7 @@ Stopped at: Phase 120 planned (6 plans, 3 waves); ready to execute
 Next action: /bm:execute-phase 120 with live checkpoints (owner approved plans 2026-10-20).
 
 **Owner execution notes for Phase 120 (2026-10-20):**
+
 - Preserve the before/after Sonarr version checks per scenario (D-07), fixture sanitization (exact-secret count 0 + hygiene guard), and *verified* Deluge/sandbox restoration (`SANDBOX_RESTORED ok`, D-06). Don't drop or shortcut these.
 - If the `holdout_guard.py` PreToolUse hook blocks a step, read and report its reason before proceeding; do not make bypassing it (e.g. switching tools to get around it) the default workaround. Known cause seen during planning: the guard's glob test flags any whitespace- or `/`-separated token that starts with `.` and contains a wildcard (e.g. the regex `.*` in a sed/grep command) as a possible match for its protected dotfolder. That is a documented accepted false positive in the guard; the fix is to avoid such tokens in the command (rewrite the regex), not to bypass the guard. Any other block reason: stop and report.
 - SON5-05 stays open (`[ ]`) until any follow-up fix/1.7.7 gap work is complete; Outcome B routes to `/bm:plan-phase 120 --gaps`.
