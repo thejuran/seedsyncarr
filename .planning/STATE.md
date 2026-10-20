@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.7.7
 milestone_name: Sonarr 5 Compatibility
-status: complete — Phase 120 verified; no release needed (milestone close pending)
-stopped_at: Phase 120 complete and verified (5/5); SON5-05 owner-approved "verified; no release needed"; next /bm:complete-milestone
-last_updated: "2026-10-20T21:36:56.000Z"
-last_activity: 2026-10-20 -- Phase 120 complete: live Sonarr 5.0.0.2701 checks passed, live fixtures in CI, owner approved no release
+status: Awaiting next milestone
+stopped_at: "Milestone v1.7.7 closed (verified; no release needed; no tag); next /bm:new-milestone for Reliability at Phase 121"
+last_updated: "2026-10-20T21:50:00.000Z"
+last_activity: 2026-10-20 — Milestone v1.7.7 completed and archived
 progress:
   total_phases: 1
   completed_phases: 1
@@ -21,18 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** v1.7.7 Sonarr 5 Compatibility verified (no release needed); milestone close next
+**Current focus:** Between milestones. v1.7.7 closed (verified; no release needed). Next: activate Reliability at Phase 121 via /bm:new-milestone
 
 ## Current Position
 
-Phase: 120 (Sonarr 5 Compatibility) — COMPLETE (verified 5/5)
-Plan: 6 of 6 complete
-Status: Phase complete; verified; no release needed. Milestone close (/bm:complete-milestone) pending
-Last activity: 2026-10-20 -- Phase 120 complete and verified; owner approved SON5-05 "verified; no release needed"
+Phase: Milestone v1.7.7 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-20 — Milestone v1.7.7 completed and archived
 
 ## Accumulated Context
 
 ### Roadmap Evolution
+
+- 2026-10-20: Milestone v1.7.7 closed: Phase 120 verified 5/5, owner approved "verified; no release needed". No 1.7.7 release and no `v1.7.7` git tag (a tag would trigger the CI release pipeline). Archived to `milestones/v1.7.7-ROADMAP.md` and `v1.7.7-REQUIREMENTS.md`; REQUIREMENTS.md removed for the next milestone.
 
 - 2026-10-20: Milestone v1.7.7 Sonarr 5 Compatibility inserted ahead of Reliability (owner decision) as one phase, Phase 120, covering SON5-01..05. Reliability shifts to begin at Phase 121. Backlog 999.5 (move Sonarr integration to API v5) added. Live checks are NAS sandbox only (`seedsyncarr-test` 1.7.6 against `sonarr-v5`, Sonarr 5.0.0.2701, port 8990; prod untouched). Release is conditional: ship and deploy 1.7.7 by tag only if a fix is needed, otherwise close "verified; no release needed". No implementation started.
 
@@ -106,7 +108,7 @@ None.
 
 ## Future Work
 
-The authoritative future work list is ROADMAP.md. Active now: v1.7.7 Sonarr 5 Compatibility — Phase 120 complete (verified; no release needed); milestone close pending. After it, Reliability begins at Phase 121 and is ordered: credential forwarding, safety acceptance, remaining startup/shutdown cleanup, model-stream overflow recovery, then LAN connection tests. Reliability's phase plans and release version are not yet activated. Moving the Sonarr integration to API v5 is backlog 999.5.
+The authoritative future work list is ROADMAP.md. No milestone is active; v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release needed). Next, Reliability begins at Phase 121 and is ordered: credential forwarding, safety acceptance, remaining startup/shutdown cleanup, model-stream overflow recovery, then LAN connection tests. Reliability's phase plans and release version are not yet activated. Moving the Sonarr integration to API v5 is backlog 999.5.
 
 Scanner buffering, residual import/restart gaps, memory measurements and UI/webhook efficiency are separate conditional investigations, not promised fixes or completion gates. Performance and Usability activates only when evidence justifies it. Dependency item 999.4 is a bounded maintenance side task.
 
@@ -133,11 +135,13 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 | v1.4.0 Launch-Hardening for Public Release | Phases 110-113 | 2026-06-02 to 2026-06-03 (v1.4.0 tag cut) |
 | v1.4.1 Scanner Auto-Recovery | Phases 114-115 | 2026-06-19 to 2026-06-22 (tagged v1.5.0) |
 | v1.7.4 Safety Patch | Phases 116-118 | 2026-10-08 to 2026-10-09 (tagged v1.7.4) |
+| v1.7.5 Safety Release | Phases 119, 119.1 | 2026-10-09 to 2026-10-15 (tagged v1.7.5, v1.7.6) |
+| v1.7.7 Sonarr 5 Compatibility | Phase 120 | 2026-10-20 (verified; no release, no tag) |
 
 ## Session Continuity
 
 Last session: 2026-10-20
-Stopped at: Phase 120 complete and verified (120-VERIFICATION.md, 5/5); SON5-05 owner-approved "verified; no release needed" on Sonarr 5.0.0.2701
+Stopped at: Milestone v1.7.7 closed and archived; next /bm:new-milestone (Reliability, Phase 121)
 Next action: /bm:complete-milestone (v1.7.7). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
@@ -151,8 +155,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Run `/bm:complete-milestone` to close v1.7.7 (verified; no release needed)
-- After v1.7.7 closes, Reliability begins at Phase 121
+- Start the next milestone with /gsd-new-milestone
 
 ## Deferred Items
 
@@ -163,3 +166,11 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 | Operator follow-up | Remove Hacks.S04E01 test torrent from sandbox Deluge (`~/v5test` on seedbox, label tv-v5test) once TorrentDay seed time is met | Seeding; owner to remove |
 | Deferred fix (Phase 120) | Webhook handler logger not attached to app log ("Sonarr webhook test event received" never written) | Logged in 120 deferred-items.md; not Sonarr-5-specific |
 | Deferred fix (Phase 120) | CompletionGate prune path logs "Completion hold cleared" when a hold is merely dropped (no release; no early transfer) | Logged in 120 deferred-items.md; wording fix |
+
+Open audit artifacts acknowledged at v1.7.7 close (2026-10-20), all from earlier milestones and already assigned to Reliability item 2:
+
+| Category | Item | Status |
+|----------|------|--------|
+| debug | done-group-no-auto-delete | diagnosed |
+| debug | extract-staging-autodel-rearm | awaiting_human_verify |
+| verification | Phase 119 119-VERIFICATION.md | human_needed (browser half closed 2026-10-18 in 119-HUMAN-UAT.md; extraction/import checks remain) |

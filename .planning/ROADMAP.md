@@ -1,50 +1,21 @@
 # Roadmap: SeedSyncarr
 
-Updated 2026-10-20. Milestone v1.7.7 Sonarr 5 Compatibility is active at Phase 120 (owner decision 2026-10-20, inserted ahead of Reliability). Reliability begins at Phase 121; two future milestones remain after v1.7.7, and their detailed phase plans and release versions are not assigned yet. Existing implementation must be checked before planning any carried-forward fix.
+Updated 2026-10-20. No milestone is active. v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release needed). Reliability begins at Phase 121 when activated; its detailed phase plans and release version, and those of the milestone after it, are not assigned yet. Existing implementation must be checked before planning any carried-forward fix.
 
 ## Milestones
 
 - ✅ v1.7.4 Safety Patch -- Phases 116–118 (shipped 2026-10-09)
 - ✅ v1.7.5 Safety Release -- Phases 119 and 119.1; includes release 1.7.6 (shipped 2026-10-15)
-- 🔨 v1.7.7 Sonarr 5 Compatibility -- Phase 120 (complete; milestone close pending)
+- ✅ v1.7.7 Sonarr 5 Compatibility -- Phase 120 (closed 2026-10-20; verified, no release needed)
 
-Active milestone: v1.7.7 Sonarr 5 Compatibility (Phase 120 complete: verified; no release needed; milestone close pending). Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
+No active milestone; next is Reliability. Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
 
-### 🔨 v1.7.7 Sonarr 5 Compatibility (Phase 120 complete; milestone close pending)
+<details>
+<summary>✅ v1.7.7 Sonarr 5 Compatibility (Phase 120) — CLOSED 2026-10-20, verified; no release needed</summary>
 
-- [x] **Phase 120: Sonarr 5 Compatibility** - Prove SeedSyncarr works with Sonarr 5 on the sandbox and pin it with CI fixtures (completed 2026-10-20)
+- [x] Phase 120: Sonarr 5 Compatibility (6/6 plans) — completed 2026-10-20. [Archived roadmap](milestones/v1.7.7-ROADMAP.md)
 
-### Phase 120: Sonarr 5 Compatibility
-
-**Goal**: SeedSyncarr is shown to work with Sonarr 5 (connection test, download-queue completion evidence, import webhook) on the NAS sandbox, and that behavior is locked in by CI tests built from real Sonarr 5 responses. A 1.7.7 release ships only if a compatibility fix is needed.
-**Depends on**: Nothing (first phase of v1.7.7; builds on shipped 1.7.6)
-**Requirements**: SON5-01, SON5-02, SON5-03, SON5-04, SON5-05
-**Scope boundary**: Live checks run only on the NAS sandbox: `seedsyncarr-test` (1.7.6) against the `sonarr-v5` container (Sonarr 5.0.0.2701, NAS port 8990). Production Sonarr and SeedSyncarr are not touched. No API v5 migration (backlog 999.5), no Radarr changes.
-**Success Criteria** (what must be TRUE):
-
-  1. On the sandbox, Test Connection for the Sonarr 5 instance reports success and shows the tested Sonarr 5.x build (5.0.0.2701 at milestone start; the build actually tested is recorded).
-  2. A held file stays "Waiting" while its tracked download is incomplete in Sonarr 5's queue and is released only once that same download shows complete, with both queue states for that one download captured live. A missing queue entry, a Sonarr API error, or an unrelated completed download each leave the hold in place.
-  3. Sonarr 5's webhook Test event is accepted and marks nothing imported; a real Sonarr 5 import is accepted and marks exactly the correct file imported, and no other file.
-  4. Sanitized Sonarr 5 fixtures (system status, queue details incomplete and complete, Test and Download webhooks) are committed with the Sonarr version and capture scenario recorded alongside each, contain no keys, hostnames or personal paths, and CI tests exercise SeedSyncarr's handling of them without the NAS.
-  5. If any check in criteria 1-3 fails, the smallest compatibility fix ships as 1.7.7 and is deployed to the NAS by release tag (never `:dev`); if all pass, no release is cut and the milestone closes as "verified; no release needed" with tests and evidence committed.
-
-**Plans**: 6 plans
-
-Plans:
-**Wave 1**
-
-- [x] 120-01-PLAN.md — Fixture scaffold, manifest, loader, placeholder fixtures, CI hygiene guard (SON5-04)
-- [x] 120-02-PLAN.md — Sanitizer and disposable webhook-sink scripts with local self-checks (SON5-04, SON5-03)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 120-03-PLAN.md — SON5-01 Test Connection and SON5-03 webhook CI tests on fixture bytes
-- [x] 120-04-PLAN.md — SON5-02 queue hold→release replay and negatives through the real client and gate
-- [x] 120-05-PLAN.md — Live Sonarr 5 capture on the NAS sandbox; one idempotent teardown script on every exit path (SON5-01..03; D-14 and Deluge-fallback checkpoints)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 120-06-PLAN.md — Sanitize and commit live fixtures, evidence record, SON5-05 release decision, owner confirmation
+</details>
 
 ## Next milestone: Reliability
 
@@ -111,6 +82,7 @@ Credential forwarding and LAN connection tests belong to Reliability, not this m
 ## Completed releases
 
 - **1.7.4:** safety patch, Phases 116–118. [Archived roadmap](milestones/v1.7.4-ROADMAP.md).
+- **v1.7.7 (no release):** Sonarr 5.0.0.2701 compatibility verified on the sandbox and pinned in CI, Phase 120. [Archived roadmap](milestones/v1.7.7-ROADMAP.md).
 - **1.7.5 / 1.7.6:** safety release and startup-secret fix, Phases 119/119.1. Records show 1.7.6 deployed to the NAS on 2026-10-15. [Archived audit](milestones/v1.7.5-MILESTONE-AUDIT.md). The remaining browser checks are assigned above.
 
 ## Planning boundaries
