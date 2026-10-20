@@ -21,19 +21,29 @@ Active milestone: v1.7.7 Sonarr 5 Compatibility (Phase 120, not started, ready t
 **Requirements**: SON5-01, SON5-02, SON5-03, SON5-04, SON5-05
 **Scope boundary**: Live checks run only on the NAS sandbox: `seedsyncarr-test` (1.7.6) against the `sonarr-v5` container (Sonarr 5.0.0.2701, NAS port 8990). Production Sonarr and SeedSyncarr are not touched. No API v5 migration (backlog 999.5), no Radarr changes.
 **Success Criteria** (what must be TRUE):
+
   1. On the sandbox, Test Connection for the Sonarr 5 instance reports success and shows the tested Sonarr 5.x build (5.0.0.2701 at milestone start; the build actually tested is recorded).
   2. A held file stays "Waiting" while its tracked download is incomplete in Sonarr 5's queue and is released only once that same download shows complete, with both queue states for that one download captured live. A missing queue entry, a Sonarr API error, or an unrelated completed download each leave the hold in place.
   3. Sonarr 5's webhook Test event is accepted and marks nothing imported; a real Sonarr 5 import is accepted and marks exactly the correct file imported, and no other file.
   4. Sanitized Sonarr 5 fixtures (system status, queue details incomplete and complete, Test and Download webhooks) are committed with the Sonarr version and capture scenario recorded alongside each, contain no keys, hostnames or personal paths, and CI tests exercise SeedSyncarr's handling of them without the NAS.
   5. If any check in criteria 1-3 fails, the smallest compatibility fix ships as 1.7.7 and is deployed to the NAS by release tag (never `:dev`); if all pass, no release is cut and the milestone closes as "verified; no release needed" with tests and evidence committed.
+
 **Plans**: 6 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 120-01-PLAN.md — Fixture scaffold, manifest, loader, placeholder fixtures, CI hygiene guard (SON5-04)
 - [ ] 120-02-PLAN.md — Sanitizer and disposable webhook-sink scripts with local self-checks (SON5-04, SON5-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 120-03-PLAN.md — SON5-01 Test Connection and SON5-03 webhook CI tests on fixture bytes
 - [ ] 120-04-PLAN.md — SON5-02 queue hold→release replay and negatives through the real client and gate
 - [ ] 120-05-PLAN.md — Live Sonarr 5 capture on the NAS sandbox; one idempotent teardown script on every exit path (SON5-01..03; D-14 and Deluge-fallback checkpoints)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 120-06-PLAN.md — Sanitize and commit live fixtures, evidence record, SON5-05 release decision, owner confirmation
 
 ## Next milestone: Reliability
@@ -59,12 +69,15 @@ These are bounded evidence-gathering candidates, not promised fixes or additiona
 ### Deferred: Scanner buffering (first investigation candidate)
 
 the result queue is unbounded and the consumer drains to the latest result. Use a representative scan workload with a deliberately stalled consumer to measure queue/resource growth and recovery. Stop when the need for a bound is established or unsupported. Any fix must retain successful-scan evidence, completion/deletion safety and clean shutdown; do not blindly discard observations.
+
 ### Deferred: Residual import/restart recovery
 
 compare current behavior and regression evidence with a specific unmatched-event or restart failure scenario. Early episode credit, pending-notice revalidation and restart arm-on-commit already shipped in Phase 119. Stop with a reproducible remaining gap or a documented no-fix conclusion; do not rebuild delivered safeguards.
+
 ### Deferred: Memory diagnostics
 
 add only the measurements needed to resolve the buffering investigation, distinguishing current, child-process and peak usage where relevant. Stop once the resource question is answered. No standalone monitoring or diagnostics project.
+
 ### Deferred: UI and webhook efficiency
 
 measure realistic update/idle workloads before proposing optimization. Initial model delivery already uses one snapshot; examine remaining per-update serialization and repeated lookup construction. Stop with a baseline and worthwhile target, or defer. Preserve pending-notice revalidation and correctness; no speculative caching or rendering rewrite.

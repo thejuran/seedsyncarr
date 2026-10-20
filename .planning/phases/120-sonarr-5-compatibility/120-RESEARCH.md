@@ -338,14 +338,16 @@ If no fix is needed: no version bump, no tag. Commit the tests, fixtures and an 
 | A5 | "Deploy to the NAS" in SON5-05 means the sandbox container | Release Path | Prod deploy would need its own runbook execution and owner go-ahead |
 | A6 | Sonarr's completed state persists until SeedSyncarr copies and Sonarr imports (wide window for capturing the complete snapshot) | L2.4 | Agent must poll faster; risk of missing the complete snapshot |
 
-## Open Questions (owner decisions)
+## Open Questions (owner decisions) (RESOLVED)
 
-1. **Test Connection classification.** Is "works via a non-private URL; docker-name URL blocked by the known LAN guard" acceptable for SON5-01? Recommendation: yes, and keep the LAN fix in Reliability.
-2. **Which real episode to grab, and on which indexer** (private-tracker ratio and consent). Owner picks.
-3. **Temporary Deluge download-directory change** for the capture: owner does it, or approves an agent API edit.
-4. **If sonarr-v5 auto-updates past 2701:** pin it, or record the newer 5.x version?
-5. **SON5-05 deploy target** if 1.7.7 is needed: sandbox only, or prod too?
-6. **Keep raw captures on the NAS** after commit (for audit), or delete at teardown?
+All six were answered by the owner on 2026-10-20 and are recorded in 120-CONTEXT.md.
+
+1. **Test Connection classification.** Is "works via a non-private URL; docker-name URL blocked by the known LAN guard" acceptable for SON5-01? Recommendation: yes, and keep the LAN fix in Reliability. RESOLVED: yes (D-01, D-02).
+2. **Which real episode to grab, and on which indexer** (private-tracker ratio and consent). Owner picks. RESOLVED: public indexer; ask owner if only private trackers (D-14).
+3. **Temporary Deluge download-directory change** for the capture: owner does it, or approves an agent API edit. RESOLVED: agent makes it, per-torrent override preferred, restore on every exit path (D-04..D-06).
+4. **If sonarr-v5 auto-updates past 2701:** pin it, or record the newer 5.x version? RESOLVED: record actual build, check before/after each scenario (D-07..D-09).
+5. **SON5-05 deploy target** if 1.7.7 is needed: sandbox only, or prod too? RESOLVED: sandbox only (D-11).
+6. **Keep raw captures on the NAS** after commit (for audit), or delete at teardown? RESOLVED: delete at teardown (D-13).
 
 ## Environment Availability
 

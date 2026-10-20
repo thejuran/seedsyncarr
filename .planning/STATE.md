@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.7.7
 milestone_name: Sonarr 5 Compatibility
-status: "Planning — Phase 120 ready to plan"
-stopped_at: "v1.7.7 roadmap created; Phase 120 ready to plan"
-last_updated: "2026-10-20T18:12:39Z"
-last_activity: 2026-10-20 -- v1.7.7 roadmap created (Phase 120)
+status: planning
+stopped_at: v1.7.7 roadmap created; Phase 120 ready to plan
+last_updated: "2026-10-20T19:38:38.158Z"
+last_activity: 2026-10-20 — v1.7.7 roadmap created (one phase, Phase 120, SON5-01..05)
 progress:
   total_phases: 1
   completed_phases: 0
-  total_plans: 0
+  total_plans: 6
   completed_plans: 0
   percent: 0
 ---
