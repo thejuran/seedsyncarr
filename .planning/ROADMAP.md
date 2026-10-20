@@ -26,7 +26,15 @@ Active milestone: v1.7.7 Sonarr 5 Compatibility (Phase 120, not started, ready t
   3. Sonarr 5's webhook Test event is accepted and marks nothing imported; a real Sonarr 5 import is accepted and marks exactly the correct file imported, and no other file.
   4. Sanitized Sonarr 5 fixtures (system status, queue details incomplete and complete, Test and Download webhooks) are committed with the Sonarr version and capture scenario recorded alongside each, contain no keys, hostnames or personal paths, and CI tests exercise SeedSyncarr's handling of them without the NAS.
   5. If any check in criteria 1-3 fails, the smallest compatibility fix ships as 1.7.7 and is deployed to the NAS by release tag (never `:dev`); if all pass, no release is cut and the milestone closes as "verified; no release needed" with tests and evidence committed.
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 120-01-PLAN.md — Fixture scaffold, manifest, loader, placeholder fixtures, CI hygiene guard (SON5-04)
+- [ ] 120-02-PLAN.md — Sanitizer and disposable webhook-sink scripts with local self-checks (SON5-04, SON5-03)
+- [ ] 120-03-PLAN.md — SON5-01 Test Connection and SON5-03 webhook CI tests on fixture bytes
+- [ ] 120-04-PLAN.md — SON5-02 queue hold→release replay and negatives through the real client and gate
+- [ ] 120-05-PLAN.md — Live Sonarr 5 capture on the NAS sandbox with verified teardown (SON5-01..03; D-14 checkpoint)
+- [ ] 120-06-PLAN.md — Sanitize and commit live fixtures, evidence record, SON5-05 release decision, owner confirmation
 
 ## Next milestone: Reliability
 
