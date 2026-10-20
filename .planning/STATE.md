@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.7.7
 milestone_name: Sonarr 5 Compatibility
-status: executing
-stopped_at: Phase 120 Wave 2 complete (120-03/04/05; live capture COMPLETE, SANDBOX_RESTORED ok); Wave 3 (120-06) next
-last_updated: "2026-10-20T21:09:48.000Z"
-last_activity: 2026-10-20 -- 120-05 live Sonarr 5 capture complete (SON5-01 live pass; S04E01 incomplete/complete pair + Download webhook import captured)
+status: "Phase 120 Plan 06 in review — SON5-05 release decision awaiting owner confirmation"
+stopped_at: "Phase 120 Plan 06: SON5-05 decided — verified; no release needed; awaiting owner confirmation (Task 3 checkpoint)"
+last_updated: "2026-10-20T21:28:30.000Z"
+last_activity: 2026-10-20 -- 120-06 live sanitized fixtures committed (6e0341f, CI green), raw captures deleted, SON5 evidence written; SON5-05 decision awaiting owner
 progress:
   total_phases: 1
   completed_phases: 0
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 
 Phase: 120 (Sonarr 5 Compatibility) — EXECUTING
 Plan: 6 of 6 (Wave 3: 120-06)
-Status: Executing Phase 120
-Last activity: 2026-10-20 -- Phase 120 Wave 2 complete; 120-06 next
+Status: Phase 120 Plan 06 at owner checkpoint — SON5-05 decided "verified; no release needed" on Sonarr 5.0.0.2701, awaiting owner confirmation
+Last activity: 2026-10-20 -- live fixtures committed (6e0341f, CI green), raw captures deleted, 120-SON5-EVIDENCE.md written
 
 ## Accumulated Context
 
@@ -80,6 +80,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 119.1]: 119.1-04 complete: owner go-ahead 'Deploy' for :1.7.6@sha256:da6196e0 (119.1-05 executes); seedsyncarr-test choice B (recreate on 1.7.6; shares seedbox password, include in rotation); CodeQL alert #8 dismissal was done without prior owner approval, owner since informed
 - [Phase 119.1]: 119.1-05: 1.7.6 deployed to NAS prod by digest (container 2feb4073db71, .Image 5b801f83); prod log 0/3 secret values; seedsyncarr-test recreated on 1.7.6 (0 matches); wud restored; paused at owner confirmation, rotation reminder after
 - [Phase 119.1]: 119.1-05 complete: owner 'Confirmed' the 1.7.6 prod deploy (Waiting-badge/manual-release UI UAT not reported, stays open); rotation checklist delivered after confirmation (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys; webhook/api_token unset)
+- [Phase 120]: SON5-05 verified; no release needed (decided, awaiting owner confirmation) on builds Sonarr 5.0.0.2701 (linuxserver/sonarr:develop, image 8b59d172e9b4); container-name Test Connection failure classified as Reliability item 5 (D-02)
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -136,8 +137,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 ## Session Continuity
 
 Last session: 2026-10-20
-Stopped at: Phase 120 planned (6 plans, 3 waves); ready to execute
-Next action: /bm:execute-phase 120 with live checkpoints (owner approved plans 2026-10-20).
+Stopped at: Phase 120 Plan 06 Task 3 (owner checkpoint): SON5-05 decided "verified; no release needed" on Sonarr 5.0.0.2701; see .planning/phases/120-sonarr-5-compatibility/120-SON5-EVIDENCE.md
+Next action: owner confirms the SON5-05 outcome; then finish 120-06 (record confirmation, SUMMARY) and /bm:complete-milestone.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
