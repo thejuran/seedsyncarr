@@ -6,10 +6,13 @@ The committed queue fixtures are fed to ``ArrQueueClient`` as raw byte chunks
 ``queue_target_download_id`` and the Sonarr build is the one recorded in the
 manifest, so no root name or id is hardcoded here.
 """
+import json
 import os
 import unittest
 from typing import Dict, List
 from unittest.mock import MagicMock, patch
+
+import requests
 
 from controller.arr_queue import FETCH_DONE, ArrQueueClient, ArrTarget, QueueRecord
 from controller.completion_gate import CompletionGate, Verdict
@@ -50,6 +53,14 @@ def _target_record(fixture_name: str) -> dict:
     if len(matches) != 1:
         raise AssertionError(f"{fixture_name}: expected 1 target record, found {len(matches)}")
     return matches[0]
+
+
+def _unrelated_record(fixture_name: str) -> dict:
+    """The single record in ``fixture_name`` that belongs to another download."""
+    others = [r for r in fixture_json(fixture_name) if r.get("downloadId") != queue_target_download_id()]
+    if len(others) != 1:
+        raise AssertionError(f"{fixture_name}: expected 1 unrelated record, found {len(others)}")
+    return others[0]
 
 
 def _root_of(record: dict) -> str:
@@ -148,3 +159,76 @@ class TestSonarr5QueueReplay(Sonarr5QueueBase):
         self.assertFalse(verdict.proven)
         self.assertTrue(verdict.held)
         self.assertEqual("no_queue_entry", verdict.reason)
+
+
+@patch("controller.arr_queue.requests")
+class TestSonarr5QueueNegatives(Sonarr5QueueBase):
+    def _assert_held(self, verdict: Verdict, reason: str):
+        self.assertFalse(verdict.proven)
+        self.assertTrue(verdict.held)
+        self.assertEqual(reason, verdict.reason)
+
+    def test_http_500_holds_sonarr_unavailable_never_proves(self, mock_requests):
+        _serve(mock_requests, b"", status=500)
+        verdict = _decide(self.gate, self.client, {self.target_root: 1000})[self.target_root]
+        self._assert_held(verdict, "sonarr_unavailable")
+        self.assertEqual({self.target_root: "sonarr_unavailable"}, self.gate.holds)
+
+    def test_connection_error_holds_sonarr_unavailable(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        mock_requests.get.side_effect = requests.ConnectionError("boom")
+        verdict = _decide(self.gate, self.client, {self.target_root: 1000})[self.target_root]
+        self._assert_held(verdict, "sonarr_unavailable")
+
+    def test_invalid_json_holds_sonarr_unavailable(self, mock_requests):
+        truncated = fixture_bytes(COMPLETE)[:-7]
+        with self.assertRaises(ValueError):
+            json.loads(truncated)
+        _serve(mock_requests, truncated)
+        verdict = _decide(self.gate, self.client, {self.target_root: 1000})[self.target_root]
+        self._assert_held(verdict, "sonarr_unavailable")
+
+    def test_cached_proof_not_used_when_snapshot_becomes_unavailable(self, mock_requests):
+        candidates = {self.target_root: 1000}
+        _serve(mock_requests, fixture_bytes(COMPLETE))
+        self.assertTrue(_decide(self.gate, self.client, candidates)[self.target_root].proven)
+
+        self.advance(CompletionGate.REFRESH_INTERVAL_SECS + 1)
+        _serve(mock_requests, b"", status=500)
+        verdict = _decide(self.gate, self.client, candidates)[self.target_root]
+        self._assert_held(verdict, "sonarr_unavailable")
+
+    def test_mixed_snapshot_keeps_target_held(self, mock_requests):
+        target = _target_record(INCOMPLETE)
+        unrelated = _unrelated_record(COMPLETE)
+        unrelated_root = _root_of(unrelated)
+        self.assertNotEqual(self.target_root, unrelated_root)
+        # This test serves a synthetic variant derived from the captured records: the incomplete
+        # target next to another download that has already completed.
+        raw = json.dumps([target, unrelated]).encode("utf-8")
+        _serve(mock_requests, raw)
+
+        verdicts = _decide(self.gate, self.client, {self.target_root: 1000, unrelated_root: 1000})
+
+        self._assert_held(verdicts[self.target_root], "still_downloading")
+        self.assertTrue(verdicts[unrelated_root].proven)
+        self.assertEqual({self.target_root: "still_downloading"}, self.gate.holds)
+
+    def test_season_pack_one_record_downloading_holds(self, mock_requests):
+        done = dict(_target_record(COMPLETE), status="completed", sizeleft=0)
+        downloading = dict(done, status="downloading", sizeleft=123456)
+        # This test serves a synthetic variant derived from the captured record: two per-episode
+        # rows of one download, one of them still downloading.
+        raw = json.dumps([done, downloading]).encode("utf-8")
+        _serve(mock_requests, raw)
+
+        verdict = _decide(self.gate, self.client, {self.target_root: 1000})[self.target_root]
+
+        self._assert_held(verdict, "still_downloading")
+
+    def test_missing_queue_entry_holds(self, mock_requests):
+        _serve(mock_requests, fixture_bytes(INCOMPLETE))
+        root = "Probe.File.Not.In.Queue"
+        verdict = _decide(self.gate, self.client, {root: 1000})[root]
+        self._assert_held(verdict, "no_queue_entry")
+        self.assertEqual({root: "no_queue_entry"}, self.gate.holds)
