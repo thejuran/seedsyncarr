@@ -21,7 +21,7 @@ Active milestone: v1.7.7 Sonarr 5 Compatibility (Phase 120, not started, ready t
 **Requirements**: SON5-01, SON5-02, SON5-03, SON5-04, SON5-05
 **Scope boundary**: Live checks run only on the NAS sandbox: `seedsyncarr-test` (1.7.6) against the `sonarr-v5` container (Sonarr 5.0.0.2701, NAS port 8990). Production Sonarr and SeedSyncarr are not touched. No API v5 migration (backlog 999.5), no Radarr changes.
 **Success Criteria** (what must be TRUE):
-  1. On the sandbox, Test Connection for the Sonarr 5 instance reports success and shows its 5.x version (5.0.0.2701).
+  1. On the sandbox, Test Connection for the Sonarr 5 instance reports success and shows the tested Sonarr 5.x build (5.0.0.2701 at milestone start; the build actually tested is recorded).
   2. A held file stays "Waiting" while its tracked download is incomplete in Sonarr 5's queue and is released only once that same download shows complete, with both queue states for that one download captured live. A missing queue entry, a Sonarr API error, or an unrelated completed download each leave the hold in place.
   3. Sonarr 5's webhook Test event is accepted and marks nothing imported; a real Sonarr 5 import is accepted and marks exactly the correct file imported, and no other file.
   4. Sanitized Sonarr 5 fixtures (system status, queue details incomplete and complete, Test and Download webhooks) are committed with the Sonarr version and capture scenario recorded alongside each, contain no keys, hostnames or personal paths, and CI tests exercise SeedSyncarr's handling of them without the NAS.

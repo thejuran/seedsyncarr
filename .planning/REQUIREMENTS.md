@@ -3,7 +3,7 @@
 **Defined:** 2026-10-20
 **Core Value:** Reliable file sync from seedbox to local with automated media library integration
 
-Live checks run only on the NAS sandbox: `seedsyncarr-test` (1.7.6) against the `sonarr-v5` container (Sonarr 5.0.0.2701, port 8990). Production Sonarr and SeedSyncarr are not touched.
+Live checks run only on the NAS sandbox: `seedsyncarr-test` (1.7.6) against the `sonarr-v5` container (Sonarr 5.x `develop`, 5.0.0.2701 at milestone start, port 8990; the tested build is recorded per capture). Production Sonarr and SeedSyncarr are not touched.
 
 ## v1 Requirements
 
