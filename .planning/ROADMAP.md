@@ -8,7 +8,7 @@ Updated 2026-10-20. Milestone v1.7.7 Sonarr 5 Compatibility is active at Phase 1
 - ✅ v1.7.5 Safety Release -- Phases 119 and 119.1; includes release 1.7.6 (shipped 2026-10-15)
 - 🔨 v1.7.7 Sonarr 5 Compatibility -- Phase 120 (in progress)
 
-Active milestone: v1.7.7 Sonarr 5 Compatibility (Phase 120, not started, ready to plan). Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
+Active milestone: v1.7.7 Sonarr 5 Compatibility (Phase 120, executing: Wave 1 of 3 complete). Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
 
 ### 🔨 v1.7.7 Sonarr 5 Compatibility (Phase 120, in progress)
 
@@ -33,8 +33,8 @@ Active milestone: v1.7.7 Sonarr 5 Compatibility (Phase 120, not started, ready t
 Plans:
 **Wave 1**
 
-- [ ] 120-01-PLAN.md — Fixture scaffold, manifest, loader, placeholder fixtures, CI hygiene guard (SON5-04)
-- [ ] 120-02-PLAN.md — Sanitizer and disposable webhook-sink scripts with local self-checks (SON5-04, SON5-03)
+- [x] 120-01-PLAN.md — Fixture scaffold, manifest, loader, placeholder fixtures, CI hygiene guard (SON5-04)
+- [x] 120-02-PLAN.md — Sanitizer and disposable webhook-sink scripts with local self-checks (SON5-04, SON5-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
