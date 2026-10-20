@@ -511,3 +511,74 @@ Plan verify on the NAS: `CAPTURE_STATUS=COMPLETE`, sink containers 0, `PAIR_OK 1
    state now FAILs.
 5. **Incomplete milestone captured outside `run-L2.sh`**: it was saved read-only at 15:57 after the seedbox SSH
    recovered, so the sink was not live then. The pair is still the same downloadId (`PAIR_OK 1`).
+
+## Early "Completion hold cleared" at 17:01:49 (app clock): evidence-based account
+
+Sources: read-only. The sandbox app log, the 5 s `queue-<epoch>.json` snapshots, the NAS staging dir and
+`src/python/controller/completion_gate.py` / `auto_queue.py`. No live changes. The model stream was **not**
+captured between 17:01:49 and 17:03:20 (the monitor did not poll it), so the stream state for that interval
+is unknown. The last stream reading, at 16:57 host, was `default` / `still_downloading`.
+
+**What logged.** Every INFO line from 17:00:00 to 17:04:09 app clock, excluding memory stats:
+```
+17:01:49,817 Completion hold cleared for 'Hacks.S04E01.1080p.HEVC.x265-MeGusta'
+17:03:20,525 Completion hold for 'Hacks.S04E01.1080p.HEVC.x265-MeGusta': Still downloading
+17:03:21,095 Completion hold cleared for 'Hacks.S04E01.1080p.HEVC.x265-MeGusta'
+17:03:21,096 Auto queueing 'Hacks.S04E01.1080p.HEVC.x265-MeGusta'
+17:03:21,597 Received command Action.QUEUE for file Hacks.S04E01.1080p.HEVC.x265-MeGusta
+17:03:22,029 ActiveScanner: Path does not exist: /downloads/Hacks.S04E01.1080p.HEVC.x265-MeGusta
+```
+Nothing else in that window: no `Auto queueing`, no QUEUE command, no transfer line and no reason-change line.
+
+**Sonarr queue/details** (same downloadId, host clock):
+- 16:01:31 to 16:02:17: `status=downloading`, `trackedDownloadState=downloading`, `trackedDownloadStatus=ok`,
+  and `sizeleft=164118528` unchanged across all 10 snapshots. Sonarr's queue view lagged its own client
+  refresh.
+- From 16:02:22: `status=completed`, `sizeleft=0`, `importPending`, `warning`.
+- So at the clear (16:01:49 host), the nearest snapshot (16:01:46 / 16:01:51) said `downloading` with
+  `sizeleft=164118528`.
+
+**Was anything transferred between 17:01:49 and 17:03:20?** No.
+- No `Auto queueing` or `Action.QUEUE` line exists before 17:03:21.
+- At 17:03:22 the local active scanner reported the local root path did not exist yet.
+- The staging dir mtime is 16:03:51 host, after the 16:03:21 queue.
+- The child-file mtimes in the staging copy (mkv 16:01:36, nfo 16:01:35 host) are the seedbox mtimes
+  preserved by the transfer, not copy times. They show the seedbox file was last written at 16:01:36, about
+  4 s after the cap lifted. Deluge had in fact finished before 16:01:49, but Sonarr's queue still said
+  `downloading` until 16:02:22.
+
+**Why the hold cleared.** The gate code path:
+1. `AutoQueue.process` (`auto_queue.py`) passes the gate only *sweep survivors*: DEFAULT roots whose remote
+   size has been stable for `remote_stability_seconds` (90) on the successful-scan clock. A size change
+   resets that window (`__update_remote_size_history`).
+2. When the cap lifted, the download finished and the remote scan saw a new size for the root. The root
+   stopped being a stability candidate and was not in `gate_candidates` for that cycle.
+3. `CompletionGate._run(..., prune=True)` ends with `for name in list(self._holds): if name not in candidates:
+   self._clear_hold(name)`. `_clear_hold` logs `Completion hold cleared for '<root>'`, the same message used
+   when a hold is released on proof. The 17:01:49 line is this **prune** (the root left the candidate set),
+   not a "not held" verdict. No verdict was produced for the root in that cycle, and AutoQueue queues only
+   survivors whose verdict in the *same* cycle is not held.
+4. While there were no candidates, `_run` started no fetches (step 4 runs only `if candidates`). The gate's
+   last Sonarr snapshot therefore stayed at "downloading".
+5. At 17:03:20 the size had been stable for 90 s, and the root re-entered the candidates. `_decide`
+   evaluated it from that stale "downloading" snapshot and **re-held it** (`Still downloading`), and a fetch
+   started. 0.57 s later the fresh snapshot (`completed`, `sizeleft=0`) was applied. The verdict became not
+   held, `_record` cleared the hold, and the same cycle queued it (17:03:21).
+
+**Verdict.**
+- **Not a safety gap.** The prune-clear only removes the registry entry. It cannot queue anything, because
+  queueing needs the root to be a sweep survivor with a not-held verdict computed in the same cycle, from the
+  gate's arr snapshot. When the root came back, the gate re-held it on the stale snapshot rather than
+  releasing it. The only release came from a snapshot showing `completed`, `sizeleft=0`.
+- A premature transfer of an incomplete file **cannot** happen through this path. It would need the gate's
+  own snapshot to report completion.
+- **Version-independent.** It is gate-internal (stability sweep plus registry prune) and would happen the
+  same way against Sonarr 4 or Radarr. It is not Sonarr-5-specific and does not trigger SON5-05.
+- **Observability defect (pre-existing).** One log message, `Completion hold cleared`, covers both "dropped
+  from candidates" and "released on proof". That makes a non-release look like a release. Logged to
+  `deferred-items.md` as a candidate wording fix, for example `Completion hold dropped for '<root>' (no
+  longer a queue candidate)`.
+- This supersedes the shorter "Observation for Plan 06" paragraph above. Its mechanism (prune on leaving
+  the sweep, then a re-hold on an older queue view) is confirmed. The new evidence is that the Deluge
+  download had in fact completed at about 16:01:36 host, while Sonarr's queue still said `downloading`
+  until 16:02:22.
