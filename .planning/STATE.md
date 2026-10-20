@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.7.7
 milestone_name: Sonarr 5 Compatibility
 status: executing
-stopped_at: 120-05 paused before Task 3 — awaiting owner-authorized content/indexer (D-14: no private-tracker grab); sandbox torn down, SANDBOX_RESTORED ok
-last_updated: "2026-10-20T20:34:58.000Z"
-last_activity: 2026-10-20 -- 120-05 D-14 decided (other content); capture sink/notification torn down, SANDBOX_RESTORED ok
+stopped_at: Phase 120 Wave 2 complete (120-03/04/05; live capture COMPLETE, SANDBOX_RESTORED ok); Wave 3 (120-06) next
+last_updated: "2026-10-20T21:09:48.000Z"
+last_activity: 2026-10-20 -- 120-05 live Sonarr 5 capture complete (SON5-01 live pass; S04E01 incomplete/complete pair + Download webhook import captured)
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 120 (Sonarr 5 Compatibility) — EXECUTING
-Plan: 5 of 6 (120-05 paused: awaiting owner-authorized content)
+Plan: 6 of 6 (Wave 3: 120-06)
 Status: Executing Phase 120
-Last activity: 2026-10-20 -- 120-05 awaiting owner-authorized content; sandbox restored
+Last activity: 2026-10-20 -- Phase 120 Wave 2 complete; 120-06 next
 
 ## Accumulated Context
 

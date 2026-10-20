@@ -8,7 +8,7 @@ Updated 2026-10-20. Milestone v1.7.7 Sonarr 5 Compatibility is active at Phase 1
 - ✅ v1.7.5 Safety Release -- Phases 119 and 119.1; includes release 1.7.6 (shipped 2026-10-15)
 - 🔨 v1.7.7 Sonarr 5 Compatibility -- Phase 120 (in progress)
 
-Active milestone: v1.7.7 Sonarr 5 Compatibility (Phase 120, executing: Wave 1 of 3 complete). Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
+Active milestone: v1.7.7 Sonarr 5 Compatibility (Phase 120, executing: Wave 2 of 3 complete). Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
 
 ### 🔨 v1.7.7 Sonarr 5 Compatibility (Phase 120, in progress)
 
@@ -40,7 +40,7 @@ Plans:
 
 - [x] 120-03-PLAN.md — SON5-01 Test Connection and SON5-03 webhook CI tests on fixture bytes
 - [x] 120-04-PLAN.md — SON5-02 queue hold→release replay and negatives through the real client and gate
-- [ ] 120-05-PLAN.md — Live Sonarr 5 capture on the NAS sandbox; one idempotent teardown script on every exit path (SON5-01..03; D-14 and Deluge-fallback checkpoints)
+- [x] 120-05-PLAN.md — Live Sonarr 5 capture on the NAS sandbox; one idempotent teardown script on every exit path (SON5-01..03; D-14 and Deluge-fallback checkpoints)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
