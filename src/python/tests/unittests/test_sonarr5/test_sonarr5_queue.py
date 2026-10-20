@@ -55,12 +55,27 @@ def _target_record(fixture_name: str) -> dict:
     return matches[0]
 
 
+_UNRELATED_DOWNLOAD_ID = "F" * 40
+_UNRELATED_ROOT = "Other.Show.S01E01.1080p.WEB.h264-OTHER"
+
+
 def _unrelated_record(fixture_name: str) -> dict:
-    """The single record in ``fixture_name`` that belongs to another download."""
-    others = [r for r in fixture_json(fixture_name) if r.get("downloadId") != queue_target_download_id()]
-    if len(others) != 1:
-        raise AssertionError(f"{fixture_name}: expected 1 unrelated record, found {len(others)}")
-    return others[0]
+    """A completed record for another download, derived from the captured target record.
+
+    The live capture queue held only the tracked download, so the unrelated record is
+    the captured record with a different downloadId and output root; every other field
+    keeps the exact shape Sonarr 5 sent.
+    """
+    record = dict(_target_record(fixture_name))
+    parent = os.path.dirname(record["outputPath"].rstrip("/\\"))
+    record.update(
+        downloadId=_UNRELATED_DOWNLOAD_ID,
+        outputPath="{}/{}".format(parent, _UNRELATED_ROOT),
+        title=_UNRELATED_ROOT,
+        status="completed",
+        sizeleft=0,
+    )
+    return record
 
 
 def _root_of(record: dict) -> str:

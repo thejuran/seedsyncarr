@@ -8,9 +8,9 @@
     "tmdbId": 0,
     "type": "standard",
     "year": 0,
-    "genres": [],
-    "images": [],
-    "tags": []
+    "tags": [
+      "test-tag"
+    ]
   },
   "episodes": [
     {

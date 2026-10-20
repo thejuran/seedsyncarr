@@ -1,54 +1,73 @@
 {
   "series": {
     "id": 1,
-    "title": "Placeholder Show",
-    "titleSlug": "placeholder-show",
-    "path": "/data/media/tv/Placeholder Show",
-    "tvdbId": 1,
-    "tvMazeId": 1,
-    "tmdbId": 1,
-    "imdbId": "tt0000001",
+    "title": "Hacks",
+    "titleSlug": "hacks-2021",
+    "path": "/data/media/tv/Hacks",
+    "tvdbId": 401582,
+    "tvMazeId": 54914,
+    "tmdbId": 124101,
+    "imdbId": "tt11815682",
+    "malIds": [],
+    "aniListIds": [],
     "type": "standard",
-    "year": 2026,
+    "year": 2021,
     "genres": [
+      "Comedy",
       "Drama"
     ],
     "images": [
       {
+        "coverType": "banner",
+        "url": "/MediaCover/1/banner.jpg?h=d960e74735cb0065c756",
+        "remoteUrl": "https://images.example.invalid/banners/v4/series/401582/banners/608a9bf6f395a.jpg"
+      },
+      {
         "coverType": "poster",
-        "url": "https://images.example.invalid/poster.jpg",
-        "remoteUrl": "https://images.example.invalid/poster.jpg"
+        "url": "/MediaCover/1/poster.jpg?h=04d2d82b5e4da42d1aa1",
+        "remoteUrl": "https://images.example.invalid/banners/v4/series/401582/posters/609f18f3ebd26.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCover/1/fanart.jpg?h=76e16232f5d35a1bd5df",
+        "remoteUrl": "https://images.example.invalid/banners/v4/series/401582/backgrounds/671f81cb6cd8c.jpg"
+      },
+      {
+        "coverType": "clearlogo",
+        "url": "/MediaCover/1/clearlogo.png?h=bdba07367ac72bbf7009",
+        "remoteUrl": "https://images.example.invalid/banners/v4/series/401582/clearlogo/611d006d96960.png"
       }
     ],
     "tags": [],
     "originalLanguage": {
       "id": 1,
       "name": "English"
-    }
+    },
+    "originalCountry": "usa"
   },
   "episodes": [
     {
-      "id": 10,
+      "id": 28,
       "episodeNumber": 1,
-      "seasonNumber": 1,
-      "title": "Pilot",
-      "overview": "Placeholder overview.",
-      "airDate": "2026-10-01",
-      "airDateUtc": "2026-10-01T01:00:00Z",
+      "seasonNumber": 4,
+      "title": "Big, Brave Girl",
+      "overview": "Furious with Ava for forcing her way into the head writer position, Deborah stops at nothing to get her removed from Late Night. As Ava attempts to beat her boss at her own game, Marcus prepares for a difficult conversation with Deborah.",
+      "airDate": "2025-04-10",
+      "airDateUtc": "2025-04-11T01:00:00Z",
       "seriesId": 1,
-      "tvdbId": 1
+      "tvdbId": 0
     }
   ],
   "episodeFile": {
-    "id": 1,
-    "relativePath": "Season 01/Placeholder.Show.S01E01.1080p.WEB.h264-GROUP.mkv",
-    "path": "/data/media/tv/Placeholder Show/Season 01/Placeholder.Show.S01E01.1080p.WEB.h264-GROUP.mkv",
-    "quality": "WEBDL-1080p",
+    "id": 28,
+    "relativePath": "Season 4/Hacks.S04E01.1080p.HEVC.x265-MeGusta.mkv",
+    "path": "/data/media/tv/Hacks/Season 4/Hacks.S04E01.1080p.HEVC.x265-MeGusta.mkv",
+    "quality": "HDTV-1080p",
     "qualityVersion": 1,
-    "releaseGroup": "GROUP",
-    "sceneName": "Placeholder.Show.S01E01.1080p.WEB.h264-GROUP",
-    "size": 1500000000,
-    "dateAdded": "2026-10-20T00:10:00Z",
+    "releaseGroup": "MeGusta",
+    "sceneName": "Hacks.S04E01.1080p.HEVC.x265-MeGusta",
+    "size": 356287747,
+    "dateAdded": "2026-10-20T21:05:20.3669799Z",
     "languages": [
       {
         "id": 1,
@@ -56,41 +75,36 @@
       }
     ],
     "mediaInfo": {
-      "audioChannels": 6,
+      "audioChannels": 5.1,
       "audioCodec": "EAC3",
       "audioLanguages": [
         "eng"
       ],
-      "height": 1080,
+      "height": 960,
       "width": 1920,
       "subtitles": [
         "eng"
       ],
-      "videoCodec": "h264",
+      "videoCodec": "x265",
       "videoDynamicRange": "",
       "videoDynamicRangeType": ""
     },
-    "sourcePath": "/data/torrents/Placeholder.Show.S01E01.1080p.WEB.h264-GROUP/Placeholder.Show.S01E01.1080p.WEB.h264-GROUP.mkv"
+    "sourcePath": "/data/torrents/Hacks.S04E01.1080p.HEVC.x265-MeGusta/Hacks.S04E01.1080p.HEVC.x265-MeGusta.mkv"
   },
   "isUpgrade": false,
   "downloadClient": "Deluge",
   "downloadClientType": "Deluge",
   "downloadId": "0000000000000000000000000000000000000001",
-  "deletedFiles": [],
   "customFormatInfo": {
     "customFormats": [],
     "customFormatScore": 0
   },
   "release": {
-    "quality": "WEBDL-1080p",
-    "qualityVersion": 1,
-    "releaseGroup": "GROUP",
-    "releaseTitle": "Placeholder.Show.S01E01.1080p.WEB.h264-GROUP",
+    "releaseTitle": "Hacks S04E01 1080p HEVC x265-MeGusta",
     "indexer": "Indexer (Prowlarr)",
-    "size": 1500000000,
-    "customFormats": [],
-    "customFormatScore": 0,
-    "indexerFlags": []
+    "size": 377455498,
+    "indexerFlags": [],
+    "releaseType": "singleEpisode"
   },
   "eventType": "Download",
   "instanceName": "Sonarr",

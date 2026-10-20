@@ -7,11 +7,11 @@
       "endpoint_or_event": "GET /api/v3/system/status",
       "sonarr_version": "5.0.0.2701",
       "captured_at": "2026-10-20",
-      "scenario": "placeholder — replaced by live capture",
-      "source": "placeholder",
+      "scenario": "GET system/status on the sonarr-v5 sandbox during the SON5-01 Test Connection run (Test Connection over the Tailscale URL returned success with this version)",
+      "source": "live",
       "sanitized": true,
       "sanitization_notes": [
-        "hand-built from verified schema"
+        "identity fields neutralised by key (instanceName, startupPath, appData, osName, osVersion, packageAuthor, urlBase)"
       ]
     },
     {
@@ -19,11 +19,13 @@
       "endpoint_or_event": "GET /api/v3/queue/details",
       "sonarr_version": "5.0.0.2701",
       "captured_at": "2026-10-20",
-      "scenario": "placeholder — replaced by live capture",
-      "source": "placeholder",
+      "scenario": "GET queue/details while Hacks.S04E01.1080p.HEVC.x265-MeGusta was downloading (status downloading, sizeleft>0); seedsyncarr-test held the root as still_downloading",
+      "source": "live",
       "sanitized": true,
       "sanitization_notes": [
-        "hand-built from verified schema"
+        "downloadId replaced by a 40-hex placeholder",
+        "indexer name replaced by a generic placeholder",
+        "no seedbox path present (Sonarr reported container-local /data paths); seedbox path prefixes were still mapped as a precaution"
       ]
     },
     {
@@ -31,11 +33,13 @@
       "endpoint_or_event": "GET /api/v3/queue/details",
       "sonarr_version": "5.0.0.2701",
       "captured_at": "2026-10-20",
-      "scenario": "placeholder — replaced by live capture",
-      "source": "placeholder",
+      "scenario": "GET queue/details for the same download after the torrent finished (status completed, sizeleft 0, trackedDownloadState importPending), before seedsyncarr-test released and transferred the root",
+      "source": "live",
       "sanitized": true,
       "sanitization_notes": [
-        "hand-built from verified schema"
+        "downloadId replaced by a 40-hex placeholder",
+        "indexer name replaced by a generic placeholder",
+        "no seedbox path present (Sonarr reported container-local /data paths); seedbox path prefixes were still mapped as a precaution"
       ]
     },
     {
@@ -43,11 +47,11 @@
       "endpoint_or_event": "webhook Test",
       "sonarr_version": "5.0.0.2701",
       "captured_at": "2026-10-20",
-      "scenario": "placeholder — replaced by live capture",
-      "source": "placeholder",
+      "scenario": "Sonarr connection Test event received by the capture sink (eventType Test, Sonarr built-in test payload)",
+      "source": "live",
       "sanitized": true,
       "sanitization_notes": [
-        "hand-built from verified schema"
+        "identity fields neutralised by key (instanceName, applicationUrl)"
       ]
     },
     {
@@ -55,11 +59,14 @@
       "endpoint_or_event": "webhook Download",
       "sonarr_version": "5.0.0.2701",
       "captured_at": "2026-10-20",
-      "scenario": "placeholder — replaced by live capture",
-      "source": "placeholder",
+      "scenario": "Sonarr Download (import) webhook for the same download after seedsyncarr-test delivered the file; single episode file, isUpgrade false",
+      "source": "live",
       "sanitized": true,
       "sanitization_notes": [
-        "hand-built from verified schema"
+        "downloadId replaced by a 40-hex placeholder",
+        "indexer name replaced by a generic placeholder",
+        "image hosts replaced by images.example.invalid",
+        "identity fields neutralised by key (instanceName, applicationUrl)"
       ]
     }
   ]

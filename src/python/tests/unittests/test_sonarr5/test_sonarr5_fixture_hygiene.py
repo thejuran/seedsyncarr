@@ -109,10 +109,6 @@ def _scan(text: str) -> list[str]:
     return [rule for rule in _RULE_ORDER if hits[rule]]
 
 
-def _has_placeholders() -> bool:
-    return any(e.get("source") == "placeholder" for e in manifest()["fixtures"])
-
-
 def _fixture_files():
     return sorted(p for p in FIXTURE_DIR.glob("*.json"))
 
@@ -264,13 +260,8 @@ class TestManifest(unittest.TestCase):
 
 
 class TestLiveSource(unittest.TestCase):
-    """The phase cannot close while any fixture is still a placeholder."""
+    """Every committed fixture is a live, sanitized Sonarr 5 capture."""
 
-    @unittest.skipIf(
-        _has_placeholders(),
-        "placeholder fixtures present — Phase 120 Plan 06 must replace placeholder "
-        "fixtures with live captures before this phase can close",
-    )
     def test_all_fixtures_are_live_captures(self):
         for entry in manifest()["fixtures"]:
             with self.subTest(file=entry["file"]):
