@@ -61,7 +61,7 @@ Every exit path ended in `SANDBOX_RESTORED ok`, and the torrent was left seeding
 ## Verification (observed)
 - Task 3 `<verify>` run on the NAS printed: `CAPTURE_STATUS=COMPLETE`, sink containers `0`, the three files at mode `600` (1154, 1367 and 3306 B), `PAIR_OK 1`, `WEBHOOK_OK`.
 - Fresh-session teardown read-back: `RESTORED sonarr_url ok`, `DELUGE per-torrent mode, no client change (downloadDirectory matches L0: yes)`, `RESTORED notifications count=1 son5-capture-present=0`, `NOTIF_URLS_OK`, `REMOVED sink (absent)`, `SANDBOX_RESTORED ok`, exit=0.
-- The hygiene grep on the notes (32-hex, `100.x`, `/home/<user>`, `magnet:`, docker IPs, seedbox host) printed 0.
+- The hygiene grep on the notes (32-hex tokens, Tailscale addresses, user home paths, magnet links, docker IPs, seedbox host) printed 0.
 - `bash -n` and `shellcheck -S warning` on 120-teardown.sh both pass. The three teardown failure-mode cases were run on the NAS (FAIL, FAIL, ok).
 - Not verified live: the missing-entry, API-error and unrelated-download negatives (CI from Plan 04 is authoritative). The model stream between 17:01:49 and 17:03:20 was not captured.
 
