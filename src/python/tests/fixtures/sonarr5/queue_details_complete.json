@@ -1,0 +1,92 @@
+[
+  {
+    "id": 1,
+    "seriesId": 1,
+    "episodeId": 10,
+    "seasonNumber": 1,
+    "languages": [
+      {
+        "id": 1,
+        "name": "English"
+      }
+    ],
+    "quality": {
+      "quality": {
+        "id": 3,
+        "name": "WEBDL-1080p",
+        "source": "web",
+        "resolution": 1080
+      },
+      "revision": {
+        "version": 1,
+        "real": 0,
+        "isRepack": false
+      }
+    },
+    "customFormats": [],
+    "customFormatScore": 0,
+    "size": 1500000000,
+    "title": "Placeholder.Show.S01E01.1080p.WEB.h264-GROUP",
+    "sizeleft": 0,
+    "timeleft": "00:00:00",
+    "estimatedCompletionTime": "2026-10-20T00:05:00Z",
+    "added": "2026-10-20T00:00:00Z",
+    "status": "completed",
+    "trackedDownloadStatus": "ok",
+    "trackedDownloadState": "importPending",
+    "statusMessages": [],
+    "errorMessage": "",
+    "downloadId": "0000000000000000000000000000000000000001",
+    "protocol": "torrent",
+    "downloadClient": "Deluge",
+    "downloadClientHasPostImportCategory": false,
+    "indexer": "Indexer (Prowlarr)",
+    "outputPath": "/home/user/v5test/Placeholder.Show.S01E01.1080p.WEB.h264-GROUP",
+    "episodeHasFile": false
+  },
+  {
+    "id": 2,
+    "seriesId": 2,
+    "episodeId": 20,
+    "seasonNumber": 2,
+    "languages": [
+      {
+        "id": 1,
+        "name": "English"
+      }
+    ],
+    "quality": {
+      "quality": {
+        "id": 3,
+        "name": "WEBDL-1080p",
+        "source": "web",
+        "resolution": 1080
+      },
+      "revision": {
+        "version": 1,
+        "real": 0,
+        "isRepack": false
+      }
+    },
+    "customFormats": [],
+    "customFormatScore": 0,
+    "size": 1500000000,
+    "title": "Other.Show.S02E03.720p.WEB.h264-GROUP",
+    "sizeleft": 0,
+    "timeleft": "00:00:00",
+    "estimatedCompletionTime": "2026-10-20T00:05:00Z",
+    "added": "2026-10-20T00:00:00Z",
+    "status": "completed",
+    "trackedDownloadStatus": "ok",
+    "trackedDownloadState": "importPending",
+    "statusMessages": [],
+    "errorMessage": "",
+    "downloadId": "0000000000000000000000000000000000000002",
+    "protocol": "torrent",
+    "downloadClient": "Deluge",
+    "downloadClientHasPostImportCategory": false,
+    "indexer": "Indexer (Prowlarr)",
+    "outputPath": "/home/user/v5test/Other.Show.S02E03.720p.WEB.h264-GROUP",
+    "episodeHasFile": false
+  }
+]

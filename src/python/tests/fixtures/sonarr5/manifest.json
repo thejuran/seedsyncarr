@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "queue_target_download_id": "0000000000000000000000000000000000000001",
+  "fixtures": [
+    {
+      "file": "system_status.json",
+      "endpoint_or_event": "GET /api/v3/system/status",
+      "sonarr_version": "5.0.0.2701",
+      "captured_at": "2026-10-20",
+      "scenario": "placeholder — replaced by live capture",
+      "source": "placeholder",
+      "sanitized": true,
+      "sanitization_notes": [
+        "hand-built from verified schema"
+      ]
+    },
+    {
+      "file": "queue_details_incomplete.json",
+      "endpoint_or_event": "GET /api/v3/queue/details",
+      "sonarr_version": "5.0.0.2701",
+      "captured_at": "2026-10-20",
+      "scenario": "placeholder — replaced by live capture",
+      "source": "placeholder",
+      "sanitized": true,
+      "sanitization_notes": [
+        "hand-built from verified schema"
+      ]
+    },
+    {
+      "file": "queue_details_complete.json",
+      "endpoint_or_event": "GET /api/v3/queue/details",
+      "sonarr_version": "5.0.0.2701",
+      "captured_at": "2026-10-20",
+      "scenario": "placeholder — replaced by live capture",
+      "source": "placeholder",
+      "sanitized": true,
+      "sanitization_notes": [
+        "hand-built from verified schema"
+      ]
+    },
+    {
+      "file": "webhook_test.json",
+      "endpoint_or_event": "webhook Test",
+      "sonarr_version": "5.0.0.2701",
+      "captured_at": "2026-10-20",
+      "scenario": "placeholder — replaced by live capture",
+      "source": "placeholder",
+      "sanitized": true,
+      "sanitization_notes": [
+        "hand-built from verified schema"
+      ]
+    },
+    {
+      "file": "webhook_download.json",
+      "endpoint_or_event": "webhook Download",
+      "sonarr_version": "5.0.0.2701",
+      "captured_at": "2026-10-20",
+      "scenario": "placeholder — replaced by live capture",
+      "source": "placeholder",
+      "sanitized": true,
+      "sanitization_notes": [
+        "hand-built from verified schema"
+      ]
+    }
+  ]
+}

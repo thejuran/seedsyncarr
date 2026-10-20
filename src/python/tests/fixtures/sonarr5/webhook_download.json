@@ -1,0 +1,98 @@
+{
+  "series": {
+    "id": 1,
+    "title": "Placeholder Show",
+    "titleSlug": "placeholder-show",
+    "path": "/data/media/tv/Placeholder Show",
+    "tvdbId": 1,
+    "tvMazeId": 1,
+    "tmdbId": 1,
+    "imdbId": "tt0000001",
+    "type": "standard",
+    "year": 2026,
+    "genres": [
+      "Drama"
+    ],
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "https://images.example.invalid/poster.jpg",
+        "remoteUrl": "https://images.example.invalid/poster.jpg"
+      }
+    ],
+    "tags": [],
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    }
+  },
+  "episodes": [
+    {
+      "id": 10,
+      "episodeNumber": 1,
+      "seasonNumber": 1,
+      "title": "Pilot",
+      "overview": "Placeholder overview.",
+      "airDate": "2026-10-01",
+      "airDateUtc": "2026-10-01T01:00:00Z",
+      "seriesId": 1,
+      "tvdbId": 1
+    }
+  ],
+  "episodeFile": {
+    "id": 1,
+    "relativePath": "Season 01/Placeholder.Show.S01E01.1080p.WEB.h264-GROUP.mkv",
+    "path": "/data/media/tv/Placeholder Show/Season 01/Placeholder.Show.S01E01.1080p.WEB.h264-GROUP.mkv",
+    "quality": "WEBDL-1080p",
+    "qualityVersion": 1,
+    "releaseGroup": "GROUP",
+    "sceneName": "Placeholder.Show.S01E01.1080p.WEB.h264-GROUP",
+    "size": 1500000000,
+    "dateAdded": "2026-10-20T00:10:00Z",
+    "languages": [
+      {
+        "id": 1,
+        "name": "English"
+      }
+    ],
+    "mediaInfo": {
+      "audioChannels": 6,
+      "audioCodec": "EAC3",
+      "audioLanguages": [
+        "eng"
+      ],
+      "height": 1080,
+      "width": 1920,
+      "subtitles": [
+        "eng"
+      ],
+      "videoCodec": "h264",
+      "videoDynamicRange": "",
+      "videoDynamicRangeType": ""
+    },
+    "sourcePath": "/data/torrents/Placeholder.Show.S01E01.1080p.WEB.h264-GROUP/Placeholder.Show.S01E01.1080p.WEB.h264-GROUP.mkv"
+  },
+  "isUpgrade": false,
+  "downloadClient": "Deluge",
+  "downloadClientType": "Deluge",
+  "downloadId": "0000000000000000000000000000000000000001",
+  "deletedFiles": [],
+  "customFormatInfo": {
+    "customFormats": [],
+    "customFormatScore": 0
+  },
+  "release": {
+    "quality": "WEBDL-1080p",
+    "qualityVersion": 1,
+    "releaseGroup": "GROUP",
+    "releaseTitle": "Placeholder.Show.S01E01.1080p.WEB.h264-GROUP",
+    "indexer": "Indexer (Prowlarr)",
+    "size": 1500000000,
+    "customFormats": [],
+    "customFormatScore": 0,
+    "indexerFlags": []
+  },
+  "eventType": "Download",
+  "instanceName": "Sonarr",
+  "applicationUrl": ""
+}
