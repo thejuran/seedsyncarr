@@ -172,3 +172,71 @@ in a new dir.
 `son5-webhook-sink` running and notification `son5-capture` (id 3) live, as designed: this is the only success
 exit that leaves them up. `seedsyncarr-test` `sonarr_url` = `http://sonarr-v5:8989`. No grab has been made.
 The Deluge client is unchanged.
+
+## D-14 decision (Task 2 checkpoint, 2026-10-20)
+
+Option chosen: **owner-adds-indexer-or-content**. The owner's words: "Choose other content first. The
+compatibility test doesn't need that specific episode or private-tracker ratio usage. Prefer content you're
+authorized to download, available through the sandbox Sonarr workflow. Tear down the temporary sink and
+notification."
+
+- The proposed candidate (Hacks S04E01, TorrentDay) is **rejected**. No private-tracker grab is made, from
+  TorrentDay, Darkpeers, Luminarr or any other private indexer.
+- The grab must use content the owner is authorized to download, through the normal sandbox Sonarr-v5 workflow
+  (an indexer or content the owner supplies or chooses). Plan 05 waits for that choice before Task 3.
+
+## Teardown at Task 2 (owner-adds-indexer-or-content)
+
+Capture dir (raw captures kept on the NAS per D-13, mode `drwx------`):
+`/volume1/docker/v5test/results/son5-capture-20261020-151815`
+
+The sonarr-v5 version before teardown was **5.0.0.2701**. Teardown run (`bash "$D/teardown.sh"`):
+
+```
+RESTORED sonarr_url ok
+DELUGE per-torrent mode, no client change (no L0 baseline recorded)
+DELETED notification http=200
+RESTORED notifications count=1 son5-capture-present=0
+NOTIF_URLS_OK
+REMOVED sink
+CHECK sonarr_url=http://sonarr-v5:8989
+SANDBOX_RESTORED ok
+exit=0
+```
+
+The "no L0 baseline recorded" line means `D` was set but not exported in that `ssh` shell, so `teardown.sh` did
+not read `state.env`. Cleanup by name (the notification and the sink) does not depend on `state.env`. I reran
+the teardown idempotently with the directory passed as an argument (`bash "$D/teardown.sh" "$D"`):
+
+```
+RESTORED sonarr_url ok
+DELUGE per-torrent mode, no client change (downloadDirectory matches L0: yes)
+RESTORED notifications count=1 son5-capture-present=0
+NOTIF_URLS_OK
+REMOVED sink (absent)
+CHECK sonarr_url=http://sonarr-v5:8989
+SANDBOX_RESTORED ok
+exit=0
+```
+
+Independent read-back after teardown:
+- `son5-webhook-sink` containers (`ps -a`): 0
+- sonarr-v5 notifications: only `id=1 name=Seedsyncarr`, with its URL on `http://seedsyncarr-test:8800/`.
+  `son5-capture` (id 3) is gone.
+- `seedsyncarr-test` `sonarr_url=http://sonarr-v5:8989`
+- Deluge client id=1: enabled, `tvCategory=tv-v5test`, and `downloadDirectory` equals the recorded
+  `DELUGE_DOWNLOAD_DIR_L0` (compared on the NAS without printing it)
+- The sonarr-v5 version after teardown was still **5.0.0.2701** (D-07). The queue is empty and no grab was made.
+
+### Resume requirements (before Task 3)
+
+Teardown removed Task 1's L3 setup. On resume, re-create it before Task 3:
+1. Make a new capture dir (or reuse the one above), `chmod 700` it and its `sink/` subdir, then copy
+   `120-teardown.sh` → `$D/teardown.sh`. Always **export** `D`, or pass `"$D"` as an argument, when you run teardown.
+2. Re-check the rig (L0): sonarr-v5 version 5.0.0.2701, notification count 1, Deluge `downloadDirectory` L0
+   recorded in `state.env`.
+3. Re-start `son5-webhook-sink` (same digest image, `--user 1026:100`, `docker_default`, `--label wud.watch=false
+   --restart no`) and re-create notification `son5-capture` (onDownload/onUpgrade). Record the new `NID` in
+   `state.env` and re-confirm `NOTIF_URLS_OK`.
+4. Use only the authorized content or indexer the owner supplies. L1 does not need to be rerun unless the
+   sonarr-v5 version changed.
