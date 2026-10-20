@@ -6,13 +6,13 @@ Updated 2026-10-20. Milestone v1.7.7 Sonarr 5 Compatibility is active at Phase 1
 
 - ✅ v1.7.4 Safety Patch -- Phases 116–118 (shipped 2026-10-09)
 - ✅ v1.7.5 Safety Release -- Phases 119 and 119.1; includes release 1.7.6 (shipped 2026-10-15)
-- 🔨 v1.7.7 Sonarr 5 Compatibility -- Phase 120 (in progress)
+- 🔨 v1.7.7 Sonarr 5 Compatibility -- Phase 120 (complete; milestone close pending)
 
-Active milestone: v1.7.7 Sonarr 5 Compatibility (Phase 120, executing: Wave 2 of 3 complete). Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
+Active milestone: v1.7.7 Sonarr 5 Compatibility (Phase 120 complete: verified; no release needed; milestone close pending). Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
 
-### 🔨 v1.7.7 Sonarr 5 Compatibility (Phase 120, in progress)
+### 🔨 v1.7.7 Sonarr 5 Compatibility (Phase 120 complete; milestone close pending)
 
-- [ ] **Phase 120: Sonarr 5 Compatibility** - Prove SeedSyncarr works with Sonarr 5 on the sandbox and pin it with CI fixtures
+- [x] **Phase 120: Sonarr 5 Compatibility** - Prove SeedSyncarr works with Sonarr 5 on the sandbox and pin it with CI fixtures (completed 2026-10-20)
 
 ### Phase 120: Sonarr 5 Compatibility
 
@@ -44,7 +44,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 120-06-PLAN.md — Sanitize and commit live fixtures, evidence record, SON5-05 release decision, owner confirmation
+- [x] 120-06-PLAN.md — Sanitize and commit live fixtures, evidence record, SON5-05 release decision, owner confirmation
 
 ## Next milestone: Reliability
 

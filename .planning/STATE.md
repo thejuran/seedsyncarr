@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7.7
 milestone_name: Sonarr 5 Compatibility
-status: "Phase 120 Plan 06 in review — SON5-05 release decision awaiting owner confirmation"
-stopped_at: "Phase 120 Plan 06: SON5-05 decided — verified; no release needed; awaiting owner confirmation (Task 3 checkpoint)"
-last_updated: "2026-10-20T21:28:30.000Z"
-last_activity: 2026-10-20 -- 120-06 live sanitized fixtures committed (6e0341f, CI green), raw captures deleted, SON5 evidence written; SON5-05 decision awaiting owner
+status: complete — Phase 120 verified; no release needed (milestone close pending)
+stopped_at: Phase 120 complete and verified (5/5); SON5-05 owner-approved "verified; no release needed"; next /bm:complete-milestone
+last_updated: "2026-10-20T21:36:56.000Z"
+last_activity: 2026-10-20 -- Phase 120 complete: live Sonarr 5.0.0.2701 checks passed, live fixtures in CI, owner approved no release
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 120 — Sonarr 5 Compatibility
+**Current focus:** v1.7.7 Sonarr 5 Compatibility verified (no release needed); milestone close next
 
 ## Current Position
 
-Phase: 120 (Sonarr 5 Compatibility) — EXECUTING
-Plan: 6 of 6 (Wave 3: 120-06)
-Status: Phase 120 Plan 06 at owner checkpoint — SON5-05 decided "verified; no release needed" on Sonarr 5.0.0.2701, awaiting owner confirmation
-Last activity: 2026-10-20 -- live fixtures committed (6e0341f, CI green), raw captures deleted, 120-SON5-EVIDENCE.md written
+Phase: 120 (Sonarr 5 Compatibility) — COMPLETE (verified 5/5)
+Plan: 6 of 6 complete
+Status: Phase complete; verified; no release needed. Milestone close (/bm:complete-milestone) pending
+Last activity: 2026-10-20 -- Phase 120 complete and verified; owner approved SON5-05 "verified; no release needed"
 
 ## Accumulated Context
 
@@ -80,7 +80,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 119.1]: 119.1-04 complete: owner go-ahead 'Deploy' for :1.7.6@sha256:da6196e0 (119.1-05 executes); seedsyncarr-test choice B (recreate on 1.7.6; shares seedbox password, include in rotation); CodeQL alert #8 dismissal was done without prior owner approval, owner since informed
 - [Phase 119.1]: 119.1-05: 1.7.6 deployed to NAS prod by digest (container 2feb4073db71, .Image 5b801f83); prod log 0/3 secret values; seedsyncarr-test recreated on 1.7.6 (0 matches); wud restored; paused at owner confirmation, rotation reminder after
 - [Phase 119.1]: 119.1-05 complete: owner 'Confirmed' the 1.7.6 prod deploy (Waiting-badge/manual-release UI UAT not reported, stays open); rotation checklist delivered after confirmation (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys; webhook/api_token unset)
-- [Phase 120]: SON5-05 verified; no release needed (decided, awaiting owner confirmation) on builds Sonarr 5.0.0.2701 (linuxserver/sonarr:develop, image 8b59d172e9b4); container-name Test Connection failure classified as Reliability item 5 (D-02)
+- [Phase 120]: SON5-05 verified; no release needed (owner approved 2026-10-20) on builds Sonarr 5.0.0.2701 (linuxserver/sonarr:develop, image 8b59d172e9b4); container-name Test Connection failure classified as Reliability item 5 (D-02)
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -106,7 +106,7 @@ None.
 
 ## Future Work
 
-The authoritative future work list is ROADMAP.md. Active now: v1.7.7 Sonarr 5 Compatibility, Phase 120 (ready to plan). After it, Reliability begins at Phase 121 and is ordered: credential forwarding, safety acceptance, remaining startup/shutdown cleanup, model-stream overflow recovery, then LAN connection tests. Reliability's phase plans and release version are not yet activated. Moving the Sonarr integration to API v5 is backlog 999.5.
+The authoritative future work list is ROADMAP.md. Active now: v1.7.7 Sonarr 5 Compatibility — Phase 120 complete (verified; no release needed); milestone close pending. After it, Reliability begins at Phase 121 and is ordered: credential forwarding, safety acceptance, remaining startup/shutdown cleanup, model-stream overflow recovery, then LAN connection tests. Reliability's phase plans and release version are not yet activated. Moving the Sonarr integration to API v5 is backlog 999.5.
 
 Scanner buffering, residual import/restart gaps, memory measurements and UI/webhook efficiency are separate conditional investigations, not promised fixes or completion gates. Performance and Usability activates only when evidence justifies it. Dependency item 999.4 is a bounded maintenance side task.
 
@@ -137,8 +137,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 ## Session Continuity
 
 Last session: 2026-10-20
-Stopped at: Phase 120 Plan 06 Task 3 (owner checkpoint): SON5-05 decided "verified; no release needed" on Sonarr 5.0.0.2701; see .planning/phases/120-sonarr-5-compatibility/120-SON5-EVIDENCE.md
-Next action: owner confirms the SON5-05 outcome; then finish 120-06 (record confirmation, SUMMARY) and /bm:complete-milestone.
+Stopped at: Phase 120 complete and verified (120-VERIFICATION.md, 5/5); SON5-05 owner-approved "verified; no release needed" on Sonarr 5.0.0.2701
+Next action: /bm:complete-milestone (v1.7.7). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -151,7 +151,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Run `/bm:execute-phase 120` (live checks on the NAS sandbox only; prod untouched)
+- Run `/bm:complete-milestone` to close v1.7.7 (verified; no release needed)
 - After v1.7.7 closes, Reliability begins at Phase 121
 
 ## Deferred Items
@@ -160,3 +160,6 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 |------|------|--------|
 | Operator follow-up | Confirm 1.7.6 credential rotation | Completion unconfirmed |
 | Operator follow-up | Confirm one-time Done-group cleanup | Completion unconfirmed |
+| Operator follow-up | Remove Hacks.S04E01 test torrent from sandbox Deluge (`~/v5test` on seedbox, label tv-v5test) once TorrentDay seed time is met | Seeding; owner to remove |
+| Deferred fix (Phase 120) | Webhook handler logger not attached to app log ("Sonarr webhook test event received" never written) | Logged in 120 deferred-items.md; not Sonarr-5-specific |
+| Deferred fix (Phase 120) | CompletionGate prune path logs "Completion hold cleared" when a hold is merely dropped (no release; no early transfer) | Logged in 120 deferred-items.md; wording fix |

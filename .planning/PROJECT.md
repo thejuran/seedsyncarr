@@ -303,7 +303,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Current State
 
-v1.7.5 Safety Release shipped 2026-10-15 (Phases 119, 119.1; tagged `v1.7.5` and `v1.7.6`). `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` runs on NAS production; Phase 119 browser UAT passed 2026-10-18 on the 1.7.6 sandbox. Active: v1.7.7 Sonarr 5 Compatibility (Phase 120), started 2026-10-20 ahead of Reliability, which now begins at Phase 121.
+v1.7.5 Safety Release shipped 2026-10-15 (Phases 119, 119.1; tagged `v1.7.5` and `v1.7.6`). `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` runs on NAS production; Phase 119 browser UAT passed 2026-10-18 on the 1.7.6 sandbox. v1.7.7 Sonarr 5 Compatibility: Phase 120 complete 2026-10-20 — SeedSyncarr 1.7.6 verified live against Sonarr 5.0.0.2701 (Test Connection, queue hold/release, import webhook) and pinned by live sanitized CI fixtures; owner approved "verified; no release needed" (no 1.7.7 tag). Milestone close pending; Reliability begins at Phase 121.
 
 ## Current Milestone: v1.7.7 Sonarr 5 Compatibility
 
@@ -385,7 +385,7 @@ Reliability (from Phase 121): complete the five ordered, bounded outcomes in ROA
 
 ### Active
 
-- [ ] Sonarr 5 compatibility verified live on the sandbox and pinned by CI fixtures (SON5-01..05) — v1.7.7
+- [x] Sonarr 5 compatibility verified live on the sandbox and pinned by CI fixtures (SON5-01..05) — v1.7.7 (Validated in Phase 120: Sonarr 5 Compatibility; verified, no release needed)
 
 
 <!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
@@ -508,7 +508,7 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 
 ## Project Status
 
-**Status:** v1.7.7 Sonarr 5 Compatibility in planning (Phase 120); 1.7.6 runs on the NAS. Then: Reliability milestone (Phase 121+).
+**Status:** v1.7.7 Sonarr 5 Compatibility verified (Phase 120 complete; no release needed); 1.7.6 runs on the NAS. Then: Reliability milestone (Phase 121+).
 
 31 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit + v1.2.0 test hardening as SeedSyncarr).
 
@@ -530,4 +530,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-20 after starting v1.7.7 milestone*
+*Last updated: 2026-10-20 after Phase 120 completion (Sonarr 5 verified; no release needed)*
