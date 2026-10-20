@@ -2,15 +2,20 @@
 # Idempotent teardown for the Sonarr 5 sandbox capture (seedsyncarr-test + sonarr-v5).
 #
 # Usage (on the NAS):  bash teardown.sh [<capture-dir>]     (or env D=<capture-dir>)
+# When neither is given, the capture dir defaults to the directory containing this
+# script (it is copied into the capture dir as teardown.sh).
 #
-# Reads <capture-dir>/state.env when present (KEY=value lines; parsed, never sourced):
+# Reads <capture-dir>/state.env (KEY=value lines; parsed, never sourced):
 #   MODE                    A (per-torrent Deluge move), B (Sonarr-side override), OWNER
 #   NID                     id of the temporary "son5-capture" notification (informational;
 #                           deletion is by name so partial creates and reruns are covered)
 #   DELUGE_CLIENT_ID        sonarr-v5 download client id of the Deluge entry
 #   DELUGE_DOWNLOAD_DIR_L0  Deluge downloadDirectory recorded before any change
 #   SINK_NAME               capture sink container name (default son5-webhook-sink)
-# A missing state.env or missing key means nothing of that kind was created.
+# A missing key means nothing of that kind was created. A missing state.env is a FAIL
+# (the Deluge state cannot be verified); so is MODE=A without DELUGE_DOWNLOAD_DIR_L0 and
+# MODE=B without DELUGE_CLIENT_ID or downloadclient-orig.json.
+# The script never removes, pauses or moves a torrent in Deluge.
 #
 # Only sandbox endpoints are used: seedsyncarr-test (localhost:8801) and sonarr-v5
 # (localhost:8990). The API key is read from the sandbox config.xml only and is never
@@ -19,6 +24,9 @@
 set -u
 
 D="${1:-${D:-}}"
+if [ -z "$D" ]; then
+  D="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+fi
 SSY="http://localhost:8801"
 SON="http://localhost:8990/api/v3"
 SANDBOX_CFG="/volume1/docker/v5test/sonarr/config.xml"
@@ -78,6 +86,10 @@ deluge_resource() {
     son_get "downloadclient" | jq -c '[.[] | select(.implementation=="Deluge")][0] // empty' 2>/dev/null
   fi
 }
+if [ -z "$D" ] || [ ! -f "$D/state.env" ]; then
+  echo "DELUGE state.env missing in capture dir, cannot verify FAIL"
+  fail deluge
+else
 case "$MODE" in
   B)
     if [ -f "$D/downloadclient-orig.json" ] && [ -n "$DELUGE_CLIENT_ID" ]; then
@@ -98,7 +110,8 @@ case "$MODE" in
         fail deluge
       fi
     else
-      echo "RESTORED deluge downloadDirectory (no change recorded)"
+      echo "RESTORED deluge downloadDirectory FAIL (MODE=B but downloadclient-orig.json or DELUGE_CLIENT_ID missing)"
+      fail deluge
     fi
     ;;
   OWNER)
@@ -113,11 +126,15 @@ case "$MODE" in
         echo "DELUGE per-torrent mode, no client change (downloadDirectory matches L0: no)"
         fail deluge
       fi
+    elif [ "$MODE" = "A" ]; then
+      echo "DELUGE per-torrent mode FAIL (MODE=A but no L0 baseline recorded)"
+      fail deluge
     else
       echo "DELUGE per-torrent mode, no client change (no L0 baseline recorded)"
     fi
     ;;
 esac
+fi
 
 # (3) Notifications: delete every "son5-capture" entry by name, then verify.
 notifs="$(son_get notification)"
