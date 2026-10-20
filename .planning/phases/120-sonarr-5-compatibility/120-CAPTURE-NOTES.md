@@ -240,3 +240,163 @@ Teardown removed Task 1's L3 setup. On resume, re-create it before Task 3:
    `state.env` and re-confirm `NOTIF_URLS_OK`.
 4. Use only the authorized content or indexer the owner supplies. L1 does not need to be rerun unless the
    sonarr-v5 version changed.
+
+## D-14 decision revised (2026-10-20, owner)
+
+After hearing the ratio cost and the hit-and-run risk, the owner said: "yes go ahead with Hacks S04E01".
+D-14 is now **grab-private**: grab **Hacks S04E01 1080p HEVC x265-MeGusta** (about 359 MB) from **TorrentDay**
+through sandbox sonarr-v5 (`POST release {guid, indexerId}`, so Sonarr's queue tracks it). This replaces the
+earlier "Choose other content first" answer (owner-adds-indexer-or-content, above). Only this episode is
+approved. S04E02 from the same group and tracker is the only pre-approved alternate; if S04E01 is gone, stop
+and ask.
+
+Added owner requirement, **keep seeding**: the torrent must never be removed from Deluge. That rules out
+removing or deleting the torrent or its data, `removeFromClient`, and queue DELETE, at any point including
+teardown, so there is no hit-and-run on TorrentDay.
+
+## Teardown fix before resume (Step 0)
+
+Bug found at Task 2: `teardown.sh` only knew the capture dir from env `D`. Run as `bash "$D/teardown.sh"`
+without exporting `D`, it skipped the Deluge check and still printed `SANDBOX_RESTORED ok`. Fixed in commit
+`ea8c85c`:
+- `D` defaults to the script's own directory, since it is copied into the capture dir.
+- These now FAIL (`SANDBOX_RESTORED FAIL deluge`, exit 1): a missing `state.env`; `MODE=A` without
+  `DELUGE_DOWNLOAD_DIR_L0`; and `MODE=B` without `DELUGE_CLIENT_ID` or `downloadclient-orig.json`.
+- The script never touches a torrent.
+
+Proven on the NAS from a scratch dir, with `D` unset each time:
+- no `state.env`: FAIL deluge, exit=1
+- `MODE=B` without the saved JSON: FAIL deluge, exit=1
+- a valid `state.env`: `DELUGE per-torrent mode, no client change (downloadDirectory matches L0: yes)`,
+  `SANDBOX_RESTORED ok`, exit=0
+
+The scratch dir was then removed.
+
+## Resume attempt 3 (capture dir `/volume1/docker/v5test/results/son5-capture-20261020-163945`)
+
+The dir and `sink/` are `drwx------`. The staged files are `teardown.sh` (fixed copy), `dlib.sh` (shared
+helpers), `l0.sh`, `probe.sh`, `run-L3setup.sh`, `run-L2.sh`, `streamhold.py`, `s02.sh` and `tstat.sh`.
+
+### L0 (15:39)
+- `system/status.version` = **5.0.0.2701**. Image ids are unchanged: sonarr-v5 `8b59d172e9b4`,
+  seedsyncarr-test `5b801f8397d6`.
+- Notifications: count 1 (`Seedsyncarr` → `http://seedsyncarr-test:8800/server/webhook/sonarr`).
+- Deluge client id 1: `enable=true removeCompletedDownloads=false removeFailedDownloads=false`,
+  `downloadDirectory=~/v5test-incomplete`, `completedDirectory=~/v5test`, `tvCategory=tv-v5test`,
+  `useSsl=true`, `urlBase=/deluge`. The Sonarr API returns the Deluge password field **masked**.
+- TorrentDay (Prowlarr) on sonarr-v5: `seedCriteria.seedRatio` and `seedTime` are empty, so Sonarr sets no
+  stop ratio on the torrent.
+- seedsyncarr-test: `sonarr_url=http://sonarr-v5:8989`. AutoDelete is `enabled=true dry_run=false delay=300`;
+  it deletes only the local NAS copy, never the seedbox data. Remote stability is 90 s; the remote scan runs
+  every 30 s.
+- The queue is empty. `state.env` keys are `SINK_NAME DELUGE_CLIENT_ID DELUGE_DOWNLOAD_DIR_L0`.
+- Teardown probe (pre-create), run **without** `D` exported (this exercises the fix): `RESTORED sonarr_url ok`,
+  `DELUGE per-torrent mode, no client change (downloadDirectory matches L0: yes)`,
+  `RESTORED notifications count=1 son5-capture-present=0`, `NOTIF_URLS_OK`, `REMOVED sink (absent)`,
+  `SANDBOX_RESTORED ok`, exit=0.
+
+### MODE A probe (read-only)
+The Deluge password is read from the sandbox Sonarr DB (`/volume1/docker/v5test/sonarr/sonarr.db`, read-only
+SQLite, into a variable, never printed), because the API masks it. Results: `DELUGE_AUTH http=200 result=true`,
+`DELUGE_WEB_CONNECTED true`. Label `tv-v5test` has 11 torrents. No existing S04E01 or S04E02 torrent.
+
+### L3 setup (15:41, `run-L3setup.sh`, failure-only trap → teardown)
+- Version before: 5.0.0.2701. Sink `son5-webhook-sink` uses the same digest image, `--user 1026:100`; `SINK_HEALTHZ ok`.
+- `NOTIF_CREATE http=201 id=4` (NID=4 in `state.env`). Connections: id 1 `Seedsyncarr` →
+  `seedsyncarr-test:8800`; id 4 `son5-capture` → `http://son5-webhook-sink:8080/` (onDownload/onUpgrade true,
+  onGrab false). `NOTIF_URLS_OK`.
+- Test → Seedsyncarr at 15:41:46, http=200. Access log
+  `2026-10-20 16:41:46,615 ... <docker-ip> ... "POST /server/webhook/sonarr HTTP/1.1" 200 7 "-" "Sonarr/5.0.0.2701 (alpine 3.24.2)"`;
+  import lines in the window = 0.
+- Test → son5-capture at 15:41:54, http=200. The sink wrote `20261020T204154668414Z-0002.json`, copied to
+  `webhook_test.json` (eventType Test; keys `applicationUrl,episodes,eventType,instanceName,series`;
+  `user_agent=Sonarr/5.0.0.2701 (alpine 3.24.2)`).
+- Version after: 5.0.0.2701. `L3SETUP_OK`.
+
+### Task 3 run (`run-L2.sh`, detached with nohup; `trap 'bash "$D/teardown.sh"' EXIT INT TERM HUP`)
+- `V_BEFORE 5.0.0.2701` at 15:44:20. `MODE=A` was appended before any Deluge action.
+- Candidate: `Hacks S04E01 1080p HEVC x265-MeGusta`, 359 MB, 18 seeders, TorrentDay (Prowlarr), rejected=false.
+  Episode id 28 (series 1, hasFile=false).
+- **`GRAB http=200` at 15:44:28** (NAS host time) via `POST release {guid, indexerId}`. This is the only grab
+  made in this plan.
+- `TORRENT_SEEN` in Deluge at 15:44:29, progress 16%. On the capture torrent only:
+  `core.set_torrent_options` set `stop_at_ratio=false remove_at_ratio=false max_download_speed=256` (error null),
+  so Deluge never auto-pauses or removes it at a ratio. `core.move_storage` to `completedDirectory` (error null),
+  result true at 15:44:31, state Downloading, progress 32%. The speed cap keeps a real "downloading" window
+  open on a fast seedbox.
+- From 15:45 the Sonarr queue showed the target as `downloading` with `sizeleft` falling (256,671,744 →
+  172,474,368), and the root appeared in the seedsyncarr-test model (`default`, remote size 374,536,741).
+- **Blocker (environmental):** the seedbox refused SSH on port 22 from the NAS starting 15:45 host time
+  (`Connection refused`; Deluge Web on 443 stayed reachable). seedsyncarr-test reported
+  `latest_remote_scan_failed: true`, so the 90 s remote-stability window could not advance and the root never
+  reached the completion gate. With the torrent due to finish in about 12 min, the window would have been lost.
+- At about 15:50 the speed cap was cut to 4 KiB/s (the torrent stays in Downloading, not paused). `run-L2.sh`
+  was then stopped with SIGKILL, so its trap did not run (see the trap flaw below).
+  `CAPTURE_STATUS=FAILED` and `CAPTURE_NOTE=seedbox-ssh-refused-run-killed` were appended to `state.env`.
+  Teardown was run by hand:
+  ```
+  RESTORED sonarr_url ok
+  DELUGE per-torrent mode, no client change (downloadDirectory matches L0: yes)
+  DELETED notification http=200
+  RESTORED notifications count=1 son5-capture-present=0
+  NOTIF_URLS_OK
+  REMOVED sink
+  CHECK sonarr_url=http://sonarr-v5:8989
+  SANDBOX_RESTORED ok
+  exit=0
+  ```
+- Trap flaw found: `trap 'bash "$D/teardown.sh"' EXIT INT TERM HUP` does not exit on INT/TERM/HUP, so after a
+  signal the trap tears down and then the script keeps looping. Future staged scripts should use
+  `trap 'exit 130' INT TERM HUP; trap 'bash "$D/teardown.sh"' EXIT`.
+- Seedbox SSH recovered at 15:55:47 (tcp/22 open; `latest_remote_scan_failed: false` at 15:56:16).
+
+### SON5-02 milestone 1 captured after recovery (read-only, 15:57)
+Once scans recovered, the gate evaluated the root. Saved without touching the torrent:
+- `queue_details_incomplete.json` (15:57:14): `Hacks.S04E01.1080p.HEVC.x265-MeGusta`, `status=downloading`,
+  `trackedDownloadState=downloading`, `sizeleft=165052416`, output basename = the root.
+- `log-L2-incomplete.txt`:
+  ```
+  2026-10-20 16:55:50,109 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold for 'Hacks.S04E01.1080p.HEVC.x265-MeGusta': Still downloading
+  ```
+- `stream-L2-incomplete.txt`: `root=Hacks.S04E01.1080p.HEVC.x265-MeGusta hold_reason=still_downloading`
+  (2 string `hold_reason` values in the stream).
+- The sink and `son5-capture` notification were **not** live at that moment (torn down at 15:50), so the
+  Download webhook for this torrent cannot be captured until they are re-created **before** it completes.
+
+### Owner update (coordinator, about 15:56): use the owner-added Hacks S02 download instead
+Read-only findings (`s02.sh`, 15:56:50; no torrent touched):
+- sonarr-v5 `queue/details`: 1 record (S04E01 only). `queue?includeUnknownSeriesItems=true`: total 1 (S04E01
+  only). **The S02 download is not in sonarr-v5's queue.**
+- Deluge (read-only status), Hacks S02 torrents:
+  - `Hacks 2021 S02 1080p BluRay x265 HEVC 10bit AAC 5 1-Vyndros`: label **`tv-v4test`**, Seeding, 100%,
+    about 6,012 MB, save dir `v4test`, added about 6 min earlier. This is the owner's new torrent: wrong
+    category for sonarr-v5 and already complete.
+  - `Hacks S02 1080p BluRay x264-BRAVERY`: label `tv-v5test`, Seeding, 100%, about 24,099 MB, added about 21 h
+    earlier (imported on 2026-10-19).
+- sonarr-v5 Hacks episode files: S1 10 (SDTV), **S2 8 of 8 (Bluray-1080p)**, S3 9. S2 episodes monitored: 0.
+- seedsyncarr-test model: `Hacks S02 1080p BluRay x264-BRAVERY` is `deleted` (auto-deleted locally on
+  2026-10-19). The Vyndros root is not in the model; it sits under `v4test`, which seedsyncarr-test does not scan.
+- S04E01 at 15:56:50: Downloading, 56%, `max_download_speed=4`, `stop_at_ratio=false`,
+  `remove_at_ratio=false`, save dir `v5test`.
+
+Re-check at 15:58:22, after the owner said the S02 torrent is in `tv-v5test` (read-only):
+- Every Hacks torrent in Deluge, in any label: S01 XviD-AFG, the S02 BRAVERY pack and S03E01–E09 BRAVERY are all
+  in `tv-v5test`, 100%, Seeding, added 4 h or more earlier. S04E01 MeGusta is in `tv-v5test`, Downloading, 56%,
+  added 13 min earlier. **The Vyndros S02 pack is in `tv-v4test`**, 100%, Seeding, added 8 min earlier.
+- No torrent was added to `tv-v5test` in the last 2 h other than S04E01.
+- sonarr-v5 `queue?includeUnknownSeriesItems=true`: total 1 (S04E01, `downloading`, `sizeleft=164757504`).
+
+### Teardown read-back (fresh session, 15:57)
+```
+RESTORED sonarr_url ok
+DELUGE per-torrent mode, no client change (downloadDirectory matches L0: yes)
+RESTORED notifications count=1 son5-capture-present=0
+NOTIF_URLS_OK
+REMOVED sink (absent)
+CHECK sonarr_url=http://sonarr-v5:8989
+SANDBOX_RESTORED ok
+exit=0
+```
+`son5-webhook-sink` containers (`ps -a`): 0. Raw files are 0600 and include 76 `queue-<epoch>.json` snapshots,
+`queue_details_incomplete.json`, `log-L2-incomplete.txt`, `stream-L2-incomplete.txt`, `webhook_test.json`,
+`log-L3-test.txt`, `grab.json`, `releases-summary.json` (title/size/seeders/indexer only) and `run-L2.out`.
