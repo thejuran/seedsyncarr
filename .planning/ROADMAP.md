@@ -1,13 +1,32 @@
 # Roadmap: SeedSyncarr
 
-Updated 2026-10-18. Two future milestones remain. Detailed phase plans and release versions are not assigned yet; the next phase number is 120. Existing implementation must be checked before planning any carried-forward fix.
+Updated 2026-10-20. Milestone v1.7.7 Sonarr 5 Compatibility is active at Phase 120 (owner decision 2026-10-20, inserted ahead of Reliability). Reliability begins at Phase 121; two future milestones remain after v1.7.7, and their detailed phase plans and release versions are not assigned yet. Existing implementation must be checked before planning any carried-forward fix.
 
 ## Milestones
 
 - ✅ v1.7.4 Safety Patch -- Phases 116–118 (shipped 2026-10-09)
 - ✅ v1.7.5 Safety Release -- Phases 119 and 119.1; includes release 1.7.6 (shipped 2026-10-15)
+- 🔨 v1.7.7 Sonarr 5 Compatibility -- Phase 120 (in progress)
 
-Between milestones: no active milestone or phase. Future milestone names and scope are below; versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
+Active milestone: v1.7.7 Sonarr 5 Compatibility (Phase 120, not started, ready to plan). Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
+
+### 🔨 v1.7.7 Sonarr 5 Compatibility (Phase 120, in progress)
+
+- [ ] **Phase 120: Sonarr 5 Compatibility** - Prove SeedSyncarr works with Sonarr 5 on the sandbox and pin it with CI fixtures
+
+### Phase 120: Sonarr 5 Compatibility
+
+**Goal**: SeedSyncarr is shown to work with Sonarr 5 (connection test, download-queue completion evidence, import webhook) on the NAS sandbox, and that behavior is locked in by CI tests built from real Sonarr 5 responses. A 1.7.7 release ships only if a compatibility fix is needed.
+**Depends on**: Nothing (first phase of v1.7.7; builds on shipped 1.7.6)
+**Requirements**: SON5-01, SON5-02, SON5-03, SON5-04, SON5-05
+**Scope boundary**: Live checks run only on the NAS sandbox: `seedsyncarr-test` (1.7.6) against the `sonarr-v5` container (Sonarr 5.0.0.2701, NAS port 8990). Production Sonarr and SeedSyncarr are not touched. No API v5 migration (backlog 999.5), no Radarr changes.
+**Success Criteria** (what must be TRUE):
+  1. On the sandbox, Test Connection for the Sonarr 5 instance reports success and shows its 5.x version (5.0.0.2701).
+  2. A held file stays "Waiting" while its tracked download is incomplete in Sonarr 5's queue and is released only once that same download shows complete, with both queue states for that one download captured live. A missing queue entry, a Sonarr API error, or an unrelated completed download each leave the hold in place.
+  3. Sonarr 5's webhook Test event is accepted and marks nothing imported; a real Sonarr 5 import is accepted and marks exactly the correct file imported, and no other file.
+  4. Sanitized Sonarr 5 fixtures (system status, queue details incomplete and complete, Test and Download webhooks) are committed with the Sonarr version and capture scenario recorded alongside each, contain no keys, hostnames or personal paths, and CI tests exercise SeedSyncarr's handling of them without the NAS.
+  5. If any check in criteria 1-3 fails, the smallest compatibility fix ships as 1.7.7 and is deployed to the NAS by release tag (never `:dev`); if all pass, no release is cut and the milestone closes as "verified; no release needed" with tests and evidence committed.
+**Plans**: TBD
 
 ## Next milestone: Reliability
 
@@ -23,7 +42,7 @@ Between milestones: no active milestone or phase. Future milestone names and sco
 
 **Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks. Record residual limitations explicitly. Conditional investigations below are not completion gates unless evidence justifies explicitly promoting a bounded fix.
 
-**Sequence:** begin at Phase 120 when the milestone is activated. Detailed plans and release versions remain unassigned. This roadmap update does not activate the milestone or start implementation.
+**Sequence:** begin at Phase 121 when the milestone is activated. Detailed plans and release versions remain unassigned. This roadmap update does not activate the milestone or start implementation.
 
 ## Backlog
 
@@ -45,6 +64,10 @@ measure realistic update/idle workloads before proposing optimization. Initial m
 ### 999.4: Recheck the braces/karma dev-test advisory
 
 **Scope:** Bounded maintenance side task, separate from milestone scope. recheck the recorded braces/karma dev-test advisory and related deferred PRs (#128/#125/#117), including current affected versions and runtime/build exposure. Apply the smallest supported fix if still relevant, with the affected build/test checks. Records classify it as dev/test-only; current advisory status has not been refreshed. This is not a separate milestone or a general test-runner rewrite, and is not automatically a Reliability completion gate. Escalate priority if current evidence establishes material exposure.
+
+### 999.5: Move Sonarr integration to API v5
+
+**Scope:** Sonarr 5 lists the v3 API as deprecated (still served as of 5.0.0.2701). Move SeedSyncarr's two Sonarr API calls (`system/status` connection test, `queue/details` completion evidence; the webhook payload is version-independent) to `/api/v5` when Sonarr 4 support can be dropped, or with version detection that keeps v3 for Sonarr 4. Note the v5 queue model differences: one tracked item can cover multiple episodes (`episodeIds`/`episodes` lists), `timeLeft` casing, and `includeSubresources`. Activate when Sonarr announces v3 removal, Sonarr 5 goes stable and prod upgrades, or v1.7.7 finds a v3 gap. Radarr unaffected. Not a Reliability gate.
 
 ## Following milestone: Performance and Usability (conditional)
 

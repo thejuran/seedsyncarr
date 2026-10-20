@@ -2,11 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.7.7
 milestone_name: Sonarr 5 Compatibility
-status: planning
-last_updated: "2026-10-20T18:11:54.236Z"
-last_activity: 2026-10-20
+status: "Planning — Phase 120 ready to plan"
+stopped_at: "v1.7.7 roadmap created; Phase 120 ready to plan"
+last_updated: "2026-10-20T18:12:39Z"
+last_activity: 2026-10-20 -- v1.7.7 roadmap created (Phase 120)
 progress:
-  total_phases: 0
+  total_phases: 1
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,18 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Between milestones; narrowed Reliability roadmap agreed, implementation not started
+**Current focus:** Phase 120 Sonarr 5 Compatibility (milestone v1.7.7); ready to plan
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 120 (Sonarr 5 Compatibility) — not started, ready to plan
 Plan: —
-Status: Defining requirements
-Last activity: 2026-10-20 — Milestone v1.7.7 started
+Status: Planning — Phase 120 ready to plan
+Last activity: 2026-10-20 — v1.7.7 roadmap created (one phase, Phase 120, SON5-01..05)
 
 ## Accumulated Context
 
 ### Roadmap Evolution
+
+- 2026-10-20: Milestone v1.7.7 Sonarr 5 Compatibility inserted ahead of Reliability (owner decision) as one phase, Phase 120, covering SON5-01..05. Reliability shifts to begin at Phase 121. Backlog 999.5 (move Sonarr integration to API v5) added. Live checks are NAS sandbox only (`seedsyncarr-test` 1.7.6 against `sonarr-v5`, Sonarr 5.0.0.2701, port 8990; prod untouched). Release is conditional: ship and deploy 1.7.7 by tag only if a fix is needed, otherwise close "verified; no release needed". No implementation started.
 
 - 2026-10-18: Phase 119 human UAT closed (2/2 pass) by walkthrough on the 1.7.6 sandbox (seedsyncarr-test) with a remote probe file; prod untouched. Reliability item 2 keeps its extraction/import checks and incident reconciliation. No source changes.
 
@@ -102,7 +105,7 @@ None.
 
 ## Future Work
 
-The authoritative future work list is ROADMAP.md. Reliability is ordered: credential forwarding, safety acceptance, remaining startup/shutdown cleanup, model-stream overflow recovery, then LAN connection tests. Next available phase: 120; no new milestone, phase plans or release version have been activated.
+The authoritative future work list is ROADMAP.md. Active now: v1.7.7 Sonarr 5 Compatibility, Phase 120 (ready to plan). After it, Reliability begins at Phase 121 and is ordered: credential forwarding, safety acceptance, remaining startup/shutdown cleanup, model-stream overflow recovery, then LAN connection tests. Reliability's phase plans and release version are not yet activated. Moving the Sonarr integration to API v5 is backlog 999.5.
 
 Scanner buffering, residual import/restart gaps, memory measurements and UI/webhook efficiency are separate conditional investigations, not promised fixes or completion gates. Performance and Usability activates only when evidence justifies it. Dependency item 999.4 is a bounded maintenance side task.
 
@@ -132,13 +135,14 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-15T22:30:24.625Z
-Stopped at: 119.1-05 complete (7a2a122): 1.7.6 on NAS prod confirmed by owner; credential-rotation checklist delivered
-Next action: Milestone v1.7.5 archived 2026-10-15 (1.7.6 live on NAS). Next when authorized: activate the narrowed Reliability milestone (Phase 120+) via $gsd-new-milestone; current work is planning only. Owner rotates credentials on own schedule (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys). Phase 119 UI checks (Waiting badge, manual-release modal) passed 2026-10-18 on the 1.7.6 sandbox. Still open: Done-group one-time cleanup. Optional: delete /volume1/docker/seedsync-smoke-1.7.6.
+Last session: 2026-10-20T18:12:39Z
+Stopped at: v1.7.7 roadmap created; Phase 120 ready to plan
+Next action: /bm:plan-phase 120 (Sonarr 5 Compatibility; sandbox only, conditional 1.7.7 release). Reliability follows at Phase 121. Owner rotates credentials on own schedule (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys). Phase 119 UI checks (Waiting badge, manual-release modal) passed 2026-10-18 on the 1.7.6 sandbox. Still open: Done-group one-time cleanup. Optional: delete /volume1/docker/seedsync-smoke-1.7.6.
 
 ## Operator Next Steps
 
-- When implementation planning is requested, activate the narrowed Reliability milestone (Phase 120+) with $gsd-new-milestone. Do not start it as part of this roadmap update.
+- Run `/bm:plan-phase 120` to plan Phase 120 Sonarr 5 Compatibility (live checks on the NAS sandbox only; prod untouched)
+- After v1.7.7 closes, Reliability begins at Phase 121
 
 ## Deferred Items
 
