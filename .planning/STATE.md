@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.7.7
 milestone_name: Sonarr 5 Compatibility
-status: planning
-stopped_at: v1.7.7 roadmap created; Phase 120 ready to plan
-last_updated: "2026-10-20T19:38:38.158Z"
-last_activity: 2026-10-20 — v1.7.7 roadmap created (one phase, Phase 120, SON5-01..05)
+status: ready_to_execute
+stopped_at: Phase 120 planned (6 plans, 3 waves); ready to execute
+last_updated: "2026-10-20T19:38:49.000Z"
+last_activity: 2026-10-20 — Phase 120 planned (6 plans, 3 waves; owner decisions D-01..D-14 in 120-CONTEXT.md)
 progress:
   total_phases: 1
   completed_phases: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 120 Sonarr 5 Compatibility (milestone v1.7.7); ready to plan
+**Current focus:** Phase 120 Sonarr 5 Compatibility (milestone v1.7.7); ready to execute
 
 ## Current Position
 
-Phase: 120 (Sonarr 5 Compatibility) — not started, ready to plan
-Plan: —
-Status: Planning — Phase 120 ready to plan
-Last activity: 2026-10-20 — v1.7.7 roadmap created (one phase, Phase 120, SON5-01..05)
+Phase: 120 (Sonarr 5 Compatibility) — planned, not started
+Plan: 0 of 6 complete (next: 120-01, 120-02 in Wave 1)
+Status: Ready to execute
+Last activity: 2026-10-20 — Phase 120 planned (6 plans, 3 waves); plan-checker passed on iteration 2
 
 ## Accumulated Context
 
