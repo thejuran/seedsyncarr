@@ -400,3 +400,114 @@ exit=0
 `son5-webhook-sink` containers (`ps -a`): 0. Raw files are 0600 and include 76 `queue-<epoch>.json` snapshots,
 `queue_details_incomplete.json`, `log-L2-incomplete.txt`, `stream-L2-incomplete.txt`, `webhook_test.json`,
 `log-L3-test.txt`, `grab.json`, `releases-summary.json` (title/size/seeders/indexer only) and `run-L2.out`.
+
+## Owner decision: resume-s04e01 = lift-cap-and-capture (2026-10-20)
+
+The owner chose option 1 and approved one change only: removing the per-torrent download speed cap on the
+S04E01 torrent. The torrent is not removed or paused, stop/remove-at-ratio stay off, and it keeps seeding.
+The S02 pack is not used: it is not in sonarr-v5's queue, it is in label `tv-v4test`, and Sonarr already has
+all 8 S02 files.
+
+### Re-baseline (16:00, same capture dir, so the incomplete evidence stays alongside)
+`l0.sh`: version **5.0.0.2701**, image ids unchanged, notifications count 1 (`Seedsyncarr` → seedsyncarr-test),
+Deluge client unchanged (`downloadDirectory=~/v5test-incomplete`, `removeCompletedDownloads=false`),
+`sonarr_url=http://sonarr-v5:8989`, queue total 1 (S04E01). Teardown probe: `SANDBOX_RESTORED ok`, exit=0.
+
+### L3 setup re-created (16:01, `run-L3setup.sh` with the fixed trap)
+`trap 'exit 130' INT TERM HUP` + `trap '[ "$OK" = 1 ] || bash "$D/teardown.sh"' EXIT`. `SINK_HEALTHZ ok`;
+`NOTIF_CREATE http=201 id=5` (NID=5); `NOTIF_URLS_OK` (id 1 → seedsyncarr-test, id 5 → son5-webhook-sink).
+Test → Seedsyncarr http=200 (access log `200 7` from `Sonarr/5.0.0.2701 (alpine 3.24.2)`, import lines 0);
+Test → sink http=200 (eventType Test, `webhook_test.json` refreshed). Version before/after: 5.0.0.2701.
+
+### Completion capture (`run-M2.sh`, detached; `trap 'exit 130' INT TERM HUP` + `trap 'bash "$D/teardown.sh"' EXIT`)
+The monitor attaches to the existing `CAPTURE_TORRENT_ID` and makes no grab. The cap was lifted only after the
+monitor started.
+- `V_BEFORE 5.0.0.2701` at 16:01:31; pre-lift snapshot of the same downloadId: `status=downloading sizeleft=164118528`.
+- **`CAP_LIFTED max_download_speed=-1 error=null` at 16:01:32**, leaving Downloading 56.6%, `stop_at_ratio=false`,
+  `remove_at_ratio=false`. The pre-cap value was not recorded before the first cap; -1 (unlimited) is
+  Deluge's default, and Sonarr sets no speed limit.
+- `HOLD_CLEARED` seen at 16:01:51 (host time).
+- **M2 COMPLETE at 16:02:22**: `queue_details_complete.json` has the same downloadId with `status=completed`,
+  `sizeleft=0`, `trackedDownloadState=importPending`, `trackedDownloadStatus=warning` (Sonarr is waiting
+  for the file to land on the NAS).
+- **M3 WEBHOOK at 16:05:24**: sink `20261020T210521790007Z-0003.json` → `webhook_download.json`, eventType
+  `Download`, `isUpgrade=false`, `user_agent=Sonarr/5.0.0.2701 (alpine 3.24.2)`,
+  child `Hacks.S04E01.1080p.HEVC.x265-MeGusta.mkv`. Keys:
+  `applicationUrl,customFormatInfo,downloadClient,downloadClientType,downloadId,episodeFile,episodes,eventType,instanceName,isUpgrade,release,series`.
+- **`IMPORT_LINES single=1 total=1 mine=1`**.
+- `DELUGE_FINAL` state **Seeding**, progress 100, `stop_at_ratio=false`, `remove_at_ratio=false`,
+  `max_download_speed=-1`, label `tv-v5test`.
+- `V_AFTER 5.0.0.2701` at 16:05:31 (equal, D-07). **`CAPTURE_STATUS=COMPLETE`**. 119 queue snapshots in total.
+
+Log evidence (app clock = host + 1h), from `log-L2-incomplete.txt`, `log-L2-complete.txt` and `log-L3-import.txt`:
+```
+2026-10-20 16:55:50,109 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold for 'Hacks.S04E01.1080p.HEVC.x265-MeGusta': Still downloading
+2026-10-20 17:01:49,817 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold cleared for 'Hacks.S04E01.1080p.HEVC.x265-MeGusta'
+2026-10-20 17:03:20,525 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold for 'Hacks.S04E01.1080p.HEVC.x265-MeGusta': Still downloading
+2026-10-20 17:03:21,095 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold cleared for 'Hacks.S04E01.1080p.HEVC.x265-MeGusta'
+2026-10-20 17:03:21,096 - INFO - seedsyncarr.AutoQueue (MainProcess/ControllerJob) - Auto queueing 'Hacks.S04E01.1080p.HEVC.x265-MeGusta'
+2026-10-20 17:03:21,597 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Received command Action.QUEUE for file Hacks.S04E01.1080p.HEVC.x265-MeGusta
+2026-10-20 17:05:21,785 - INFO - seedsyncarr.WebhookManager (MainProcess/worker 3) - Sonarr webhook import enqueued: 'Hacks.S04E01.1080p.HEVC.x265-MeGusta.mkv' (eventType=Download, episodeFile.sourcePath)
+2026-10-20 17:05:22,069 - INFO - seedsyncarr.WebhookManager (MainProcess/ControllerJob) - Sonarr import detected: 'Hacks.S04E01.1080p.HEVC.x265-MeGusta.mkv' (matched SeedSyncarr file 'Hacks.S04E01.1080p.HEVC.x265-MeGusta'; eventType=Download, episodeFile.sourcePath)
+2026-10-20 17:05:22,069 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Recorded webhook import: 'Hacks.S04E01.1080p.HEVC.x265-MeGusta' (child: 'Hacks.S04E01.1080p.HEVC.x265-MeGusta.mkv')
+```
+Observation for Plan 06 (not a Sonarr 5 failure): the 17:01:49 "cleared" came while Sonarr still reported
+`downloading`. When the cap lifted, the remote size changed, the root left the stability sweep, and the gate
+dropped the hold of a root that is no longer a candidate. The actual completion release is the
+17:03:20 → 17:03:21 hold → cleared → `Auto queueing` sequence, after Sonarr reported `completed` at 17:02:22
+app time. That second hold lasted 0.6 s, because the gate re-held on a queue view older than the completion.
+
+Live negatives were not run: there is no seedbox shell for a probe file, and breaking the key or URL would
+corrupt the evidence. CI (Plan 04) is authoritative for the missing-entry, API-error and unrelated-download
+negatives.
+
+### Teardown at Task 3 (COMPLETE)
+From the monitor's EXIT trap, at 16:05:31:
+```
+RESTORED sonarr_url ok
+DELUGE per-torrent mode, no client change (downloadDirectory matches L0: yes)
+DELETED notification http=200
+RESTORED notifications count=1 son5-capture-present=0
+NOTIF_URLS_OK
+REMOVED sink
+CHECK sonarr_url=http://sonarr-v5:8989
+SANDBOX_RESTORED ok
+```
+Fresh-session read-back:
+```
+RESTORED sonarr_url ok
+DELUGE per-torrent mode, no client change (downloadDirectory matches L0: yes)
+RESTORED notifications count=1 son5-capture-present=0
+NOTIF_URLS_OK
+REMOVED sink (absent)
+CHECK sonarr_url=http://sonarr-v5:8989
+SANDBOX_RESTORED ok
+exit=0
+```
+Plan verify on the NAS: `CAPTURE_STATUS=COMPLETE`, sink containers 0, `PAIR_OK 1`, `WEBHOOK_OK`.
+`queue_details_incomplete.json` (1154 B), `queue_details_complete.json` (1367 B) and
+`webhook_download.json` (3306 B) are all mode 600. The sonarr-v5 queue total is now 0.
+
+### Kept seeding (owner requirement)
+- Deluge: `Hacks.S04E01.1080p.HEVC.x265-MeGusta`, label `tv-v5test`, **Seeding**, 100%, stop/remove-at-ratio
+  off. The seeding data is on the seedbox at `~/v5test/Hacks.S04E01.1080p.HEVC.x265-MeGusta`.
+- Nothing removed it: there was no remove, pause, queue DELETE or `removeFromClient`, and sonarr-v5 has
+  `removeCompletedDownloads=false`.
+- NAS: the imported episode is at `/volume1/data/v5test/media/tv/Hacks/Season 4/Hacks.S04E01.1080p.HEVC.x265-MeGusta.mkv`
+  (sonarr-v5 `/data/media/tv/...`, HDTV-1080p, 356,287,747 B, 2 links). The seedsyncarr-test staging copy in
+  `/volume1/data/v5test/torrents/` is auto-deleted 300 s after import; this affects the NAS copy only.
+
+### Deviations (this plan)
+1. **Password source**: the Sonarr API masks the Deluge password, so MODE A reads it from the sandbox Sonarr DB
+   (`/volume1/docker/v5test/sonarr/sonarr.db`, read-only, into a variable, never printed).
+2. **Per-torrent speed cap and ratio options**: on the capture torrent only, `stop_at_ratio=false` and
+   `remove_at_ratio=false` were set to protect seeding. A temporary `max_download_speed` cap (256, then
+   4 KiB/s while the seedbox SSH was down) kept the incomplete window open. The cap was removed at 16:01:32
+   with owner approval.
+3. **Trap fix**: the plan's `trap 'bash "$D/teardown.sh"' EXIT INT TERM HUP` does not exit on a signal.
+   Scripts now use `trap 'exit 130' INT TERM HUP` plus an EXIT trap. The first `run-L2.sh` was stopped with
+   SIGKILL, and teardown was run by hand.
+4. **Teardown hardening** (`ea8c85c`): the capture dir defaults to the script's own location, and missing Deluge
+   state now FAILs.
+5. **Incomplete milestone captured outside `run-L2.sh`**: it was saved read-only at 15:57 after the seedbox SSH
+   recovered, so the sink was not live then. The pair is still the same downloadId (`PAIR_OK 1`).
