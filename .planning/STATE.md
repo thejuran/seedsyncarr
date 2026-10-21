@@ -2,11 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: planning
-last_updated: "2026-10-21T22:00:46.858Z"
-last_activity: 2026-10-21
+status: "planning — roadmap drafted for Phases 121–126, awaiting approval; nothing implemented"
+stopped_at: "v1.8.0 roadmap drafted (Phases 121–126); awaiting owner approval, then plan Phase 121"
+last_updated: "2026-10-21T23:30:00Z"
+last_activity: 2026-10-21 -- v1.8.0 roadmap drafted
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,18 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-21)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Milestone v1.8.0 Reliability: defining requirements and roadmap (Phase 121+)
+**Current focus:** Milestone v1.8.0 Reliability: roadmap drafted (Phases 121–126); approve, then plan Phase 121 Credential Forwarding
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 121 (Credential Forwarding) — NOT STARTED
 Plan: —
-Status: Defining requirements
-Last activity: 2026-10-21 — Milestone v1.8.0 started
+Status: Roadmap drafted for Phases 121–126; awaiting approval. No implementation started.
+Last activity: 2026-10-21 — v1.8.0 requirements defined and roadmap drafted
 
 ## Accumulated Context
 
 ### Roadmap Evolution
+
+- 2026-10-21: Milestone v1.8.0 Reliability roadmap drafted: six phases, 121–126, mapping all 13 requirements (SEC-02; SAFE-01/02 + LOG-01/02; LIFE-01/02; STRM-01/02; LAN-01/02; REL-05/06). Owner priority order kept; the two Phase 120 logging fixes sit in Phase 122 with the safety acceptance checks (same webhook/completion-gate paths are exercised there). Release 1.8.0 is Phase 126 and depends on 121–125; 999.4 is rechecked within REL-05. Nothing implemented.
 
 - 2026-10-20: Milestone v1.7.7 closed: Phase 120 verified 5/5, owner approved "verified; no release needed". No 1.7.7 release and no `v1.7.7` git tag (a tag would trigger the CI release pipeline). Archived to `milestones/v1.7.7-ROADMAP.md` and `v1.7.7-REQUIREMENTS.md`; REQUIREMENTS.md removed for the next milestone.
 
@@ -95,7 +98,7 @@ None.
 
 ### Blockers/Concerns
 
-- None at roadmap creation. Watch-out for Phase 118's deploy gate: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — deploy the CI-published multi-arch `:1.7.4` tag, never a local build and never `:dev`.
+- None at v1.8.0 roadmap creation. Watch-out for Phase 126's deploy gate: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — deploy the CI-published multi-arch `:1.8.0` image pinned by digest, never a local build and never `:dev`.
 
 ### Quick Tasks Completed
 
@@ -107,7 +110,7 @@ None.
 
 ## Future Work
 
-The authoritative future work list is ROADMAP.md. No milestone is active; v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release needed). Next, Reliability begins at Phase 121 and is ordered: credential forwarding, safety acceptance, remaining startup/shutdown cleanup, model-stream overflow recovery, then LAN connection tests. Reliability's phase plans and release version are not yet activated. Moving the Sonarr integration to API v5 is backlog 999.5.
+The authoritative future work list is ROADMAP.md. Milestone v1.8.0 Reliability is active with Phases 121–126 in owner-approved order: credential forwarding (121), safety acceptance plus the two Phase 120 logging fixes (122), startup/shutdown lifecycle (123), model-stream overflow recovery (124), LAN connection tests (125), then release 1.8.0 (126: Dependabot review incl. 999.4, publish, NAS digest smoke, production deploy by digest). Phase plans are not yet written. Moving the Sonarr integration to API v5 is backlog 999.5.
 
 Scanner buffering, residual import/restart gaps, memory measurements and UI/webhook efficiency are separate conditional investigations, not promised fixes or completion gates. Performance and Usability activates only when evidence justifies it. Dependency item 999.4 is a bounded maintenance side task.
 
@@ -140,8 +143,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 ## Session Continuity
 
 Last session: 2026-10-21
-Stopped at: Milestone v1.8.0 Reliability started; defining requirements
-Next action: finish /bm:new-milestone (requirements, roadmap), then /bm:discuss-phase 121. Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Stopped at: v1.8.0 roadmap drafted (Phases 121–126); awaiting owner approval
+Next action: approve the roadmap, then /bm:discuss-phase 121 (Credential Forwarding). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -154,7 +157,8 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Plan Phase 121 after the v1.8.0 roadmap is approved
+- Approve the v1.8.0 roadmap (Phases 121–126)
+- Then /bm:discuss-phase 121 and /bm:plan-phase 121 (Credential Forwarding)
 
 ## Deferred Items
 
@@ -163,10 +167,10 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 | Operator follow-up | Confirm 1.7.6 credential rotation | Completion unconfirmed |
 | Operator follow-up | Confirm one-time Done-group cleanup | Completion unconfirmed |
 | Operator follow-up | Remove Hacks.S04E01 test torrent from sandbox Deluge (`~/v5test` on seedbox, label tv-v5test) once TorrentDay seed time is met | Seeding; owner to remove |
-| Deferred fix (Phase 120) | Webhook handler logger not attached to app log ("Sonarr webhook test event received" never written) | Logged in 120 deferred-items.md; not Sonarr-5-specific |
-| Deferred fix (Phase 120) | CompletionGate prune path logs "Completion hold cleared" when a hold is merely dropped (no release; no early transfer) | Logged in 120 deferred-items.md; wording fix |
+| Deferred fix (Phase 120) | Webhook handler logger not attached to app log ("Sonarr webhook test event received" never written) | Promoted to LOG-01, Phase 122 |
+| Deferred fix (Phase 120) | CompletionGate prune path logs "Completion hold cleared" when a hold is merely dropped (no release; no early transfer) | Promoted to LOG-02, Phase 122 |
 
-Open audit artifacts acknowledged at v1.7.7 close (2026-10-20), all from earlier milestones and already assigned to Reliability item 2:
+Open audit artifacts acknowledged at v1.7.7 close (2026-10-20), all from earlier milestones and assigned to Phase 122 (SAFE-01/SAFE-02):
 
 | Category | Item | Status |
 |----------|------|--------|

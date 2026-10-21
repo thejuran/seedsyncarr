@@ -69,25 +69,25 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-02 | TBD | Pending |
-| SAFE-01 | TBD | Pending |
-| SAFE-02 | TBD | Pending |
-| LIFE-01 | TBD | Pending |
-| LIFE-02 | TBD | Pending |
-| STRM-01 | TBD | Pending |
-| STRM-02 | TBD | Pending |
-| LAN-01 | TBD | Pending |
-| LAN-02 | TBD | Pending |
-| LOG-01 | TBD | Pending |
-| LOG-02 | TBD | Pending |
-| REL-05 | TBD | Pending |
-| REL-06 | TBD | Pending |
+| SEC-02 | Phase 121 | Pending |
+| SAFE-01 | Phase 122 | Pending |
+| SAFE-02 | Phase 122 | Pending |
+| LIFE-01 | Phase 123 | Pending |
+| LIFE-02 | Phase 123 | Pending |
+| STRM-01 | Phase 124 | Pending |
+| STRM-02 | Phase 124 | Pending |
+| LAN-01 | Phase 125 | Pending |
+| LAN-02 | Phase 125 | Pending |
+| LOG-01 | Phase 122 | Pending |
+| LOG-02 | Phase 122 | Pending |
+| REL-05 | Phase 126 | Pending |
+| REL-06 | Phase 126 | Pending |
 
 **Coverage:**
 - v1.8.0 requirements: 13 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 13
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-10-21*
-*Last updated: 2026-10-21 after initial definition*
+*Last updated: 2026-10-21 after roadmap creation (Phases 121–126)*

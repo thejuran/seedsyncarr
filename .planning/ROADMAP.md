@@ -1,14 +1,15 @@
 # Roadmap: SeedSyncarr
 
-Updated 2026-10-20. No milestone is active. v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release needed). Reliability begins at Phase 121 when activated; its detailed phase plans and release version, and those of the milestone after it, are not assigned yet. Existing implementation must be checked before planning any carried-forward fix.
+Updated 2026-10-21. Milestone v1.8.0 Reliability is active (Phases 121–126, started 2026-10-21; nothing implemented yet). v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release needed). NAS production runs 1.7.6. Existing implementation must be checked before planning any carried-forward fix.
 
 ## Milestones
 
 - ✅ v1.7.4 Safety Patch -- Phases 116–118 (shipped 2026-10-09)
 - ✅ v1.7.5 Safety Release -- Phases 119 and 119.1; includes release 1.7.6 (shipped 2026-10-15)
 - ✅ v1.7.7 Sonarr 5 Compatibility -- Phase 120 (closed 2026-10-20; verified, no release needed)
+- 🔨 v1.8.0 Reliability -- Phases 121–126 (in progress)
 
-No active milestone; next is Reliability. Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
+Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
 
 <details>
 <summary>✅ v1.7.7 Sonarr 5 Compatibility (Phase 120) — CLOSED 2026-10-20, verified; no release needed</summary>
@@ -17,21 +18,109 @@ No active milestone; next is Reliability. Future milestone names and scope are b
 
 </details>
 
-## Next milestone: Reliability
+### 🔨 v1.8.0 Reliability (Phases 121–126, in progress)
 
-**Goal:** Restrict credential forwarding, close outstanding safety acceptance checks, and repair demonstrated lifecycle and integration failures with small changes.
+**Goal:** Stop the app token from being sent to outside services, close the outstanding safety acceptance checks, and repair demonstrated lifecycle and integration failures with small changes, then release and deploy 1.8.0.
 
-**Ordered scope (priorities, not assigned phase numbers):**
+**Requirements:** `REQUIREMENTS.md` (13: SEC-02, SAFE-01/02, LIFE-01/02, STRM-01/02, LAN-01/02, LOG-01/02, REL-05/06). Owner-approved priority order: credential forwarding → safety acceptance → startup/shutdown → model-stream overflow → LAN connection tests → release. Planning boundaries: small, evidence-backed changes only; no authentication, lifecycle-framework or event-bus redesign; no broad relaxation of outbound requests; retain LFTP, the existing architecture, the Phase 119 import/deletion safeguards, existing per-component controller cleanup, auto-delete shutdown guards and lock ordering.
 
-1. [ ] **Restrict credential forwarding.** The current HTTP interceptor attaches the configured app token to all requests, including the GitHub update-check request. Limit attachment to intended app requests. **Done when:** internal requests retain authentication and external requests receive no app token, with regression coverage for both. Current-code evidence confirms attachment; actual network exposure has not been tested. No authentication redesign.
-2. [ ] **Close safety acceptance checks.** Exercise the Waiting badge/reason and manual-release OK/Cancel paths, plus extract-staging/import/auto-delete behavior. Reconcile Done-group and extraction debug records with shipped fixes before proposing more code. **Done when:** browser evidence confirms the hold and confirmation behavior (Cancel preserves the hold), extraction/import checks pass, and incident records distinguish verified fixes from remaining operator cleanup. Do not close incidents solely because code shipped. *Progress 2026-10-18:* browser half evidenced on 1.7.6 (Waiting badge/reason, manual-release Cancel keeps the hold, Release transfers once; `119-HUMAN-UAT.md`). Extraction/import checks and incident reconciliation remain.
-3. [ ] **Repair remaining shutdown gaps.** Controller cleanup already isolates failures between components; preserve it. Focus on partial scanner/component startup and cleanup that can skip later children when an earlier operation fails. **Done when:** injected startup and cleanup failures demonstrate cleanup of started children and continued cleanup attempts for remaining components. Preserve auto-delete shutdown guards and lock ordering; no lifecycle-framework rewrite.
-4. [ ] **Recover model state after stream overflow.** StreamQueue is already bounded, but discarded incremental model events can leave a slow client out of sync. First reproduce overflow at the model-stream boundary; then implement the smallest recovery mechanism, such as a fresh snapshot or reconnect. **Done when:** a slow client converges to current server state after overflow with bounded buffering. Producer atomicity alone is not sufficient. If reproduction establishes an existing recovery guarantee, record it and close without redundant changes; no event-bus redesign.
-5. [ ] **Support intended LAN connection tests.** Current validation rejects private addresses used by normal local Sonarr/Radarr installations. Permit intended configured LAN services while retaining appropriate destination and redirect restrictions. **Done when:** representative LAN configurations pass and unintended destinations remain rejected. No broad relaxation of arbitrary outbound requests.
+**CI gate (every phase):** full Python suite green AND whole-tree `ruff check src/python/` clean (CI runs ruff as a separate gate from pytest, so build-verify must run it on the whole tree, not just touched files); Python `fail_under` ≥ 88 holds; Angular unit tests and Karma `check.global` thresholds green where Angular code is touched (Phase 121); every targeted regression shown to fail before its fix and pass after.
 
-**Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks. Record residual limitations explicitly. Conditional investigations below are not completion gates unless evidence justifies explicitly promoting a bounded fix.
+- [ ] **Phase 121: Credential Forwarding** - The app token is attached only to SeedSyncarr's own API requests, never to external destinations such as the GitHub update check
+- [ ] **Phase 122: Safety Acceptance and Logging Fixes** - Extraction/import/auto-delete checks pass on a running build, incident records are reconciled, and webhook/completion-gate log messages are accurate
+- [ ] **Phase 123: Startup and Shutdown Lifecycle** - Partial startup failures clean up started children; a failing component cleanup does not stop the remaining cleanups
+- [ ] **Phase 124: Model-Stream Overflow Recovery** - A slow client converges to current server state after overflow, with bounded buffering (or a recorded existing guarantee)
+- [ ] **Phase 125: LAN Connection Tests** - Test Connection accepts intended local Sonarr/Radarr addresses, including Docker container names, while unintended destinations stay rejected
+- [ ] **Phase 126: Release 1.8.0** - Dependabot review, publish to Docker/GitHub/PyPI, NAS digest smoke test, production deploy by digest confirmed by a successful scan
 
-**Sequence:** begin at Phase 121 when the milestone is activated. Detailed plans and release versions remain unassigned. This roadmap update does not activate the milestone or start implementation.
+#### Phase Details
+
+### Phase 121: Credential Forwarding
+
+**Goal**: The configured app token reaches only SeedSyncarr's own API; no outside service ever receives it
+**Depends on**: Nothing (first phase of the milestone; follows Phase 120)
+**Requirements**: SEC-02
+**Success Criteria** (what must be TRUE):
+  1. A request from the UI to a SeedSyncarr `/server/*` endpoint still carries the Bearer token and succeeds (no regression in authenticated UI flows, verified by Angular unit tests and the existing E2E suite)
+  2. The GitHub update-check request, and any other request to a non-app origin, is sent with no `Authorization` header or app token (regression test asserts the absence)
+  3. A regression test that asserts the token is absent on an external request fails against the current interceptor and passes after the fix
+  4. No authentication redesign: the token source (meta tag), the interceptor mechanism and the server-side Bearer check are unchanged
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 122: Safety Acceptance and Logging Fixes
+
+**Goal**: The Phase 119 safety behaviors are proven on a running build, the two open incident records say truthfully what is fixed and what is not, and the two log messages found in Phase 120 stop misleading operators
+**Depends on**: Phase 121 (sequencing only; disjoint code paths)
+**Requirements**: SAFE-01, SAFE-02, LOG-01, LOG-02
+**Success Criteria** (what must be TRUE):
+  1. On a running build (sandbox `seedsyncarr-test`; prod untouched), extraction, import and auto-delete checks each pass with recorded evidence (log excerpts, timestamps, resulting file state), completing the extraction/import half of `119-VERIFICATION.md` whose browser half passed 2026-10-18
+  2. `.planning/debug/done-group-no-auto-delete.md` and `extract-staging-autodel-rearm` each record, per finding, "verified fixed (evidence)" or "remaining operator cleanup"; neither is marked closed solely because its code shipped, and the Done-group one-time cleanup remains an operator follow-up until the owner confirms it
+  3. A webhook Test event produces a `<source> webhook test event received` INFO line in the app log (handler logger attached under the app logger), with a regression test that fails before and passes after
+  4. When the completion gate prunes a hold (root left the stability sweep), the app log says the hold was *dropped* (no release); `Completion hold cleared` appears only for a proof-based release, with a regression test covering both paths
+  5. Phase 119 import safeguards (early credit, pending-notice revalidation, arm-on-commit, Waiting holds, one-shot manual release) are exercised, not rebuilt
+**Plans**: TBD
+
+### Phase 123: Startup and Shutdown Lifecycle
+
+**Goal**: A failure partway through startup or cleanup never leaves started children running or skips the cleanup of later components
+**Depends on**: Phase 122 (sequencing only; disjoint code paths)
+**Requirements**: LIFE-01, LIFE-02
+**Success Criteria** (what must be TRUE):
+  1. With a failure injected into the startup of the scanner or another component after some children have started, the already-started children are stopped/cleaned up and the failure still surfaces (test fails before the fix, passes after)
+  2. With a failure injected into the cleanup of one component, cleanup is still attempted for every remaining component and the first failure is logged, not swallowed (test fails before the fix, passes after)
+  3. The existing per-component controller cleanup, the auto-delete shutdown guards (`threading.Event` in-flight guard under `__auto_delete_lock`) and the established lock ordering are unchanged, and their existing tests stay green
+  4. A clean startup and a clean shutdown behave exactly as before (no new sleeps, no lifecycle-framework rewrite)
+**Plans**: TBD
+
+### Phase 124: Model-Stream Overflow Recovery
+
+**Goal**: A slow SSE client that loses incremental model events converges back to the server's current state without unbounded buffering
+**Depends on**: Phase 123 (sequencing only; disjoint code paths)
+**Requirements**: STRM-01, STRM-02
+**Success Criteria** (what must be TRUE):
+  1. Overflow is reproduced at the model-stream boundary (bounded `StreamQueue` dropping events for a stalled consumer) with a recorded, repeatable test or script, before any fix is proposed
+  2. If reproduction shows an existing recovery guarantee (for example a fresh snapshot already follows a drop), that guarantee is recorded with evidence and STRM-02 closes with no code change
+  3. Otherwise, after overflow the slow client's model matches the server's current state (fresh snapshot or reconnect — the smallest mechanism), demonstrated by a test that fails before and passes after
+  4. Buffering stays bounded under a stalled consumer; producer atomicity alone is not accepted as the recovery mechanism, and there is no event-bus redesign
+**Plans**: TBD
+
+### Phase 125: LAN Connection Tests
+
+**Goal**: Test Connection works for the local Sonarr/Radarr addresses people actually use, without opening the test endpoint to arbitrary destinations
+**Depends on**: Phase 124 (sequencing only; disjoint code paths)
+**Requirements**: LAN-01, LAN-02
+**Success Criteria** (what must be TRUE):
+  1. Test Connection succeeds for a private-range IP (e.g. `192.168.x.x`, `10.x.x.x`, `172.16–31.x.x`) running Sonarr/Radarr, and for a Docker container or host name that resolves to a private address (the container-name failure recorded in Phase 120, D-02, is fixed), with regression tests for each representative case
+  2. Cloud-metadata and link-local addresses (e.g. `169.254.169.254`), loopback-to-unexpected-port probes outside the allowed intent, and redirects to disallowed targets are still rejected with the same user-visible outcome as today, with regression tests
+  3. The new acceptance is limited to the configured Sonarr/Radarr test-connection path; no other outbound request path is relaxed
+  4. The change is noted as the minor-version driver (behavior change) in the 1.8.0 release notes
+**Plans**: TBD
+
+### Phase 126: Release 1.8.0
+
+**Goal**: 1.8.0 is published, smoke-tested by exact digest, and running on NAS production with a confirmed successful scan
+**Depends on**: Phases 121, 122, 123, 124, 125 (all milestone work complete)
+**Requirements**: REL-05, REL-06
+**Success Criteria** (what must be TRUE):
+  1. Before the version bump/tag, open Dependabot alerts and PRs are reviewed and listed for the owner in plain terms; runtime/shipped fixes are rolled into 1.8.0, dev-only ones only if cheap; backlog 999.4 (braces/karma advisory, PRs #128/#125/#117) is rechecked as part of this review and its outcome recorded
+  2. Full Python suite, whole-tree ruff, Angular tests and release CI are green on the release commit; tag `v1.8.0` publishes the image to GHCR, the GitHub release and PyPI, with CHANGELOG and release notes (including the LAN test behavior change and a rollback runbook)
+  3. The published image is smoke-tested on the NAS sandbox by exact digest: restart, a real transfer, Sonarr/Radarr integration and cleanup checks pass
+  4. NAS production compose is pinned to `:1.8.0@sha256:…` (the same digest; never `:dev`, never a local build — NAS local build is blocked by QEMU) and a successful post-deploy scan confirms recovery, with the owner's confirmation recorded
+**Plans**: TBD
+
+#### Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 121. Credential Forwarding | 0/TBD | Not started | - |
+| 122. Safety Acceptance and Logging Fixes | 0/TBD | Not started | - |
+| 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
+| 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
+| 125. LAN Connection Tests | 0/TBD | Not started | - |
+| 126. Release 1.8.0 | 0/TBD | Not started | - |
+
+**Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks and is deployed to NAS production by digest. Record residual limitations explicitly. Conditional investigations in the Backlog are not completion gates unless evidence justifies explicitly promoting a bounded fix.
 
 ## Backlog
 
@@ -55,7 +144,7 @@ measure realistic update/idle workloads before proposing optimization. Initial m
 
 ### 999.4: Recheck the braces/karma dev-test advisory
 
-**Scope:** Bounded maintenance side task, separate from milestone scope. recheck the recorded braces/karma dev-test advisory and related deferred PRs (#128/#125/#117), including current affected versions and runtime/build exposure. Apply the smallest supported fix if still relevant, with the affected build/test checks. Records classify it as dev/test-only; current advisory status has not been refreshed. This is not a separate milestone or a general test-runner rewrite, and is not automatically a Reliability completion gate. Escalate priority if current evidence establishes material exposure.
+**Scope:** Bounded maintenance side task, separate from milestone scope. recheck the recorded braces/karma dev-test advisory and related deferred PRs (#128/#125/#117), including current affected versions and runtime/build exposure. Apply the smallest supported fix if still relevant, with the affected build/test checks. Records classify it as dev/test-only; current advisory status has not been refreshed. This is not a separate milestone or a general test-runner rewrite. It is rechecked within REL-05 (Phase 126) as part of the pre-tag Dependabot review; that recheck records the outcome, and the item is rolled into 1.8.0 only if the fix is cheap or current evidence establishes material exposure.
 
 ### 999.5: Move Sonarr integration to API v5
 
@@ -63,33 +152,33 @@ measure realistic update/idle workloads before proposing optimization. Initial m
 
 ## Following milestone: Performance and Usability (conditional)
 
-**Activation:** Reliability is complete and measurements or recurring user friction justify a bounded follow-up. If no material opportunity is demonstrated, defer this milestone.
+**Activation:** v1.8.0 Reliability is complete and measurements or recurring user friction justify a bounded follow-up. If no material opportunity is demonstrated, defer this milestone.
 
 **Goal:** Remove demonstrated unnecessary work and remaining setup friction without changing the transfer architecture.
 
 1. [ ] **Measured UI/webhook efficiency.** Select only improvements supported by the backlog investigations, with agreed baseline and before/after targets.
 2. [ ] **Setup/configuration documentation.** Correct concrete discrepancies not already fixed in Phase 119 or alongside Reliability work.
 
-Credential forwarding and LAN connection tests belong to Reliability, not this milestone.
+Credential forwarding and LAN connection tests belong to v1.8.0 Reliability, not this milestone.
 
 **Done when:** selected improvements meet their agreed before/after targets, relevant integration/UI checks pass, and affected documentation matches delivered behavior. Scope, phase numbers and release version are assigned only after activation.
 
 ## Future milestone: UI Redesign (pipeline-first)
 
-**Activation:** after Reliability; set its order relative to Performance and Usability when activated. Not active; no phases or version assigned.
+**Activation:** after v1.8.0 Reliability; set its order relative to Performance and Usability when activated. Not active; no phases or version assigned.
 
 **Goal:** Make the import-driven safe-delete pipeline visible: show each file's lifecycle (seedbox → local → imported → local copy cleaned up), surface problems with per-row actions, regroup Settings around the pipeline, and add phone and iPhone Duo layouts. Full scope, backend dependencies, component change list and finish line: [UI Redesign brief](backlog/UI-REDESIGN.md). Design canvas linked there.
 
 ## Operator follow-ups (not development milestones)
 
 - [ ] Confirm credential rotation from the 1.7.6 checklist is complete.
-- [ ] Confirm one-time Done-group cleanup is complete. Do not mark the incident closed solely because its code fix shipped.
+- [ ] Confirm one-time Done-group cleanup is complete. Do not mark the incident closed solely because its code fix shipped (Phase 122 reconciles the record; the cleanup itself stays with the operator).
 
 ## Completed releases
 
 - **1.7.4:** safety patch, Phases 116–118. [Archived roadmap](milestones/v1.7.4-ROADMAP.md).
 - **v1.7.7 (no release):** Sonarr 5.0.0.2701 compatibility verified on the sandbox and pinned in CI, Phase 120. [Archived roadmap](milestones/v1.7.7-ROADMAP.md).
-- **1.7.5 / 1.7.6:** safety release and startup-secret fix, Phases 119/119.1. Records show 1.7.6 deployed to the NAS on 2026-10-15. [Archived audit](milestones/v1.7.5-MILESTONE-AUDIT.md). The remaining browser checks are assigned above.
+- **1.7.5 / 1.7.6:** safety release and startup-secret fix, Phases 119/119.1. Records show 1.7.6 deployed to the NAS on 2026-10-15. [Archived audit](milestones/v1.7.5-MILESTONE-AUDIT.md). The browser checks passed 2026-10-18; the extraction/import checks are Phase 122 (SAFE-01).
 
 ## Planning boundaries
 
