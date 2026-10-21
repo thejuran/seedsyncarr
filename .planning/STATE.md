@@ -1,34 +1,33 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.7.7
-milestone_name: Sonarr 5 Compatibility
-status: Awaiting next milestone
-stopped_at: "Milestone v1.7.7 closed (verified; no release needed; no tag); next /bm:new-milestone for Reliability at Phase 121"
-last_updated: "2026-10-20T21:50:00.000Z"
-last_activity: 2026-10-20 — Milestone v1.7.7 completed and archived
+milestone: v1.8.0
+milestone_name: Reliability
+status: planning
+last_updated: "2026-10-21T22:00:46.858Z"
+last_activity: 2026-10-21
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 6
-  completed_plans: 6
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-18)
+See: .planning/PROJECT.md (updated 2026-10-21)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Between milestones. v1.7.7 closed (verified; no release needed). Next: activate Reliability at Phase 121 via /bm:new-milestone
+**Current focus:** Milestone v1.8.0 Reliability: defining requirements and roadmap (Phase 121+)
 
 ## Current Position
 
-Phase: Milestone v1.7.7 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-20 — Milestone v1.7.7 completed and archived
+Status: Defining requirements
+Last activity: 2026-10-21 — Milestone v1.8.0 started
 
 ## Accumulated Context
 
@@ -140,9 +139,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-20
-Stopped at: Milestone v1.7.7 closed and archived; next /bm:new-milestone (Reliability, Phase 121)
-Next action: /bm:complete-milestone (v1.7.7). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-21
+Stopped at: Milestone v1.8.0 Reliability started; defining requirements
+Next action: finish /bm:new-milestone (requirements, roadmap), then /bm:discuss-phase 121. Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -155,7 +154,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan Phase 121 after the v1.8.0 roadmap is approved
 
 ## Deferred Items
 

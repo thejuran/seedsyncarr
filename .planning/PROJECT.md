@@ -304,12 +304,22 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Current State
 
-No milestone active. v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (Phase 120): SeedSyncarr 1.7.6 verified live on the NAS sandbox against Sonarr 5.0.0.2701 and pinned by sanitized live CI fixtures. No code fix was needed, so no 1.7.7 release and no `v1.7.7` tag. NAS production runs `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` (v1.7.5 Safety Release, shipped 2026-10-15). Reliability begins at Phase 121.
+Milestone v1.8.0 Reliability active (started 2026-10-21; Phase 121+). NAS production runs `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` (v1.7.5 Safety Release, shipped 2026-10-15). v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release, no tag).
 
-## Next Milestone Goals
+## Current Milestone: v1.8.0 Reliability
 
-Reliability (from Phase 121): complete the five ordered, bounded outcomes in ROADMAP.md. Preserve delivered Phase 119 import/deletion safeguards and existing per-component controller cleanup. Performance and Usability remains conditional on demonstrated benefit.
+**Goal:** Stop the app token from being sent to outside services, close the outstanding safety acceptance checks, and repair demonstrated lifecycle and integration failures with small changes, then release and deploy 1.8.0.
 
+**Target features:**
+- Credential forwarding: the app token is attached only to SeedSyncarr's own API requests, never external ones (e.g. the GitHub update check)
+- Safety acceptance: extraction/import/auto-delete checks pass; Done-group and extract-staging incident records reconciled (verified fix vs. remaining operator cleanup)
+- Startup/shutdown gaps: a failure during partial scanner/component startup or cleanup still cleans up started children and attempts cleanup of remaining components
+- Model-stream overflow recovery: a slow client converges to current server state after overflow, with bounded buffering (reproduce first; close with a recorded guarantee if one already exists)
+- LAN connection tests: Test Connection accepts intended local Sonarr/Radarr addresses (incl. Docker container names) while unintended destinations stay rejected
+- Logging fixes from Phase 120: webhook handler INFO logs reach the app log; completion-gate prune logs a distinct "dropped" message instead of "cleared"
+- Release 1.8.0: Dependabot review rolled in, image smoke-tested, deployed to NAS production by digest
+
+**Key context:** Small, evidence-backed changes only. Retain LFTP and the existing architecture, the Phase 119 import/deletion safeguards, existing per-component controller cleanup, auto-delete shutdown guards and lock ordering. Scanner buffering, residual import/restart, memory diagnostics and UI/webhook efficiency stay conditional investigations, not completion gates. Version label v1.8.0 matches the release number (minor bump: LAN test behavior change).
 
 ## Previous Milestone: v1.7.7 Sonarr 5 Compatibility (Closed 2026-10-20; verified, no release needed)
 
@@ -380,7 +390,7 @@ Reliability (from Phase 121): complete the five ordered, bounded outcomes in ROA
 
 ### Active
 
-- [ ] Reliability (Phase 121+): the five ordered outcomes in ROADMAP.md, defined at /bm:new-milestone
+- [ ] v1.8.0 Reliability (Phase 121+): see REQUIREMENTS.md for scoped requirements
 
 
 <!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
@@ -507,7 +517,7 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 
 ## Project Status
 
-**Status:** Between milestones. v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release needed); 1.7.6 runs on the NAS. Next: Reliability milestone (Phase 121+).
+**Status:** Milestone v1.8.0 Reliability active (defining requirements, Phase 121+). 1.7.6 runs on the NAS.
 
 31 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit + v1.2.0 test hardening as SeedSyncarr).
 
@@ -529,4 +539,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-20 after v1.7.7 milestone*
+*Last updated: 2026-10-21 after starting v1.8.0 Reliability milestone*
