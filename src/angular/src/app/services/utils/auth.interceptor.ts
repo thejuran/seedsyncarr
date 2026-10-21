@@ -16,14 +16,34 @@ function getApiToken(): string {
     return cachedToken || "";
 }
 
+const OWN_API_PATH_PREFIX = "/server/";
+
 /**
- * Functional HTTP interceptor that attaches Bearer token to all outgoing requests.
- * Reads the token from a <meta name="api-token"> tag injected by the Bottle server.
- * When no token is configured (empty meta tag), requests pass through unchanged.
+ * True only when `url` resolves to the origin the UI was loaded from AND its
+ * path is under /server/. Fails closed: unparseable URLs return false.
+ */
+function isOwnApiRequest(url: string): boolean {
+    const ownOrigin = window.location.origin;
+    let parsed: URL;
+    try {
+        parsed = new URL(url, ownOrigin);
+    } catch {
+        console.warn("authInterceptor: request URL could not be parsed; sending without app token");
+        return false;
+    }
+    return parsed.origin === ownOrigin && parsed.pathname.startsWith(OWN_API_PATH_PREFIX);
+}
+
+/**
+ * Functional HTTP interceptor that attaches the Bearer token only to requests
+ * whose URL resolves to the page's own origin with a path under /server/.
+ * All other destinations (e.g. the GitHub update check) are sent without it.
+ * Unparseable URLs are sent without it. An empty token passes everything
+ * through unchanged.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
     const token = getApiToken();
-    if (token) {
+    if (token && isOwnApiRequest(req.url)) {
         const authReq = req.clone({
             setHeaders: {Authorization: `Bearer ${token}`}
         });
