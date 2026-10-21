@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: ready_to_plan
-stopped_at: "Phase 121 complete and verified (3/3); draft PR #132 open, CI green, not merged — ready to discuss Phase 122"
-last_updated: 2026-10-21T23:42:34.740Z
-last_activity: "2026-10-21 -- Phase 121 verified (8/8); PR #132 draft awaiting merge"
+stopped_at: "Phase 121 complete, verified and merged to main (PR #132, bdaebd3); not released or deployed — ready to discuss Phase 122"
+last_updated: 2026-10-21T23:55:10.000Z
+last_activity: "2026-10-21 -- Phase 121 merged to main (PR #132)"
 progress:
   total_phases: 6
   completed_phases: 1
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-21)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 122 — safety acceptance and logging fixes (PR #132 for Phase 121 still draft, awaiting merge)
+**Current focus:** Phase 122 — safety acceptance and logging fixes (Phase 121 merged via PR #132; ships in 1.8.0)
 
 ## Current Position
 
 Phase: 122
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-21 -- Phase 121 verified; PR #132 draft awaiting merge
+Last activity: 2026-10-21 -- Phase 121 merged to main (PR #132)
 
 ## Accumulated Context
 
