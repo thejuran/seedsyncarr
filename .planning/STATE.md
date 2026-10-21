@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: "planning — roadmap approved for Phases 121–126; Phase 121 ready to discuss/plan; nothing implemented"
-stopped_at: "v1.8.0 roadmap approved (Phases 121–126); next discuss/plan Phase 121 Credential Forwarding"
-last_updated: "2026-10-21T22:06:07Z"
-last_activity: 2026-10-21 -- v1.8.0 roadmap approved
+status: Roadmap approved for Phases 121–126 (owner, 2026-10-21). Phase 121 ready to discuss/plan. No implementation started.
+stopped_at: Phase 121 context gathered
+last_updated: "2026-10-21T22:16:56.624Z"
+last_activity: 2026-10-21 — v1.8.0 requirements defined and roadmap approved
 progress:
   total_phases: 6
   completed_phases: 0
@@ -142,8 +142,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-21
-Stopped at: v1.8.0 roadmap approved (Phases 121–126)
+Last session: 2026-10-21T22:16:56.620Z
+Stopped at: Phase 121 context gathered
 Next action: /bm:discuss-phase 121 (Credential Forwarding). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
