@@ -172,3 +172,13 @@ None - no external service configuration required.
 ---
 *Phase: 121-credential-forwarding*
 *Completed: 2026-10-21*
+
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/121-credential-forwarding/121-03-SUMMARY.md
+- FOUND commit 9eb02b8 (Task 1: docs, local gate + D-07 + Phase 126 carry-forward)
+- FOUND commit 0589aed (this SUMMARY + STATE/ROADMAP/REQUIREMENTS metadata)
+- FOUND branch gsd/phase-121-credential-forwarding pushed to origin, HEAD 0589aed matches origin
+- FOUND PR #132: https://github.com/thejuran/seedsyncarr/pull/132 (draft, base main)
+- FOUND CI run 39692441447: all jobs pass, including End-to-end tests on Docker Image (amd64) with 3/3 [chromium-token] tests passing
+- NOTE: pushing this SUMMARY/STATE commit (0589aed, docs-only, no src/ changes) triggered a new CI run (39694551605 / 39694547370) on PR #132 per normal GitHub Actions behavior; not re-watched to completion as the plan's gate criteria were already satisfied by the preceding code-bearing commit's green run above
