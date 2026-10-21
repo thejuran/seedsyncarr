@@ -301,10 +301,11 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ LFTP status stays unavailable after a timed-out command until the command stream is verifiably resynchronized (XFER-06); pending auto-delete timer defers on a submitted-but-unobserved transfer (DEL-01); incomplete copies never exposed at an importable path, transfers gated on strong-identity arr-queue completion evidence with visible Waiting holds and a one-shot confirmed manual release (IMP-01/02); early per-episode import credit persisted while siblings transfer, whole-folder delete still gated on full coverage (IMP-03); PyPI packaging repaired and 1.7.5 published to Docker/GitHub/PyPI with digest smoke 8/8 (REL-02, REL-03 — NAS production deploy held by owner and carried to Phase 119.1) — Validated in Phase 119: Safety Follow-ups and 1.7.5 Release (v1.7.5)
 - ✓ Container startup no longer prints settings.cfg (one 'Config ready at' line); debug dump redacts every secret_fields() option; an unreadable settings.cfg is fatal and value-free (no reset to defaults, no web server); '%' in a value saves and reloads unchanged with value-free serialization errors — RED-first sentinel tests in CI (SEC-01); 1.7.6 published to Docker/GitHub/PyPI with a security notice and the full 1.7.5 changes, exact-digest NAS smoke incl. count-only no-secrets check with 1.7.5 positive control, and deployed to NAS production at `:1.7.6@sha256:da6196e0…` with verified backups, scan/arr checks and wud restored; owner given the credential-rotation checklist (REL-03 NAS portion, REL-04) — Validated in Phase 119.1: Startup log secrets fix and 1.7.6 release (v1.7.5)
 - ✓ SeedSyncarr 1.7.6 works with Sonarr 5.0.0.2701: Test Connection reports success and version; completion holds stay Waiting until the same download is complete in the Sonarr 5 queue (missing entry, API error or unrelated completed download keep the hold); Test webhook marks nothing, a real import marks exactly the right file; sanitized live fixtures with a hygiene guard run in CI without the NAS; closed "verified; no release needed" (SON5-01..05) — Validated in Phase 120: Sonarr 5 Compatibility (v1.7.7)
+- ✓ App API token attached only to same-origin `/server/` requests (fail closed on unparseable URLs); the GitHub update check no longer receives it, which also restores the update notice for token users (GitHub returned 401 before). RED-first Karma case table + VersionCheckService pin + real-browser `chromium-token` E2E green in PR CI; release-note disclosure and token rotation carried to Phase 126 (SEC-02) — Validated in Phase 121: Credential Forwarding (v1.8.0; draft PR #132, not yet merged)
 
 ## Current State
 
-Milestone v1.8.0 Reliability active (started 2026-10-21; Phase 121+). NAS production runs `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` (v1.7.5 Safety Release, shipped 2026-10-15). v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release, no tag).
+Milestone v1.8.0 Reliability active (started 2026-10-21). Phase 121 Credential Forwarding complete and verified (draft PR #132, CI green, not merged); Phase 122 next. NAS production runs `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` (v1.7.5 Safety Release, shipped 2026-10-15). v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release, no tag).
 
 ## Current Milestone: v1.8.0 Reliability
 
@@ -517,7 +518,7 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 
 ## Project Status
 
-**Status:** Milestone v1.8.0 Reliability active (defining requirements, Phase 121+). 1.7.6 runs on the NAS.
+**Status:** Milestone v1.8.0 Reliability active — Phase 121 complete (PR #132 draft, unmerged), Phase 122 next. 1.7.6 runs on the NAS.
 
 31 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit + v1.2.0 test hardening as SeedSyncarr).
 
@@ -539,4 +540,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-21 after starting v1.8.0 Reliability milestone*
+*Last updated: 2026-10-21 after Phase 121 completion*
