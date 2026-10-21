@@ -52,8 +52,8 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 Plans:
 **Wave 1**
 
-- [ ] 121-01-PLAN.md — TDD: destination-gated authInterceptor (own origin + /server/, fail closed), RED-first GitHub-URL test, D-10 case table, VersionCheckService pin
-- [ ] 121-02-PLAN.md — Token-configured E2E: dependent `chromium-token` Playwright project asserting no Authorization to api.github.com
+- [x] 121-01-PLAN.md — TDD: destination-gated authInterceptor (own origin + /server/, fail closed), RED-first GitHub-URL test, D-10 case table, VersionCheckService pin
+- [x] 121-02-PLAN.md — Token-configured E2E: dependent `chromium-token` Playwright project asserting no Authorization to api.github.com
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -136,7 +136,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 121. Credential Forwarding | 0/TBD | Not started | - |
+| 121. Credential Forwarding | 2/3 | In Progress|  |
 | 122. Safety Acceptance and Logging Fixes | 0/TBD | Not started | - |
 | 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
