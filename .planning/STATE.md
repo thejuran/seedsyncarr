@@ -4,7 +4,7 @@ milestone: v1.8.0
 milestone_name: Reliability
 status: executing
 stopped_at: Phase 121 context gathered
-last_updated: "2026-10-21T22:52:37.093Z"
+last_updated: "2026-10-21T23:04:44.000Z"
 last_activity: 2026-10-21 -- Phase 121 execution started
 progress:
   total_phases: 6
@@ -94,7 +94,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-None.
+- Phase 126 (carried from 121-CONTEXT D-08/D-09): 1.8.0 release notes disclose factually that since v1.0.0 a configured api_token was sent in an Authorization header to api.github.com (HTTPS) on each UI load, GitHub rejected it, no other destination received it; rotation optional, recommended mainly for instances reachable beyond the LAN (edit api_token in settings.cfg, restart). Release notes also mention the update notice now works for token users (D-07). Prod deploy: after 1.8.0 is live on the NAS, check nothing else on the NAS uses the current token, rotate the production api_token, confirm UI loads, authenticated calls succeed and a scan completes.
 
 ### Blockers/Concerns
 
