@@ -45,7 +45,12 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
   2. The GitHub update-check request, and any other request to a non-app origin, is sent with no `Authorization` header or app token (regression test asserts the absence)
   3. A regression test that asserts the token is absent on an external request fails against the current interceptor and passes after the fix
   4. No authentication redesign: the token source (meta tag), the interceptor mechanism and the server-side Bearer check are unchanged
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 121-01-PLAN.md — TDD: destination-gated authInterceptor (own origin + /server/, fail closed), RED-first GitHub-URL test, D-10 case table, VersionCheckService pin
+- [ ] 121-02-PLAN.md — Token-configured E2E: dependent `chromium-token` Playwright project asserting no Authorization to api.github.com
+- [ ] 121-03-PLAN.md — Phase gate: full Angular/lint/SC4 checks, D-07 evidence, D-08/D-09 carried to 126, PR CI E2E green (owner go-ahead to push)
 **UI hint**: yes
 
 ### Phase 122: Safety Acceptance and Logging Fixes
