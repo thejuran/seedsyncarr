@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: "planning — roadmap drafted for Phases 121–126, awaiting approval; nothing implemented"
-stopped_at: "v1.8.0 roadmap drafted (Phases 121–126); awaiting owner approval, then plan Phase 121"
-last_updated: "2026-10-21T23:30:00Z"
-last_activity: 2026-10-21 -- v1.8.0 roadmap drafted
+status: "planning — roadmap approved for Phases 121–126; Phase 121 ready to discuss/plan; nothing implemented"
+stopped_at: "v1.8.0 roadmap approved (Phases 121–126); next discuss/plan Phase 121 Credential Forwarding"
+last_updated: "2026-10-21T22:06:07Z"
+last_activity: 2026-10-21 -- v1.8.0 roadmap approved
 progress:
   total_phases: 6
   completed_phases: 0
@@ -21,20 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-21)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Milestone v1.8.0 Reliability: roadmap drafted (Phases 121–126); approve, then plan Phase 121 Credential Forwarding
+**Current focus:** Milestone v1.8.0 Reliability: roadmap approved (Phases 121–126); next Phase 121 Credential Forwarding
 
 ## Current Position
 
 Phase: 121 (Credential Forwarding) — NOT STARTED
 Plan: —
-Status: Roadmap drafted for Phases 121–126; awaiting approval. No implementation started.
-Last activity: 2026-10-21 — v1.8.0 requirements defined and roadmap drafted
+Status: Roadmap approved for Phases 121–126 (owner, 2026-10-21). Phase 121 ready to discuss/plan. No implementation started.
+Last activity: 2026-10-21 — v1.8.0 requirements defined and roadmap approved
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
-- 2026-10-21: Milestone v1.8.0 Reliability roadmap drafted: six phases, 121–126, mapping all 13 requirements (SEC-02; SAFE-01/02 + LOG-01/02; LIFE-01/02; STRM-01/02; LAN-01/02; REL-05/06). Owner priority order kept; the two Phase 120 logging fixes sit in Phase 122 with the safety acceptance checks (same webhook/completion-gate paths are exercised there). Release 1.8.0 is Phase 126 and depends on 121–125; 999.4 is rechecked within REL-05. Nothing implemented.
+- 2026-10-21: Milestone v1.8.0 Reliability roadmap approved by owner: six phases, 121–126, mapping all 13 requirements (SEC-02; SAFE-01/02 + LOG-01/02; LIFE-01/02; STRM-01/02; LAN-01/02; REL-05/06). Owner priority order kept; the two Phase 120 logging fixes sit in Phase 122 with the safety acceptance checks (same webhook/completion-gate paths are exercised there). Release 1.8.0 is Phase 126 and depends on 121–125; 999.4 is rechecked within REL-05. Nothing implemented.
 
 - 2026-10-20: Milestone v1.7.7 closed: Phase 120 verified 5/5, owner approved "verified; no release needed". No 1.7.7 release and no `v1.7.7` git tag (a tag would trigger the CI release pipeline). Archived to `milestones/v1.7.7-ROADMAP.md` and `v1.7.7-REQUIREMENTS.md`; REQUIREMENTS.md removed for the next milestone.
 
@@ -143,8 +143,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 ## Session Continuity
 
 Last session: 2026-10-21
-Stopped at: v1.8.0 roadmap drafted (Phases 121–126); awaiting owner approval
-Next action: approve the roadmap, then /bm:discuss-phase 121 (Credential Forwarding). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Stopped at: v1.8.0 roadmap approved (Phases 121–126)
+Next action: /bm:discuss-phase 121 (Credential Forwarding). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -157,8 +157,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Approve the v1.8.0 roadmap (Phases 121–126)
-- Then /bm:discuss-phase 121 and /bm:plan-phase 121 (Credential Forwarding)
+- /bm:discuss-phase 121 and /bm:plan-phase 121 (Credential Forwarding)
 
 ## Deferred Items
 
