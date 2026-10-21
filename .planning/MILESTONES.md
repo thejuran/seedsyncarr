@@ -1,5 +1,23 @@
 # Project Milestones: SeedSync
 
+## v1.7.7 Sonarr 5 Compatibility (Closed: 2026-10-20; verified, no release needed; no tag)
+
+**Phases completed:** 1 phase (120), 6 plans, 21 tasks. Requirements 5/5 (SON5-01..05). Verification: passed 5/5 (`phases/120-sonarr-5-compatibility/120-VERIFICATION.md`). No milestone audit (single phase, verified). Tests only: 12 files, +1,191 lines under `src/python/tests/`; no production code changed. No 1.7.7 release cut and no `v1.7.7` git tag (a tag would trigger the release pipeline); NAS production stays on 1.7.6.
+
+**Key accomplishments:**
+
+- SeedSyncarr 1.7.6 is shown to work with Sonarr 5.0.0.2701 (`develop`) on the NAS sandbox: Test Connection reports success and the version (SON5-01).
+- A held file stays "Waiting" while its download is incomplete in Sonarr 5's queue and is released only when that same download shows complete; a missing entry, an API error, or an unrelated completed download keep the hold (SON5-02).
+- Sonarr 5's webhook Test event marks nothing imported; a real import marks exactly the right file (SON5-03).
+- Sanitized live Sonarr 5 captures (system status, queue incomplete/complete, Test and Download webhooks) are committed with version and scenario, guarded by a hygiene test, and exercised in CI without the NAS (SON5-04).
+- Owner approved closing as "verified; no release needed" (SON5-05). Results apply to build 5.0.0.2701 only; a later 5.x build needs its own capture.
+
+**Known limitations carried:** Test Connection to a Docker container-name URL is refused by the private-address guard (pre-existing; Reliability item 5). Sonarr v3 API is deprecated in Sonarr 5 (backlog 999.5).
+
+**Known deferred items at close:** 8 (see STATE.md Deferred Items), including 2 logging fixes found in Phase 120 and 3 open audit artifacts from earlier milestones.
+
+---
+
 ## v1.7.5 Safety Release (Shipped: 2026-10-15; tags `v1.7.5`, `v1.7.6`; deployed `1.7.6`)
 
 **Phases completed:** 2 phases (119, 119.1 inserted), 18 plans. Requirements 9/9 (XFER-06, DEL-01, IMP-01, IMP-02, IMP-03, REL-02, REL-03, SEC-01, REL-04). Audit: tech_debt, accepted (`milestones/v1.7.5-MILESTONE-AUDIT.md`).

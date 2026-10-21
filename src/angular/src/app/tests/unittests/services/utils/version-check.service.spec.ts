@@ -1,10 +1,13 @@
 import {fakeAsync, TestBed, tick} from "@angular/core/testing";
+import {provideHttpClient, withInterceptors} from "@angular/common/http";
+import {HttpTestingController, provideHttpClientTesting} from "@angular/common/http/testing";
 
 import {VersionCheckService} from "../../../../services/utils/version-check.service";
 import {RestService, WebReaction} from "../../../../services/utils/rest.service";
 import {NotificationService} from "../../../../services/utils/notification.service";
 import {LoggerService} from "../../../../services/utils/logger.service";
 import {MockRestService} from "../../../mocks/mock-rest.service";
+import {authInterceptor, _resetAuthInterceptorCache} from "../../../../services/utils/auth.interceptor";
 import {Subject} from "rxjs";
 
 
@@ -152,4 +155,51 @@ describe("Testing version check service", () => {
 
         expect(notifService.show).not.toHaveBeenCalled();
     }));
+});
+
+describe("VersionCheckService through authInterceptor (SEC-02 pin)", () => {
+    let httpMock: HttpTestingController;
+
+    beforeEach(() => {
+        const meta = document.createElement("meta");
+        meta.setAttribute("name", "api-token");
+        meta.setAttribute("content", "secret");
+        document.head.appendChild(meta);
+        _resetAuthInterceptorCache();
+
+        TestBed.configureTestingModule({
+            providers: [
+                VersionCheckService,
+                LoggerService,
+                NotificationService,
+                RestService,
+                provideHttpClient(withInterceptors([authInterceptor])),
+                provideHttpClientTesting(),
+            ]
+        });
+
+        httpMock = TestBed.inject(HttpTestingController);
+    });
+
+    afterEach(() => {
+        httpMock.verify();
+        const meta = document.querySelector("meta[name=\"api-token\"]");
+        if (meta) {
+            meta.remove();
+        }
+        _resetAuthInterceptorCache();
+    });
+
+    it("should send the GitHub update check without the app token", () => {
+        // Constructor fires the GitHub update check through the real RestService
+        // and authInterceptor chain.
+        TestBed.inject(VersionCheckService);
+
+        const req = httpMock.expectOne((r) => r.url.startsWith("https://api.github.com/"));
+        expect(req.request.headers.has("Authorization")).toBeFalse();
+        req.flush(JSON.stringify({
+            "tag_name": "v0.0.1",
+            "html_url": "https://github.com/thejuran/seedsyncarr/releases/tag/v0.0.1"
+        }));
+    });
 });

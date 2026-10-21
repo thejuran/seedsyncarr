@@ -8,6 +8,8 @@ describe("authInterceptor", () => {
     let httpClient: HttpClient;
     let httpMock: HttpTestingController;
 
+    const GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/thejuran/seedsyncarr/releases/latest";
+
     function setupWithMeta(content: string | null): void {
         // Remove any existing meta tag
         const existing = document.querySelector("meta[name=\"api-token\"]");
@@ -35,6 +37,20 @@ describe("authInterceptor", () => {
 
         httpClient = TestBed.inject(HttpClient);
         httpMock = TestBed.inject(HttpTestingController);
+    }
+
+    function expectNoAuth(url: string): void {
+        httpClient.get(url, {responseType: "text"}).subscribe();
+        const req = httpMock.expectOne(url);
+        expect(req.request.headers.has("Authorization")).toBeFalse();
+        req.flush("ok");
+    }
+
+    function expectBearer(url: string, token: string): void {
+        httpClient.get(url, {responseType: "text"}).subscribe();
+        const req = httpMock.expectOne(url);
+        expect(req.request.headers.get("Authorization")).toBe(`Bearer ${token}`);
+        req.flush("ok");
     }
 
     afterEach(() => {
@@ -95,8 +111,8 @@ describe("authInterceptor", () => {
         setupWithMeta("cached-token");
 
         // First request
-        httpClient.get("/api/first", {responseType: "text"}).subscribe();
-        const req1 = httpMock.expectOne("/api/first");
+        httpClient.get("/server/config/get", {responseType: "text"}).subscribe();
+        const req1 = httpMock.expectOne("/server/config/get");
         expect(req1.request.headers.get("Authorization")).toBe("Bearer cached-token");
         req1.flush("ok");
 
@@ -107,8 +123,8 @@ describe("authInterceptor", () => {
         }
 
         // Second request should still use cached token
-        httpClient.get("/api/second", {responseType: "text"}).subscribe();
-        const req2 = httpMock.expectOne("/api/second");
+        httpClient.get("/server/autoqueue/get", {responseType: "text"}).subscribe();
+        const req2 = httpMock.expectOne("/server/autoqueue/get");
         expect(req2.request.headers.get("Authorization")).toBe("Bearer cached-token");
         req2.flush("ok");
     });
@@ -124,8 +140,8 @@ describe("authInterceptor", () => {
 
         // First request — cache is fresh from setupWithMeta (which already called
         // _resetAuthInterceptorCache internally; no extra reset needed here)
-        httpClient.get("/api/first", {responseType: "text"}).subscribe();
-        const req1 = httpMock.expectOne("/api/first");
+        httpClient.get("/server/config/get", {responseType: "text"}).subscribe();
+        const req1 = httpMock.expectOne("/server/config/get");
         expect(req1.request.headers.get("Authorization")).toBe("Bearer token-v1");
         req1.flush("ok");
 
@@ -139,8 +155,8 @@ describe("authInterceptor", () => {
         _resetAuthInterceptorCache();
 
         // Second request — should pick up the new token from the updated meta tag
-        httpClient.get("/api/second", {responseType: "text"}).subscribe();
-        const req2 = httpMock.expectOne("/api/second");
+        httpClient.get("/server/autoqueue/get", {responseType: "text"}).subscribe();
+        const req2 = httpMock.expectOne("/server/autoqueue/get");
         expect(req2.request.headers.get("Authorization")).toBe("Bearer token-v2");
         req2.flush("ok");
     });
@@ -153,5 +169,82 @@ describe("authInterceptor", () => {
         const req = httpMock.expectOne("/server/command/restart");
         expect(req.request.headers.get("Authorization")).toBe("Bearer post-token");
         req.flush("ok");
+    });
+
+    // D-10 destination case table (SEC-02): the app token must reach only this
+    // origin's /server/ paths and never any other destination.
+
+    it("should NOT send the token to the GitHub update-check URL (SEC-02, D-11)", () => {
+        setupWithMeta("secret");
+        expectNoAuth(GITHUB_LATEST_RELEASE_URL);
+    });
+
+    it("should send the token to an absolute same-origin /server/ URL", () => {
+        setupWithMeta("secret");
+        expectBearer(`${location.origin}/server/config/get`, "secret");
+    });
+
+    it("should NOT send the token to another external host", () => {
+        setupWithMeta("secret");
+        expectNoAuth("https://example.com/server/config/get");
+    });
+
+    it("should NOT send the token to a protocol-relative //host URL", () => {
+        setupWithMeta("secret");
+        expectNoAuth("//evil.example/server/config/get");
+    });
+
+    it("should NOT send the token to a backslash /\\host URL", () => {
+        setupWithMeta("secret");
+        expectNoAuth("/\\evil.example/server/config/get");
+    });
+
+    it("should NOT send the token to a look-alike host, without logging a warning", () => {
+        setupWithMeta("secret");
+        const warnSpy = spyOn(console, "warn");
+        expectNoAuth(`${location.protocol}//${location.hostname}.evil.example/server/config/get`);
+        expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("should NOT send the token to a userinfo host@evil URL, without logging a warning", () => {
+        setupWithMeta("secret");
+        const warnSpy = spyOn(console, "warn");
+        expectNoAuth(`${location.protocol}//${location.host}@evil.example/server/config/get`);
+        expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it("should NOT send the token when the port does not match", () => {
+        setupWithMeta("secret");
+        expectNoAuth(`${location.protocol}//${location.hostname}:1/server/config/get`);
+    });
+
+    it("should NOT send the token when the scheme does not match", () => {
+        setupWithMeta("secret");
+        expectNoAuth(`https://${location.host}/server/config/get`);
+    });
+
+    it("should NOT send the token to a same-origin path outside /server/", () => {
+        setupWithMeta("secret");
+        expectNoAuth("/dashboard");
+    });
+
+    it("should NOT send the token to a /server/../ escape", () => {
+        setupWithMeta("secret");
+        expectNoAuth("/server/../dashboard");
+    });
+
+    it("should NOT send the token for an unparseable URL, and should log a generic warning", () => {
+        setupWithMeta("secret");
+        const warnSpy = spyOn(console, "warn");
+        expectNoAuth("http://[");
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        const loggedArgs = JSON.stringify(warnSpy.calls.allArgs());
+        expect(loggedArgs).not.toContain("secret");
+        expect(loggedArgs).not.toContain("http://[");
+    });
+
+    it("should NOT send any Authorization header to the GitHub URL when no token is configured", () => {
+        setupWithMeta("");
+        expectNoAuth(GITHUB_LATEST_RELEASE_URL);
     });
 });

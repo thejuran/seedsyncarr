@@ -207,12 +207,47 @@
 - Sessions: multiple over 2 days (2026-10-14 → 2026-10-15).
 - Notable: the per-phase deep review of 119.1 returned 0 findings. The real catches were the release smoke (secrets leak) and the owner hold.
 
+## Milestone: v1.7.7 — Sonarr 5 Compatibility
+
+**Closed:** 2026-10-20 (verified; no release needed; no tag)
+**Phases:** 1 (120) | **Plans:** 6
+
+### What Was Built
+- Live sandbox proof that 1.7.6 works with Sonarr 5.0.0.2701: Test Connection (SON5-01), queue-based completion hold and release for one tracked download (SON5-02), Test and Download webhooks (SON5-03).
+- Sanitized live Sonarr 5 fixtures with a manifest (version, scenario, capture time), a hygiene test that rejects keys, hostnames and personal paths, and CI tests that run them through the real handlers, client and gate (SON5-04).
+- Sanitizer, disposable webhook sink and an idempotent teardown script for sandbox captures. Tests only; no production code changed.
+
+### What Worked
+- Placeholder fixtures plus CI tests first (Waves 1–2), live capture second, swap last: the CI wiring was proven before the NAS run, and the swap was a one-commit change guarded by a "source must be live" check.
+- Classifying failures before acting: the container-name Test Connection refusal was recognized as the existing private-address guard (Reliability item 5), not a Sonarr 5 regression, so no needless release.
+- Sandbox-only scope kept production untouched, even with the seedbox refusing SSH mid-capture.
+
+### What Was Inefficient
+- The live capture (120-05) needed 8 deviations: Sonarr 5 masks the download-client password, the seedbox finishes downloads in seconds (needed a temporary speed cap), a ~10-minute seedbox SSH outage, and a trap that kept running after a signal.
+- Planning assumed a natural "still downloading" window; real seedbox speed made it disappear.
+
+### Patterns Established
+- Conditional-release milestones: close as "verified; no release needed" without a version tag, because a `vX.Y.Z` tag triggers the release pipeline.
+- Compatibility claims are scoped to the exact upstream build captured; a later build needs its own capture.
+- Fixture manifests record source, version, scenario and capture time, and a hygiene test enforces sanitization in CI.
+
+### Key Lessons
+- To capture an "incomplete" state from a fast seedbox, plan a per-torrent speed cap up front.
+- Signal traps in capture scripts must exit explicitly (`trap 'exit 130' INT TERM HUP` plus an EXIT trap for teardown).
+- Live runs surface observability gaps (handler logger not attached; "cleared" wording on a prune) worth logging even when out of scope.
+
+### Cost Observations
+- Model mix: Opus orchestration and execution; planning, checking and verification subagents.
+- Sessions: 1 day (2026-10-20).
+- Notable: GSD `milestone.complete` again recorded 0 tasks and no accomplishments; MILESTONES.md entry corrected by hand.
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
 
 | Milestone | Phases | Plans | Key Change |
 |-----------|--------|-------|------------|
+| v1.7.7 | 1 | 6 | Compatibility check on a sandbox; live fixtures in CI; closed with no release |
 | v1.7.5 | 2 | 18 | Incident-driven safety release; deploy held on smoke finding, inserted 119.1 for a secrets fix |
 | v1.7.4 | 3 | 16 | Safety patch from a design spec; RED-first release gate; digest-pinned NAS deploy |
 | v1.2.0 | 10 | 23 | Quality-only hardening; audit→fix pipeline; 5-day execution |

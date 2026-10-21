@@ -52,3 +52,12 @@ that's how the selenium server accesses it.
 2. The app requires a fully configured settings.cfg.
    This is done automatically in during the start of the docker image that runs the app.
 
+3. The `chromium-token` project (`tests/auth-token.spec.ts`) runs after every
+   other test. It sets `general.api_token` on `myapp` through
+   `/server/config/set`, and the API cannot clear it. If you re-run the suite
+   against a `DEV=1` `myapp` that already ran it, recreate the container
+   first (re-run `make run-tests-e2e ... DEV=1`, which force-recreates
+   `myapp`). To run only the token spec, use
+   `npx playwright test --project chromium-token`, which also runs the
+   `chromium` dependency first unless `--no-deps` is passed.
+

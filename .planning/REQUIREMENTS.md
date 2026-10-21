@@ -1,48 +1,93 @@
-# Requirements: SeedSyncarr — v1.7.7 Sonarr 5 Compatibility
+# Requirements: SeedSyncarr
 
-**Defined:** 2026-10-20
+**Defined:** 2026-10-21
+**Milestone:** v1.8.0 Reliability (Phase 121+)
 **Core Value:** Reliable file sync from seedbox to local with automated media library integration
 
-Live checks run only on the NAS sandbox: `seedsyncarr-test` (1.7.6) against the `sonarr-v5` container (Sonarr 5.x `develop`, 5.0.0.2701 at milestone start, port 8990; the tested build is recorded per capture). Production Sonarr and SeedSyncarr are not touched.
+## v1.8.0 Requirements
 
-## v1 Requirements
+Committed scope for this milestone. Each maps to exactly one roadmap phase. Fixes stay small and evidence-backed; existing implementation must be checked before planning any carried-forward fix.
 
-### Sonarr 5 compatibility
+### Credential Forwarding
 
-- [x] **SON5-01**: User can press Test Connection for a Sonarr 5 instance and see success with its 5.x version reported. (verified on Sonarr 5.0.0.2701)
-- [x] **SON5-02**: A held file stays "Waiting" while its tracked download is incomplete in Sonarr 5's queue and is released only once that same download shows complete. Both the incomplete and completed queue states for one tracked download are captured live. A missing queue entry, a Sonarr API error, or an unrelated completed download never releases the hold. (verified on Sonarr 5.0.0.2701)
-- [x] **SON5-03**: Sonarr 5's webhook Test event is accepted and marks nothing imported; a real Sonarr 5 import is accepted and marks exactly the correct file imported. (verified on Sonarr 5.0.0.2701)
-- [x] **SON5-04**: Sanitized fixtures captured from Sonarr 5 (system status, queue details incomplete/complete, Test and Download webhooks) are committed with the Sonarr version and capture scenario recorded alongside each, and CI exercises SeedSyncarr's handling of them without needing the NAS. (verified on Sonarr 5.0.0.2701)
-- [x] **SON5-05**: If any SON5-01..03 check fails, the smallest compatibility fix ships as 1.7.7 and is deployed to the NAS by release tag; if all pass, no release is cut and the milestone closes as "verified; no release needed" with tests and evidence committed. — Verified; no release needed (all of SON5-01..04 verified on Sonarr 5.0.0.2701; owner approved 2026-10-20; see 120-SON5-EVIDENCE.md).
+- [x] **SEC-02**: The app token is attached only to requests to SeedSyncarr's own API; requests to any other destination (including the GitHub update check) carry no app token, with regression tests for both cases
+
+### Safety Acceptance
+
+- [ ] **SAFE-01**: Extraction, import and auto-delete checks pass on a running build, with recorded evidence (completes the Phase 119 verification whose browser half passed 2026-10-18)
+- [ ] **SAFE-02**: The Done-group (`done-group-no-auto-delete`) and extract-staging (`extract-staging-autodel-rearm`) incident records each distinguish verified fixes from remaining operator cleanup; neither is closed solely because its code shipped
+
+### Startup/Shutdown Lifecycle
+
+- [ ] **LIFE-01**: When startup of the scanner or another component fails partway, already-started children are cleaned up, demonstrated by an injected-failure test
+- [ ] **LIFE-02**: When cleanup of one component fails, cleanup is still attempted for the remaining components, demonstrated by an injected-failure test; existing per-component controller cleanup, auto-delete shutdown guards and lock ordering are preserved
+
+### Model-Stream Overflow
+
+- [ ] **STRM-01**: Overflow is reproduced at the model-stream boundary; if reproduction shows an existing recovery guarantee, it is recorded and the item closes with no code change
+- [ ] **STRM-02**: After overflow, a slow client converges to the current server state, with bounded buffering (producer atomicity alone is not sufficient)
+
+### LAN Connection Tests
+
+- [ ] **LAN-01**: Test Connection succeeds for representative local Sonarr/Radarr configurations: private-range IP addresses and Docker container/host names resolving to private addresses
+- [ ] **LAN-02**: Unintended destinations (e.g. cloud-metadata/link-local addresses, redirects to disallowed targets) remain rejected
+
+### Logging
+
+- [ ] **LOG-01**: Webhook handler INFO messages (e.g. "webhook test event received") appear in the app log
+- [ ] **LOG-02**: The completion gate logs a distinct "dropped" message when a hold is pruned; "cleared" is logged only for a proof-based release
+
+### Release
+
+- [ ] **REL-05**: Open Dependabot alerts and PRs are reviewed before the version bump/tag; runtime/shipped fixes are rolled in, dev-only ones only if cheap (includes the 999.4 braces/karma recheck)
+- [ ] **REL-06**: 1.8.0 is published (Docker/GitHub/PyPI), smoke-tested on the NAS by exact digest (restart, transfer, integration, cleanup), and deployed to NAS production by that digest, with a successful post-deploy scan confirming recovery
 
 ## Future Requirements
 
-- Move the Sonarr integration to API v5 (v3 is deprecated in Sonarr 5, not removed) — backlog 999.5.
+Deferred; tracked in ROADMAP.md Backlog, not in this milestone's phases. Promote only with demonstrated evidence and a bounded fix.
+
+- Scanner buffering investigation (unbounded result queue under a stalled consumer)
+- Residual import/restart recovery investigation
+- Memory diagnostics (only as needed by the buffering investigation)
+- UI and webhook efficiency measurement
+- 999.5: Move Sonarr integration to API v5
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| API v5 migration | v3 still works on Sonarr 5; tracked as backlog 999.5 |
-| Upgrading production Sonarr to v5 | Owner decision: sandbox only; Sonarr 5 is beta with no downgrade path |
-| Radarr changes | No Radarr v5 in scope; Radarr integration unchanged |
-| Webhook signing changes | Inbound webhook shape unchanged in Sonarr 5; existing HMAC behavior retained |
+| Authentication redesign | SEC-02 only restricts where the existing token is attached |
+| Lifecycle-framework rewrite | LIFE-01/02 repair specific gaps; existing controller cleanup is preserved |
+| Event-bus redesign | STRM-02 needs the smallest recovery mechanism (e.g. fresh snapshot or reconnect) |
+| Broad relaxation of outbound requests | LAN-01 permits intended configured LAN services only |
+| Rebuilding Phase 119 import safeguards | Early credit, pending-notice revalidation and arm-on-commit already shipped |
+| Replacing LFTP / transfer architecture | Planning boundary: retain existing architecture |
 
 ## Traceability
 
+Which phases cover which requirements. Updated during roadmap creation.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SON5-01 | Phase 120 | Complete (verified on Sonarr 5.0.0.2701) |
-| SON5-02 | Phase 120 | Complete (verified on Sonarr 5.0.0.2701) |
-| SON5-03 | Phase 120 | Complete (verified on Sonarr 5.0.0.2701) |
-| SON5-04 | Phase 120 | Complete (verified on Sonarr 5.0.0.2701) |
-| SON5-05 | Phase 120 | Complete (verified; no release needed, owner approved 2026-10-20) |
+| SEC-02 | Phase 121 | Complete |
+| SAFE-01 | Phase 122 | Pending |
+| SAFE-02 | Phase 122 | Pending |
+| LIFE-01 | Phase 123 | Pending |
+| LIFE-02 | Phase 123 | Pending |
+| STRM-01 | Phase 124 | Pending |
+| STRM-02 | Phase 124 | Pending |
+| LAN-01 | Phase 125 | Pending |
+| LAN-02 | Phase 125 | Pending |
+| LOG-01 | Phase 122 | Pending |
+| LOG-02 | Phase 122 | Pending |
+| REL-05 | Phase 126 | Pending |
+| REL-06 | Phase 126 | Pending |
 
 **Coverage:**
-- v1 requirements: 5 total
-- Mapped to phases: 5
-- Unmapped: 0 ✓
+- v1.8.0 requirements: 13 total
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
-*Requirements defined: 2026-10-20*
-*Last updated: 2026-10-20 after initial definition*
+*Requirements defined: 2026-10-21*
+*Last updated: 2026-10-21 after roadmap creation (Phases 121–126)*

@@ -300,27 +300,33 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ Settings, controller persist and auto-queue persist written atomically (serialize first, same-dir 0600 temp, fsync, `os.replace` commit point, best-effort logged directory fsync) so a failed save leaves the previous file byte-for-byte intact (PERSIST-01/02); 1.7.4 release gate met — 42 regressions fail-before/pass-after, full suite + whole-tree ruff, digest-pinned smoke test with a real transfer, NAS deployed at `:1.7.4@sha256:682d…` with clean post-deploy scan (REL-01; PyPI publish deferred to 1.7.5 by owner) — Validated in Phase 118: Durable State (v1.7.4)
 - ✓ LFTP status stays unavailable after a timed-out command until the command stream is verifiably resynchronized (XFER-06); pending auto-delete timer defers on a submitted-but-unobserved transfer (DEL-01); incomplete copies never exposed at an importable path, transfers gated on strong-identity arr-queue completion evidence with visible Waiting holds and a one-shot confirmed manual release (IMP-01/02); early per-episode import credit persisted while siblings transfer, whole-folder delete still gated on full coverage (IMP-03); PyPI packaging repaired and 1.7.5 published to Docker/GitHub/PyPI with digest smoke 8/8 (REL-02, REL-03 — NAS production deploy held by owner and carried to Phase 119.1) — Validated in Phase 119: Safety Follow-ups and 1.7.5 Release (v1.7.5)
 - ✓ Container startup no longer prints settings.cfg (one 'Config ready at' line); debug dump redacts every secret_fields() option; an unreadable settings.cfg is fatal and value-free (no reset to defaults, no web server); '%' in a value saves and reloads unchanged with value-free serialization errors — RED-first sentinel tests in CI (SEC-01); 1.7.6 published to Docker/GitHub/PyPI with a security notice and the full 1.7.5 changes, exact-digest NAS smoke incl. count-only no-secrets check with 1.7.5 positive control, and deployed to NAS production at `:1.7.6@sha256:da6196e0…` with verified backups, scan/arr checks and wud restored; owner given the credential-rotation checklist (REL-03 NAS portion, REL-04) — Validated in Phase 119.1: Startup log secrets fix and 1.7.6 release (v1.7.5)
+- ✓ SeedSyncarr 1.7.6 works with Sonarr 5.0.0.2701: Test Connection reports success and version; completion holds stay Waiting until the same download is complete in the Sonarr 5 queue (missing entry, API error or unrelated completed download keep the hold); Test webhook marks nothing, a real import marks exactly the right file; sanitized live fixtures with a hygiene guard run in CI without the NAS; closed "verified; no release needed" (SON5-01..05) — Validated in Phase 120: Sonarr 5 Compatibility (v1.7.7)
+- ✓ App API token attached only to same-origin `/server/` requests (fail closed on unparseable URLs); the GitHub update check no longer receives it, which also restores the update notice for token users (GitHub returned 401 before). RED-first Karma case table + VersionCheckService pin + real-browser `chromium-token` E2E green in PR CI; release-note disclosure and token rotation carried to Phase 126 (SEC-02) — Validated in Phase 121: Credential Forwarding (v1.8.0; draft PR #132, not yet merged)
 
 ## Current State
 
-v1.7.5 Safety Release shipped 2026-10-15 (Phases 119, 119.1; tagged `v1.7.5` and `v1.7.6`). `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` runs on NAS production; Phase 119 browser UAT passed 2026-10-18 on the 1.7.6 sandbox. v1.7.7 Sonarr 5 Compatibility: Phase 120 complete 2026-10-20 — SeedSyncarr 1.7.6 verified live against Sonarr 5.0.0.2701 (Test Connection, queue hold/release, import webhook) and pinned by live sanitized CI fixtures; owner approved "verified; no release needed" (no 1.7.7 tag). Milestone close pending; Reliability begins at Phase 121.
+Milestone v1.8.0 Reliability active (started 2026-10-21). Phase 121 Credential Forwarding complete and verified (draft PR #132, CI green, not merged); Phase 122 next. NAS production runs `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` (v1.7.5 Safety Release, shipped 2026-10-15). v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release, no tag).
 
-## Current Milestone: v1.7.7 Sonarr 5 Compatibility
+## Current Milestone: v1.8.0 Reliability
 
-**Goal:** Prove SeedSyncarr works unchanged with Sonarr 5 on the NAS sandbox, and lock that in with regression tests built from real Sonarr 5 responses.
+**Goal:** Stop the app token from being sent to outside services, close the outstanding safety acceptance checks, and repair demonstrated lifecycle and integration failures with small changes, then release and deploy 1.8.0.
 
 **Target features:**
-- Live sandbox check: `seedsyncarr-test` (1.7.6) against the existing `sonarr-v5` container (Sonarr 5.0.0.2701, NAS port 8990). Production Sonarr and SeedSyncarr untouched.
-- Test Connection, download-queue completion evidence, and the import webhook each verified against Sonarr 5, including the negative cases (Test webhook marks nothing; missing entry, API error or unrelated completed download never releases a hold).
-- Sanitized captured Sonarr 5 fixtures (version and scenario recorded) exercised in CI without the NAS.
-- Conditional release: only if a compatibility fix is needed, ship and deploy 1.7.7 by release tag; otherwise close as "verified; no release needed".
+- Credential forwarding: the app token is attached only to SeedSyncarr's own API requests, never external ones (e.g. the GitHub update check)
+- Safety acceptance: extraction/import/auto-delete checks pass; Done-group and extract-staging incident records reconciled (verified fix vs. remaining operator cleanup)
+- Startup/shutdown gaps: a failure during partial scanner/component startup or cleanup still cleans up started children and attempts cleanup of remaining components
+- Model-stream overflow recovery: a slow client converges to current server state after overflow, with bounded buffering (reproduce first; close with a recorded guarantee if one already exists)
+- LAN connection tests: Test Connection accepts intended local Sonarr/Radarr addresses (incl. Docker container names) while unintended destinations stay rejected
+- Logging fixes from Phase 120: webhook handler INFO logs reach the app log; completion-gate prune logs a distinct "dropped" message instead of "cleared"
+- Release 1.8.0: Dependabot review rolled in, image smoke-tested, deployed to NAS production by digest
 
-**Key context:** Source review 2026-10-20 of Sonarr `develop` @7ccafd3 (commit of 2026-10-18) shows the three v3 endpoints/payloads SeedSyncarr uses — `GET /api/v3/system/status`, `GET /api/v3/queue/details` (`outputPath`, `downloadId`, `status`, `sizeleft`), and the `Download` webhook (`episodeFile.sourcePath`) — still exist unchanged. Sonarr 5 lists v3 as deprecated, so moving to API v5 is backlog 999.5, not this milestone. Radarr unchanged. Owner decisions 2026-10-20: fix-and-release if broken, sandbox only, label v1.7.7.
+**Key context:** Small, evidence-backed changes only. Retain LFTP and the existing architecture, the Phase 119 import/deletion safeguards, existing per-component controller cleanup, auto-delete shutdown guards and lock ordering. Scanner buffering, residual import/restart, memory diagnostics and UI/webhook efficiency stay conditional investigations, not completion gates. Version label v1.8.0 matches the release number (minor bump: LAN test behavior change).
 
-## Next Milestone Goals
+## Previous Milestone: v1.7.7 Sonarr 5 Compatibility (Closed 2026-10-20; verified, no release needed)
 
-Reliability (from Phase 121): complete the five ordered, bounded outcomes in ROADMAP.md. Preserve delivered Phase 119 import/deletion safeguards and existing per-component controller cleanup. Performance and Usability remains conditional on demonstrated benefit.
+**Goal:** Prove SeedSyncarr works unchanged with Sonarr 5 on the NAS sandbox and lock that in with regression tests built from real Sonarr 5 responses. Release only if a fix was needed.
 
+**Outcome:** All checks passed on Sonarr 5.0.0.2701 (`develop`); tests and evidence committed (`milestones/v1.7.7-ROADMAP.md`). Results apply to that build only. Moving to API v5 is backlog 999.5 (v3 deprecated, still served). Two logging wording/attachment fixes found during capture are deferred (STATE.md Deferred Items).
 
 ## Previous Milestone: v1.7.5 Safety Release (Shipped 2026-10-15, tagged v1.7.5 + v1.7.6)
 
@@ -385,7 +391,7 @@ Reliability (from Phase 121): complete the five ordered, bounded outcomes in ROA
 
 ### Active
 
-- [x] Sonarr 5 compatibility verified live on the sandbox and pinned by CI fixtures (SON5-01..05) — v1.7.7 (Validated in Phase 120: Sonarr 5 Compatibility; verified, no release needed)
+- [ ] v1.8.0 Reliability (Phase 121+): see REQUIREMENTS.md for scoped requirements
 
 
 <!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
@@ -446,6 +452,7 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 - Config API redacts sensitive fields; SSE log stream scrubs passwords
 - SSH uses StrictHostKeyChecking=accept-new (TOFU) with persistent known_hosts
 - CI: lint job (ruff + eslint), unit tests, E2E (amd64+arm64), Docker + Deb builds
+- Sonarr 5 compatibility pinned by sanitized live fixtures (`src/python/tests/fixtures/sonarr5/`, build 5.0.0.2701) with a hygiene test; Sonarr calls still use API v3
 
 ## Constraints
 
@@ -505,10 +512,13 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 | WSGI iterator harness for SSE tests | Direct web_app() invocation avoids HTTP stack; enables streaming assertions without real server | ✓ Good |
 | Python `fail_under` raised 84 → 88 (Plan 100-03, RATCHET-02) | Container-inclusive re-measure (real-lftp suite inside Docker) = 89.27%; floor = floor(89.27) − 1 = 88; margin 1%; computed floor 88 strictly > prior floor 84; the host-only provisional number (85.19%) was excluded — container-inclusive is the authoritative ratchet source | ✓ Good |
 | Angular Karma `check.global` set stmts 83 / branches 68 / fns 79 / lines 83 (Plan 100-03, RATCHET-02) | Post-100-01/02 measured: stmts 84.14% / branches 69.46% / fns 80.49% / lines 84.99%; floor = floor(measured) − 1 per metric; margin 1%; first-ever Karma global thresholds (prior floor = 0 for all); `--code-coverage` flag added to Dockerfile CMD in same commit so gate is non-silent (text-summary confirms coverage collected) | ✓ Good |
+| Sonarr 5 checked on the NAS sandbox only, prod untouched (v1.7.7) | Sonarr 5 is beta with no downgrade path | ✓ Good |
+| Close v1.7.7 "verified; no release needed", no `v1.7.7` tag (SON5-05) | All checks passed with no code change; a version tag would trigger the release pipeline | ✓ Good |
+| Stay on Sonarr API v3 for now (backlog 999.5) | v3 deprecated but still served on Sonarr 5; v5 changes the queue model | — Pending |
 
 ## Project Status
 
-**Status:** v1.7.7 Sonarr 5 Compatibility verified (Phase 120 complete; no release needed); 1.7.6 runs on the NAS. Then: Reliability milestone (Phase 121+).
+**Status:** Milestone v1.8.0 Reliability active — Phase 121 complete (PR #132 draft, unmerged), Phase 122 next. 1.7.6 runs on the NAS.
 
 31 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit + v1.2.0 test hardening as SeedSyncarr).
 
@@ -530,4 +540,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-20 after Phase 120 completion (Sonarr 5 verified; no release needed)*
+*Last updated: 2026-10-21 after Phase 121 completion*

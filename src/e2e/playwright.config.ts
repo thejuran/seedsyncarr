@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// The token spec sets general.api_token on the shared myapp container at
+// runtime and the API cannot unset it (config/set rejects an empty value).
+// It must run strictly last, after every no-token spec.
+const TOKEN_SPEC = /auth-token\.spec\.ts/;
+
 /**
  * Playwright configuration for SeedSyncarr e2e tests
  * @see https://playwright.dev/docs/test-configuration
@@ -24,6 +29,21 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: TOKEN_SPEC,
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          args: ['--no-sandbox', '--disable-dev-shm-usage']
+        }
+      },
+    },
+    {
+      // DO NOT set use.extraHTTPHeaders here — it would add Authorization to
+      // every browser request, including the api.github.com request, and
+      // mask the bug this project exists to catch.
+      name: 'chromium-token',
+      testMatch: TOKEN_SPEC,
+      dependencies: ['chromium'],
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
