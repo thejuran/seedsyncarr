@@ -41,16 +41,24 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 **Depends on**: Nothing (first phase of the milestone; follows Phase 120)
 **Requirements**: SEC-02
 **Success Criteria** (what must be TRUE):
+
   1. A request from the UI to a SeedSyncarr `/server/*` endpoint still carries the Bearer token and succeeds (no regression in authenticated UI flows, verified by Angular unit tests and the existing E2E suite)
   2. The GitHub update-check request, and any other request to a non-app origin, is sent with no `Authorization` header or app token (regression test asserts the absence)
   3. A regression test that asserts the token is absent on an external request fails against the current interceptor and passes after the fix
   4. No authentication redesign: the token source (meta tag), the interceptor mechanism and the server-side Bearer check are unchanged
+
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 121-01-PLAN.md — TDD: destination-gated authInterceptor (own origin + /server/, fail closed), RED-first GitHub-URL test, D-10 case table, VersionCheckService pin
 - [ ] 121-02-PLAN.md — Token-configured E2E: dependent `chromium-token` Playwright project asserting no Authorization to api.github.com
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 121-03-PLAN.md — Phase gate: full Angular/lint/SC4 checks, D-07 evidence, D-08/D-09 carried to 126, PR CI E2E green (owner go-ahead to push)
+
 **UI hint**: yes
 
 ### Phase 122: Safety Acceptance and Logging Fixes
@@ -59,11 +67,13 @@ Plans:
 **Depends on**: Phase 121 (sequencing only; disjoint code paths)
 **Requirements**: SAFE-01, SAFE-02, LOG-01, LOG-02
 **Success Criteria** (what must be TRUE):
+
   1. On a running build (sandbox `seedsyncarr-test`; prod untouched), extraction, import and auto-delete checks each pass with recorded evidence (log excerpts, timestamps, resulting file state), completing the extraction/import half of `119-VERIFICATION.md` whose browser half passed 2026-10-18
   2. `.planning/debug/done-group-no-auto-delete.md` and `extract-staging-autodel-rearm` each record, per finding, "verified fixed (evidence)" or "remaining operator cleanup"; neither is marked closed solely because its code shipped, and the Done-group one-time cleanup remains an operator follow-up until the owner confirms it
   3. A webhook Test event produces a `<source> webhook test event received` INFO line in the app log (handler logger attached under the app logger), with a regression test that fails before and passes after
   4. When the completion gate prunes a hold (root left the stability sweep), the app log says the hold was *dropped* (no release); `Completion hold cleared` appears only for a proof-based release, with a regression test covering both paths
   5. Phase 119 import safeguards (early credit, pending-notice revalidation, arm-on-commit, Waiting holds, one-shot manual release) are exercised, not rebuilt
+
 **Plans**: TBD
 
 ### Phase 123: Startup and Shutdown Lifecycle
@@ -72,10 +82,12 @@ Plans:
 **Depends on**: Phase 122 (sequencing only; disjoint code paths)
 **Requirements**: LIFE-01, LIFE-02
 **Success Criteria** (what must be TRUE):
+
   1. With a failure injected into the startup of the scanner or another component after some children have started, the already-started children are stopped/cleaned up and the failure still surfaces (test fails before the fix, passes after)
   2. With a failure injected into the cleanup of one component, cleanup is still attempted for every remaining component and the first failure is logged, not swallowed (test fails before the fix, passes after)
   3. The existing per-component controller cleanup, the auto-delete shutdown guards (`threading.Event` in-flight guard under `__auto_delete_lock`) and the established lock ordering are unchanged, and their existing tests stay green
   4. A clean startup and a clean shutdown behave exactly as before (no new sleeps, no lifecycle-framework rewrite)
+
 **Plans**: TBD
 
 ### Phase 124: Model-Stream Overflow Recovery
@@ -84,10 +96,12 @@ Plans:
 **Depends on**: Phase 123 (sequencing only; disjoint code paths)
 **Requirements**: STRM-01, STRM-02
 **Success Criteria** (what must be TRUE):
+
   1. Overflow is reproduced at the model-stream boundary (bounded `StreamQueue` dropping events for a stalled consumer) with a recorded, repeatable test or script, before any fix is proposed
   2. If reproduction shows an existing recovery guarantee (for example a fresh snapshot already follows a drop), that guarantee is recorded with evidence and STRM-02 closes with no code change
   3. Otherwise, after overflow the slow client's model matches the server's current state (fresh snapshot or reconnect — the smallest mechanism), demonstrated by a test that fails before and passes after
   4. Buffering stays bounded under a stalled consumer; producer atomicity alone is not accepted as the recovery mechanism, and there is no event-bus redesign
+
 **Plans**: TBD
 
 ### Phase 125: LAN Connection Tests
@@ -96,10 +110,12 @@ Plans:
 **Depends on**: Phase 124 (sequencing only; disjoint code paths)
 **Requirements**: LAN-01, LAN-02
 **Success Criteria** (what must be TRUE):
+
   1. Test Connection succeeds for a private-range IP (e.g. `192.168.x.x`, `10.x.x.x`, `172.16–31.x.x`) running Sonarr/Radarr, and for a Docker container or host name that resolves to a private address (the container-name failure recorded in Phase 120, D-02, is fixed), with regression tests for each representative case
   2. Cloud-metadata and link-local addresses (e.g. `169.254.169.254`), loopback-to-unexpected-port probes outside the allowed intent, and redirects to disallowed targets are still rejected with the same user-visible outcome as today, with regression tests
   3. The new acceptance is limited to the configured Sonarr/Radarr test-connection path; no other outbound request path is relaxed
   4. The change is noted as the minor-version driver (behavior change) in the 1.8.0 release notes
+
 **Plans**: TBD
 
 ### Phase 126: Release 1.8.0
@@ -108,10 +124,12 @@ Plans:
 **Depends on**: Phases 121, 122, 123, 124, 125 (all milestone work complete)
 **Requirements**: REL-05, REL-06
 **Success Criteria** (what must be TRUE):
+
   1. Before the version bump/tag, open Dependabot alerts and PRs are reviewed and listed for the owner in plain terms; runtime/shipped fixes are rolled into 1.8.0, dev-only ones only if cheap; backlog 999.4 (braces/karma advisory, PRs #128/#125/#117) is rechecked as part of this review and its outcome recorded
   2. Full Python suite, whole-tree ruff, Angular tests and release CI are green on the release commit; tag `v1.8.0` publishes the image to GHCR, the GitHub release and PyPI, with CHANGELOG and release notes (including the LAN test behavior change and a rollback runbook)
   3. The published image is smoke-tested on the NAS sandbox by exact digest: restart, a real transfer, Sonarr/Radarr integration and cleanup checks pass
   4. NAS production compose is pinned to `:1.8.0@sha256:…` (the same digest; never `:dev`, never a local build — NAS local build is blocked by QEMU) and a successful post-deploy scan confirms recovery, with the owner's confirmation recorded
+
 **Plans**: TBD
 
 #### Progress

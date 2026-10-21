@@ -400,12 +400,12 @@ test.describe('API token configured (SEC-02)', () => {
 | A1 | Playwright auto-answers the CORS preflight for routed cross-origin requests, so a pre-fix (red) E2E run would still reach the route handler with `authorization` present | Pattern 3 / Pitfall 5 | Low. After the fix there is no `Authorization`, so no preflight at all (GET with a safelisted header). Only affects demonstrating red in E2E, which isn't required (D-11 red-first is the Karma test). Sourced from GitHub issues #2641/#3331/#37245, not the official docs page. |
 | A3 | `window.location.origin` is the right "own origin" behind reverse proxies that rewrite paths to a sub-path | Pattern 1 | Low. D-04 locks this. The app already only works with `/server/` at the root of the origin (absolute paths, `<base href="/">`). |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should the token E2E also assert the "new version available" notification appears (D-07 demonstration)?**
+1. RESOLVED (adopted in 121-02: v99.0.0 stub + notice assertion; curl evidence in 121-03): **Should the token E2E also assert the "new version available" notification appears (D-07 demonstration)?**
    - What we know: with a readable stubbed response (`tag_name` newer than APP_VERSION and `Access-Control-Allow-Origin: *`), the notice should render after the fix.
    - Recommendation: optional. Valuable as visible proof of D-07 if cheap (a stub with `v99.0.0` plus a notification locator). Otherwise record D-07 from the curl evidence: GitHub returns 401 with a bogus Bearer and 200 without one.
-2. **Local E2E execution.** Docker is available locally (29.4.3), but `make run-tests-e2e` pulls `${STAGING_REGISTRY}:${STAGING_VERSION}` built by `make docker-image` (multi-arch buildx `--push`), which is heavy locally. Recommendation: the PR CI job `e2etests-docker-image` (amd64 on PRs) is the E2E gate. Locally, verify wiring with `npx playwright test --list` and `npx tsc --noEmit -p .` in `src/e2e`.
+2. RESOLVED (adopted in 121-02/121-03: PR CI is the E2E gate; local tsc + --list only): **Local E2E execution.** Docker is available locally (29.4.3), but `make run-tests-e2e` pulls `${STAGING_REGISTRY}:${STAGING_VERSION}` built by `make docker-image` (multi-arch buildx `--push`), which is heavy locally. Recommendation: the PR CI job `e2etests-docker-image` (amd64 on PRs) is the E2E gate. Locally, verify wiring with `npx playwright test --list` and `npx tsc --noEmit -p .` in `src/e2e`.
 
 ## Environment Availability
 
