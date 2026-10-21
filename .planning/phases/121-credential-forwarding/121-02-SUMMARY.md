@@ -132,3 +132,13 @@ None - no external service configuration required.
 ---
 *Phase: 121-credential-forwarding*
 *Completed: 2026-10-21*
+
+## Self-Check: PASSED
+
+- FOUND: src/e2e/playwright.config.ts
+- FOUND: src/e2e/README.md
+- FOUND: src/e2e/tests/auth-token.spec.ts
+- FOUND: .planning/phases/121-credential-forwarding/121-02-SUMMARY.md
+- FOUND commit d2f125f (Task 1)
+- FOUND commit 4992afc (Task 2)
+- FOUND commit 300c95d (this SUMMARY)
