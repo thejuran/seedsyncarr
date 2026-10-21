@@ -74,6 +74,12 @@ Credential forwarding and LAN connection tests belong to Reliability, not this m
 
 **Done when:** selected improvements meet their agreed before/after targets, relevant integration/UI checks pass, and affected documentation matches delivered behavior. Scope, phase numbers and release version are assigned only after activation.
 
+## Future milestone: UI Redesign (pipeline-first)
+
+**Activation:** after Reliability; set its order relative to Performance and Usability when activated. Not active; no phases or version assigned.
+
+**Goal:** Make the import-driven safe-delete pipeline visible: show each file's lifecycle (seedbox → local → imported → local copy cleaned up), surface problems with per-row actions, regroup Settings around the pipeline, and add phone and iPhone Duo layouts. Full scope, backend dependencies, component change list and finish line: [UI Redesign brief](backlog/UI-REDESIGN.md). Design canvas linked there.
+
 ## Operator follow-ups (not development milestones)
 
 - [ ] Confirm credential rotation from the 1.7.6 checklist is complete.
