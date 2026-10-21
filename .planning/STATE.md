@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: executing
-stopped_at: Phase 121 context gathered
-last_updated: "2026-10-21T23:04:44.000Z"
-last_activity: 2026-10-21 -- Phase 121 execution started
+status: "Phase 121 executed — PR #132 open, in review (not merged or deployed)"
+stopped_at: "Phase 121 executed; PR #132 open, in review, awaiting merge"
+last_updated: "2026-10-21T23:34:42.439Z"
+last_activity: "2026-10-21 -- Phase 121 PR CI verified green (PR #132 draft)"
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 3
+  percent: 17
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-21)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 121 — credential-forwarding
+**Current focus:** PR #132 (Phase 121) review and merge; Phase 122 — Safety Acceptance and Logging Fixes — next
 
 ## Current Position
 
-Phase: 121 (credential-forwarding) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 121
-Last activity: 2026-10-21 -- Phase 121 execution started
+Phase: 121 (credential-forwarding) — EXECUTED, IN REVIEW (all 3 plans done; draft PR #132 open, CI green, not merged)
+Plan: 3 of 3 complete
+Status: Phase 121 executed — PR #132 open, in review (not merged or deployed)
+Last activity: 2026-10-21 -- Phase 121 PR CI verified green (PR #132 draft)
 
 ## Accumulated Context
 
@@ -85,6 +85,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 119.1]: 119.1-05: 1.7.6 deployed to NAS prod by digest (container 2feb4073db71, .Image 5b801f83); prod log 0/3 secret values; seedsyncarr-test recreated on 1.7.6 (0 matches); wud restored; paused at owner confirmation, rotation reminder after
 - [Phase 119.1]: 119.1-05 complete: owner 'Confirmed' the 1.7.6 prod deploy (Waiting-badge/manual-release UI UAT not reported, stays open); rotation checklist delivered after confirmation (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys; webhook/api_token unset)
 - [Phase 120]: SON5-05 verified; no release needed (owner approved 2026-10-20) on builds Sonarr 5.0.0.2701 (linuxserver/sonarr:develop, image 8b59d172e9b4); container-name Test Connection failure classified as Reliability item 5 (D-02)
+- [Phase 121]: 121-03: pushed gsd/phase-121-credential-forwarding and opened draft PR #132 to main only after owner go-ahead 'push'; PR CI green on all 11 jobs incl. 3/3 [chromium-token] auth-token.spec.ts tests in a real browser, closing SEC-02's real-browser half
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -142,9 +143,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-21T22:16:56.620Z
-Stopped at: Phase 121 context gathered
-Next action: /bm:discuss-phase 121 (Credential Forwarding). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-21T23:34:42.436Z
+Stopped at: Phase 121 executed; PR #132 open, in review, awaiting merge
+Next action: review/merge draft PR #132 (https://github.com/thejuran/seedsyncarr/pull/132, e.g. via /bm:ship), then /bm:discuss-phase 122 (Safety Acceptance and Logging Fixes). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -157,7 +158,8 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- /bm:discuss-phase 121 and /bm:plan-phase 121 (Credential Forwarding)
+- Review and merge draft PR #132 (fix(121): attach app token only to SeedSyncarr's own API), or hold it open until a convenient release window
+- /bm:discuss-phase 122 and /bm:plan-phase 122 (Safety Acceptance and Logging Fixes)
 
 ## Deferred Items
 

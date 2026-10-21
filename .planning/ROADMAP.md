@@ -26,7 +26,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 
 **CI gate (every phase):** full Python suite green AND whole-tree `ruff check src/python/` clean (CI runs ruff as a separate gate from pytest, so build-verify must run it on the whole tree, not just touched files); Python `fail_under` ≥ 88 holds; Angular unit tests and Karma `check.global` thresholds green where Angular code is touched (Phase 121); every targeted regression shown to fail before its fix and pass after.
 
-- [ ] **Phase 121: Credential Forwarding** - The app token is attached only to SeedSyncarr's own API requests, never to external destinations such as the GitHub update check
+- [x] **Phase 121: Credential Forwarding** - The app token is attached only to SeedSyncarr's own API requests, never to external destinations such as the GitHub update check (completed 2026-10-21)
 - [ ] **Phase 122: Safety Acceptance and Logging Fixes** - Extraction/import/auto-delete checks pass on a running build, incident records are reconciled, and webhook/completion-gate log messages are accurate
 - [ ] **Phase 123: Startup and Shutdown Lifecycle** - Partial startup failures clean up started children; a failing component cleanup does not stop the remaining cleanups
 - [ ] **Phase 124: Model-Stream Overflow Recovery** - A slow client converges to current server state after overflow, with bounded buffering (or a recorded existing guarantee)
@@ -57,7 +57,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 121-03-PLAN.md — Phase gate: full Angular/lint/SC4 checks, D-07 evidence, D-08/D-09 carried to 126, PR CI E2E green (owner go-ahead to push)
+- [x] 121-03-PLAN.md — Phase gate: full Angular/lint/SC4 checks, D-07 evidence, D-08/D-09 carried to 126, PR CI E2E green (owner go-ahead to push)
 
 **UI hint**: yes
 
@@ -136,7 +136,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 121. Credential Forwarding | 2/3 | In Progress|  |
+| 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 0/TBD | Not started | - |
 | 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |

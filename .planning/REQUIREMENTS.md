@@ -10,7 +10,7 @@ Committed scope for this milestone. Each maps to exactly one roadmap phase. Fixe
 
 ### Credential Forwarding
 
-- [ ] **SEC-02**: The app token is attached only to requests to SeedSyncarr's own API; requests to any other destination (including the GitHub update check) carry no app token, with regression tests for both cases
+- [x] **SEC-02**: The app token is attached only to requests to SeedSyncarr's own API; requests to any other destination (including the GitHub update check) carry no app token, with regression tests for both cases
 
 ### Safety Acceptance
 
@@ -69,7 +69,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-02 | Phase 121 | Pending |
+| SEC-02 | Phase 121 | Complete |
 | SAFE-01 | Phase 122 | Pending |
 | SAFE-02 | Phase 122 | Pending |
 | LIFE-01 | Phase 123 | Pending |
