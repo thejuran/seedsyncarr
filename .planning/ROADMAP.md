@@ -74,7 +74,7 @@ Plans:
   4. When the completion gate prunes a hold (root left the stability sweep), the app log says the hold was *dropped* (no release); `Completion hold cleared` appears only for a proof-based release, with a regression test covering both paths
   5. Phase 119 import safeguards (early credit, pending-notice revalidation, arm-on-commit, Waiting holds, one-shot manual release) are exercised, not rebuilt
 
-**Plans**: 9 plans
+**Plans**: 12 plans (9 + 3 gap closure)
 
 Plans:
 **Wave 1**
@@ -90,14 +90,23 @@ Plans:
 
 - [x] 122-04-PLAN.md — Owner go-ahead to merge; `:dev` digest of the merge commit pinned on `seedsyncarr-test`; teardown/webhook harness; LOG-01 live
 
-**Wave 4-7** *(sequential, sandbox only)*
+**Wave 4**
 
-- [ ] 122-05-PLAN.md — SAFE-01 import: Waiting hold + one-shot release, early credit, deferral/revalidation, arm-on-commit and 300 s auto-delete
+- [ ] 122-05-PLAN.md — SAFE-01 import: Waiting hold + one-shot release, early credit, deferral/revalidation, arm-on-commit and 300 s auto-delete (D-06(c) FAIL found; gap closed by 122-10..12)
+
+**Wave 5-7** *(gap closure for 122-05 D-06(c); same PR #134)*
+
+- [ ] 122-10-PLAN.md — TDD: keep a revalidated pending import notice between transfer end and commit (D-06(c) fix) + local gates
+- [ ] 122-11-PLAN.md — Push fix to PR #134, CI green, new staging digest as DEV_PIN, re-pin sandbox, LOG-01 recheck
+- [ ] 122-12-PLAN.md — Rerun D-06 (c) on the fixed build plus (e)/(a)/(b) regression and a (c) repeat
+
+**Wave 8-10** *(sequential, sandbox only, on the fixed build)*
+
 - [ ] 122-06-PLAN.md — SAFE-01 restart persistence of early credit
 - [ ] 122-07-PLAN.md — SAFE-01 extraction staging (~1 GB multi-part RAR) and auto-delete re-arm
 - [ ] 122-08-PLAN.md — Sandbox Sonarr key rotation decision, restore sandbox to 1.7.6 pin, SAFE-01 verdict (owner review)
 
-**Wave 8**
+**Wave 11**
 
 - [ ] 122-09-PLAN.md — SAFE-02: reconcile both incident records, owner cleanup checklist, close rule, deferred C-G to backlog
 
