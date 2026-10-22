@@ -26,13 +26,14 @@ class WebAppBuilder:
 
         self.controller_handler = ControllerHandler(
             controller,
+            context,
             local_path=context.config.lftp.local_path
         )
         self.server_handler = ServerHandler(context)
-        self.config_handler = ConfigHandler(context.config)
+        self.config_handler = ConfigHandler(context.config, context)
         self.auto_queue_handler = AutoQueueHandler(auto_queue_persist)
         self.status_handler = StatusHandler(context.status)
-        self.webhook_handler = WebhookHandler(webhook_manager, context.config)
+        self.webhook_handler = WebhookHandler(webhook_manager, context.config, context)
 
     def build(self) -> WebApp:
         web_app = WebApp(context=self.__context,

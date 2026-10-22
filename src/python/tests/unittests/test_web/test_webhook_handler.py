@@ -98,8 +98,12 @@ class TestWebhookHandlerRoutes(unittest.TestCase):
 
     def setUp(self):
         self.mock_webhook_manager = MagicMock()
+        self.mock_context = MagicMock()
         # Default config has empty webhook_secret (backward compat — no verification)
-        self.handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config(""))
+        self.handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config(""), self.mock_context)
+
+    def test_constructor_creates_child_logger(self):
+        self.mock_context.logger.getChild.assert_called_once_with("WebhookHandler")
 
     @patch('web.handler.webhook.request')
     def test_sonarr_download_event_enqueues(self, mock_request):
@@ -213,7 +217,7 @@ class TestWebhookHandlerHmacVerification(unittest.TestCase):
     @patch('web.handler.webhook.request')
     def test_webhook_without_secret_config_accepts_all(self, mock_request):
         """When webhook_secret is empty, all requests pass regardless of headers."""
-        handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config(""))
+        handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config(""), MagicMock())
         mock_request.content_length = -1
         mock_request.json = {"eventType": "Test"}
         # No X-Webhook-Signature header needed
@@ -226,7 +230,7 @@ class TestWebhookHandlerHmacVerification(unittest.TestCase):
     @patch('web.handler.webhook.request')
     def test_webhook_with_secret_rejects_missing_signature(self, mock_request):
         """When webhook_secret is set and no signature header is sent, return 401."""
-        handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config("testsecret"))
+        handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config("testsecret"), MagicMock())
         body = b'{"eventType": "Test"}'
         mock_request.body.read.return_value = body
         mock_request.headers.get.return_value = ""  # No header
@@ -239,7 +243,7 @@ class TestWebhookHandlerHmacVerification(unittest.TestCase):
     @patch('web.handler.webhook.request')
     def test_webhook_with_secret_rejects_invalid_signature(self, mock_request):
         """When webhook_secret is set and signature is wrong, return 401."""
-        handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config("testsecret"))
+        handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config("testsecret"), MagicMock())
         body = b'{"eventType": "Test"}'
         mock_request.body.read.return_value = body
         mock_request.headers.get.return_value = "invalidsignature"
@@ -253,7 +257,7 @@ class TestWebhookHandlerHmacVerification(unittest.TestCase):
     def test_webhook_with_secret_accepts_valid_signature(self, mock_request):
         """When webhook_secret is set and HMAC signature is correct, return None (success)."""
         secret = "testsecret"
-        handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config(secret))
+        handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config(secret), MagicMock())
         body = b'{"eventType": "Test"}'
         correct_sig = _compute_hmac(secret, body)
 
@@ -267,7 +271,7 @@ class TestWebhookHandlerHmacVerification(unittest.TestCase):
     def test_full_request_with_valid_signature_succeeds(self, mock_request):
         """End-to-end: valid signature + valid body returns 200."""
         secret = "testsecret"
-        handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config(secret))
+        handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config(secret), MagicMock())
         body_dict = {"eventType": "Test"}
         body_bytes = json.dumps(body_dict).encode("utf-8")
         correct_sig = _compute_hmac(secret, body_bytes)
@@ -284,7 +288,7 @@ class TestWebhookHandlerHmacVerification(unittest.TestCase):
     def test_full_request_with_invalid_signature_returns_401(self, mock_request):
         """End-to-end: invalid signature returns 401 regardless of body content."""
         secret = "testsecret"
-        handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config(secret))
+        handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config(secret), MagicMock())
         body_bytes = b'{"eventType": "Download"}'
 
         mock_request.content_length = -1
@@ -300,7 +304,7 @@ class TestWebhookPayloadSizeLimit(unittest.TestCase):
 
     def setUp(self):
         self.mock_webhook_manager = MagicMock()
-        self.handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config(""))
+        self.handler = WebhookHandler(self.mock_webhook_manager, _make_mock_config(""), MagicMock())
 
     @patch('web.handler.webhook.request')
     def test_oversized_payload_returns_413(self, mock_request):
@@ -355,7 +359,8 @@ class TestWebhookFailClosedGuard(unittest.TestCase):
         """
         handler = WebhookHandler(
             self.mock_webhook_manager,
-            _make_mock_config(webhook_secret="", webhook_require_secret=True)
+            _make_mock_config(webhook_secret="", webhook_require_secret=True),
+            MagicMock()
         )
         # Sentinel inner handler: raises if called, proving guard short-circuits
         sentinel_inner = MagicMock()
@@ -381,7 +386,8 @@ class TestWebhookFailClosedGuard(unittest.TestCase):
         """require_secret=False + no secret -> guard passes through to inner handler (COMPAT)."""
         handler = WebhookHandler(
             self.mock_webhook_manager,
-            _make_mock_config(webhook_secret="", webhook_require_secret=False)
+            _make_mock_config(webhook_secret="", webhook_require_secret=False),
+            MagicMock()
         )
         inner_result = MagicMock()
         inner = MagicMock(return_value=inner_result)
@@ -397,7 +403,8 @@ class TestWebhookFailClosedGuard(unittest.TestCase):
         """require_secret=True + secret configured -> guard passes through to inner handler."""
         handler = WebhookHandler(
             self.mock_webhook_manager,
-            _make_mock_config(webhook_secret="configured-secret", webhook_require_secret=True)
+            _make_mock_config(webhook_secret="configured-secret", webhook_require_secret=True),
+            MagicMock()
         )
         inner_result = MagicMock()
         inner = MagicMock(return_value=inner_result)

@@ -45,7 +45,7 @@ class TestSonarr5SystemStatus(unittest.TestCase):
         self.config.sonarr.enabled = False
         self.config.sonarr.sonarr_url = "http://sonarr.example.invalid:8989"
         self.config.sonarr.sonarr_api_key = "testapikey123"
-        self.handler = ConfigHandler(self.config)
+        self.handler = ConfigHandler(self.config, MagicMock())
 
     @patch('web.handler.config.requests')
     @patch('web.handler.config.socket')

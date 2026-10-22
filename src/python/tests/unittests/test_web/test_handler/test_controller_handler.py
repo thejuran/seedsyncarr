@@ -38,7 +38,11 @@ class TestWebResponseActionCallback(unittest.TestCase):
 class TestControllerHandlerSingleAction(unittest.TestCase):
     def setUp(self):
         self.mock_controller = MagicMock(spec=Controller)
-        self.handler = ControllerHandler(self.mock_controller)
+        self.mock_context = MagicMock()
+        self.handler = ControllerHandler(self.mock_controller, self.mock_context)
+
+    def test_constructor_creates_child_logger(self):
+        self.mock_context.logger.getChild.assert_called_once_with("ControllerHandler")
 
     def _call_queue_handler(self, file_name: str, query=None):
         """Call the queue action handler directly with an optional query string dict."""
@@ -179,7 +183,7 @@ class TestControllerHandlerSingleAction(unittest.TestCase):
 class TestControllerHandlerBulkCommand(unittest.TestCase):
     def setUp(self):
         self.mock_controller = MagicMock(spec=Controller)
-        self.handler = ControllerHandler(self.mock_controller)
+        self.handler = ControllerHandler(self.mock_controller, MagicMock())
 
     def _mock_request(self, json_body):
         """Helper to mock the request object with a JSON body."""
@@ -760,7 +764,7 @@ class TestControllerHandlerRateLimit(unittest.TestCase):
 
     def setUp(self):
         self.mock_controller = MagicMock(spec=Controller)
-        self.handler = ControllerHandler(self.mock_controller)
+        self.handler = ControllerHandler(self.mock_controller, MagicMock())
         self._setup_command_callback(success=True)
         self._time_patcher = patch('web.rate_limit.time')
         self._mock_time = self._time_patcher.start()
@@ -869,7 +873,7 @@ class TestControllerHandlerPathTraversal(unittest.TestCase):
 
     def setUp(self):
         self.mock_controller = MagicMock(spec=Controller)
-        self.handler = ControllerHandler(self.mock_controller, local_path="/tmp/test_downloads")
+        self.handler = ControllerHandler(self.mock_controller, MagicMock(), local_path="/tmp/test_downloads")
 
     def _setup_success_callback(self):
         """Setup mock controller to call on_success synchronously."""

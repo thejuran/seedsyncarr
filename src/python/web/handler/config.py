@@ -1,6 +1,5 @@
 import json
 import ipaddress
-import logging
 import socket
 from urllib.parse import urlparse, urljoin
 
@@ -8,15 +7,14 @@ import requests
 import bottle
 from bottle import HTTPResponse
 
-from common import overrides, Config, ConfigError
+from common import Context, overrides, Config, ConfigError
 from ..web_app import IHandler, WebApp
 from ..serialize import SerializeConfig
 from ..rate_limit import rate_limit
 
-logger = logging.getLogger(__name__)
-
 class ConfigHandler(IHandler):
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, context: Context):
+        self.logger = context.logger.getChild("ConfigHandler")
         self.__config = config
 
     @overrides(IHandler)
@@ -24,15 +22,15 @@ class ConfigHandler(IHandler):
         web_app.add_handler("/server/config/get", self.__handle_get_config)
         web_app.add_post_handler(
             "/server/config/set",
-            rate_limit(max_requests=60, window_seconds=60.0)(self.__handle_set_config)
+            rate_limit(max_requests=60, window_seconds=60.0, logger=self.logger)(self.__handle_set_config)
         )
         web_app.add_handler(
             "/server/config/sonarr/test-connection",
-            rate_limit(max_requests=5, window_seconds=60.0)(self.__handle_test_sonarr_connection)
+            rate_limit(max_requests=5, window_seconds=60.0, logger=self.logger)(self.__handle_test_sonarr_connection)
         )
         web_app.add_handler(
             "/server/config/radarr/test-connection",
-            rate_limit(max_requests=5, window_seconds=60.0)(self.__handle_test_radarr_connection)
+            rate_limit(max_requests=5, window_seconds=60.0, logger=self.logger)(self.__handle_test_radarr_connection)
         )
 
     @staticmethod
@@ -195,7 +193,7 @@ class ConfigHandler(IHandler):
                 content_type="application/json"
             )
         except Exception:
-            logger.exception("Unexpected error testing %s connection", service_name)
+            self.logger.exception("Unexpected error testing %s connection", service_name)
             return HTTPResponse(
                 body=json.dumps({"success": False, "error": "An unexpected error occurred"}),
                 content_type="application/json"
