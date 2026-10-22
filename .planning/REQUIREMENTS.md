@@ -34,8 +34,8 @@ Committed scope for this milestone. Each maps to exactly one roadmap phase. Fixe
 
 ### Logging
 
-- [ ] **LOG-01**: Webhook handler INFO messages (e.g. "webhook test event received") appear in the app log
-- [ ] **LOG-02**: The completion gate logs a distinct "dropped" message when a hold is pruned; "cleared" is logged only for a proof-based release
+- [x] **LOG-01**: Webhook handler INFO messages (e.g. "webhook test event received") appear in the app log
+- [x] **LOG-02**: The completion gate logs a distinct "dropped" message when a hold is pruned; "cleared" is logged only for a proof-based release
 
 ### Release
 
@@ -78,8 +78,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STRM-02 | Phase 124 | Pending |
 | LAN-01 | Phase 125 | Pending |
 | LAN-02 | Phase 125 | Pending |
-| LOG-01 | Phase 122 | Pending |
-| LOG-02 | Phase 122 | Pending |
+| LOG-01 | Phase 122 | Complete |
+| LOG-02 | Phase 122 | Complete |
 | REL-05 | Phase 126 | Pending |
 | REL-06 | Phase 126 | Pending |
 

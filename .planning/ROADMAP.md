@@ -88,7 +88,7 @@ Plans:
 
 **Wave 3**
 
-- [ ] 122-04-PLAN.md — Owner go-ahead to merge; `:dev` digest of the merge commit pinned on `seedsyncarr-test`; teardown/webhook harness; LOG-01 live
+- [x] 122-04-PLAN.md — Owner go-ahead to merge; `:dev` digest of the merge commit pinned on `seedsyncarr-test`; teardown/webhook harness; LOG-01 live
 
 **Wave 4-7** *(sequential, sandbox only)*
 
@@ -162,7 +162,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
-| 122. Safety Acceptance and Logging Fixes | 3/9 | In Progress|  |
+| 122. Safety Acceptance and Logging Fixes | 4/9 | In Progress|  |
 | 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |

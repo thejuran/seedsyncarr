@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: Phase 122 context gathered
-last_updated: "2026-10-22T13:49:14.503Z"
+stopped_at: Completed 122-04-PLAN.md
+last_updated: "2026-10-22T20:00:32.807Z"
 last_activity: 2026-10-22 -- Phase 122 execution started
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 12
-  completed_plans: 3
+  completed_plans: 7
   percent: 17
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 122 (safety-acceptance-and-logging-fixes) — EXECUTING
-Plan: 1 of 9
+Plan: 2 of 9
 Status: Executing Phase 122
 Last activity: 2026-10-22 -- Phase 122 execution started
 
@@ -86,6 +86,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 119.1]: 119.1-05 complete: owner 'Confirmed' the 1.7.6 prod deploy (Waiting-badge/manual-release UI UAT not reported, stays open); rotation checklist delivered after confirmation (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys; webhook/api_token unset)
 - [Phase 120]: SON5-05 verified; no release needed (owner approved 2026-10-20) on builds Sonarr 5.0.0.2701 (linuxserver/sonarr:develop, image 8b59d172e9b4); container-name Test Connection failure classified as Reliability item 5 (D-02)
 - [Phase 121]: 121-03: pushed gsd/phase-121-credential-forwarding and opened draft PR #132 to main only after owner go-ahead 'push'; PR CI green on all 11 jobs incl. 3/3 [chromium-token] auth-token.spec.ts tests in a real browser, closing SEC-02's real-browser half
+- [Phase 122]: 122-04: one-PR-per-phase deploy (no merge); PR #134 staging image ghcr.io/thejuran/seedsyncarr:400 digest-pinned (cross-checked buildx + anonymous GHCR); deployed to seedsyncarr-test only; production fingerprint identical before/after; live LOG-01 confirmed (seedsyncarr.WebhookHandler); seedbox nyx.usbx.me SSH port 22 refused connections, flagged for Plans 05-08
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -143,8 +144,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-22T00:21:41.108Z
-Stopped at: Phase 122 context gathered
+Last session: 2026-10-22T20:00:32.803Z
+Stopped at: Completed 122-04-PLAN.md
 Next action: review/merge draft PR #132 (https://github.com/thejuran/seedsyncarr/pull/132, e.g. via /bm:ship), then /bm:discuss-phase 122 (Safety Acceptance and Logging Fixes). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
