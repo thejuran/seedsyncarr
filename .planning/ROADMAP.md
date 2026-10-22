@@ -84,7 +84,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 122-03-PLAN.md — Phase gate (suite, ruff, RED-first, scope) and PR with CI green (owner go-ahead to push)
+- [x] 122-03-PLAN.md — Phase gate (suite, ruff, RED-first, scope) and PR with CI green (owner go-ahead to push)
 
 **Wave 3**
 
@@ -162,7 +162,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
-| 122. Safety Acceptance and Logging Fixes | 2/9 | In Progress|  |
+| 122. Safety Acceptance and Logging Fixes | 3/9 | In Progress|  |
 | 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
