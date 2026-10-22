@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: ready_to_plan
-stopped_at: "Phase 121 complete, verified and merged to main (PR #132, bdaebd3); not released or deployed — ready to discuss Phase 122"
-last_updated: 2026-10-21T23:55:10.000Z
-last_activity: "2026-10-21 -- Phase 121 merged to main (PR #132)"
+stopped_at: "Phase 122 context gathered (122-CONTEXT.md, 0c881f4); ready to plan Phase 122"
+last_updated: "2026-10-22T00:21:41.113Z"
+last_activity: "2026-10-21 -- Phase 122 context gathered"
 progress:
   total_phases: 6
   completed_phases: 1
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 Phase: 122
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-21 -- Phase 121 merged to main (PR #132)
+Last activity: 2026-10-21 -- Phase 122 context gathered
 
 ## Accumulated Context
 
@@ -143,8 +143,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-21T23:34:42.436Z
-Stopped at: Phase 121 executed; PR #132 open, in review, awaiting merge
+Last session: 2026-10-22T00:21:41.108Z
+Stopped at: Phase 122 context gathered
 Next action: review/merge draft PR #132 (https://github.com/thejuran/seedsyncarr/pull/132, e.g. via /bm:ship), then /bm:discuss-phase 122 (Safety Acceptance and Logging Fixes). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
