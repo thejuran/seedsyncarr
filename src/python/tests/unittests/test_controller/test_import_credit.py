@@ -91,6 +91,41 @@ def _transferring_pack(done=(1, 2, 3), root_name=ROOT, parts=None, extra_childre
     return root
 
 
+def _post_transfer_pack(root_state, part4_done, root_local_size=None):
+    """Root between transfer end and commit (122-05 D-06(c)).
+
+    Live shape: the lftp job for the root has ended (no LftpJobStatus, so
+    _set_initial_state leaves the root DEFAULT instead of DOWNLOADING) while
+    the local scan is still lagging behind. Unit-test-only shape (reachable
+    because these tests inject the model directly and skip the pipeline's
+    commit pass): the root already shows DOWNLOADED with every child
+    individually complete, but its own size aggregate has not caught up
+    (root_local_size stays stale). Either way the root is NOT committed here
+    (never added to downloaded_file_names by this helper) -- parts 1-3 are
+    always complete; part 4 is complete only when part4_done is True,
+    otherwise it is a stale DEFAULT leaf (no transfer state at all, since the
+    lftp job for it is gone too) with half its bytes on disk.
+    """
+    root = ModelFile(ROOT, True)
+    root.state = root_state
+    root.remote_size = ROOT_REMOTE_SIZE
+    for i in (1, 2, 3):
+        root.add_child(_child(PARTS[i], True))
+    if part4_done:
+        part4 = _child(PARTS[4], True)
+    else:
+        part4 = ModelFile(PARTS[4], False)
+        part4.remote_size = PART_SIZE
+        part4.local_size = PART_SIZE // 2
+        part4.state = ModelFile.State.DEFAULT
+    root.add_child(part4)
+    root.local_size = (
+        root_local_size if root_local_size is not None
+        else sum(c.local_size or 0 for c in root.get_children())
+    )
+    return root
+
+
 def _committed_pack(done=(1, 2, 3, 4), root_name=ROOT):
     """Root fully transferred: DOWNLOADED with a complete local copy."""
     root = ModelFile(root_name, True)
@@ -506,3 +541,122 @@ class TestPendingNoticeLifecycle(BaseImportCreditTestCase):
 
         self.assertEqual(0, self.controller._discard_pending_notices("A", "test"))
         self.assertEqual(before + 2, generations["A"])
+
+
+class TestPostTransferWindow(BaseImportCreditTestCase):
+    """2026-10-22 sandbox failure (122-05 D-06(c)): SSA122.Alpha2.S01E04's
+    deferred webhook notice was kept pending while its root transferred, then
+    permanently dropped with "Ignoring webhook import ... no transfer
+    evidence" 61 s later -- 2 s before the root committed -- because by then
+    the root's lftp job had ended (no longer DOWNLOADING/QUEUED) but the
+    local scan had not yet caught up, so the evidence gate saw neither
+    committed evidence nor a transferring root. persist.imported_children
+    stayed one child short forever. These tests reproduce that drop and pin
+    down the fix's narrowness (a FRESH notice or a root that lost its remote
+    copy is unaffected) and boundedness (TTL/path/generation/ambiguity
+    discards are unchanged).
+    """
+
+    def test_pending_notice_survives_post_transfer_scan_lag_default_root(self):
+        self._put(_transferring_pack(done=(1, 2, 3)))
+        self._webhook(1, 2, 3, 4)
+        self.controller.process()
+        self.assertEqual(_lower(1, 2, 3), self._credited())
+
+        # Cycle 2: lftp job for the root has ended (DEFAULT), local scan
+        # lagging on part 4; root not yet committed; no new webhook.
+        self._reset_logs()
+        self._put(_post_transfer_pack(ModelFile.State.DEFAULT, part4_done=False))
+        self.controller.process()
+
+        self.assertFalse([w for w in self._messages("warning") if "no transfer evidence" in w])
+        self.assertIn((ROOT, PARTS[4]), self._pending_notices())
+        self.assertEqual(_lower(1, 2, 3), self._credited())
+        self.assertNotIn(ROOT, self.persist.imported_file_names)
+        self.assertEqual({}, self._pending_timers())
+
+        # Cycle 3: the root commits.
+        self._reset_logs()
+        self._commit_root()
+        self.controller.process()
+
+        self.assertEqual(_lower(1, 2, 3, 4), self._credited())
+        self.assertIn(ROOT, self.persist.imported_file_names)
+        self.assertIn(ROOT, self._pending_timers())
+        self.assertEqual({}, self._pending_notices())
+        recorded = [m for m in self._messages("info") if "Recorded webhook import" in m]
+        self.assertTrue(recorded)
+        self.assertTrue(any(PARTS[4] in m for m in recorded))
+
+    def test_pending_notice_survives_post_transfer_scan_lag_downloaded_root(self):
+        """Orchestrator-described shape: only reachable here because unit
+        tests inject the model directly and skip the pipeline's commit pass
+        (a live build would have already committed a DOWNLOADED root)."""
+        self._put(_transferring_pack(done=(1, 2, 3)))
+        self._webhook(1, 2, 3, 4)
+        self.controller.process()
+        self.assertEqual(_lower(1, 2, 3), self._credited())
+
+        self._reset_logs()
+        self._put(_post_transfer_pack(ModelFile.State.DOWNLOADED, part4_done=True,
+                                      root_local_size=ROOT_REMOTE_SIZE - 1))
+        self.controller.process()
+
+        self.assertFalse([w for w in self._messages("warning") if "no transfer evidence" in w])
+        self.assertEqual(_lower(1, 2, 3, 4), self._credited())
+        credited_lines = [m for m in self._messages("info") if "Credited early import" in m]
+        self.assertTrue(any(PARTS[4] in m for m in credited_lines))
+        self.assertNotIn(ROOT, self.persist.imported_file_names)
+        self.assertNotIn(ROOT, self.persist.downloaded_file_names)
+        self.assertEqual({}, self._pending_timers())
+        self.assertEqual({}, self._pending_notices())
+
+    def test_fresh_notice_for_uncommitted_non_transferring_root_still_ignored(self):
+        """Guard: a FRESH notice (never pending) for a non-transferring,
+        uncommitted root is still ignored exactly as before this phase."""
+        self._put(_post_transfer_pack(ModelFile.State.DEFAULT, part4_done=False))
+        self._webhook(4)
+        self.controller.process()
+
+        self.assertTrue([w for w in self._messages("warning") if "no transfer evidence" in w])
+        self.assertEqual({}, self._pending_notices())
+        self.assertNotIn(ROOT, self.persist.imported_children)
+
+    def test_post_transfer_pending_notice_still_expires(self):
+        """Guard: TTL expiry is unaffected -- an expired notice is discarded
+        in revalidation before the post-transfer exception can apply."""
+        with patch("controller.controller._PENDING_NOTICE_TTL_SECS", 0, create=True):
+            self._put(_transferring_pack(done=(1,)))
+            self._webhook(4)
+            self.controller.process()
+            self.assertIsNone(self._credited())
+
+            self._reset_logs()
+            self._put(_post_transfer_pack(ModelFile.State.DEFAULT, part4_done=False))
+            self.controller.process()
+            self.assertTrue([w for w in self._messages("warning") if "expired" in w])
+            self.assertEqual({}, self._pending_notices())
+
+            self._commit_root()
+            self.controller.process()
+            self.assertNotIn(PARTS[4].lower(), self._credited() or set())
+
+    def test_post_transfer_pending_notice_dropped_when_root_loses_remote_copy(self):
+        """Guard: if the root loses its remote copy (remote_size None), a
+        previously-pending notice is still dropped, not credited."""
+        self._put(_transferring_pack(done=(1, 2, 3)))
+        self._webhook(4)
+        self.controller.process()
+        self.assertIsNone(self._credited())
+
+        self._reset_logs()
+        gone = _post_transfer_pack(ModelFile.State.DEFAULT, part4_done=False)
+        gone.remote_size = None
+        for child in gone.get_children():
+            child.remote_size = None
+        self._put(gone)
+        self.controller.process()
+
+        self.assertTrue([w for w in self._messages("warning") if "no transfer evidence" in w])
+        self.assertEqual({}, self._pending_notices())
+        self.assertIsNone(self._credited())
