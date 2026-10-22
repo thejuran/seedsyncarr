@@ -467,17 +467,19 @@ def _create_logger(name: str, debug: bool, logdir) -> logging.Logger:
 
 **If this table is empty:** N/A — three assumptions logged above, all low-risk and each with a stated mitigation already folded into the recommended plan shape.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact timing mechanism for "a child webhook arrives while siblings still transfer" (D-06a)**
    - What we know: `num_max_parallel_files_per_download = 4` in the sandbox config allows up to 4 files of one root to transfer in parallel within one lftp `mirror` job; differently-sized children finish at different times within that one job (this is exactly the original Days-of-Hope incident's mechanics — 4 mkv parts of different sizes).
    - What's unclear: whether size-based staggering alone (e.g., child1 = 10 MB, children 2-4 = 300-800 MB each) reliably produces a wide-enough gap on the sandbox's actual seedbox-to-NAS throughput for an agent to reliably fire the webhook for child1 before the root-level local+remote scan has caught up with children 2-4, or whether a belt-and-suspenders approach (write child1 to the seedbox first via SSH, wait for one full scan+transfer cycle to pick it up and go DOWNLOADED, confirm via `GET /server/files`, THEN write children 2-4 and post child1's webhook before they finish) is needed for a deterministic result.
    - Recommendation: plan for the belt-and-suspenders (staged SSH writes + confirm-via-API) approach as primary, since it removes timing-race uncertainty entirely; the size-staggering approach as a secondary/faster option if the first session shows the controller's scan cadence (local 10s / remote 30s in the config, though sandbox shows 90s/30s stability windows — see Code Examples) makes staging unnecessary.
+   - **RESOLVED:** 122-05-PLAN.md adopts a complete-on-seedbox root + temporary lftp rate_limit + staggered child sizes, confirmed via the model stream before each webhook (staged writes conflict with the one-release-per-root rule, D-05).
 
 2. **Whether to rotate the sandbox `sonarr_api_key` exposed during this research session**
    - What we know: the value was printed once into this session's tool output due to a redaction-filter failure (Pitfall 7); it is a sandbox-only (not production) Sonarr key.
    - What's unclear: whether the owner considers a sandbox-only key exposure (in a Claude Code tool-output transcript, not a public artifact) worth a rotation checkpoint, given the low blast radius.
    - Recommendation: surface it to the owner as a one-line checkpoint during plan execution (not a blocker) — "rotate `sonarr-v5`'s API key in the sandbox as a precaution; no other system uses it."
+   - **RESOLVED:** owner decision checkpoint in 122-08-PLAN.md Task 1 (rotate now or carry to operator follow-ups).
 
 ## Environment Availability
 
