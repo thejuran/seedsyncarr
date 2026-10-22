@@ -12,7 +12,7 @@ requires:
     provides: "Web handler + rate_limit app-logger attachment (LOG-01), RED-first test(122-02)/fix(122-02) pair, D-14 secret review"
 provides:
   - "Local phase gate confirming the merged phase branch's full unit-suite failure set is byte-identical to the base-commit baseline, whole-tree ruff is clean, RED precedes GREEN for both LOG fixes, and the only src/ files touched are the 13 LOG-01/LOG-02 files (no Phase 119 safeguard code touched)"
-affects: ["122-04 (merge decision, blocked pending this PR)", SAFE-01 evidence capture (D-01 ordering)]
+affects: ["122-04 (pins sandbox to PR #134 staging image)", SAFE-01 evidence capture (D-01 ordering)]
 
 # Tech tracking
 tech-stack:
@@ -27,13 +27,14 @@ key-decisions:
   - "Gate 1 reused the orchestrator's already-established HEAD baseline (21 failed, 1782 passed, 3 errors) and re-ran it fresh in this plan rather than re-deriving a new baseline from scratch, per the orchestrator's note; the re-run reproduced an identical failure list"
 
 requirements-completed: []
+status: complete
 
 # Metrics
 duration: 7min
 completed: 2026-10-22
 ---
 
-# Phase 122 Plan 03: PR Gate Summary (Task 1 only — paused at owner checkpoint)
+# Phase 122 Plan 03: PR Gate Summary
 
 **All five local gates pass on the merged phase branch: unit-suite failure set matches the base-commit baseline exactly, whole-tree ruff is clean, both LOG fixes are RED-before-GREEN, and the only `src/` files changed are the 13 planned LOG-01/LOG-02 files with zero Phase 119 safeguard-code diff.**
 
@@ -45,7 +46,20 @@ completed: 2026-10-22
 - **Tasks:** 1 of 3 completed (Task 2 is a blocking `checkpoint:decision`; Task 3 not started)
 - **Files modified:** 0 (gate-only task; no source changes)
 
-## Status: PAUSED at Task 2 (owner decision pending)
+## Status: COMPLETE
+
+## Task 2: Owner decision (2026-10-22)
+
+The owner did not take the plan's "push a LOG-only PR" option. Verbatim: "no -- one PR per phase unless you have a reason why not". The orchestrator found that PR CI's "Build Docker Image" job pushes a multi-arch staging image (`ghcr.io/thejuran/seedsyncarr:<run_number>`), which removes the need for a mid-phase merge to get `:dev`. The owner then approved: "Push draft PR now (Recommended)", meaning one draft PR for the whole phase, live checks on its CI staging image, and a single merge after Plan 09. Plans 04-09 carry an `<orchestrator_amendment>` recording this; it supersedes D-01's merge-first sequencing.
+
+## Task 3: Push, draft PR, CI
+
+- Branch `gsd/phase-122-safety-acceptance-and-logging-fixes` pushed; **draft PR #134** to main: https://github.com/thejuran/seedsyncarr/pull/134
+- Head SHA under test: `28942cc2b65c6c01929d154d8ffa99be4540a9f8`
+- CI run #400: https://github.com/thejuran/seedsyncarr/actions/runs/39841124970, conclusion **success**
+- Per-job: Python unit tests pass (4m58s); Lint (Python) pass; Angular unit tests pass; Lint (Angular) pass; Verify Python package pass; Release metadata verifier tests pass; Verify release metadata pass; Build Docker Image pass (5m15s); End-to-end tests on Docker Image (amd64) pass (3m42s); CodeQL (actions, js-ts, python) pass. Publish jobs skipped (PR event, expected).
+- Staging image built by this run: `ghcr.io/thejuran/seedsyncarr:400` (Plan 04 resolves and records its digest as DEV_PIN).
+
 
 This plan's Task 2 is `type="checkpoint:decision"` with `gate="blocking"`. Per the plan, execution stops here and does not proceed to Task 3 (push + open PR) until the owner replies "push" or "hold". Nothing has been pushed; no PR has been opened.
 
@@ -179,7 +193,7 @@ Task 1 (all five local gates) is complete and green. Task 2 is a blocking `check
 
 ---
 *Phase: 122-safety-acceptance-and-logging-fixes*
-*Completed: 2026-10-22 (Task 1 only; plan paused)*
+*Completed: 2026-10-22*
 
 ## Self-Check: PASSED
 
