@@ -74,7 +74,32 @@ Plans:
   4. When the completion gate prunes a hold (root left the stability sweep), the app log says the hold was *dropped* (no release); `Completion hold cleared` appears only for a proof-based release, with a regression test covering both paths
   5. Phase 119 import safeguards (early credit, pending-notice revalidation, arm-on-commit, Waiting holds, one-shot manual release) are exercised, not rebuilt
 
-**Plans**: TBD
+**Plans**: 9 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 122-01-PLAN.md — TDD: completion gate says "dropped (reason)" for prune/no-arr removals, "cleared" only for proof-based release (LOG-02)
+- [ ] 122-02-PLAN.md — TDD: webhook/controller/config handlers and rate_limit log under the app logger; D-14 secret review (LOG-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 122-03-PLAN.md — Phase gate (suite, ruff, RED-first, scope) and PR with CI green (owner go-ahead to push)
+
+**Wave 3**
+
+- [ ] 122-04-PLAN.md — Owner go-ahead to merge; `:dev` digest of the merge commit pinned on `seedsyncarr-test`; teardown/webhook harness; LOG-01 live
+
+**Wave 4-7** *(sequential, sandbox only)*
+
+- [ ] 122-05-PLAN.md — SAFE-01 import: Waiting hold + one-shot release, early credit, deferral/revalidation, arm-on-commit and 300 s auto-delete
+- [ ] 122-06-PLAN.md — SAFE-01 restart persistence of early credit
+- [ ] 122-07-PLAN.md — SAFE-01 extraction staging (~1 GB multi-part RAR) and auto-delete re-arm
+- [ ] 122-08-PLAN.md — Sandbox Sonarr key rotation decision, restore sandbox to 1.7.6 pin, SAFE-01 verdict (owner review)
+
+**Wave 8**
+
+- [ ] 122-09-PLAN.md — SAFE-02: reconcile both incident records, owner cleanup checklist, close rule, deferred C-G to backlog
 
 ### Phase 123: Startup and Shutdown Lifecycle
 
