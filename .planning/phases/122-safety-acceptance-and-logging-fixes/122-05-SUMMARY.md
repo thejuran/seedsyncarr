@@ -38,6 +38,7 @@ requirements-completed: []
 # Metrics
 duration: ~75min
 completed: 2026-10-22
+status: gaps_found
 ---
 
 # Phase 122 Plan 05: SAFE-01 Import and Auto-Delete Live Acceptance Summary
@@ -106,6 +107,12 @@ See `key-decisions` in frontmatter. In summary: two live runs were needed (a tes
 ## User Setup Required
 
 None — no external service configuration required.
+
+## Task 3: Owner decision (2026-10-22)
+
+Owner chose **"Fix in this phase (Recommended)"** for the D-06(c) failure. The orchestrator independently confirmed the diagnosis against `src/python/controller/controller.py` (evidence gate, ~lines 757-800): a deferred child notice is dropped when the directory root's state is no longer DOWNLOADING/QUEUED (all children individually DOWNLOADED) while the root's own `local_size < remote_size` and it is not yet in `downloaded_file_names`.
+
+Route: `/bm:plan-phase 122 --gaps` → narrow RED-first fix (keep or credit the notice instead of dropping it for a root we are actively tracking), pushed to the same PR #134. CI produces a new staging image, the sandbox is re-pinned (new DEV_PIN), and Plan 05's scenarios are rerun on it before Plans 06-09. One PR per phase still applies.
 
 ## Next Phase Readiness
 
