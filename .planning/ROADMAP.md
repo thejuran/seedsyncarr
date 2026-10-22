@@ -79,8 +79,8 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 122-01-PLAN.md — TDD: completion gate says "dropped (reason)" for prune/no-arr removals, "cleared" only for proof-based release (LOG-02)
-- [ ] 122-02-PLAN.md — TDD: webhook/controller/config handlers and rate_limit log under the app logger; D-14 secret review (LOG-01)
+- [x] 122-01-PLAN.md — TDD: completion gate says "dropped (reason)" for prune/no-arr removals, "cleared" only for proof-based release (LOG-02)
+- [x] 122-02-PLAN.md — TDD: webhook/controller/config handlers and rate_limit log under the app logger; D-14 secret review (LOG-01)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -162,7 +162,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
-| 122. Safety Acceptance and Logging Fixes | 0/TBD | Not started | - |
+| 122. Safety Acceptance and Logging Fixes | 2/9 | In Progress|  |
 | 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
