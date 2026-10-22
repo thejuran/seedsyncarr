@@ -3,7 +3,7 @@ Unit tests for the rate_limit sliding-window decorator factory.
 """
 import json
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from web.rate_limit import rate_limit
 
@@ -240,6 +240,28 @@ class TestRateLimitArgPassthrough(unittest.TestCase):
         result = handler("arg1", "arg2")
         self.assertEqual("OK", result)
         self.assertEqual(["arg1", "arg2"], received)
+
+
+class TestRateLimitSuppliedLogger(unittest.TestCase):
+    """LOG-01: an injected logger receives the rate-limit warning instead of
+    the module default, so handlers can route it under the app logger."""
+
+    @patch("web.rate_limit.time")
+    def test_rate_limit_uses_supplied_logger(self, mock_time):
+        mock_time.time.return_value = 1000.0
+        mock_logger = MagicMock()
+
+        def _handler():
+            return "OK"
+
+        handler = rate_limit(1, 60.0, logger=mock_logger)(_handler)
+        handler()
+        response = handler()
+
+        self.assertEqual(429, response.status_code)
+        mock_logger.warning.assert_called_once_with(
+            "Rate limit exceeded for %s", "_handler"
+        )
 
 
 if __name__ == "__main__":

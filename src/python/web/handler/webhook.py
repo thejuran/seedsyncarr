@@ -3,18 +3,15 @@ import hmac
 import hashlib
 import json
 import os
-import logging
 from typing import Optional, Tuple
 
 from bottle import HTTPResponse, request
 
-from common import overrides, sanitize_log_value
+from common import Context, overrides, sanitize_log_value
 from common.config import Config
 from controller.webhook_manager import WebhookManager
 from ..rate_limit import rate_limit
 from ..web_app import IHandler, WebApp
-
-logger = logging.getLogger(__name__)
 
 _WEBHOOK_MAX_BODY_BYTES = 1_048_576  # 1 MB
 
@@ -24,7 +21,8 @@ class WebhookHandler(IHandler):
     Extracts file names from import events and enqueues them via WebhookManager.
     """
 
-    def __init__(self, webhook_manager: WebhookManager, config: Config):
+    def __init__(self, webhook_manager: WebhookManager, config: Config, context: Context):
+        self.logger = context.logger.getChild("WebhookHandler")
         self.__webhook_manager = webhook_manager
         self.__config = config
 
@@ -37,8 +35,8 @@ class WebhookHandler(IHandler):
           2. rate_limit (429 if over 60/60s budget — independent closures per route, D-09)
           3. _handle_webhook (413 / HMAC / JSON parse / enqueue)
         """
-        web_app.add_post_handler("/server/webhook/sonarr", self._make_require_secret_guard(rate_limit(max_requests=60, window_seconds=60.0)(self.__handle_sonarr_webhook)))
-        web_app.add_post_handler("/server/webhook/radarr", self._make_require_secret_guard(rate_limit(max_requests=60, window_seconds=60.0)(self.__handle_radarr_webhook)))
+        web_app.add_post_handler("/server/webhook/sonarr", self._make_require_secret_guard(rate_limit(max_requests=60, window_seconds=60.0, logger=self.logger)(self.__handle_sonarr_webhook)))
+        web_app.add_post_handler("/server/webhook/radarr", self._make_require_secret_guard(rate_limit(max_requests=60, window_seconds=60.0, logger=self.logger)(self.__handle_radarr_webhook)))
 
     def _make_require_secret_guard(self, handler):
         """Return a wrapper that fails closed with 503 when webhook_require_secret is on but no secret is set.
@@ -53,7 +51,7 @@ class WebhookHandler(IHandler):
         @functools.wraps(handler)
         def wrapper():
             if self.__config.general.webhook_require_secret and not self.__config.general.webhook_secret:
-                logger.warning(
+                self.logger.warning(
                     "Webhook request rejected: webhook_require_secret is enabled but no "
                     "webhook_secret is configured."
                 )
@@ -95,12 +93,12 @@ class WebhookHandler(IHandler):
         # Read signature from header
         provided_signature = request.headers.get("X-Webhook-Signature", "")
         if not provided_signature:
-            logger.warning("Webhook request missing X-Webhook-Signature header")
+            self.logger.warning("Webhook request missing X-Webhook-Signature header")
             return HTTPResponse(status=401, body="Missing webhook signature")
 
         # Constant-time comparison to prevent timing attacks
         if not hmac.compare_digest(expected, provided_signature):
-            logger.warning("Webhook request has invalid HMAC signature")
+            self.logger.warning("Webhook request has invalid HMAC signature")
             return HTTPResponse(status=401, body="Invalid webhook signature")
 
         return None
@@ -139,14 +137,14 @@ class WebhookHandler(IHandler):
 
         # Handle Test events (sent when webhook is first configured)
         if event_type == "Test":
-            logger.info("{} webhook test event received".format(source))
+            self.logger.info("{} webhook test event received".format(source))
             return HTTPResponse(status=200, body="Test OK")
 
         # Only process Download (import) events. INFO (not debug) so production
         # logs record exactly which events were received and ignored -- an
         # unexplained import mark must be traceable to a specific webhook.
         if event_type != "Download":
-            logger.info("{} webhook ignored event type: '{}'".format(
+            self.logger.info("{} webhook ignored event type: '{}'".format(
                 source, sanitize_log_value(str(event_type))))
             return HTTPResponse(status=200, body="OK")
 
@@ -158,7 +156,7 @@ class WebhookHandler(IHandler):
         title, provenance = extract_title_fn(body)
         if not title:
             release_title = body.get("release", {}).get("releaseTitle", "")
-            logger.warning(
+            self.logger.warning(
                 "{} webhook Download event has no source file path; NOT marking an "
                 "import (release.releaseTitle: '{}')".format(
                     source, sanitize_log_value(release_title)
