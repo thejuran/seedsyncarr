@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: 122-05 gaps_found (D-06c dropped deferred notice); gap plans 122-10..12 planned
-last_updated: "2026-10-22T23:16:41.000Z"
-last_activity: 2026-10-22 -- Phase 122 gap closure planned (122-10..12)
+stopped_at: 122-10 complete (D-06c post-transfer pending-notice fix)
+last_updated: "2026-10-22T23:28:03.583Z"
+last_activity: 2026-10-22 -- 122-10 gap-closure plan executed (D-06c post-transfer pending-notice fix, local gates green)
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 12
-  completed_plans: 7
+  total_plans: 15
+  completed_plans: 9
   percent: 17
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 122 (safety-acceptance-and-logging-fixes) — EXECUTING
-Plan: 5 of 12 (01-04 complete; 05 gaps_found; next 122-10 gap fix)
+Plan: 122-10 of 12 complete (01-04 complete; 05 gaps_found; 06-09 re-pointed to the fixed build, awaiting 122-11; 10 gap-closure fix complete; next 122-11 push to PR #134)
 Status: Executing Phase 122
-Last activity: 2026-10-22 -- Phase 122 execution started
+Last activity: 2026-10-22 -- 122-10 gap-closure plan executed (D-06c post-transfer pending-notice fix, local gates green)
 
 ## Accumulated Context
 
@@ -87,6 +87,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 120]: SON5-05 verified; no release needed (owner approved 2026-10-20) on builds Sonarr 5.0.0.2701 (linuxserver/sonarr:develop, image 8b59d172e9b4); container-name Test Connection failure classified as Reliability item 5 (D-02)
 - [Phase 121]: 121-03: pushed gsd/phase-121-credential-forwarding and opened draft PR #132 to main only after owner go-ahead 'push'; PR CI green on all 11 jobs incl. 3/3 [chromium-token] auth-token.spec.ts tests in a real browser, closing SEC-02's real-browser half
 - [Phase 122]: 122-04: one-PR-per-phase deploy (no merge); PR #134 staging image ghcr.io/thejuran/seedsyncarr:400 digest-pinned (cross-checked buildx + anonymous GHCR); deployed to seedsyncarr-test only; production fingerprint identical before/after; live LOG-01 confirmed (seedsyncarr.WebhookHandler); seedbox nyx.usbx.me SSH port 22 refused connections, flagged for Plans 05-08
+- [Phase 122]: 122-10: fixed D-06(c) post-transfer pending-notice drop (narrow pending-notice-membership exception in the evidence gate); local gates green (suite subset of 122-03 baseline, ruff clean, RED-before-GREEN); nothing pushed, 122-11 pushes
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -144,9 +145,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-22T20:00:32.803Z
-Stopped at: Completed 122-04-PLAN.md
-Next action: review/merge draft PR #132 (https://github.com/thejuran/seedsyncarr/pull/132, e.g. via /bm:ship), then /bm:discuss-phase 122 (Safety Acceptance and Logging Fixes). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-22T23:27:53.081Z
+Stopped at: 122-10 complete (D-06c post-transfer pending-notice fix)
+Next action: execute 122-11 (push gap-closure commits to draft PR #134, CI); after CI is green, re-run 122-05's D-06(c) scenario on the fixed build before SAFE-01 is marked passed, then 122-12. Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -159,8 +160,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Review and merge draft PR #132 (fix(121): attach app token only to SeedSyncarr's own API), or hold it open until a convenient release window
-- /bm:discuss-phase 122 and /bm:plan-phase 122 (Safety Acceptance and Logging Fixes)
+- /bm:execute-phase 122 (122-11: push gap-closure commits to draft PR #134, watch CI; 122-12: re-run 122-05's D-06(c) live scenario on the fixed build, close SAFE-01)
 
 ## Deferred Items
 

@@ -96,7 +96,7 @@ Plans:
 
 **Wave 5-7** *(gap closure for 122-05 D-06(c); same PR #134)*
 
-- [ ] 122-10-PLAN.md — TDD: keep a revalidated pending import notice between transfer end and commit (D-06(c) fix) + local gates
+- [x] 122-10-PLAN.md — TDD: keep a revalidated pending import notice between transfer end and commit (D-06(c) fix) + local gates
 - [ ] 122-11-PLAN.md — Push fix to PR #134, CI green, new staging digest as DEV_PIN, re-pin sandbox, LOG-01 recheck
 - [ ] 122-12-PLAN.md — Rerun D-06 (c) on the fixed build plus (e)/(a)/(b) regression and a (c) repeat
 
@@ -171,7 +171,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
-| 122. Safety Acceptance and Logging Fixes | 4/9 | In Progress|  |
+| 122. Safety Acceptance and Logging Fixes | 5/12 | In Progress|  |
 | 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
