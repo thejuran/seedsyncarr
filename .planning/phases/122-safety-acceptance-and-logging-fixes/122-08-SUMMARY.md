@@ -3,7 +3,7 @@ phase: 122-safety-acceptance-and-logging-fixes
 plan: 08
 subsystem: infra
 tags: [sandbox-restore, credential-hygiene, owner-checkpoint, safe01-verdict]
-status: paused
+status: complete
 
 # Dependency graph
 requires:
@@ -30,27 +30,27 @@ key-files:
 
 key-decisions:
   - "Owner declined sandbox Sonarr key rotation this session (verbatim: \"I'll replace it myself later\", option owner-later). No rotation performed; the follow-up is recorded in the evidence file for Plan 09 to add to ROADMAP.md's Operator follow-ups, per the plan's own instruction for this choice."
-  - "This SUMMARY is written with status: paused because Task 3 (owner review of the SAFE-01 verdict) is a blocking checkpoint that has not yet been answered. Task 1 and Task 2 are complete and committed; STATE.md/ROADMAP.md updates and the final metadata commit are deferred to the continuation agent after the owner replies."
+  - "Owner reviewed the SAFE-01 verdict table (122-SAFE01-EVIDENCE.md) and replied verbatim \"approve\". This closes Task 3 and the plan; proceeding to 122-09 SAFE-02 reconciliation."
 
 patterns-established: []
 
-requirements-completed: []
+requirements-completed: [SAFE-01]
 
 # Metrics
-duration: ~9min (Tasks 1-2 only; Task 3 pending)
-completed: null
+duration: ~12min (Tasks 1-3)
+completed: 2026-10-23
 ---
 
-# Phase 122 Plan 08: Sandbox Restore and SAFE-01 Verdict Summary (PAUSED at Task 3 checkpoint)
+# Phase 122 Plan 08: Sandbox Restore and SAFE-01 Verdict Summary
 
-**Sandbox restored to its original 1.7.6 pin after fixing a Rule 1 bug in the teardown script's image-restore regex; SAFE-01 verdict recorded as PASSED (all six required scenarios); awaiting owner review before the plan closes.**
+**Sandbox restored to its original 1.7.6 pin after fixing a Rule 1 bug in the teardown script's image-restore regex; SAFE-01 verdict recorded as PASSED (all six required scenarios); owner reviewed and approved.**
 
 ## Performance
 
-- **Duration so far:** ~9 min (Tasks 1-2)
+- **Duration:** ~12 min (Tasks 1-3)
 - **Started:** 2026-10-23T19:11:32Z
-- **Paused at:** 2026-10-23T19:20:14Z (Task 3 checkpoint, awaiting owner reply)
-- **Tasks:** 2 of 3 completed (Task 3 is a blocking checkpoint, not yet answered)
+- **Completed:** 2026-10-23 (Task 3 owner reply received)
+- **Tasks:** 3 of 3 completed
 - **Files modified:** 3
 
 ## Accomplishments
@@ -70,9 +70,9 @@ completed: null
 
 1. **Task 1: Owner decision on rotating the sandbox Sonarr API key** — no separate commit (decision recorded in this SUMMARY only, per the plan's own instruction; nothing was changed on disk)
 2. **Task 2: Final teardown, fresh-session restore check, production fingerprint, SAFE-01 verdict** — `ce17b12` (docs)
-3. **Task 3: Owner review of the SAFE-01 verdict** — **PENDING** (blocking checkpoint; see below)
+3. **Task 3: Owner review of the SAFE-01 verdict** — owner replied verbatim **"approve"**; no additional code/evidence changes required (recorded in this SUMMARY only, per the plan's own instruction for this checkpoint type)
 
-**Plan metadata:** not yet committed (plan not complete — pending Task 3)
+**Plan metadata:** this commit (docs)
 
 ## Files Created/Modified
 
@@ -82,7 +82,7 @@ completed: null
 
 ## Decisions Made
 
-See `key-decisions` in frontmatter. In summary: (1) owner declined rotation this session, recorded verbatim, follow-up flagged for Plan 09; (2) this SUMMARY is paused pending Task 3's owner review — STATE.md/ROADMAP.md updates and the plan-metadata commit will follow once the owner replies.
+See `key-decisions` in frontmatter. In summary: (1) owner declined rotation this session, recorded verbatim, follow-up flagged for Plan 09; (2) owner reviewed the SAFE-01 verdict table and replied verbatim "approve" — the plan is now complete; STATE.md/ROADMAP.md updates and the plan-metadata commit follow in this same session.
 
 ## Deviations from Plan
 
@@ -109,27 +109,24 @@ See `key-decisions` in frontmatter. In summary: (1) owner declined rotation this
 
 None — no external service configuration required this session. (Owner follow-up: the declined sandbox Sonarr key rotation is flagged for Plan 09 to add to ROADMAP.md's "Operator follow-ups"; no action needed from this plan.)
 
-## Next Phase Readiness — BLOCKED ON TASK 3
+## Next Phase Readiness
 
-**This plan is not complete.** Task 3 (owner review of the SAFE-01 verdict) is a blocking `checkpoint:human-verify` and has not been answered. A continuation agent must:
-1. Receive the owner's reply ("approved" or stated concerns)
-2. Record it verbatim in this SUMMARY (replacing `status: paused` with a completed state)
-3. Run the STATE.md/ROADMAP.md updates and requirements marking (if the owner approves)
-4. Create the final metadata commit
+**This plan is complete.** Task 3 (owner review of the SAFE-01 verdict) received the owner's verbatim reply "approve". Per the plan's own verification wording, this approval means "proceed to the incident-record reconciliation" (Plan 09) — it is not a code review.
 
-Until then:
 - Sandbox `seedsyncarr-test` is restored to `IMAGE_PIN_L0` (`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0...`), independently re-verified in a fresh session; the NAS capture dir has been removed
 - Production `seedsyncarr` is confirmed byte-identical to its Plan 04 baseline throughout this plan
-- The SAFE-01 verdict (all six scenarios PASS) is recorded in `122-SAFE01-EVIDENCE.md` and linked from `119-VERIFICATION.md`, awaiting the owner's review, not yet acted on further
+- The SAFE-01 verdict (all six scenarios PASS) is recorded in `122-SAFE01-EVIDENCE.md` and linked from `119-VERIFICATION.md`, and is now owner-approved
+- Plan 09 (SAFE-02 reconciliation) is unblocked
 
 ---
 *Phase: 122-safety-acceptance-and-logging-fixes*
-*Paused: 2026-10-23 (Task 3 checkpoint)*
+*Completed: 2026-10-23*
 
-## Self-Check: PASSED (for Tasks 1-2 only; Task 3 not yet executed)
+## Self-Check: PASSED
 
 - FOUND: `.planning/phases/122-safety-acceptance-and-logging-fixes/122-SAFE01-EVIDENCE.md` (modified, contains the new "Plan 08" section and "SAFE-01 verdict" table)
 - FOUND: `.planning/phases/119-safety-follow-ups-and-1-7-5-release/119-VERIFICATION.md` (modified, additions-only)
 - FOUND: `.planning/phases/122-safety-acceptance-and-logging-fixes/122-teardown.sh` (modified, regex fix)
 - FOUND commit `ce17b12` (`git log --oneline --all | grep ce17b12`)
 - All teardown transcripts, fresh-session readings and the production fingerprint quoted above and in the evidence file were read directly from live `ssh nas` command output during this plan's execution, not inferred; the `SANDBOX_RESTORED ok` result was independently re-run twice after the regex fix, and the fresh-session restore check was run as a separate `ssh nas` call, not reused from the teardown script's own output.
+- Task 3's owner reply ("approve") was received directly from the orchestrator's resume context, not inferred.
