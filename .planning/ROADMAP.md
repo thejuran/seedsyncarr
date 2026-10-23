@@ -92,7 +92,7 @@ Plans:
 
 **Wave 4**
 
-- [ ] 122-05-PLAN.md — SAFE-01 import: Waiting hold + one-shot release, early credit, deferral/revalidation, arm-on-commit and 300 s auto-delete (D-06(c) FAIL found; gap closed by 122-10..12)
+- [x] 122-05-PLAN.md — SAFE-01 import: Waiting hold + one-shot release, early credit, deferral/revalidation, arm-on-commit and 300 s auto-delete (D-06(c) FAIL found; gap closed by 122-10..12)
 
 **Wave 5-7** *(gap closure for 122-05 D-06(c); same PR #134)*
 
