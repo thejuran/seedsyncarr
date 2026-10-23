@@ -367,3 +367,71 @@ over every captured log/model/persist/webhooks file:
 is never passed to the logged HTTP request or printed by the signing script), these capture
 files are judged safe to quote verbatim in this evidence file. SECRET_SCAN=0 is recorded
 in the Plan 05 SUMMARY as a hygiene-scan result, not an exact-match scan, for both runs.
+
+## Re-pin after 122-10 fix (build under test for Plans 12, 06-08)
+
+Why: 122-05's D-06(c) scenario (`SSA122.Alpha2.S01`) **FAILED** against the original PR #134
+staging image (DEV_PIN `sha256:4463de8e...`) — a revalidated pending child notice (E04) was
+dropped between its root's transfer ending and its commit, with the forbidden "Ignoring webhook
+import ... no transfer evidence" line. 122-10 landed a narrow fix on the same branch/PR (see
+`122-10-SUMMARY.md`). Equivalence guard: 122-10 changed `src/python/controller/controller.py`,
+so the previous DEV_PIN no longer covers the code that will ship — every SAFE-01 live check from
+this point on must run against a build that includes the fix.
+
+### Build under test (re-pin)
+
+- **PR:** https://github.com/thejuran/seedsyncarr/pull/134 (still OPEN, not merged; same branch
+  `gsd/phase-122-safety-acceptance-and-logging-fixes`, no new PR opened)
+- **NEW_HEAD_SHA:** `81df6b7cb6b15c6d510a3f102631380720415beb` — confirmed equal to
+  `gh pr view 134 --json headRefOid -q .headRefOid` both immediately after the push and again
+  immediately before the digest lookup below (equivalence guard: no later push occurred in
+  between; the newest CI run on the branch has this same headSha).
+- **122-10 commits carried by this push** (already landed on the branch prior to this plan;
+  this plan's job was to push and confirm CI, not to author them):
+  - `f51e55fa7f180b8dc267b834be50a217f7a33bd3` — `test(122-10): reproduce pending notice dropped between transfer end and commit (D-06c)`
+  - `73bd59980e3efc56878b651db159fb80954fc926` — `fix(122-10): keep revalidated pending import notice between transfer end and commit (D-06c)`
+  - `git merge-base --is-ancestor 73bd599 81df6b7` exits 0 — the fix commit is an ancestor of NEW_HEAD_SHA.
+- **CI run:** https://github.com/thejuran/seedsyncarr/actions/runs/39872162737 (run_number 401), conclusion **success**, headSha `81df6b7cb6b15c6d510a3f102631380720415beb`.
+- **No later push exists:** `gh run list --workflow=ci.yml --branch gsd/phase-122-safety-acceptance-and-logging-fixes` shows run 401 (databaseId `39872162737`) as the newest entry, headSha matching `gh pr view 134`'s current `headRefOid` exactly; the only other run on the branch is the earlier run 400 (`28942cc2...`, superseded).
+- **Per-check conclusions** (`gh pr checks 134`, all pass or expected-skip):
+
+  | Check | Result |
+  |---|---|
+  | Analyze (actions) | pass |
+  | Analyze (javascript-typescript) | pass |
+  | Analyze (python) | pass |
+  | Angular unit tests | pass |
+  | Build Docker Image | pass (27m26s) |
+  | CodeQL | pass |
+  | End-to-end tests on Docker Image (amd64) | pass |
+  | Lint (Angular) | pass |
+  | Lint (Python) | pass |
+  | Release metadata verifier tests | pass |
+  | Verify Python package | pass |
+  | Verify release metadata | pass |
+  | Python unit tests | pass |
+  | Publish GitHub Release / Publish Docker Image / Publish Docker Image (:dev) / Publish Documentation / Publish to PyPI | skipping (expected — `if: github.ref == 'refs/heads/main'` gates are false for a `pull_request` event) |
+
+  `gh pr checks 134` exits 0 (all required checks pass; only the publish-* jobs, which do not run on PRs, show `skipping`).
+- **Digest resolution (two independent methods, cross-checked, identical result):**
+  - `docker buildx imagetools inspect ghcr.io/thejuran/seedsyncarr:401` → index `Digest: sha256:e3941f976b5bf43370238ac3a7410f569e04b49f635d4e65382b4c1e3284ebe4` (`application/vnd.oci.image.index.v1+json`; `linux/amd64` + `linux/arm64` manifests plus their attestation manifests).
+  - Anonymous GHCR registry lookup (same method as Plan 04; `gh api .../packages` still 403s):
+    ```
+    TOKEN=$(curl -s "https://ghcr.io/token?scope=repository:thejuran/seedsyncarr:pull&service=ghcr.io" \
+      | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+    curl -s -I -H "Authorization: Bearer $TOKEN" \
+      -H "Accept: application/vnd.oci.image.index.v1+json" \
+      "https://ghcr.io/v2/thejuran/seedsyncarr/manifests/401" | grep -i docker-content-digest
+    # -> docker-content-digest: sha256:e3941f976b5bf43370238ac3a7410f569e04b49f635d4e65382b4c1e3284ebe4
+    ```
+  - Both 64-hex digests are identical: `e3941f976b5bf43370238ac3a7410f569e04b49f635d4e65382b4c1e3284ebe4`.
+- **New DEV_PIN:**
+  ```
+  DEV_PIN=ghcr.io/thejuran/seedsyncarr@sha256:e3941f976b5bf43370238ac3a7410f569e04b49f635d4e65382b4c1e3284ebe4
+  ```
+  This differs from the previous DEV_PIN, as required.
+- **Superseded DEV_PIN (Plans 04-05 evidence):** `ghcr.io/thejuran/seedsyncarr@sha256:4463de8e449139496ee9387dac1393297c9268e932870cbd6baa9bb93c0a4cf9`
+  (built from `PR_HEAD_SHA` `28942cc2b65c6c01929d154d8ffa99be4540a9f8`, run 400 — this image does
+  **not** contain the 122-10 fix; D-06(c) evidence captured against it is superseded by the
+  rerun this plan prepares the sandbox for).
+- No new PR was created (`gh pr list --head gsd/phase-122-safety-acceptance-and-logging-fixes --json number -q '.[].number'` prints only `134`); no merge; no `gh pr ready` call.
