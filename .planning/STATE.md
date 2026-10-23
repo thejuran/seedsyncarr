@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: completed
-stopped_at: "122 plans 01-12 complete; verification gaps_found (code review CR-01 key leak + WR-01..03) -- owner chose fix in-phase; next /bm:plan-phase 122 --gaps"
-last_updated: "2026-10-23T22:17:24.000Z"
+stopped_at: "122 gap cycle 2 planned (122-13..17: CR-01 key-leak, WR-01..03 incl. 120 s D-06(c) grace window); next /bm:execute-phase 122 --gaps-only"
+last_updated: "2026-10-23T22:44:57.000Z"
 last_activity: 2026-10-23 -- 122-09 executed (owner verbatim reply "All confirmed" to Task 2's cleanup checklist; both done-group-no-auto-delete.md and extract-staging-autodel-rearm.md closed per D-12, status resolved, moved to .planning/debug/resolved/; ROADMAP Done-group operator follow-up ticked; deferred extract-staging items C-G stay in the Backlog, unaffected; SAFE-02 requirement marked complete)
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 15
+  completed_phases: 1
+  total_plans: 20
   completed_plans: 15
-  percent: 33
+  percent: 17
 ---
 
 # Project State

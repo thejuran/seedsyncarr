@@ -74,7 +74,7 @@ Plans:
   4. When the completion gate prunes a hold (root left the stability sweep), the app log says the hold was *dropped* (no release); `Completion hold cleared` appears only for a proof-based release, with a regression test covering both paths
   5. Phase 119 import safeguards (early credit, pending-notice revalidation, arm-on-commit, Waiting holds, one-shot manual release) are exercised, not rebuilt
 
-**Plans**: 12 plans (9 + 3 gap closure)
+**Plans**: 17 plans (9 + 8 gap closure)
 
 Plans:
 **Wave 1**
@@ -109,6 +109,14 @@ Plans:
 **Wave 11**
 
 - [x] 122-09-PLAN.md — SAFE-02: reconcile both incident records, owner cleanup checklist, close rule, deferred C-G to backlog
+
+**Wave 12-15** *(gap closure for verification CR-01, WR-01..03; owner decision 2026-10-23; same PR #134)*
+
+- [ ] 122-13-PLAN.md — TDD: bound post-transfer pending-notice window to 120 s with a local copy, discard on stop/delete-local, accurate credit reason (WR-02, WR-03)
+- [ ] 122-14-PLAN.md — TDD: never log the Arr API key from Test Connection; status rate-limit warning on the app logger, rate_limit logger required (CR-01, WR-01)
+- [ ] 122-15-PLAN.md — Phase gates, push to PR #134, CI green, new staging digest as DEV_PIN
+- [ ] 122-16-PLAN.md — Re-pin sandbox; LOG-01/WR-01 live; D-06(c) rerun with (e)/(a)/(b) regression and live WR-02 stop check (D-03 checkpoint)
+- [ ] 122-17-PLAN.md — Rerun evidence, restore sandbox to 1.7.6 pin, SAFE-01 gap-cycle-2 verdict (owner review)
 
 ### Phase 123: Startup and Shutdown Lifecycle
 
@@ -171,7 +179,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
-| 122. Safety Acceptance and Logging Fixes | 11/12 | In Progress|  |
+| 122. Safety Acceptance and Logging Fixes | 12/17 | In Progress|  |
 | 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
