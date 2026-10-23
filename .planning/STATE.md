@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: 122-11 complete (fixed-build re-pinned to sandbox; LOG-01 reconfirmed)
-last_updated: "2026-10-23T17:09:08.892Z"
-last_activity: 2026-10-23 -- 122-11 executed (pushed 122-10's fix to PR #134, CI run 401 green; new DEV_PIN sha256:e3941f97... re-pinned to seedsyncarr-test; production fingerprint unchanged this session; LOG-01 reconfirmed live)
+stopped_at: 122-12 complete (D-06 rerun PASS on fixed build; 122-05 gap closed)
+last_updated: "2026-10-23T17:41:51.000Z"
+last_activity: "2026-10-23 -- 122-12 executed (reran D-06(e)/(a)/(c)/(b) on SSA122.Echo.S01 + held decoy on the fixed DEV_PIN sha256:e3941f97...; all PASS, including the critical D-06(c) check -- a deferred SSA122.Echo.S01E04 webhook posted at ~11.6% was accepted via 'Recorded webhook import' instead of dropped; second independent (c)-repeat on SSA122.Foxtrot.S01 also PASS; sandbox restored, SANDBOX_RESTORED ok; production fingerprint unchanged; SAFE-01 import/auto-delete half closed, extraction and restart persistence still owed by Plans 06/07)"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 15
-  completed_plans: 10
+  completed_plans: 12
   percent: 17
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 122 (safety-acceptance-and-logging-fixes) — EXECUTING
-Plan: 122-11 of 12 complete (01-04 complete; 05 gaps_found; 06-09 re-pointed to the fixed build; 10 gap-closure fix complete; 11 pushed fix to PR #134 and re-pinned sandbox, complete; next 122-12 reruns 122-05's D-06(c) scenario on the fixed build)
-Status: Executing Phase 122
-Last activity: 2026-10-23 -- 122-11 executed (pushed 122-10's fix to PR #134, CI run 401 green; new DEV_PIN sha256:e3941f97... re-pinned to seedsyncarr-test; production fingerprint unchanged this session; LOG-01 reconfirmed live)
+Plan: 122-12 of 12 complete (01-04 complete; 05 gaps_found; 06-09 re-pointed to the fixed build, still pending execution; 10 gap-closure fix complete; 11 pushed fix to PR #134 and re-pinned sandbox, complete; 12 reran 122-05's D-06 scenarios on the fixed build -- all PASS, gap closed)
+Status: Executing Phase 122 (Plans 06-09 -- restart persistence, extraction, SAFE-02 reconciliation, likely re-merge -- still pending before the phase closes)
+Last activity: 2026-10-23 -- 122-12 executed (reran D-06(e)/(a)/(c)/(b) on SSA122.Echo.S01 + held decoy on the fixed DEV_PIN sha256:e3941f97...; all PASS, including the critical D-06(c) check -- a deferred SSA122.Echo.S01E04 webhook posted at ~11.6% was accepted via 'Recorded webhook import' instead of dropped; second independent (c)-repeat on SSA122.Foxtrot.S01 also PASS; sandbox restored, SANDBOX_RESTORED ok; production fingerprint unchanged; SAFE-01 import/auto-delete half closed, extraction and restart persistence still owed by Plans 06/07)
 
 ## Accumulated Context
 
@@ -89,6 +89,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 122]: 122-04: one-PR-per-phase deploy (no merge); PR #134 staging image ghcr.io/thejuran/seedsyncarr:400 digest-pinned (cross-checked buildx + anonymous GHCR); deployed to seedsyncarr-test only; production fingerprint identical before/after; live LOG-01 confirmed (seedsyncarr.WebhookHandler); seedbox nyx.usbx.me SSH port 22 refused connections, flagged for Plans 05-08
 - [Phase 122]: 122-10: fixed D-06(c) post-transfer pending-notice drop (narrow pending-notice-membership exception in the evidence gate); local gates green (suite subset of 122-03 baseline, ruff clean, RED-before-GREEN); nothing pushed, 122-11 pushes
 - [Phase 122]: 122-11: pushed 122-10's fix to PR #134 (CI run 401 green, all checks pass); re-pinned seedsyncarr-test to new DEV_PIN sha256:e3941f97... (digest cross-checked two ways); production fingerprint unchanged this session (StartedAt drifted from the 122-04 baseline -- host/Docker restart outside this plan, flagged); LOG-01 reconfirmed live; ready for 122-12's live D-06(c) rerun
+- [Phase 122]: 122-12: D-06 rerun PASS on fixed build (sha256:e3941f97...); second independent (c)-repeat on SSA122.Foxtrot.S01 also PASS; a deferred SSA122.Echo.S01E04 webhook posted at ~11.6% was accepted via Recorded webhook import instead of dropped (closing 122-05's gap); SAFE-01 stays open pending Plans 06/07 restart-persistence and extraction evidence
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -146,9 +147,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-23T17:09:08.888Z
-Stopped at: 122-11 complete (fixed-build re-pinned to sandbox; LOG-01 reconfirmed)
-Next action: execute 122-12 (re-run 122-05's D-06(c) scenario, `SSA122.Alpha2.S01`, live on the new DEV_PIN sha256:e3941f97... in capture dir `/volume1/docker/v5test/results/safe01-122-20261023T165741Z`; SAFE-01 is only marked passed once this live rerun passes). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-23T17:37:57Z
+Stopped at: 122-12 complete (D-06 rerun PASS on fixed build; 122-05's D-06(c) gap closed)
+Next action: Plans 06 (restart persistence, D-06d) and 07 (extraction, D-07) still need their own live evidence on this same DEV_PIN (sha256:e3941f97...) before SAFE-01 as a whole can be marked complete in REQUIREMENTS.md; Plan 08 (SAFE-02 reconciliation) and Plan 09 follow. Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -161,7 +162,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- /bm:execute-phase 122 (122-12: re-run 122-05's D-06(c) live scenario on the fixed build sha256:e3941f97..., close SAFE-01)
+- /bm:execute-phase 122 (continue with Plans 06-09: restart persistence, extraction, SAFE-02 reconciliation, and the one-PR-per-phase merge, all on the same fixed DEV_PIN sha256:e3941f97...)
 
 ## Deferred Items
 
