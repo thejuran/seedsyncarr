@@ -417,6 +417,30 @@ class TestConfigHandlerTestRadarrConnection(unittest.TestCase):
 
     @patch('web.handler.config.requests')
     @patch('web.handler.config.socket')
+    def test_config_key_whitespace_stripped_before_header(self, mock_socket, mock_requests):
+        """CR-01: leading/trailing whitespace around a stored key is
+        stripped before the X-Api-Key header is built."""
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("8.8.8.8", 0))]
+        mock_socket.gaierror = socket.gaierror
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"version": "4.0.2"}
+        mock_requests.get.return_value = mock_response
+        mock_requests.ConnectionError = requests.ConnectionError
+        mock_requests.Timeout = requests.Timeout
+        self.config.sonarr.sonarr_url = "http://sonarr.example.com:8989"
+        self.config.sonarr.sonarr_api_key = "  testapikey123\t"
+
+        self.handler._ConfigHandler__handle_test_sonarr_connection()
+        mock_requests.get.assert_called_once_with(
+            "http://sonarr.example.com:8989/api/v3/system/status",
+            headers={"X-Api-Key": "testapikey123"},
+            timeout=10,
+            allow_redirects=False
+        )
+
+    @patch('web.handler.config.requests')
+    @patch('web.handler.config.socket')
     def test_generic_exception_does_not_leak_details(self, mock_socket, mock_requests):
         mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("8.8.8.8", 0))]
         mock_socket.gaierror = socket.gaierror
@@ -448,7 +472,7 @@ class TestConfigHandlerRateLimit(unittest.TestCase):
         mock_inner.has_property.return_value = True
         mock_config.lftp = mock_inner
 
-        rate_limited = rate_limit(max_requests=60, window_seconds=60.0)(
+        rate_limited = rate_limit(max_requests=60, window_seconds=60.0, logger=MagicMock())(
             handler._ConfigHandler__handle_set_config
         )
 
@@ -481,7 +505,7 @@ class TestConfigHandlerRateLimit(unittest.TestCase):
         config.sonarr.sonarr_api_key = "testapikey123"
         handler = ConfigHandler(config, MagicMock())
 
-        rate_limited = rate_limit(max_requests=5, window_seconds=60.0)(
+        rate_limited = rate_limit(max_requests=5, window_seconds=60.0, logger=MagicMock())(
             handler._ConfigHandler__handle_test_sonarr_connection
         )
 

@@ -771,7 +771,7 @@ class TestControllerHandlerRateLimit(unittest.TestCase):
         self._mock_time.time.return_value = 1000.0
         # Create a rate-limited wrapper matching add_routes() config
         self._rate_limited_bulk = rate_limit(
-            max_requests=10, window_seconds=60.0
+            max_requests=10, window_seconds=60.0, logger=MagicMock()
         )(self.handler._ControllerHandler__handle_bulk_command)
 
     def tearDown(self):
