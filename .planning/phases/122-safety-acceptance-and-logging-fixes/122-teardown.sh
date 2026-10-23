@@ -199,7 +199,7 @@ if [ "$FINAL" = "1" ]; then
   if [ -n "$IMAGE_PIN_L0" ]; then
     tmp="$D/.compose.yml.tmp.$$"
     awk -v pin="$IMAGE_PIN_L0" '
-      /^[[:space:]]*image:[[:space:]]*ghcr\.io\/thejuran\/seedsyncarr:/ && !done { sub(/image:.*/, "image: " pin); done=1 }
+      /^[[:space:]]*image:[[:space:]]*ghcr\.io\/thejuran\/seedsyncarr[:@]/ && !done { sub(/image:.*/, "image: " pin); done=1 }
       { print }
     ' "$COMPOSE_FILE" > "$tmp"
     cat "$tmp" > "$COMPOSE_FILE"

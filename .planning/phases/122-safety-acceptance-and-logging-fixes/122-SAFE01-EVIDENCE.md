@@ -1129,3 +1129,140 @@ UI/model never lists the staging dir; (2) a webhook accepted while the root is `
 defers auto-delete with the exact documented log wording and attempt counter, then deletes
 once the root becomes deletable again. No timing miss occurred (attempt 1 succeeded
 cleanly); no D-03 escalation is needed.
+
+## Plan 08: Sandbox key-rotation decision, final restore, production fingerprint, SAFE-01 verdict
+
+### Owner decision on rotating the exposed sandbox Sonarr key
+
+Presented to the owner (research-session redaction-filter failure, Open Question 2 /
+Pitfall 7 of `122-RESEARCH.md`: the sandbox `sonarr-v5` API key was printed once into a tool
+transcript, never written to a repo file; test Sonarr only, not production). Owner's
+verbatim reply: **"I'll replace it myself later"** (option `owner-later`). No rotation was
+performed this session — `sonarr-v5`'s `config.xml` `<ApiKey>` and `seedsyncarr-test`'s
+`sonarr_api_key` were never read, never written, never printed. Per the plan's own
+instruction for this choice, the follow-up **"Rotate sandbox sonarr-v5 API key (exposed in
+Phase 122 research transcript)"** is recorded here for Plan 09 to add to ROADMAP.md's
+"Operator follow-ups" section — not actioned by this plan.
+
+### Final teardown (`teardown.sh --final`)
+
+Capture dir: `/volume1/docker/v5test/results/safe01-122-20261023T165741Z` (same dir used by
+Plans 05/06/07/11/12). Preflight (before any change, this session): `seedsyncarr-test` still
+on the fixed `DEV_PIN` (`sha256:e3941f976b5bf43370238ac3a7410f569e04b49f635d4e65382b4c1e3284ebe4`);
+`rate_limit=0`, `delay_seconds=300`, `webhook_secret` length `0` (all already restored by
+122-07's own non-`--final` teardown); zero `SSA122.*` names on the seedbox or under
+`/volume1/data/v5test/torrents`; production fingerprint read-only and unchanged from the
+122-11/122-12/122-06/122-07 baseline.
+
+**First attempt — FAIL, diagnosed and fixed (Rule 1, test-harness bug, no product code
+touched):**
+```
+RESTORED rate_limit ok (not set this session)
+RESTORED delay_seconds ok (not set this session)
+REMOVED synth roots count=1 refused=0
+STOP seedsyncarr-test ok
+RESTORED webhook_secret ok (len=0)
+ seedsyncarr-test Pulled
+ Container seedsyncarr-test  Started
+WAIT server/status ok
+CHECK webhook/sonarr Test http=200
+CHECK image=restored FAIL
+SANDBOX_RESTORED FAIL image_restore
+```
+Diagnosis: `teardown.sh`'s `--final` compose-file edit used the awk pattern
+`/^[[:space:]]*image:[[:space:]]*ghcr\.io\/thejuran\/seedsyncarr:/` to find and rewrite the
+`seedsyncarr-test` image line. After 122-11's re-pin, that line reads
+`image: ghcr.io/thejuran/seedsyncarr@sha256:e3941f97...` — a digest-only reference with `@`
+immediately after the repository name, never a `:`. The regex never matched, `done` stayed
+`0`, the compose file was written back byte-identical (still pointing at `DEV_PIN`), and
+`compose up -d` therefore "restored" the sandbox to the same image it was already running —
+caught correctly by the script's own post-check (`CHECK image=restored FAIL`), not a silent
+miss. Fixed the regex in the committed script
+(`.planning/phases/122-safety-acceptance-and-logging-fixes/122-teardown.sh`) to
+`/^[[:space:]]*image:[[:space:]]*ghcr\.io\/thejuran\/seedsyncarr[:@]/`, matching both a
+tagged (`:1.7.6`) and a digest-only (`@sha256:`) current reference; verified with `bash -n`
+and `shellcheck` (both clean), copied the corrected file to the NAS capture dir (`sha256sum`
+confirmed byte-identical to the local repo copy), and re-ran.
+
+**Second attempt — PASS:**
+```
+RESTORED rate_limit ok (not set this session)
+RESTORED delay_seconds ok (not set this session)
+REMOVED synth roots count=1 refused=0
+STOP seedsyncarr-test ok
+RESTORED webhook_secret ok (len=0)
+ seedsyncarr-test Pulled
+ Container seedsyncarr-test  Recreated
+ Container seedsyncarr-test  Started
+WAIT server/status ok
+CHECK webhook/sonarr Test http=200
+CHECK image=restored ok
+SANDBOX_RESTORED ok
+```
+
+**Third run (idempotence re-check, plan's own literal verify pattern) — identical result:**
+```
+...
+CHECK image=restored ok
+SANDBOX_RESTORED ok
+```
+
+### Fresh-session restore check (independent `ssh nas` call)
+
+```
+COMPOSE LINE:      image: ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e
+docker inspect:    ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e
+webhook_secret len: 0
+lftp.rate_limit:    0   (= RATE_LIMIT_L0)
+autodelete.delay_seconds: 300   (= DELAY_L0)
+seedbox ~/v5test SSA122.* count: 0
+seedbox ~/ssa122-stage:          absent
+NAS /volume1/data/v5test/torrents SSA122.* count: 0
+sandbox /downloads/.seedsyncarr-extracting: absent
+sandbox /downloads SSA122.* count: 0
+```
+Both the compose line and `docker inspect .Config.Image` equal `IMAGE_PIN_L0` exactly
+(`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`).
+
+Plan's own literal verify command, run after the restore:
+```
+$ ssh nas 'sudo /usr/local/bin/docker inspect seedsyncarr-test --format "{{.Config.Image}}"; \
+  grep -c "^webhook_secret *= *$" /volume1/docker/v5test/seedsyncarr/settings.cfg; \
+  ls /volume1/data/v5test/torrents | grep -c SSA122'
+ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e
+1
+0
+```
+(`.Config.Image` contains `1.7.6@sha256:`; empty-`webhook_secret` grep = 1; SSA122 count = 0
+— all three match the acceptance criteria exactly.)
+
+### Production unchanged (fingerprint comparison, fresh session)
+
+```
+2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e 2026-10-23T07:04:18.591254939Z
+```
+Identical across every reading this plan took: `Id`, pinned `image` and `StartedAt` all
+match the 122-04/122-11/122-12/122-06/122-07 baseline byte-for-byte. The production
+container `seedsyncarr` was never named by any write command across this entire phase —
+only `-f /volume1/docker/v5test/docker-compose.yml` and the `seedsyncarr-test` service were
+ever targeted, confirmed again by this plan's own fresh read.
+
+### SAFE-01 verdict
+
+| Scenario | D-ID | Verdict | Evidence section |
+|---|---|---|---|
+| Waiting hold and one-shot release | D-05, D-06(e) | PASS | "Plan 12: D-06 rerun on the fixed build" → "D-06(e) Waiting hold and one-shot release (rerun)" |
+| Early per-episode credit | D-06(a) | PASS | "Plan 12: D-06 rerun on the fixed build" → "D-06(a) Early per-episode credit (rerun)" |
+| Deferral and revalidation | D-06(c) | PASS | "Plan 12: D-06 rerun on the fixed build" → "D-06(c) Deferral and revalidation (rerun on fixed build)" — supersedes the original Plan 05 FAIL on the pre-fix build (122-10 landed the fix) |
+| Deferral and revalidation, second independent repeat (Foxtrot) | D-06(c) | PASS | "Plan 12: D-06 rerun on the fixed build" → "D-06(c) repeat on SSA122.Foxtrot.S01" |
+| Arm on commit and real 300 s auto-delete | D-06(b) | PASS | "Plan 12: D-06 rerun on the fixed build" → "D-06(b) Arm on commit and auto-delete (rerun)" |
+| Restart persistence of an early credit | D-05, D-06(d) | PASS | "Plan 06: D-06(d) Restart persistence on the fixed build" → "D-06(d) Restart persistence — PASS" |
+| Extraction staging and auto-delete re-arm during EXTRACTING | D-07 | PASS | "D-07 Extraction staging and auto-delete re-arm" |
+
+**SAFE-01: PASSED** — all six required scenarios (D-06(a)-(e), D-07) plus the independent
+D-06(c) repeat are PASS on the same fixed build (`DEV_PIN sha256:e3941f976b5bf...`) that will
+ship as 1.8.0; the sandbox has been restored to its original `IMAGE_PIN_L0` pin
+(`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0...`) and independently re-verified in a
+fresh session; production `seedsyncarr` is confirmed byte-identical to its Plan 04 baseline
+throughout. Per D-03, this verdict rests only on scenarios that actually ran and passed live
+on the shipping build — no scenario is marked passed from inference.
