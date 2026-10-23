@@ -1,8 +1,8 @@
 ---
-status: awaiting_human_verify
+status: fixes_verified_cleanup_pending
 trigger: "Two production bugs found 2026-09-16 on The.Burbs.1989.2160p.UHD.BluRay.x265-B0MBARDiERS: (1) in-place extraction output visible to Radarr mid-unrar, imported a 6 GB partial of a 38.5 GB mkv; (2) auto-delete skipped while root EXTRACTING and never re-armed, local copy sits forever"
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-10-23
 ---
 
 # Debug Session: extract-staging-autodel-rearm
@@ -299,3 +299,39 @@ accepted_as_specified_or_preexisting (no action):
   - Benign double-arm race between a fresh webhook and an in-flight deferral: harmless, log line may look stale.
   - TOCTOU between lexists and os.replace: single writer thread.
   - local_size reads smaller mid-extraction with use_local_path_as_extract_path=True (bytes sit in the excluded staging dir) and jumps at publish: cosmetic, may be reported by users.
+
+## Reconciliation (Phase 122)
+
+Production (`seedsyncarr`, still running 1.7.6; the fix below shipped in 1.7.3, well before
+this incident's own after_deploy human-verify was ever closed) was inspected read-only on
+2026-10-23 (NAS host UTC `2026-10-23T19:37:42Z` / NAS local `2026-10-23 14:37:42 -05`):
+`ls -ld`/`du -sb` on the exact The Burbs path and on `/volume1/data/torrents/.seedsyncarr-extracting`,
+`grep` of `/volume1/docker/seedsync/log/seedsyncarr.log` for "Burbs", and a read-only GET
+to the production Radarr API (`:7878`) with the key read into a shell variable and never
+printed. No write command was issued. The live, after-the-fact human-verify this record was
+waiting on (see "Verification Plan" above) is superseded by Phase 122's own live D-07 run
+on a fresh synthetic multi-volume RAR, exercised on the exact build that will ship as 1.8.0.
+
+| Finding | Fix (commit) | Evidence | Status |
+|---|---|---|---|
+| Bug 1 — in-place extraction visible to the arr | `8142929` (1.7.3, PR #112) | `122-SAFE01-EVIDENCE.md` D-07: staging dir grew through 7 qualifying samples while the release folder showed only the `.rar` volumes; the `.mkv` appeared in the release folder only once, at its exact complete size; zero model snapshots ever listed `.seedsyncarr-extracting` | **verified fixed (evidence)** |
+| Bug 2 — a skipped auto-delete never re-armed | `8142929` (1.7.3, PR #112) | `122-SAFE01-EVIDENCE.md` D-07: a webhook accepted while the root was `EXTRACTING` deferred 3 times (`attempt 1/24`…`3/24`, each naming `State.EXTRACTING`), then deleted once the root left `EXTRACTING` | **verified fixed (evidence)** |
+| A — log dropped staged entries before discard | same commit, continuation `continuation_2026-09-16_deep_review_AB` | `test_dispatch_staging.py::test_publish_failure_logs_dropped_entries_and_leaves_no_staging_residue` | **verified fixed (evidence)** — unit-level only; D-07's live run took the happy path and did not hit a publish failure |
+| B — extracted file replaces an existing directory of the same name | same commit, same continuation | `test_dispatch_staging.py::test_extracted_file_replaces_existing_directory_of_same_name` | **verified fixed (evidence)** — unit-level only |
+| H — extracted directory replaces an existing plain file of the same name | same commit, continuation `continuation_2026-09-16_orchestrator_HC` | `test_dispatch.py::test_extracted_directory_replaces_existing_file_of_same_name` | **verified fixed (evidence)** — unit-level only |
+| C — refuse symlink entries at publish (security HIGH, CWE-59, pre-existing) | not applied | — | **deferred** — carried to `ROADMAP.md` Backlog as "Extract-staging symlink hardening" |
+| D — `autodelete.max_deferrals` config key | not applied | — | **deferred** — carried to `ROADMAP.md` Backlog |
+| E — move staging helpers to `controller/extract/staging.py` | not applied | — | **deferred** — carried to `ROADMAP.md` Backlog |
+| F — `sanitize_log_value` on archive-derived paths in dispatch log lines | not applied | — | **deferred** — carried to `ROADMAP.md` Backlog |
+| G — tests for cleanup OSError handlers, lock-order, dispatch stop path | not applied | — | **deferred** — carried to `ROADMAP.md` Backlog |
+
+### Remaining operator cleanup
+
+- **The Burbs local copy** (`/volume1/data/torrents/The.Burbs.1989.2160p.UHD.BluRay.x265-B0MBARDiERS`): **verified absent** — `ls -ld`/`du -sb` on the exact path returned "No such file or directory" at `2026-10-23T19:37:42Z`. The production log shows this was cleaned up the same night as the incident: `Action.DELETE_LOCAL for file The.Burbs...` at `2026-09-16 21:58:11`, about 19 minutes after extraction finished. Nothing to do — please just confirm.
+- **The Burbs Radarr library file**: **verified present, full-size** — Radarr movieFile id 982, `38,482,836,588` bytes, exactly the original remux size (this is the file that was hardlinked during extraction, so it was never actually truncated in the library — only the original 2026-09-16 Radarr import timing was the defect). Nothing to do — please just confirm.
+- **`.seedsyncarr-extracting` staging directory** (any leftover from a crashed extraction): **verified absent** — `ls -ld /volume1/data/torrents/.seedsyncarr-extracting` returned "No such file or directory" at the same timestamp. Nothing to do — please just confirm.
+
+Both production facts above were gathered read-only this session. Per the phase's close
+rule (D-12), this record can only move to `.planning/debug/resolved/` once you confirm the
+items above; deferred items C–G do not block that close (they are carried to the backlog
+by name). It stays here with status `fixes_verified_cleanup_pending` until you confirm.

@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: fixes_verified_cleanup_pending
 trigger: "check out seedsyncarr done group -- any ideas why these didn't auto-delete when they were done?"
 created: 2026-10-14
-updated: 2026-10-14
+updated: 2026-10-23
 ---
 
 # Debug Session: done-group-no-auto-delete
@@ -142,6 +142,86 @@ root_cause: |
   the full file and committed it; Radarr's webhook had already been (correctly) refused
   by the evidence gate and never recurs. Size stability is an insufficient completion
   signal; the lftp/timeout/temp-file machinery behaved correctly.
-fix: ""
-verification: ""
-files_changed: []
+fix: |
+  CASE A: Phase 119 Plan 05 (IMP-03, "Early Per-Episode Import Credit"). Split per-child
+  evidence from the root-level commit: a webhook naming a child whose own remote copy
+  exists and is fully on disk is credited via `__credit_early_child` (writes
+  `imported_children[root]` only) even while the root is still transferring, instead of
+  being `continue`d and lost. A credit alone never commits the root or arms a delete; the
+  root still only arms once it is independently committed. A credited-but-unresolved
+  notice is kept (not dropped) and revalidated on later cycles until the root's own
+  bookkeeping catches up (122-10 closed the one remaining race in this revalidation
+  window; see extract-staging-autodel-rearm.md's sibling incident for the unrelated
+  extraction-side bug). Restart recovery re-applies a persisted credit on the first
+  post-restart commit.
+  CASE B: Phase 119 Plans 04, 06, 07, 08, 12 (IMP-01/IMP-02, "Incomplete-import
+  prevention"). AutoQueue and the webhook path now require evidence from the
+  configured arr's own queue (`ArrQueueClient` + `CompletionGate`) that the matching
+  download is actually complete, not just that local size/mtime look stable; a download
+  the arr reports as still in progress (or an arr that is unreachable) produces a visible
+  "Waiting" hold instead of a release. A held file can be manually released exactly once
+  via a confirmed UI action (`release_unverified=true`), which bypasses the evidence
+  check for that single transfer only and does not persist across a restart.
+verification: |
+  Both cases are exercised, not rebuilt, by the live SAFE-01 acceptance run in Phase 122
+  on the build that will ship as 1.8.0 (sandbox `seedsyncarr-test`; production untouched).
+  See "## Reconciliation (Phase 122)" below for the finding-by-finding evidence links and
+  the live, read-only production facts gathered for this reconciliation (Sonarr/Radarr
+  library state, NAS filesystem state, production log excerpts). Original Phase 119 unit
+  verification (full suite + whole-tree ruff, both green) is recorded in
+  `119-05-SUMMARY.md` (Case A) and `119-04-SUMMARY.md`/`119-06-SUMMARY.md`/
+  `119-07-SUMMARY.md`/`119-08-SUMMARY.md`/`119-12-SUMMARY.md` (Case B).
+files_changed:
+  - src/python/controller/controller.py
+  - src/python/controller/model_pipeline.py
+  - src/python/controller/auto_delete_manager.py
+  - src/python/controller/arr_queue.py
+  - src/python/controller/completion_gate.py
+  - src/python/controller/auto_queue.py
+  - src/python/controller/command_processor.py
+  - src/python/controller/scan/active_scanner.py
+  - src/python/controller/scan/local_scanner.py
+  - src/python/controller/scan_manager.py
+  - src/python/model/file.py
+  - src/python/model/model_builder.py
+  - src/python/model/serialize.py
+  - src/python/web/handler/controller.py
+  - src/angular/src/app/model/model-file.ts
+  - src/angular/src/app/model/view-file.ts
+  - src/angular/src/app/model/view-file.service.ts
+  - src/angular/src/app/components/transfer-row/transfer-row.component.ts
+  - src/angular/src/app/components/transfer-row/transfer-row.component.html
+  - src/angular/src/app/common/localization.ts
+  - src/angular/src/app/services/bulk-action-dispatcher.service.ts
+  - src/angular/src/app/services/bulk-command.service.ts
+  - src/angular/src/app/pages/settings/options-list.ts
+  - src/e2e/seed-state.ts
+  - docs/CONFIGURATION.md
+  - src/python/docs/configuration.md
+
+## Reconciliation (Phase 122)
+
+Production (`seedsyncarr`, still running 1.7.6; the fix below ships in 1.8.0 and has not
+reached production yet) was inspected read-only on 2026-10-23 (NAS host UTC
+`2026-10-23T19:37:42Z` / NAS local `2026-10-23 14:37:42 -05`, unless noted): `ls -ld`/
+`du -sb` on the exact Days of Hope and Obsession paths under `/volume1/data/torrents/`,
+`grep` of `/volume1/docker/seedsync/log/seedsyncarr.log` for each root name, and read-only
+GET calls to the production Sonarr (`:8989`) and Radarr (`:7878`) APIs with their keys
+read into shell variables and never printed. No write command was issued.
+
+| Finding | Fix (plan + commits) | Evidence | Status |
+|---|---|---|---|
+| Case A — Days of Hope (pre-commit child webhooks dropped) | Phase 119 Plan 05 (IMP-03): RED `7a73d8b`, GREEN `9309bab`, `2e53cbb` | `122-SAFE01-EVIDENCE.md` → "Plan 12: D-06 rerun on the fixed build" → D-06(a) (early credit), D-06(b) (arm on commit), D-06(c) (deferral/revalidation — supersedes the original Plan 05 FAIL, closed by 122-10); "Plan 06: D-06(d) Restart persistence on the fixed build" (credit survives a restart) | **verified fixed (evidence)** — all four cited scenarios PASS on the build shipping as 1.8.0 |
+| Case B — Obsession (truncated import from a still-growing seedbox file) | Phase 119 Plans 04 (`8194567`, `d7e2354`, `c1f192d`, `d29a147`), 06 (`7bf68b2`, `733b5cf`, `e5f22a5`), 07 (`907ada9`, `8f126a4`, `e28a0a0`, `a17e680`), 08 (`41cc7aa`, `8719d05`, `4736763`, `b7bb74b`), 12 (`3000994`, `931d742`) | `122-SAFE01-EVIDENCE.md` → "Plan 12: D-06 rerun on the fixed build" → D-06(e) (Waiting hold + one-shot release); `120-SON5-EVIDENCE.md` §SON5-02 (real Sonarr-queue hold/release, 11/11 pass) per D-04; `119-HUMAN-UAT.md` tests 1–2 (Waiting badge, manual-release confirm modal, pass 2026-10-18 on 1.7.6) | **verified fixed (evidence)** |
+
+### Remaining operator cleanup
+
+- **Days of Hope local copy** (`/volume1/data/torrents/Days.of.Hope.1975.DVDRip.x264-HANDJOB`): **verified absent** — `ls -ld`/`du -sb` on the exact path returned "No such file or directory" at `2026-10-23T19:37:42Z`. The production log shows you issued the delete yourself: `Action.DELETE_LOCAL for file Days.of.Hope.1975.DVDRip.x264-HANDJOB` at `2026-10-16 22:03:32`. Nothing to do — please just confirm.
+- **Days of Hope Sonarr library completeness**: **verified complete** — Sonarr (series id 815) reports all 4 episodes with files (ids 29470–29473), total `8,007,628,364` bytes, exactly matching the original torrent's full size; added `2026-10-10T01:14–01:15Z`. Nothing to do — please just confirm.
+- **Obsession local copy** (`/volume1/data/torrents/Obsession.2025....mkv`): **verified absent** — same `ls`/`du` check, same timestamp, "No such file or directory". Radarr moved (not hardlinked) this file on import, so its disappearance from the torrents folder is expected once the real import completed. Nothing to do — please just confirm.
+- **Obsession Radarr library file**: **verified present, full-size** — Radarr movieFile id 993, `55,389,018,125` bytes, added `2026-10-14T19:56:10Z` (matches your 2026-10-14 manual re-import, per `PROJECT.md`). This is no longer the truncated `54,676,946,944`-byte copy. One thing worth knowing: this size is about 88 MB (0.16%) smaller than the `55,477,377,022` bytes originally recorded for the complete remote file in this debug session — consistent with a fresh grab of the same release (same `CiNEPHiLES` group) rather than a leftover truncation, but it is not a byte-for-byte match either. If you want certainty beyond the size check, playing the file through once would confirm it; otherwise this is likely fine as-is.
+
+All four production facts above were gathered read-only this session and are not an
+assumption carried over from the original 2026-10-14 diagnosis. Per the phase's close rule
+(D-12), this record can only move to `.planning/debug/resolved/` once you confirm every
+item above — it stays here with status `fixes_verified_cleanup_pending` until then.

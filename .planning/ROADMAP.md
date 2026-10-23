@@ -203,6 +203,26 @@ measure realistic update/idle workloads before proposing optimization. Initial m
 
 **Scope:** Bounded maintenance side task, separate from milestone scope. recheck the recorded braces/karma dev-test advisory and related deferred PRs (#128/#125/#117), including current affected versions and runtime/build exposure. Apply the smallest supported fix if still relevant, with the affected build/test checks. Records classify it as dev/test-only; current advisory status has not been refreshed. This is not a separate milestone or a general test-runner rewrite. It is rechecked within REL-05 (Phase 126) as part of the pre-tag Dependabot review; that recheck records the outcome, and the item is rolled into 1.8.0 only if the fix is cheap or current evidence establishes material exposure.
 
+### Deferred: Extract-staging symlink hardening
+
+Refuse symlink entries at publish time in `ExtractDispatch.__publish_staged_output` (skip with a WARNING), closing a pre-existing exposure where patool could write a symlink straight into the release folder. Security HIGH, CWE-59. Source: `.planning/debug/extract-staging-autodel-rearm.md` item C.
+
+### Deferred: Extract-staging max-deferrals config key
+
+Add an `autodelete.max_deferrals` config key (default 24; 0 restores the pre-1.7.3 one-shot behavior) so the auto-delete re-arm cap is configurable instead of a fixed constant. Source: `.planning/debug/extract-staging-autodel-rearm.md` item D.
+
+### Deferred: Extract-staging helper module split
+
+Move the five staging helpers out of `dispatch.py` into a dedicated `controller/extract/staging.py`, and move `_AUTO_DELETE_DEFER_REASONS` next to the reason codes in `auto_delete_manager.py`. Cohesion only, no behavior change. Source: `.planning/debug/extract-staging-autodel-rearm.md` item E.
+
+### Deferred: Extract-staging log sanitization
+
+Apply `sanitize_log_value` to archive-derived paths in the new dispatch log lines (publish, discard, warn-unpublished). Security LOW, CWE-117. Source: `.planning/debug/extract-staging-autodel-rearm.md` item F.
+
+### Deferred: Extract-staging test gaps
+
+Add tests for the three cleanup OSError handlers, a lock-order recorder across a re-arm cycle, and the dispatch loop stop path. Source: `.planning/debug/extract-staging-autodel-rearm.md` item G.
+
 ### 999.5: Move Sonarr integration to API v5
 
 **Scope:** Sonarr 5 lists the v3 API as deprecated (still served as of 5.0.0.2701). Move SeedSyncarr's two Sonarr API calls (`system/status` connection test, `queue/details` completion evidence; the webhook payload is version-independent) to `/api/v5` when Sonarr 4 support can be dropped, or with version detection that keeps v3 for Sonarr 4. Note the v5 queue model differences: one tracked item can cover multiple episodes (`episodeIds`/`episodes` lists), `timeLeft` casing, and `includeSubresources`. Activate when Sonarr announces v3 removal, Sonarr 5 goes stable and prod upgrades, or v1.7.7 finds a v3 gap. Radarr unaffected. Not a Reliability gate.
@@ -230,6 +250,7 @@ Credential forwarding and LAN connection tests belong to v1.8.0 Reliability, not
 
 - [ ] Confirm credential rotation from the 1.7.6 checklist is complete.
 - [ ] Confirm one-time Done-group cleanup is complete. Do not mark the incident closed solely because its code fix shipped (Phase 122 reconciles the record; the cleanup itself stays with the operator).
+- [ ] Rotate the sandbox `sonarr-v5` Sonarr API key (exposed once in a Phase 122 research-session tool transcript, never written to a repo file; test Sonarr only, not production). Owner declined rotation during 122-08, verbatim "I'll replace it myself later" (`owner-later`).
 
 ## Completed releases
 
