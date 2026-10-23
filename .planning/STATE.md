@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: 122-10 complete (D-06c post-transfer pending-notice fix)
-last_updated: "2026-10-22T23:28:03.583Z"
-last_activity: 2026-10-22 -- 122-10 gap-closure plan executed (D-06c post-transfer pending-notice fix, local gates green)
+stopped_at: 122-11 complete (fixed-build re-pinned to sandbox; LOG-01 reconfirmed)
+last_updated: "2026-10-23T17:09:08.892Z"
+last_activity: 2026-10-23 -- 122-11 executed (pushed 122-10's fix to PR #134, CI run 401 green; new DEV_PIN sha256:e3941f97... re-pinned to seedsyncarr-test; production fingerprint unchanged this session; LOG-01 reconfirmed live)
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 15
-  completed_plans: 9
+  completed_plans: 10
   percent: 17
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 122 (safety-acceptance-and-logging-fixes) — EXECUTING
-Plan: 122-10 of 12 complete (01-04 complete; 05 gaps_found; 06-09 re-pointed to the fixed build, awaiting 122-11; 10 gap-closure fix complete; next 122-11 push to PR #134)
+Plan: 122-11 of 12 complete (01-04 complete; 05 gaps_found; 06-09 re-pointed to the fixed build; 10 gap-closure fix complete; 11 pushed fix to PR #134 and re-pinned sandbox, complete; next 122-12 reruns 122-05's D-06(c) scenario on the fixed build)
 Status: Executing Phase 122
-Last activity: 2026-10-22 -- 122-10 gap-closure plan executed (D-06c post-transfer pending-notice fix, local gates green)
+Last activity: 2026-10-23 -- 122-11 executed (pushed 122-10's fix to PR #134, CI run 401 green; new DEV_PIN sha256:e3941f97... re-pinned to seedsyncarr-test; production fingerprint unchanged this session; LOG-01 reconfirmed live)
 
 ## Accumulated Context
 
@@ -88,6 +88,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 121]: 121-03: pushed gsd/phase-121-credential-forwarding and opened draft PR #132 to main only after owner go-ahead 'push'; PR CI green on all 11 jobs incl. 3/3 [chromium-token] auth-token.spec.ts tests in a real browser, closing SEC-02's real-browser half
 - [Phase 122]: 122-04: one-PR-per-phase deploy (no merge); PR #134 staging image ghcr.io/thejuran/seedsyncarr:400 digest-pinned (cross-checked buildx + anonymous GHCR); deployed to seedsyncarr-test only; production fingerprint identical before/after; live LOG-01 confirmed (seedsyncarr.WebhookHandler); seedbox nyx.usbx.me SSH port 22 refused connections, flagged for Plans 05-08
 - [Phase 122]: 122-10: fixed D-06(c) post-transfer pending-notice drop (narrow pending-notice-membership exception in the evidence gate); local gates green (suite subset of 122-03 baseline, ruff clean, RED-before-GREEN); nothing pushed, 122-11 pushes
+- [Phase 122]: 122-11: pushed 122-10's fix to PR #134 (CI run 401 green, all checks pass); re-pinned seedsyncarr-test to new DEV_PIN sha256:e3941f97... (digest cross-checked two ways); production fingerprint unchanged this session (StartedAt drifted from the 122-04 baseline -- host/Docker restart outside this plan, flagged); LOG-01 reconfirmed live; ready for 122-12's live D-06(c) rerun
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -145,9 +146,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-22T23:27:53.081Z
-Stopped at: 122-10 complete (D-06c post-transfer pending-notice fix)
-Next action: execute 122-11 (push gap-closure commits to draft PR #134, CI); after CI is green, re-run 122-05's D-06(c) scenario on the fixed build before SAFE-01 is marked passed, then 122-12. Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-23T17:09:08.888Z
+Stopped at: 122-11 complete (fixed-build re-pinned to sandbox; LOG-01 reconfirmed)
+Next action: execute 122-12 (re-run 122-05's D-06(c) scenario, `SSA122.Alpha2.S01`, live on the new DEV_PIN sha256:e3941f97... in capture dir `/volume1/docker/v5test/results/safe01-122-20261023T165741Z`; SAFE-01 is only marked passed once this live rerun passes). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -160,7 +161,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- /bm:execute-phase 122 (122-11: push gap-closure commits to draft PR #134, watch CI; 122-12: re-run 122-05's D-06(c) live scenario on the fixed build, close SAFE-01)
+- /bm:execute-phase 122 (122-12: re-run 122-05's D-06(c) live scenario on the fixed build sha256:e3941f97..., close SAFE-01)
 
 ## Deferred Items
 
