@@ -1266,3 +1266,96 @@ ship as 1.8.0; the sandbox has been restored to its original `IMAGE_PIN_L0` pin
 fresh session; production `seedsyncarr` is confirmed byte-identical to its Plan 04 baseline
 throughout. Per D-03, this verdict rests only on scenarios that actually ran and passed live
 on the shipping build — no scenario is marked passed from inference.
+
+## Re-pin after 122-13/122-14 fixes (build under test for Plans 16-17)
+
+Why: the post-SAFE-01 code review and verification pass (122-REVIEW.md / 122-VERIFICATION.md)
+found four gaps — **CR-01** (a stored Sonarr/Radarr API key could leak into a logged
+traceback via `requests.exceptions.InvalidHeader` from `ConfigHandler._test_arr_connection`),
+**WR-01** (the `/server/status` rate-limit warning logged to a detached `web.rate_limit`
+module logger instead of the app logger, a LOG-01-class gap), and **WR-02**/**WR-03**
+(122-10's D-06(c) post-transfer pending-notice exception had no time bound and the import
+credit's log line always claimed "(root still transferring)" even once the root had
+finished). Owner decision (2026-10-23): fix all four in-phase on PR #134, same branch, same
+one-PR-per-phase policy as Plans 04/11. 122-14 closed CR-01/WR-01; 122-13 closed WR-02/WR-03;
+122-15 (this plan) gates both together and pushes. Equivalence guard: both plans changed
+`src/` (`controller/controller.py`, `web/handler/config.py`, `web/handler/status.py`,
+`web/rate_limit.py`, `web/web_app_builder.py`), so the previous DEV_PIN
+(`sha256:e3941f97...`, used by Plans 06/07/11/12) no longer covers the code that will ship —
+the D-06(c) evidence in "Plan 12: D-06 rerun on the fixed build" and the LOG-01 evidence
+re-confirmed in Plan 11 are both superseded for the shipping build until 122-16 reruns them
+live against this new pin.
+
+### Build under test (gap cycle 2)
+
+- **PR:** https://github.com/thejuran/seedsyncarr/pull/134 (still OPEN, draft, not merged;
+  same branch `gsd/phase-122-safety-acceptance-and-logging-fixes`, no new PR opened)
+- **NEW_HEAD_SHA:** `a56a1f8a12be232e5dfe8067a3db715df1f45255` — confirmed equal to
+  `gh pr view 134 --json headRefOid -q .headRefOid` immediately after the push, immediately
+  before the CI-run lookup, and again immediately before the digest lookup (no later push
+  occurred at any point).
+
+**122-14 commits (CR-01, WR-01):**
+  - `56ffced8dca94abe629c1d51a6bcd6624f2abfee` — `test(122-14): reproduce API key leak via InvalidHeader and detached status rate-limit logger (CR-01, WR-01)`
+  - `b4081ac27dfff7ea3fe3712d00ef0c5d68cfee51` — `fix(122-14): never log Arr API key from Test Connection; validate key before request (CR-01)`
+  - `5400cc08c1433d256b537d3678baed66dc911d93` — `fix(122-14): route status rate-limit warning to app logger; make rate_limit logger required (WR-01)`
+
+**122-13 commits (WR-02, WR-03):**
+  - `166c3e5ce93d64ada04799e54c4cebfea3f97326` — `test(122-13): narrow post-transfer pending-notice window and fix credit wording (WR-02, WR-03)`
+  - `43c8c573ff14a9114830ae173127fbb034568f54` — `fix(122-13): bound post-transfer notice window to 120 s, discard on stop/delete-local, accurate credit reason (WR-02, WR-03)`
+  - `848a41dafdf5eb7be345ff3aec49491e51361cac` — `test(122-13): seed __last_transferring_at in the hand-rolled webhook-import test double` (supplementary Rule-3 test-double fix)
+
+  `git merge-base --is-ancestor 43c8c57 a56a1f8` and `git merge-base --is-ancestor 5400cc0 a56a1f8` both exit 0 — both fix commits are ancestors of NEW_HEAD_SHA.
+
+**Gate summary (122-15-SUMMARY.md "Gates" section has full detail):**
+
+| Gate | Result |
+|---|---|
+| 1 — suite failure subset of 122-03 baseline | PASS (21 failed + 3 errors, `comm -23` empty) |
+| 2 — whole-tree ruff | PASS (`All checks passed!`) |
+| 3 — RED-before-GREEN | PASS (`test(122-13)` < `fix(122-13)`; `test(122-14)` < both `fix(122-14)` commits) |
+| 4 — scope (src/ diff since BASE) | PASS (12 files = 11 expected + 1 documented test-double exception) |
+| 5 — no `logger.exception`/`exc_info` in scope | PASS (0 matches) |
+
+- **CI run:** https://github.com/thejuran/seedsyncarr/actions/runs/40039769263 (run_number
+  404), conclusion **success**, headSha `a56a1f8a12be232e5dfe8067a3db715df1f45255`.
+- **No later push exists:** `gh run list --workflow=ci.yml --branch gsd/phase-122-safety-acceptance-and-logging-fixes` shows run 404 (databaseId `40039769263`) as the newest entry, headSha matching `gh pr view 134`'s current `headRefOid` exactly.
+- **Per-check conclusions** (`gh pr checks 134`, all pass or expected-skip):
+
+  | Check | Result |
+  |---|---|
+  | Analyze (actions) | pass |
+  | Analyze (javascript-typescript) | pass |
+  | Analyze (python) | pass |
+  | Angular unit tests | pass |
+  | Build Docker Image | pass (2m22s) |
+  | CodeQL | pass |
+  | End-to-end tests on Docker Image (amd64) | pass |
+  | Lint (Angular) | pass |
+  | Lint (Python) | pass |
+  | Release metadata verifier tests | pass |
+  | Verify Python package | pass |
+  | Verify release metadata | pass |
+  | Python unit tests | pass |
+  | Publish GitHub Release / Publish Docker Image / Publish Docker Image (:dev) / Publish Documentation / Publish to PyPI | skipping (expected — `if: github.ref == 'refs/heads/main'` gates are false for a `pull_request` event) |
+
+  `gh pr checks 134` exits 0 (all required checks pass; only the publish-* jobs, which do not run on PRs, show `skipping`).
+- **Digest resolution (two independent methods, cross-checked, identical result):**
+  - `docker buildx imagetools inspect ghcr.io/thejuran/seedsyncarr:404` → index `Digest: sha256:f8204207ef199f183f6230b74bd8967397732a5919570b09dcec7dc3f2341689` (`application/vnd.oci.image.index.v1+json`; `linux/amd64` + `linux/arm64` manifests plus their attestation manifests).
+  - Anonymous GHCR registry lookup (same method as Plans 04/11; `gh api .../packages` still 403s):
+    ```
+    TOKEN=$(curl -s "https://ghcr.io/token?scope=repository:thejuran/seedsyncarr:pull&service=ghcr.io" \
+      | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+    curl -s -I -H "Authorization: Bearer $TOKEN" \
+      -H "Accept: application/vnd.oci.image.index.v1+json" \
+      "https://ghcr.io/v2/thejuran/seedsyncarr/manifests/404" | grep -i docker-content-digest
+    # -> docker-content-digest: sha256:f8204207ef199f183f6230b74bd8967397732a5919570b09dcec7dc3f2341689
+    ```
+  - Both 64-hex digests are identical: `f8204207ef199f183f6230b74bd8967397732a5919570b09dcec7dc3f2341689`.
+- **New DEV_PIN:**
+  ```
+  DEV_PIN=ghcr.io/thejuran/seedsyncarr@sha256:f8204207ef199f183f6230b74bd8967397732a5919570b09dcec7dc3f2341689
+  ```
+  This differs from the previous DEV_PIN, as required.
+- **Superseded DEV_PIN (Plans 11-12, 06-07 evidence):** `ghcr.io/thejuran/seedsyncarr@sha256:e3941f976b5bf43370238ac3a7410f569e04b49f635d4e65382b4c1e3284ebe4`
+- No new PR was created (`gh pr list --head gsd/phase-122-safety-acceptance-and-logging-fixes --json number -q '.[].number'` prints only `134`); no merge; no `gh pr ready` call; no force push.
