@@ -311,6 +311,9 @@ Unit coverage (existing, confirms the parts of the contract that did work):
 `test_foreign_local_only_dir_never_credited` (the one pre-existing "Ignoring" test — an
 unrelated, correctly-rejected case, not this race).
 
+Superseded: rerun on the 122-10 fixed build, see "Plan 12: D-06 rerun on the fixed build"
+(verdict: PASS).
+
 ### D-06(b) Arm on commit and auto-delete — PASS
 
 Run 1, `SSA122.Alpha.S01`.
@@ -532,3 +535,231 @@ The sandbox is intentionally left running NEW_DEV_PIN (teardown was not run at t
 plan) for 122-12's rerun of 122-05's D-06(c) scenario and Plans 06-08; Plan 08 runs
 `teardown.sh --final`, which will restore `IMAGE_PIN_L0` (the original 1.7.6 pin), confirmed
 present and correct in this capture dir's `state.env`.
+
+## Plan 12: D-06 rerun on the fixed build
+
+Build under test: `seedsyncarr-test` on the new DEV_PIN
+(`ghcr.io/thejuran/seedsyncarr@sha256:e3941f976b5bf43370238ac3a7410f569e04b49f635d4e65382b4c1e3284ebe4`,
+containing 122-10's post-transfer-pending-notice fix), re-confirmed via `docker inspect
+.Config.Image` immediately before this session: equal to the last `DEV_PIN` line in
+`state.env`. Capture dir: `/volume1/docker/v5test/results/safe01-122-20261023T165741Z`
+(same dir prepared by 122-11).
+
+Clocks: NAS host clock read via `date -u` (UTC); app-log time = UTC time − 4h (confirmed by
+matching each release/post command's own UTC timestamp against its own log line below — e.g.
+the Echo release at host UTC `2026-10-23T17:18:46Z` appears in the app log at `13:18:46`).
+
+Sizing used: `SSA122.Echo.S01` / `SSA122.EchoDecoy.S01` (Round A) with Echo's siblings at
+E01 8 MiB, E02 300 MiB, E03 800 MiB, E04 1200 MiB and the decoy at 8 MiB — the exact sizing
+that reliably produced a genuinely-incomplete-at-post-time child in 122-05's own round 2.
+`SSA122.Foxtrot.S01` (Round B, (c)-only repeat, no decoy) with E01 8 MiB (never webhooked,
+by design — see below), E02 800 MiB, E03 1200 MiB. `lftp.rate_limit` was set to 4194304
+(same as 122-05); `general.debug` was confirmed `False` this session (see "Observability"
+below). Both rounds ran in a single session; no retry/Golf fallback was needed — every
+targeted child was caught genuinely incomplete on the first attempt (`MISS_COUNT=0` for both
+roots, recorded in `state.env`).
+
+### D-06(e) Waiting hold and one-shot release (rerun)
+
+1. **Both roots held, no queue entry.** App-log `13:18:39,796`/`,797`:
+   ```
+   2026-10-23 13:18:39,796 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold for 'SSA122.Echo.S01': No matching queue entry
+   2026-10-23 13:18:39,797 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold for 'SSA122.EchoDecoy.S01': No matching queue entry
+   ```
+   `model-e-held.json`: both roots `hold_reason="no_queue_entry"`, `state="default"`,
+   `local_size=None` (zero local bytes).
+2. **One-shot manual release of `SSA122.Echo.S01` only.** `POST
+   /server/command/queue/SSA122.Echo.S01?release_unverified=true` at NAS host UTC
+   `2026-10-23T17:18:46Z` → HTTP 200, body `Queued file 'SSA122.Echo.S01'`. App-log
+   (`13:18:46`):
+   ```
+   2026-10-23 13:18:46,395 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Received command Action.QUEUE for file SSA122.Echo.S01
+   2026-10-23 13:18:46,395 - WARNING - seedsyncarr.Controller.CommandProcessor (MainProcess/ControllerJob) - Manual release of unverified 'SSA122.Echo.S01' (No matching queue entry); source-completion check bypassed for this transfer only
+   2026-10-23 13:18:46,571 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold dropped for 'SSA122.Echo.S01' (no longer a queue candidate)
+   ```
+   `SSA122.EchoDecoy.S01` was never named by any release call.
+3. **Decoy never transferred, confirmed at three separate points across the whole
+   session** (right after the Echo release, during Echo's transfer, and again in the
+   `SSA122.Foxtrot.S01` hold-wait snapshot taken after Echo had already auto-deleted):
+   ```
+   model-echo-1.json:    SSA122.EchoDecoy.S01 hold_reason=no_queue_entry state=default local_size=None
+   model-echo-<later>:   SSA122.EchoDecoy.S01 hold_reason=no_queue_entry state=default local_size=None
+   model-foxtrot-held.json: SSA122.EchoDecoy.S01 hold_reason=no_queue_entry state=default local_size=None
+   (same snapshot: SSA122.Echo.S01 hold_reason=None state=deleted — confirming the decoy
+   stayed held even after its sibling root had fully completed and been deleted)
+   ```
+   `Completion hold dropped` (never `cleared`) is the only hold-removal wording for either
+   root in the whole session — `grep -c "Completion hold cleared for 'SSA122\." ` over
+   `log-echo-foxtrot.txt` = **0**.
+
+**PASS (D-05, D-06(e)).** Cross-reference: the real Sonarr-queue completion gate is
+`120-SON5-EVIDENCE.md` §SON5-02 / `120-CAPTURE-NOTES.md`, per D-04 — not re-captured here.
+
+### D-06(a) Early per-episode credit (rerun)
+
+1. **E01 caught DOWNLOADED while all three siblings were still at 0%** (`model-echo-e01ready.json`):
+   `e01[state=downloaded local=8388608 remote=8388608] e02[state=downloading local=0
+   remote=314572800] e03[state=downloading local=0 remote=838860800] e04[state=downloading
+   local=0 remote=1258291200]`. Signed webhook posted → `HTTP_CODE=200` (`webhooks.log`:
+   `2026-10-23T17:18:56Z SSA122.Echo.S01E01.mkv 200`).
+2. **Credited immediately, root not committed.** App-log:
+   ```
+   2026-10-23 13:18:56,383 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Credited early import of 'SSA122.Echo.S01E01.mkv' in 'SSA122.Echo.S01' (root still transferring)
+   ```
+3. **Two more early credits**, for children that finished individually (E02, E03) while
+   `SSA122.Echo.S01E04.mkv`, the largest sibling, was still transferring — confirming the
+   root as a whole was still transferring at each credit:
+   ```
+   2026-10-23 13:19:09,043 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Credited early import of 'SSA122.Echo.S01E02.mkv' in 'SSA122.Echo.S01' (root still transferring)
+   2026-10-23 13:19:42,066 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Credited early import of 'SSA122.Echo.S01E03.mkv' in 'SSA122.Echo.S01' (root still transferring)
+   ```
+   No `Scheduled auto-delete` line precedes any of these three (confirmed by the `ORDER`
+   check logged this session: `first_accept_line=5013 schedule_line=5014`, i.e. the first
+   acceptance line is strictly and immediately before the schedule line).
+
+**PASS (D-06(a)).** Unit coverage (unchanged by 122-10):
+`test_import_credit.py::test_child_notices_before_commit_are_credited_not_dropped`,
+`test_credit_persists_immediately_via_callback`, `test_credit_alone_never_deletes`.
+
+### D-06(c) Deferral and revalidation (rerun on fixed build)
+
+Both `SSA122.Echo.S01E04.mkv` (Round A) and `SSA122.Foxtrot.S01E03.mkv` (Round B) reproduce
+the *exact* race that caused 122-05's FAIL: a webhook posted on a genuinely-incomplete child,
+followed roughly 60-100s later — after that child (and the root's other remaining children)
+individually finished — by the root's commit cycle, landing in the window between "all
+children individually DOWNLOADED" and "root's own commit bookkeeping catching up". On the
+pre-fix build this window produced `Ignoring webhook import ... no transfer evidence`
+(122-05's `SSA122.Alpha2.S01E04`, dropped 61s after posting). On this build it does not.
+
+1. **E02, E03 and E04 posted while genuinely incomplete** (`posts-echo.txt`, state/local/remote
+   recorded immediately before each post):
+   ```
+   2026-10-23T17:18:58Z child=SSA122.Echo.S01E02.mkv INCOMPLETE state=downloading local=0 remote=314572800
+   2026-10-23T17:19:01Z child=SSA122.Echo.S01E03.mkv INCOMPLETE state=downloading local=147160069 remote=838860800  (~17.5%)
+   2026-10-23T17:19:04Z child=SSA122.Echo.S01E04.mkv INCOMPLETE state=downloading local=146407424 remote=1258291200  (~11.6%)
+   ```
+   `webhooks.log` confirms exactly one `200` POST for each (no retries).
+2. **E02 and E03 revalidated and credited without being re-posted** — the ordinary
+   early-credit path (quoted under D-06(a) above), each strictly before the root's final
+   acceptance.
+3. **E04's deferred notice was accepted, not dropped — the critical check:**
+   ```
+   2026-10-23 13:20:06,625 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Recorded webhook import: 'SSA122.Echo.S01' (child: 'SSA122.Echo.S01E04.mkv')
+   2026-10-23 13:20:08,367 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Scheduled auto-delete of 'SSA122.Echo.S01' in 300 seconds
+   ```
+   62 seconds after E04's webhook was posted on a genuinely-incomplete child (step 1) — the
+   same order of magnitude as 122-05's 61-second drop — **no** `Ignoring webhook import for
+   'SSA122.` line occurs anywhere in this session (`grep -c "Ignoring webhook import for
+   'SSA122\."` over `log-echo-foxtrot.txt` = **0**). `persist-echo.json` confirms the
+   practical consequence: `imported_children['SSA122.Echo.S01']` =
+   `['ssa122.echo.s01e01.mkv', 'ssa122.echo.s01e02.mkv', 'ssa122.echo.s01e03.mkv',
+   'ssa122.echo.s01e04.mkv']` — **all four** video children present (captured immediately
+   after the schedule line, before auto-delete could prune anything).
+   `Recorded webhook import: '<root>' (child: '<child>')` is the code path at
+   `controller.py:882` (inside `__check_webhook_imports`'s "Accepted" branch, the same
+   common code that also handles `add_imported_child`) — one of the two acceptance
+   phrasings the D-06(b) truth explicitly allows, not a re-post (webhooks.log shows exactly
+   one POST for E04).
+
+   Count of `Ignoring webhook import for 'SSA122.` lines this session: **0**. Which path
+   credited each late child: E02/E03 via the ordinary early-credit path (`Credited early
+   import of ... (root still transferring)`, because the root's *other* children — E04 in
+   particular — were still transferring at the moment each was revalidated); E04 via the
+   commit-time "Recorded webhook import" acceptance path, landing in the post-transfer
+   window the 122-10 fix targets (all individual children DOWNLOADED, root's own commit
+   bookkeeping catching up one cycle later). `Keeping webhook notice ... transfer finished,
+   awaiting commit` DEBUG lines were **not observable** this session (`general.debug=False`,
+   confirmed read from `/server/config/get` at preflight and recorded in `state.env` as
+   `DEBUG_L0=False`) — the verdict rests on the outcome checks above (zero `Ignoring` lines,
+   complete `imported_children`, correct accept-before-schedule ordering), not on observing
+   the DEBUG "Keeping" line directly.
+
+   Cross-reference to 122-10's regression coverage:
+   `test_import_credit.py::TestPostTransferWindow` —
+   `test_pending_notice_survives_post_transfer_scan_lag_default_root` (the live-reachable
+   shape, matching this session's own timing exactly: lftp job ended, local scan lagging),
+   `test_pending_notice_survives_post_transfer_scan_lag_downloaded_root` (the
+   unit-test-only shape), plus two guards unaffected by this fix:
+   `test_post_transfer_pending_notice_still_expires` (TTL still fires) and
+   `test_post_transfer_pending_notice_dropped_when_root_loses_remote_copy` (a root that
+   loses its remote copy is still dropped).
+
+**PASS (D-06(c)).**
+
+### D-06(c) repeat on SSA122.Foxtrot.S01
+
+A second, (c)-only repeat on a fresh root (no decoy, no E01 webhook posted at all — this
+root's E01 child was staged but deliberately never given a webhook, so its only path to
+being imported is the root-level commit itself; the children under test are purely E02 and
+E03) to reduce the chance the Echo-round pass was a one-off miss of the race window.
+
+1. **Hold, release, both children posted while genuinely incomplete** (`posts-foxtrot.txt`):
+   ```
+   2026-10-23T17:27:54Z child=SSA122.Foxtrot.S01E02.mkv INCOMPLETE state=downloading local=0 remote=838860800
+   2026-10-23T17:27:55Z child=SSA122.Foxtrot.S01E03.mkv INCOMPLETE state=downloading local=0 remote=1258291200
+   ```
+   `webhooks.log`: one `200` POST each, no retries.
+2. **E02 credited via the ordinary early-credit path**, then **E03's deferred notice
+   accepted on commit** — again, not dropped:
+   ```
+   2026-10-23 13:28:57,530 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Credited early import of 'SSA122.Foxtrot.S01E02.mkv' in 'SSA122.Foxtrot.S01' (root still transferring)
+   2026-10-23 13:29:40,191 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Recorded webhook import: 'SSA122.Foxtrot.S01' (child: 'SSA122.Foxtrot.S01E03.mkv')
+   2026-10-23 13:29:41,683 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Scheduled auto-delete of 'SSA122.Foxtrot.S01' in 300 seconds
+   ```
+   E03's acceptance is ~104s after its post — again, no `Ignoring webhook import for
+   'SSA122.` line for Foxtrot anywhere in the session. `persist-foxtrot.json`:
+   `imported_children['SSA122.Foxtrot.S01']` = `['ssa122.foxtrot.s01e02.mkv',
+   'ssa122.foxtrot.s01e03.mkv']` — both webhooked children present (E01 is correctly absent:
+   it was never webhooked by design, and the coverage/UI badge behavior for a root whose
+   only "child" evidence came through the commit path is unchanged by this fix — not
+   re-tested here, out of this plan's scope).
+
+**PASS (D-06(c) repeat, Foxtrot).** Combined with the Echo-round pass above, the race was
+hit and handled correctly twice, on two independent roots, in the same session.
+
+### D-06(b) Arm on commit and auto-delete (rerun)
+
+Only re-run with the real 300 s delay on `SSA122.Echo.S01` (Foxtrot's own schedule line is
+evidenced above; its delete wait is not required by this plan).
+
+1. **Schedule**, immediately after E04's commit-time acceptance (quoted under D-06(c)
+   above): `Scheduled auto-delete of 'SSA122.Echo.S01' in 300 seconds` at app-log
+   `13:20:08,367`.
+2. **Real delay, then deletion**, measured against the schedule line:
+   ```
+   2026-10-23 13:25:08,371 - INFO - seedsyncarr.Controller (MainProcess/Thread-4) - Auto-deleted local file 'SSA122.Echo.S01'
+   ```
+   `13:25:08,371 − 13:20:08,367 = 300.004 s` by the log timestamps; this session's own
+   elapsed-time tracking (epoch-based, independent of log parsing) recorded `341s` past the
+   scheduling observation (the extra ~41s is polling/detection latency in the harness's own
+   20s-interval log-grep loop, not the product's timer — the log timestamps themselves show
+   the timer fired at exactly 300.004s, consistent with 122-05's own 300.004s observation).
+3. **Local removal confirmed**: `ls -la /volume1/data/v5test/torrents/SSA122.Echo.S01` →
+   `No such file or directory`, checked immediately after the delete line was observed (and
+   independently re-confirmed clean after teardown).
+
+**PASS (D-06(b)).** Unit coverage unchanged: `test_auto_delete_rearm.py::test_rearmed_timer_fires_and_deletes_once_root_is_deletable`,
+`test_import_credit.py::test_root_commit_then_last_child_webhook_arms_and_deletes`.
+
+### Plan 12 hygiene
+
+Secret handling: fresh `head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9'` secret, 0600
+file, never echoed or logged (`webhook-post.sh` computes the HMAC inside the sandbox
+container over stdin). The exact-match secret scan (`grep -c -F -f secret` over every
+`log-*.txt`/`model-*.json`/`persist-*.json`/`webhooks.log` capture file) was run **after**
+this session's own orchestration script hit an unrelated bash arithmetic bug in its
+`scan_secret` helper (see Deviations in `122-12-SUMMARY.md`) — the scan itself was re-run
+manually with the corrected logic, over the same files, before teardown: **`SECRET_SCAN=0`**
+(exact-match, 20 files scanned, zero hits), recorded in `state.env`. `webhooks.log` shows six
+`200` responses (four Echo + two Foxtrot), one per posted child, no retries.
+
+Teardown: `bash teardown.sh` (not `--final`) ran after the scan, restoring `lftp.rate_limit`
+to its prior value (`0`), restoring `webhook_secret` to empty, and removing all three
+synthetic roots (`REMOVED synth roots count=3 refused=0`) from both the seedbox and the
+sandbox's local data root. Last line: **`SANDBOX_RESTORED ok`**. Re-confirmed independently
+afterward: `docker inspect seedsyncarr-test --format '{{.Config.Image}}'` still equals the
+new DEV_PIN (teardown without `--final` does not change the pin); `lftp.rate_limit` reads
+back `0`; no `SSA122.*` names remain on the seedbox or under `/volume1/data/v5test/torrents`.
+Production `seedsyncarr` fingerprint (Id, image, `StartedAt`) was re-checked read-only before
+and after this session and is byte-identical to the 122-11 baseline — never named by any
+write command in this plan's procedures.
