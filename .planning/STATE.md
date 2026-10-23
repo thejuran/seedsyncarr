@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: executing
-stopped_at: Completed 122-09-PLAN.md (SAFE-02 reconciliation; both incident records resolved)
-last_updated: "2026-10-23T21:36:54.299Z"
-last_activity: 2026-10-23 -- 122-08 executed (owner declined sandbox Sonarr key rotation this session, follow-up flagged for Plan 09's ROADMAP operator follow-ups; fixed a Rule 1 regex bug in teardown.sh --final that did not match a digest-only image reference; sandbox restored to IMAGE_PIN_L0 (1.7.6), independently re-verified in a fresh session; production fingerprint confirmed unchanged from the Plan 04 baseline; SAFE-01 verdict recorded PASSED on all six required scenarios; owner reviewed and approved, verbatim 'approve'; Plan 09 SAFE-02 reconciliation unblocked)
+status: completed
+stopped_at: "122 plans 01-12 complete; verification gaps_found (code review CR-01 key leak + WR-01..03) -- owner chose fix in-phase; next /bm:plan-phase 122 --gaps"
+last_updated: "2026-10-23T22:17:24.000Z"
+last_activity: 2026-10-23 -- 122-09 executed (owner verbatim reply "All confirmed" to Task 2's cleanup checklist; both done-group-no-auto-delete.md and extract-staging-autodel-rearm.md closed per D-12, status resolved, moved to .planning/debug/resolved/; ROADMAP Done-group operator follow-up ticked; deferred extract-staging items C-G stay in the Backlog, unaffected; SAFE-02 requirement marked complete)
 progress:
   total_phases: 6
   completed_phases: 2
@@ -94,6 +94,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 122]: 122-07: D-07 extraction staging/auto-delete re-arm PASS on fixed build (sha256:e3941f97...) using a 2-volume 1 GiB SSA122.Rar.Pack RAR; staging grew through 7 samples while the release folder showed only the .rar volumes, the mkv published at full size only once complete, zero model snapshots listed the staging dir; a webhook posted the instant the root reached EXTRACTING deferred auto-delete 3 times (naming State.EXTRACTING) then deleted once extraction finished; SAFE-01's three live-acceptance halves (import/auto-delete, restart persistence, extraction) are all now PASS on the build that will ship; a pre-existing gap (ExtractDispatch's coalesce filter does not recognize modern RAR .partN.rar volume naming, causing one redundant-but-safe extraction pass per volume) logged to deferred-items.md for Phase 123
 - [Phase 122]: 122-08: owner reviewed and approved the SAFE-01 verdict (all six required scenarios PASS); sandbox restored to IMAGE_PIN_L0 (1.7.6) and independently re-verified; a Rule 1 regex bug in teardown.sh --final (did not match a digest-only image reference) was found and fixed; owner declined sandbox Sonarr key rotation this session (follow-up flagged for Plan 09's ROADMAP operator follow-ups); Plan 09 (SAFE-02 reconciliation) is unblocked
 - [Phase 122]: 122-09: owner verbatim reply 'All confirmed' (Task 2) closed both open incident records per D-12 -- done-group-no-auto-delete.md and extract-staging-autodel-rearm.md both status resolved, moved to .planning/debug/resolved/; ROADMAP Done-group operator follow-up ticked; deferred extract-staging items C-G stay in the Backlog, unaffected (do not block closing)
+- [Phase 122]: Owner 2026-10-23: fix code-review CR-01 (API key leak via config handler traceback), WR-01, WR-02 (narrow D-06(c) pending-notice retention to a short post-transfer grace window) and WR-03 in-phase on PR #134, with D-06(c) sandbox rerun on the new build
 
 ### Phase 110 Decisions (2026-06-02)
 
