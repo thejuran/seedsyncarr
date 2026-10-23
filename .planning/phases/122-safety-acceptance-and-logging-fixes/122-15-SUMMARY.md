@@ -190,3 +190,11 @@ None - no external service configuration required.
 ---
 *Phase: 122-safety-acceptance-and-logging-fixes*
 *Completed: 2026-10-23*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/122-safety-acceptance-and-logging-fixes/122-15-SUMMARY.md`
+- FOUND: `.planning/phases/122-safety-acceptance-and-logging-fixes/122-SAFE01-EVIDENCE.md` (contains 1 match for "Re-pin after 122-13/122-14 fixes")
+- FOUND commit `ee7486c` (`git log --oneline --all | grep ee7486c`)
+- PR #134 `state`/`headRefOid`, `gh pr checks 134`, both digest lookups, and all gate command outputs were observed directly from command output during this session (not inferred), quoted verbatim above and in the evidence file.
+- Confirmed the `docs(122-15)` commit is local-only: `git log origin/gsd/phase-122-safety-acceptance-and-logging-fixes..HEAD` shows only `ee7486c`, so PR #134's head stays at NEW_HEAD_SHA `a56a1f8a12be232e5dfe8067a3db715df1f45255` as the plan requires.

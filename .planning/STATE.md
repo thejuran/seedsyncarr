@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: "Completed 122-13-PLAN.md (gap closure: WR-02/WR-03 D-06(c) grace-window narrowing + credit-reason fix, RED-GREEN). Nothing pushed; 122-15 gates both 122-13 and 122-14, then pushes to PR #134; 122-16/17 follow."
-last_updated: "2026-10-23T23:20:01.070Z"
-last_activity: 2026-10-23 -- 122-14 executed (ConfigHandler._test_arr_connection strips/validates the Arr API key before any request, logs only the exception type on failure -- closes CR-01; rate_limit()'s logger is now required and keyword-only, StatusHandler logs under seedsyncarr.StatusHandler -- closes WR-01; D-14 re-audit recorded 0 logger.exception/exc_info sites in scope; nothing pushed, 122-15 pushes)
+stopped_at: "Completed 122-15-PLAN.md (gated 122-13/122-14 together, pushed to PR #134, CI run 404 green on every check, new DEV_PIN sha256:f8204207... recorded). 122-16 reruns LOG-01/D-06(c) live on this new build; 122-17 closes the second gap-closure cycle."
+last_updated: "2026-10-23T23:43:22.178Z"
+last_activity: 2026-10-23 -- 122-15 executed (gated 122-13/122-14 together: suite failure set matches the 122-03 baseline exactly via comm -23, whole-tree ruff clean, RED-before-GREEN confirmed for both plans, src/ scope is the 11 expected files plus the documented test_controller.py test-double exception, 0 logger.exception/exc_info in scope; pushed to draft PR #134, CI run 404 green on every check; new DEV_PIN sha256:f8204207... resolved by two independent methods and recorded in 122-SAFE01-EVIDENCE.md, superseding sha256:e3941f97...; nothing merged, no new PR; 122-16 reruns LOG-01/D-06(c) live on this new build)
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 20
-  completed_plans: 17
+  completed_plans: 18
   percent: 17
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 122 (safety-acceptance-and-logging-fixes) — EXECUTING (gap-closure cycle 2: 122-13..17)
-Plan: 122-13 of 12 complete (01-04 complete; 05 gaps_found, superseded by 10-12's fix, intentionally not counted toward completion; 06 D-06(d) restart persistence PASS, complete; 07 D-07 extraction staging/auto-delete re-arm PASS, complete; 08 sandbox restore + owner-approved SAFE-01 verdict, complete; 09 SAFE-02 reconciliation, owner-confirmed closed, complete; 10 gap-closure fix complete; 11 pushed fix to PR #134 and re-pinned sandbox, complete; 12 reran 122-05's D-06 scenarios on the fixed build -- all PASS, gap closed; code review + verification afterward found CR-01/WR-01/WR-02/WR-03 and owner decided to fix all four in-phase on PR #134, producing gap-closure plans 13-17; 14 (CR-01 API-key leak + WR-01 status rate-limit logger) fixed, RED-GREEN-GREEN, complete; 13 (WR-02/WR-03 narrow D-06(c) grace window + credit log wording) fixed, RED-GREEN, complete)
-Status: Gap-closure cycle 2 in progress (122-13..17). 122-13 and 122-14 are both complete; remaining: 122-15 (gate both fix plans and push to PR #134), 122-16 (live LOG-01/D-06(c) rerun), 122-17 (close SAFE-01/LOG-01)
-Last activity: 2026-10-23 -- 122-13 executed (narrowed the 122-10 D-06(c) post-transfer pending-notice exception to a 120 s grace window requiring a local copy; added per-root __last_transferring_at tracking pruned to the model every cycle; a successful STOP or DELETE_LOCAL now discards the root's pending notices at once; __credit_early_child's INFO line now says "(transfer finished, awaiting commit)" instead of the always-false "(root still transferring)" -- closes WR-02/WR-03; RED-GREEN, 285 targeted tests pass, whole test_controller dir shows only the known environment baseline, ruff clean; a hand-rolled test double in test_controller.py needed a one-line fix to seed the new attribute; nothing pushed, 122-15 gates both 122-13/14 and pushes)
+Plan: 122-15 of 12 complete (01-04 complete; 05 gaps_found, superseded by 10-12's fix, intentionally not counted toward completion; 06 D-06(d) restart persistence PASS, complete; 07 D-07 extraction staging/auto-delete re-arm PASS, complete; 08 sandbox restore + owner-approved SAFE-01 verdict, complete; 09 SAFE-02 reconciliation, owner-confirmed closed, complete; 10 gap-closure fix complete; 11 pushed fix to PR #134 and re-pinned sandbox, complete; 12 reran 122-05's D-06 scenarios on the fixed build -- all PASS, gap closed; code review + verification afterward found CR-01/WR-01/WR-02/WR-03 and owner decided to fix all four in-phase on PR #134, producing gap-closure plans 13-17; 14 (CR-01 API-key leak + WR-01 status rate-limit logger) fixed, RED-GREEN-GREEN, complete; 13 (WR-02/WR-03 narrow D-06(c) grace window + credit log wording) fixed, RED-GREEN, complete; 15 (gated both together and pushed to PR #134, CI run 404 green, new DEV_PIN sha256:f8204207... recorded) complete)
+Status: Gap-closure cycle 2 in progress (122-13..17). 122-13, 122-14 and 122-15 are complete; remaining: 122-16 (live LOG-01/D-06(c) rerun on the new DEV_PIN), 122-17 (close SAFE-01/LOG-01)
+Last activity: 2026-10-23 -- 122-15 executed (gated 122-13/122-14 together: suite failure set matches the 122-03 baseline exactly via comm -23, whole-tree ruff clean, RED-before-GREEN confirmed for both plans, src/ scope is the 11 expected files plus the documented test_controller.py test-double exception, 0 logger.exception/exc_info in scope; pushed to draft PR #134, CI run 404 green on every check; new DEV_PIN sha256:f8204207... resolved by two independent methods and recorded in 122-SAFE01-EVIDENCE.md, superseding sha256:e3941f97...; nothing merged, no new PR; 122-16 reruns LOG-01/D-06(c) live on this new build)
 
 ## Accumulated Context
 
@@ -97,6 +97,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 122]: Owner 2026-10-23: fix code-review CR-01 (API key leak via config handler traceback), WR-01, WR-02 (narrow D-06(c) pending-notice retention to a short post-transfer grace window) and WR-03 in-phase on PR #134, with D-06(c) sandbox rerun on the new build
 - [Phase 122]: 122-14: closed CR-01 (ConfigHandler._test_arr_connection now strips the stored Arr API key and rejects it with a fixed "contains invalid characters" message if it is not printable-ASCII-without-space, before any outbound request; the unexpected-error path now logs only type(e).__name__, never the message or exc_info) and WR-01 (rate_limit()'s logger parameter is now required and keyword-only with no module-level fallback; StatusHandler logs under seedsyncarr.StatusHandler); RED-GREEN-GREEN, 404 tests passed, ruff clean; D-14 re-audit re-run, 0 logger.exception/exc_info sites remain in scope; no live NAS check (would require reading the real sandbox key); nothing pushed, 122-15 pushes
 - [Phase 122]: 122-13: narrowed 122-10's D-06(c) post-transfer pending-notice exception to a 120 s grace window (_POST_TRANSFER_GRACE_SECS) requiring a local copy, added STOP/DELETE_LOCAL discard, and gave __credit_early_child a reason parameter so its INFO line says '(transfer finished, awaiting commit)' instead of the always-false '(root still transferring)' -- closes WR-02/WR-03; RED-GREEN, 285 targeted tests pass, whole test_controller dir shows only the known environment baseline, ruff clean; nothing pushed, 122-15 gates both 122-13/14 and pushes
+- [Phase 122]: 122-15: gated 122-13/14 together (suite subset of 122-03 baseline, whole-tree ruff clean, RED-before-GREEN, scope, D-14 grep); pushed to PR #134, CI run 404 green on all checks; new DEV_PIN sha256:f8204207... resolved by two independent methods, superseding sha256:e3941f97...; nothing merged, 122-16 reruns LOG-01/D-06(c) live on this new build
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -154,9 +155,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-23T23:20:01.064Z
-Stopped at: Completed 122-13-PLAN.md (gap closure: WR-02/WR-03 D-06(c) grace-window narrowing + credit-reason fix, RED-GREEN). Nothing pushed; 122-15 gates both 122-13 and 122-14, then pushes to PR #134; 122-16/17 follow.
-Next action: Both gap-closure fix plans (122-13, 122-14) are complete. 122-15 gates both together (full suite + ruff) and pushes to PR #134; 122-16 reruns LOG-01/D-06(c) live on the sandbox against the new build; 122-17 closes the second gap cycle (restores the sandbox to its 1.7.6 pin and records SAFE-01/LOG-01 as closed). Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-23T23:43:22.173Z
+Stopped at: Completed 122-15-PLAN.md (gated 122-13/122-14 together, pushed to PR #134, CI run 404 green on every check, new DEV_PIN sha256:f8204207... recorded). 122-16 reruns LOG-01/D-06(c) live on this new build; 122-17 closes the second gap-closure cycle.
+Next action: 122-13, 122-14 and 122-15 are complete; PR #134 is pushed with CI run 404 green on every check and a new DEV_PIN (sha256:f8204207...) recorded in 122-SAFE01-EVIDENCE.md. 122-16 reruns LOG-01/D-06(c) live on the sandbox against this new build; 122-17 closes the second gap cycle (restores the sandbox to its 1.7.6 pin and records SAFE-01/LOG-01 as closed). Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
