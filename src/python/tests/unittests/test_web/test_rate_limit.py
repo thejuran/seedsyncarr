@@ -2,8 +2,9 @@
 Unit tests for the rate_limit sliding-window decorator factory.
 """
 import json
+import logging
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from web.rate_limit import rate_limit
 
@@ -16,7 +17,7 @@ class TestRateLimitUnderLimit(unittest.TestCase):
         def _handler():
             return "OK"
 
-        self.handler = rate_limit(3, 60.0)(_handler)
+        self.handler = rate_limit(3, 60.0, logger=MagicMock())(_handler)
 
     @patch("web.rate_limit.time")
     def test_first_call_passes_through(self, mock_time):
@@ -39,7 +40,7 @@ class TestRateLimitOverLimit(unittest.TestCase):
         def _handler():
             return "OK"
 
-        self.handler = rate_limit(3, 60.0)(_handler)
+        self.handler = rate_limit(3, 60.0, logger=MagicMock())(_handler)
 
     @patch("web.rate_limit.time")
     def test_fourth_call_returns_429(self, mock_time):
@@ -96,7 +97,7 @@ class TestRateLimitWindowReset(unittest.TestCase):
         def _handler():
             return "OK"
 
-        handler = rate_limit(3, 60.0)(_handler)
+        handler = rate_limit(3, 60.0, logger=MagicMock())(_handler)
 
         # Fill up the window at t=1000
         mock_time.time.return_value = 1000.0
@@ -120,7 +121,7 @@ class TestRateLimitWindowReset(unittest.TestCase):
         def _handler():
             return "OK"
 
-        handler = rate_limit(3, 60.0)(_handler)
+        handler = rate_limit(3, 60.0, logger=MagicMock())(_handler)
 
         # Make 2 requests at t=1000
         mock_time.time.return_value = 1000.0
@@ -152,8 +153,8 @@ class TestRateLimitIndependentClosures(unittest.TestCase):
         def _handler_b():
             return "B"
 
-        handler_a = rate_limit(3, 60.0)(_handler_a)
-        handler_b = rate_limit(3, 60.0)(_handler_b)
+        handler_a = rate_limit(3, 60.0, logger=MagicMock())(_handler_a)
+        handler_b = rate_limit(3, 60.0, logger=MagicMock())(_handler_b)
 
         # Exhaust handler_a's limit
         for _ in range(3):
@@ -174,8 +175,8 @@ class TestRateLimitIndependentClosures(unittest.TestCase):
         def _handler():
             return "OK"
 
-        handler_1 = rate_limit(3, 60.0)(_handler)
-        handler_2 = rate_limit(3, 60.0)(_handler)
+        handler_1 = rate_limit(3, 60.0, logger=MagicMock())(_handler)
+        handler_2 = rate_limit(3, 60.0, logger=MagicMock())(_handler)
 
         # Exhaust handler_1
         for _ in range(3):
@@ -195,14 +196,14 @@ class TestRateLimitFunctoolsWraps(unittest.TestCase):
         def my_unique_handler():
             return "OK"
 
-        decorated = rate_limit(3, 60.0)(my_unique_handler)
+        decorated = rate_limit(3, 60.0, logger=MagicMock())(my_unique_handler)
         self.assertEqual("my_unique_handler", decorated.__name__)
 
     def test_wraps_sets_wrapped_attribute(self):
         def my_unique_handler():
             return "OK"
 
-        decorated = rate_limit(3, 60.0)(my_unique_handler)
+        decorated = rate_limit(3, 60.0, logger=MagicMock())(my_unique_handler)
         self.assertIs(my_unique_handler, decorated.__wrapped__)
 
 
@@ -220,7 +221,7 @@ class TestRateLimitArgPassthrough(unittest.TestCase):
             received["value"] = value
             return "OK"
 
-        handler = rate_limit(3, 60.0)(_handler)
+        handler = rate_limit(3, 60.0, logger=MagicMock())(_handler)
         result = handler(section="media", key="path", value="/downloads")
         self.assertEqual("OK", result)
         self.assertEqual("media", received["section"])
@@ -236,10 +237,49 @@ class TestRateLimitArgPassthrough(unittest.TestCase):
             received.extend(args)
             return "OK"
 
-        handler = rate_limit(3, 60.0)(_handler)
+        handler = rate_limit(3, 60.0, logger=MagicMock())(_handler)
         result = handler("arg1", "arg2")
         self.assertEqual("OK", result)
         self.assertEqual(["arg1", "arg2"], received)
+
+
+class TestRateLimitSuppliedLogger(unittest.TestCase):
+    """LOG-01: an injected logger receives the rate-limit warning instead of
+    the module default, so handlers can route it under the app logger."""
+
+    @patch("web.rate_limit.time")
+    def test_rate_limit_uses_supplied_logger(self, mock_time):
+        mock_time.time.return_value = 1000.0
+        mock_logger = MagicMock()
+
+        def _handler():
+            return "OK"
+
+        handler = rate_limit(1, 60.0, logger=mock_logger)(_handler)
+        handler()
+        response = handler()
+
+        self.assertEqual(429, response.status_code)
+        mock_logger.warning.assert_called_once_with(
+            "Rate limit exceeded for %s", "_handler"
+        )
+
+
+class TestRateLimitRequiresLogger(unittest.TestCase):
+    """WR-01: logger is a required keyword-only argument, so a future call
+    site cannot silently fall back to a detached module logger."""
+
+    def test_rate_limit_requires_logger(self):
+        with self.assertRaises(TypeError):
+            rate_limit(3, 60.0)
+
+        with self.assertRaises(TypeError) as ctx:
+            rate_limit(3, 60.0, logger=None)
+        self.assertIn("requires a logger", str(ctx.exception))
+
+        with self.assertRaises(TypeError):
+            # logger passed positionally must also fail: it is keyword-only
+            rate_limit(3, 60.0, logging.getLogger("x"))
 
 
 if __name__ == "__main__":

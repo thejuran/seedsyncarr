@@ -155,3 +155,18 @@ The only two open items are (a) a visual/UI check of the new "Waiting" badge and
 
 _Verified: 2026-10-15T16:23:52Z_
 _Verifier: Claude (bm-verifier)_
+
+## Extraction/import half — completed by Phase 122 (2026-10-23)
+
+The browser half of this verification passed 2026-10-18 (`119-HUMAN-UAT.md`). The
+extraction/import/auto-delete half — left open by this report — is now complete: Phase 122
+ran all six required live-acceptance scenarios (D-06(a)-(e) import/auto-delete, D-07
+extraction staging and auto-delete re-arm) against the sandbox `seedsyncarr-test` on the
+build that ships as 1.8.0, plus an independent repeat of the D-06(c) deferral/revalidation
+race on a second root. Full evidence, log excerpts, timestamps and verdicts:
+`.planning/phases/122-safety-acceptance-and-logging-fixes/122-SAFE01-EVIDENCE.md`.
+
+**Verdict: SAFE-01 PASSED** (all six scenarios PASS; see the evidence file's "SAFE-01
+verdict" table). Production `seedsyncarr` was never touched by any Phase 122 live check; the
+sandbox was restored to its original 1.7.6 pin and independently re-verified after the last
+check.

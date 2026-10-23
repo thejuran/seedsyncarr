@@ -91,6 +91,62 @@ def _transferring_pack(done=(1, 2, 3), root_name=ROOT, parts=None, extra_childre
     return root
 
 
+def _post_transfer_pack(root_state, part4_done, root_local_size=None):
+    """Root between transfer end and commit (122-05 D-06(c)).
+
+    Live shape: the lftp job for the root has ended (no LftpJobStatus, so
+    _set_initial_state leaves the root DEFAULT instead of DOWNLOADING) while
+    the local scan is still lagging behind. Unit-test-only shape (reachable
+    because these tests inject the model directly and skip the pipeline's
+    commit pass): the root already shows DOWNLOADED with every child
+    individually complete, but its own size aggregate has not caught up
+    (root_local_size stays stale). Either way the root is NOT committed here
+    (never added to downloaded_file_names by this helper) -- parts 1-3 are
+    always complete; part 4 is complete only when part4_done is True,
+    otherwise it is a stale DEFAULT leaf (no transfer state at all, since the
+    lftp job for it is gone too) with half its bytes on disk.
+    """
+    root = ModelFile(ROOT, True)
+    root.state = root_state
+    root.remote_size = ROOT_REMOTE_SIZE
+    for i in (1, 2, 3):
+        root.add_child(_child(PARTS[i], True))
+    if part4_done:
+        part4 = _child(PARTS[4], True)
+    else:
+        part4 = ModelFile(PARTS[4], False)
+        part4.remote_size = PART_SIZE
+        part4.local_size = PART_SIZE // 2
+        part4.state = ModelFile.State.DEFAULT
+    root.add_child(part4)
+    root.local_size = (
+        root_local_size if root_local_size is not None
+        else sum(c.local_size or 0 for c in root.get_children())
+    )
+    return root
+
+
+def _local_gone_pack():
+    """Root whose remote copy remains but whose local copy was removed
+    outside SeedSyncarr after the transfer ended (122-REVIEW WR-02).
+
+    Root directory in state DEFAULT with a remote copy (remote_size
+    ROOT_REMOTE_SIZE) but no local copy (local_size None); every leaf child
+    (PARTS 1-4) mirrors that shape (remote_size PART_SIZE, local_size None).
+    """
+    root = ModelFile(ROOT, True)
+    root.state = ModelFile.State.DEFAULT
+    root.remote_size = ROOT_REMOTE_SIZE
+    root.local_size = None
+    for i, name in sorted(PARTS.items()):
+        child = ModelFile(name, False)
+        child.remote_size = PART_SIZE
+        child.local_size = None
+        child.state = ModelFile.State.DEFAULT
+        root.add_child(child)
+    return root
+
+
 def _committed_pack(done=(1, 2, 3, 4), root_name=ROOT):
     """Root fully transferred: DOWNLOADED with a complete local copy."""
     root = ModelFile(root_name, True)
@@ -506,3 +562,297 @@ class TestPendingNoticeLifecycle(BaseImportCreditTestCase):
 
         self.assertEqual(0, self.controller._discard_pending_notices("A", "test"))
         self.assertEqual(before + 2, generations["A"])
+
+
+class TestPostTransferWindow(BaseImportCreditTestCase):
+    """2026-10-22 sandbox failure (122-05 D-06(c)): SSA122.Alpha2.S01E04's
+    deferred webhook notice was kept pending while its root transferred, then
+    permanently dropped with "Ignoring webhook import ... no transfer
+    evidence" 61 s later -- 2 s before the root committed -- because by then
+    the root's lftp job had ended (no longer DOWNLOADING/QUEUED) but the
+    local scan had not yet caught up, so the evidence gate saw neither
+    committed evidence nor a transferring root. persist.imported_children
+    stayed one child short forever. These tests reproduce that drop and pin
+    down the fix's narrowness (a FRESH notice or a root that lost its remote
+    copy is unaffected) and boundedness (TTL/path/generation/ambiguity
+    discards are unchanged).
+    """
+
+    def test_pending_notice_survives_post_transfer_scan_lag_default_root(self):
+        self._put(_transferring_pack(done=(1, 2, 3)))
+        self._webhook(1, 2, 3, 4)
+        self.controller.process()
+        self.assertEqual(_lower(1, 2, 3), self._credited())
+
+        # Cycle 2: lftp job for the root has ended (DEFAULT), local scan
+        # lagging on part 4; root not yet committed; no new webhook.
+        self._reset_logs()
+        self._put(_post_transfer_pack(ModelFile.State.DEFAULT, part4_done=False))
+        self.controller.process()
+
+        self.assertFalse([w for w in self._messages("warning") if "no transfer evidence" in w])
+        self.assertIn((ROOT, PARTS[4]), self._pending_notices())
+        self.assertEqual(_lower(1, 2, 3), self._credited())
+        self.assertNotIn(ROOT, self.persist.imported_file_names)
+        self.assertEqual({}, self._pending_timers())
+
+        # Cycle 3: the root commits.
+        self._reset_logs()
+        self._commit_root()
+        self.controller.process()
+
+        self.assertEqual(_lower(1, 2, 3, 4), self._credited())
+        self.assertIn(ROOT, self.persist.imported_file_names)
+        self.assertIn(ROOT, self._pending_timers())
+        self.assertEqual({}, self._pending_notices())
+        recorded = [m for m in self._messages("info") if "Recorded webhook import" in m]
+        self.assertTrue(recorded)
+        self.assertTrue(any(PARTS[4] in m for m in recorded))
+
+    def test_pending_notice_survives_post_transfer_scan_lag_downloaded_root(self):
+        """Orchestrator-described shape: only reachable here because unit
+        tests inject the model directly and skip the pipeline's commit pass
+        (a live build would have already committed a DOWNLOADED root)."""
+        self._put(_transferring_pack(done=(1, 2, 3)))
+        self._webhook(1, 2, 3, 4)
+        self.controller.process()
+        self.assertEqual(_lower(1, 2, 3), self._credited())
+
+        self._reset_logs()
+        self._put(_post_transfer_pack(ModelFile.State.DOWNLOADED, part4_done=True,
+                                      root_local_size=ROOT_REMOTE_SIZE - 1))
+        self.controller.process()
+
+        self.assertFalse([w for w in self._messages("warning") if "no transfer evidence" in w])
+        self.assertEqual(_lower(1, 2, 3, 4), self._credited())
+        credited_lines = [m for m in self._messages("info") if "Credited early import" in m]
+        self.assertTrue(any(PARTS[4] in m for m in credited_lines))
+        self.assertNotIn(ROOT, self.persist.imported_file_names)
+        self.assertNotIn(ROOT, self.persist.downloaded_file_names)
+        self.assertEqual({}, self._pending_timers())
+        self.assertEqual({}, self._pending_notices())
+
+    def test_fresh_notice_for_uncommitted_non_transferring_root_still_ignored(self):
+        """Guard: a FRESH notice (never pending) for a non-transferring,
+        uncommitted root is still ignored exactly as before this phase."""
+        self._put(_post_transfer_pack(ModelFile.State.DEFAULT, part4_done=False))
+        self._webhook(4)
+        self.controller.process()
+
+        self.assertTrue([w for w in self._messages("warning") if "no transfer evidence" in w])
+        self.assertEqual({}, self._pending_notices())
+        self.assertNotIn(ROOT, self.persist.imported_children)
+
+    def test_post_transfer_pending_notice_still_expires(self):
+        """Guard: TTL expiry is unaffected -- an expired notice is discarded
+        in revalidation before the post-transfer exception can apply."""
+        with patch("controller.controller._PENDING_NOTICE_TTL_SECS", 0, create=True):
+            self._put(_transferring_pack(done=(1,)))
+            self._webhook(4)
+            self.controller.process()
+            self.assertIsNone(self._credited())
+
+            self._reset_logs()
+            self._put(_post_transfer_pack(ModelFile.State.DEFAULT, part4_done=False))
+            self.controller.process()
+            self.assertTrue([w for w in self._messages("warning") if "expired" in w])
+            self.assertEqual({}, self._pending_notices())
+
+            self._commit_root()
+            self.controller.process()
+            self.assertNotIn(PARTS[4].lower(), self._credited() or set())
+
+    def test_post_transfer_pending_notice_dropped_when_root_loses_remote_copy(self):
+        """Guard: if the root loses its remote copy (remote_size None), a
+        previously-pending notice is still dropped, not credited."""
+        self._put(_transferring_pack(done=(1, 2, 3)))
+        self._webhook(4)
+        self.controller.process()
+        self.assertIsNone(self._credited())
+
+        self._reset_logs()
+        gone = _post_transfer_pack(ModelFile.State.DEFAULT, part4_done=False)
+        gone.remote_size = None
+        for child in gone.get_children():
+            child.remote_size = None
+        self._put(gone)
+        self.controller.process()
+
+        self.assertTrue([w for w in self._messages("warning") if "no transfer evidence" in w])
+        self.assertEqual({}, self._pending_notices())
+        self.assertIsNone(self._credited())
+
+
+class TestPostTransferWindowBounds(BaseImportCreditTestCase):
+    """122-REVIEW WR-02: the 122-10 post-transfer exception kept or credited
+    a pending child notice for ANY non-transferring root that still had a
+    remote copy, for up to the 6 h TTL -- including a stopped or failed
+    transfer and a root whose local copy was deleted outside SeedSyncarr.
+    These tests pin the narrowed window: post-transfer keep/credit now
+    requires BOTH a local copy and that the root was last seen
+    DOWNLOADING/QUEUED less than `_POST_TRANSFER_GRACE_SECS` (120 s) ago,
+    and a user STOP or DELETE_LOCAL discards the root's pending notices at
+    once.
+
+    122-REVIEW WR-03: the import-credit INFO line always said "(root still
+    transferring)", which is false on the post-transfer path. These tests
+    also pin the reason-aware wording on both paths.
+    """
+
+    def test_post_transfer_notice_discarded_after_grace_window(self):
+        with patch("controller.controller.time") as mock_time:
+            mock_time.monotonic.return_value = 1000.0
+            self._put(_transferring_pack(done=(1, 2, 3)))
+            self._webhook(1, 2, 3, 4)
+            self.controller.process()
+            self.assertEqual(_lower(1, 2, 3), self._credited())
+            self.assertIn((ROOT, PARTS[4]), self._pending_notices())
+
+            # Still within the 120 s grace window (119 s since last seen
+            # transferring): kept pending, no discard warning.
+            self._reset_logs()
+            mock_time.monotonic.return_value = 1119.0
+            self._put(_post_transfer_pack(ModelFile.State.DEFAULT, part4_done=False))
+            self.controller.process()
+            self.assertFalse([w for w in self._messages("warning")
+                              if "Discarding pending webhook import" in w])
+            self.assertIn((ROOT, PARTS[4]), self._pending_notices())
+
+            # Past the grace window (121 s since last seen transferring):
+            # discarded, never credited.
+            self._reset_logs()
+            mock_time.monotonic.return_value = 1121.0
+            self.controller.process()
+            self.assertEqual({}, self._pending_notices())
+            discard_warnings = [w for w in self._messages("warning")
+                                if "Discarding pending webhook import" in w]
+            self.assertEqual(1, len(discard_warnings))
+            self.assertIn(PARTS[4], discard_warnings[0])
+            self.assertIn("no transfer seen for over 120 s without commit", discard_warnings[0])
+            self.assertFalse([w for w in self._messages("warning") if "no transfer evidence" in w])
+
+            self._commit_root()
+            self.controller.process()
+            self.assertNotIn(PARTS[4].lower(), self._credited() or set())
+
+    def test_post_transfer_grace_refreshes_while_root_transfers(self):
+        """Guard: the grace window is measured from the LAST time the root
+        was seen transferring, so a root that keeps transferring refreshes
+        it instead of expiring on a stale first sighting."""
+        with patch("controller.controller.time") as mock_time:
+            mock_time.monotonic.return_value = 1000.0
+            self._put(_transferring_pack(done=(1,)))
+            self._webhook(4)
+            self.controller.process()
+            self.assertIn((ROOT, PARTS[4]), self._pending_notices())
+
+            mock_time.monotonic.return_value = 1100.0
+            self._put(_transferring_pack(done=(1,)))
+            self.controller.process()
+            self.assertIn((ROOT, PARTS[4]), self._pending_notices())
+
+            # 119 s after the LAST transferring sighting (1100.0), not 219 s
+            # after the first (1000.0): still within the grace window.
+            self._reset_logs()
+            mock_time.monotonic.return_value = 1219.0
+            self._put(_post_transfer_pack(ModelFile.State.DEFAULT, part4_done=False))
+            self.controller.process()
+            self.assertFalse([w for w in self._messages("warning")
+                              if "Discarding pending webhook import" in w])
+            self.assertIn((ROOT, PARTS[4]), self._pending_notices())
+
+    def test_post_transfer_notice_discarded_when_local_copy_gone(self):
+        self._put(_transferring_pack(done=(1, 2, 3)))
+        self._webhook(4)
+        self.controller.process()
+        self.assertIn((ROOT, PARTS[4]), self._pending_notices())
+
+        self._reset_logs()
+        self._put(_local_gone_pack())
+        self.controller.process()
+
+        self.assertEqual({}, self._pending_notices())
+        discard_warnings = [w for w in self._messages("warning")
+                            if "Discarding pending webhook import" in w]
+        self.assertEqual(1, len(discard_warnings))
+        self.assertIn(PARTS[4], discard_warnings[0])
+        self.assertIn("local copy gone", discard_warnings[0])
+
+        self._reset_logs()
+        self._put(_post_transfer_pack(ModelFile.State.DEFAULT, part4_done=True))
+        self.controller.process()
+        self.assertNotIn(PARTS[4].lower(), self._credited() or set())
+
+    def test_user_stop_discards_pending_notice(self):
+        self._put(_transferring_pack(done=(1,)))
+        self._webhook(4)
+        self.controller.process()
+        self.assertIn((ROOT, PARTS[4]), self._pending_notices())
+
+        self._reset_logs()
+        self.controller.queue_command(Controller.Command(Controller.Command.Action.STOP, ROOT))
+        # The transferring pack is still in the model: the STOP precondition
+        # (state DOWNLOADING/QUEUED) must hold for CommandProcessor to accept it.
+        self.controller.process()
+
+        self.assertFalse([w for w in self._messages("warning") if "Command failed" in w])
+        discarded = [m for m in self._messages("info") if "Discarded 1 pending import notice(s)" in m]
+        self.assertTrue(discarded, "a successful STOP must discard the root's pending notices")
+        self.assertIn(ROOT, discarded[0])
+        self.assertIn("user stop", discarded[0])
+        self.assertEqual({}, self._pending_notices())
+
+        self._reset_logs()
+        self._put(_post_transfer_pack(ModelFile.State.DEFAULT, part4_done=True))
+        self.controller.process()
+        self.assertFalse([m for m in self._messages("info")
+                         if "Credited early import" in m and PARTS[4] in m])
+        self.assertNotIn(PARTS[4].lower(), self._credited() or set())
+        self.assertEqual({}, self._pending_timers())
+
+    def test_user_delete_local_discards_pending_notice(self):
+        self.mock_lftp_manager.submitted_unobserved_file_names.return_value = []
+        self._put(_transferring_pack(done=(1,)))
+        self._webhook(4)
+        self.controller.process()
+        self.assertIn((ROOT, PARTS[4]), self._pending_notices())
+
+        self._reset_logs()
+        self._put(_post_transfer_pack(ModelFile.State.DEFAULT, part4_done=False))
+        self.controller.process()
+        self.assertIn((ROOT, PARTS[4]), self._pending_notices())
+
+        self._reset_logs()
+        self.controller.queue_command(
+            Controller.Command(Controller.Command.Action.DELETE_LOCAL, ROOT))
+        self.controller.process()
+
+        self.assertFalse([w for w in self._messages("warning") if "Command failed" in w])
+        discarded = [m for m in self._messages("info") if "Discarded 1 pending import notice(s)" in m]
+        self.assertTrue(discarded, "a successful DELETE_LOCAL must discard the root's pending notices")
+        self.assertIn(ROOT, discarded[0])
+        self.assertIn("local copy deleted", discarded[0])
+        self.assertEqual({}, self._pending_notices())
+        self.assertNotIn(ROOT, self.persist.imported_file_names)
+        self.assertEqual({}, self._pending_timers())
+        self.assertFalse([m for m in self._messages("info")
+                         if "Recorded webhook import" in m and PARTS[4] in m])
+
+    def test_post_transfer_credit_line_says_transfer_finished(self):
+        self._put(_transferring_pack(done=(1, 2, 3)))
+        self._webhook(1, 2, 3, 4)
+        self.controller.process()
+        credited_lines = [m for m in self._messages("info") if "Credited early import" in m]
+        self.assertEqual(3, len(credited_lines))
+        self.assertTrue(all("(root still transferring)" in m for m in credited_lines))
+
+        self._reset_logs()
+        self._put(_post_transfer_pack(ModelFile.State.DOWNLOADED, part4_done=True,
+                                      root_local_size=ROOT_REMOTE_SIZE - 1))
+        self.controller.process()
+
+        credited_lines = [m for m in self._messages("info") if "Credited early import of" in m]
+        self.assertEqual(1, len(credited_lines))
+        self.assertIn(PARTS[4], credited_lines[0])
+        self.assertIn("(transfer finished, awaiting commit)", credited_lines[0])
+        self.assertNotIn("(root still transferring)", credited_lines[0])

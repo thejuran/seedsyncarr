@@ -3,6 +3,7 @@ import unittest
 from typing import Dict, List, Optional, Set
 from unittest.mock import MagicMock, patch
 
+from common import sanitize_log_value
 from controller.arr_queue import (
     FETCH_DONE,
     FETCH_IDLE,
@@ -993,13 +994,28 @@ class TestHoldRegistry(GateTestBase):
         _decide(self.gate, {ROOT: SIZE})
         self.assertEqual({}, self.gate.holds)
         self.assertEqual(1, sum(1 for line in self.info() if "hold cleared" in line))
+        self.assertFalse(any("hold dropped" in line for line in self.info()))
 
-    def test_hold_cleared_when_no_longer_candidate(self):
+    def test_hold_dropped_when_no_longer_candidate(self):
         _decide(self.gate, {ROOT: SIZE, "Other": 1})
         self.assertEqual({ROOT: "no_queue_entry", "Other": "no_queue_entry"}, self.gate.holds)
         self.gate.evaluate({"Other": 1})
         self.assertEqual({"Other": "no_queue_entry"}, self.gate.holds)
-        self.assertEqual(1, sum(1 for line in self.info() if "hold cleared" in line))
+        self.assertEqual(
+            1,
+            sum(1 for line in self.info()
+                if line == "Completion hold dropped for '" + ROOT + "' (no longer a queue candidate)")
+        )
+        self.assertFalse(any("hold cleared" in line for line in self.info()))
+
+    def test_dropped_line_sanitizes_root_name(self):
+        name = "Evil\nRoot"
+        _decide(self.gate, {name: 1, "Other": 1})
+        self.gate.evaluate({"Other": 1})
+        self.assertEqual({"Other": "no_queue_entry"}, self.gate.holds)
+        expected = "Completion hold dropped for '" + sanitize_log_value(name) + "' (no longer a queue candidate)"
+        self.assertEqual(1, sum(1 for line in self.info() if line == expected))
+        self.assertFalse(any("\n" in line for line in self.info()))
 
     def test_holds_property_is_a_copy(self):
         _decide(self.gate, {ROOT: SIZE})
@@ -1035,13 +1051,18 @@ class TestHoldRegistry(GateTestBase):
         self.assertEqual(2, self.gate.invalidate_all("test"))
         self.assertEqual({}, self.gate._proofs)
 
-    def test_no_targets_clears_existing_holds(self):
+    def test_hold_dropped_when_no_arr_enabled(self):
         _decide(self.gate, {ROOT: SIZE})
         self.client.targets = []
         verdict = self.gate.evaluate({ROOT: SIZE})[ROOT]
         self.assertEqual(Verdict.not_required(), verdict)
         self.assertEqual({}, self.gate.holds)
-        self.assertEqual(1, sum(1 for line in self.info() if "hold cleared" in line))
+        self.assertEqual(
+            1,
+            sum(1 for line in self.info()
+                if line == "Completion hold dropped for '" + ROOT + "' (no Sonarr/Radarr integration enabled)")
+        )
+        self.assertFalse(any("hold cleared" in line for line in self.info()))
 
 
 if __name__ == "__main__":

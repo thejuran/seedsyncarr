@@ -13,10 +13,21 @@ from bottle import HTTPResponse
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
 
-logger = logging.getLogger(__name__)
 
+def rate_limit(
+    max_requests: int,
+    window_seconds: float,
+    *,
+    logger: logging.Logger,
+) -> Callable[[Callable[_P, _R]], Callable[_P, _R | HTTPResponse]]:
+    """Sliding-window rate limit decorator factory.
 
-def rate_limit(max_requests: int, window_seconds: float) -> Callable[[Callable[_P, _R]], Callable[_P, _R | HTTPResponse]]:
+    The caller must pass its own app-tree logger so a rate-limit warning
+    reaches the persisted app log and the UI log stream instead of a
+    detached module logger (LOG-01; 122-14 WR-01).
+    """
+    if logger is None:
+        raise TypeError("rate_limit requires a logger")
     if max_requests < 1:
         raise ValueError("max_requests must be >= 1, got {}".format(max_requests))
     if window_seconds <= 0:

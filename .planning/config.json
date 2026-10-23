@@ -2,14 +2,39 @@
   "mode": "yolo",
   "parallelization": true,
   "commit_docs": true,
-  "model_profile": "quality",
+  "model_profile": "balanced",
   "workflow": {
     "research": true,
     "plan_check": true,
     "verifier": true,
     "_auto_chain_active": false,
-    "code_review": false
+    "code_review": true,
+    "pattern_mapper": true,
+    "nyquist_validation": true,
+    "ui_phase": true,
+    "ui_safety_gate": true,
+    "ai_integration_phase": true,
+    "tdd_mode": true,
+    "code_review_depth": "standard",
+    "ui_review": true,
+    "skip_discuss": false,
+    "use_worktrees": true,
+    "auto_advance": true,
+    "research_before_questions": true
   },
   "granularity": "standard",
-  "resolve_model_ids": true
+  "resolve_model_ids": true,
+  "git": {
+    "branching_strategy": "phase",
+    "create_tag": false
+  },
+  "hooks": {
+    "context_warnings": true
+  },
+  "intel": {
+    "enabled": true
+  },
+  "graphify": {
+    "enabled": true
+  }
 }
