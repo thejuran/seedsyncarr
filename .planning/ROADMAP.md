@@ -249,7 +249,7 @@ Credential forwarding and LAN connection tests belong to v1.8.0 Reliability, not
 ## Operator follow-ups (not development milestones)
 
 - [ ] Confirm credential rotation from the 1.7.6 checklist is complete.
-- [ ] Confirm one-time Done-group cleanup is complete. Do not mark the incident closed solely because its code fix shipped (Phase 122 reconciles the record; the cleanup itself stays with the operator).
+- [x] Confirm one-time Done-group cleanup is complete. Owner confirmed 2026-10-23 (Phase 122-09, verbatim "All confirmed"); `done-group-no-auto-delete.md` and `extract-staging-autodel-rearm.md` both resolved and moved to `.planning/debug/resolved/`.
 - [ ] Rotate the sandbox `sonarr-v5` Sonarr API key (exposed once in a Phase 122 research-session tool transcript, never written to a repo file; test Sonarr only, not production). Owner declined rotation during 122-08, verbatim "I'll replace it myself later" (`owner-later`).
 
 ## Completed releases

@@ -1,8 +1,9 @@
 ---
-status: fixes_verified_cleanup_pending
+status: resolved
 trigger: "check out seedsyncarr done group -- any ideas why these didn't auto-delete when they were done?"
 created: 2026-10-14
 updated: 2026-10-23
+closed: 2026-10-23 (Phase 122; owner confirmed cleanup)
 ---
 
 # Debug Session: done-group-no-auto-delete
@@ -224,4 +225,12 @@ read into shell variables and never printed. No write command was issued.
 All four production facts above were gathered read-only this session and are not an
 assumption carried over from the original 2026-10-14 diagnosis. Per the phase's close rule
 (D-12), this record can only move to `.planning/debug/resolved/` once you confirm every
-item above — it stays here with status `fixes_verified_cleanup_pending` until then.
+item above.
+
+**Owner confirmation (2026-10-23, Phase 122 Plan 09 Task 2):** verbatim reply "All
+confirmed" — Days of Hope and Obsession cleanup both confirmed done, including the
+Obsession Radarr library file despite its ~88 MB / 0.16% size difference from the
+originally-recorded complete remote size (flagged, not treated as an exact match). Both
+non-deferred findings (Case A, Case B) are "verified fixed (evidence)" and every cleanup
+item is now owner-confirmed, so per D-12 this record is **resolved** and moved to
+`.planning/debug/resolved/`.

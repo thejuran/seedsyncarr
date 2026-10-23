@@ -4,7 +4,7 @@ milestone: v1.8.0
 milestone_name: Reliability
 status: executing
 stopped_at: 122-08 complete (SAFE-01 owner-approved; Plan 09 SAFE-02 reconciliation next)
-last_updated: "2026-10-23T19:34:20.402Z"
+last_updated: "2026-10-23T21:32:22.000Z"
 last_activity: "2026-10-23 -- 122-08 executed (owner declined sandbox Sonarr key rotation this session, follow-up flagged for Plan 09's ROADMAP operator follow-ups; fixed a Rule 1 regex bug in teardown.sh --final that did not match a digest-only image reference; sandbox restored to IMAGE_PIN_L0 (1.7.6), independently re-verified in a fresh session; production fingerprint confirmed unchanged from the Plan 04 baseline; SAFE-01 verdict recorded PASSED on all six required scenarios; owner reviewed and approved, verbatim 'approve'; Plan 09 SAFE-02 reconciliation unblocked)"
 progress:
   total_phases: 6
@@ -172,7 +172,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 | Kind | Item | Status |
 |------|------|--------|
 | Operator follow-up | Confirm 1.7.6 credential rotation | Completion unconfirmed |
-| Operator follow-up | Confirm one-time Done-group cleanup | Completion unconfirmed |
+| Operator follow-up | Confirm one-time Done-group cleanup | Confirmed 2026-10-23 (owner, Phase 122-09, verbatim "All confirmed") |
 | Operator follow-up | Remove Hacks.S04E01 test torrent from sandbox Deluge (`~/v5test` on seedbox, label tv-v5test) once TorrentDay seed time is met | Seeding; owner to remove |
 | Deferred fix (Phase 120) | Webhook handler logger not attached to app log ("Sonarr webhook test event received" never written) | Promoted to LOG-01, Phase 122 |
 | Deferred fix (Phase 120) | CompletionGate prune path logs "Completion hold cleared" when a hold is merely dropped (no release; no early transfer) | Promoted to LOG-02, Phase 122 |
@@ -183,6 +183,6 @@ Open audit artifacts acknowledged at v1.7.7 close (2026-10-20), all from earlier
 
 | Category | Item | Status |
 |----------|------|--------|
-| debug | done-group-no-auto-delete | diagnosed |
-| debug | extract-staging-autodel-rearm | awaiting_human_verify |
-| verification | Phase 119 119-VERIFICATION.md | human_needed (browser half closed 2026-10-18 in 119-HUMAN-UAT.md; extraction/import checks remain) |
+| debug | done-group-no-auto-delete | resolved (Phase 122-09; owner-confirmed cleanup 2026-10-23, moved to `.planning/debug/resolved/`) |
+| debug | extract-staging-autodel-rearm | resolved (Phase 122-09; owner-confirmed cleanup 2026-10-23, moved to `.planning/debug/resolved/`) |
+| verification | Phase 119 119-VERIFICATION.md | resolved (browser half closed 2026-10-18 in 119-HUMAN-UAT.md; extraction/import checks closed via SAFE-01 D-06/D-07 PASS evidence + Phase 122-09 owner-confirmed cleanup) |

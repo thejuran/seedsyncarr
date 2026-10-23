@@ -1,8 +1,9 @@
 ---
-status: fixes_verified_cleanup_pending
+status: resolved
 trigger: "Two production bugs found 2026-09-16 on The.Burbs.1989.2160p.UHD.BluRay.x265-B0MBARDiERS: (1) in-place extraction output visible to Radarr mid-unrar, imported a 6 GB partial of a 38.5 GB mkv; (2) auto-delete skipped while root EXTRACTING and never re-armed, local copy sits forever"
 created: 2026-09-16
 updated: 2026-10-23
+closed: 2026-10-23 (Phase 122; owner confirmed cleanup)
 ---
 
 # Debug Session: extract-staging-autodel-rearm
@@ -334,4 +335,11 @@ on a fresh synthetic multi-volume RAR, exercised on the exact build that will sh
 Both production facts above were gathered read-only this session. Per the phase's close
 rule (D-12), this record can only move to `.planning/debug/resolved/` once you confirm the
 items above; deferred items C–G do not block that close (they are carried to the backlog
-by name). It stays here with status `fixes_verified_cleanup_pending` until you confirm.
+by name).
+
+**Owner confirmation (2026-10-23, Phase 122 Plan 09 Task 2):** verbatim reply "All
+confirmed" — The Burbs cleanup confirmed done. All five non-deferred findings (Bug 1,
+Bug 2, A, B, H) are "verified fixed (evidence)" and every cleanup item is now
+owner-confirmed; deferred items C–G do not block closing (D-12) and stay carried to
+`ROADMAP.md`'s Backlog by name. This record is **resolved** and moved to
+`.planning/debug/resolved/`.
