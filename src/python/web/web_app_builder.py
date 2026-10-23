@@ -32,7 +32,7 @@ class WebAppBuilder:
         self.server_handler = ServerHandler(context)
         self.config_handler = ConfigHandler(context.config, context)
         self.auto_queue_handler = AutoQueueHandler(auto_queue_persist)
-        self.status_handler = StatusHandler(context.status)
+        self.status_handler = StatusHandler(context.status, context)
         self.webhook_handler = WebhookHandler(webhook_manager, context.config, context)
 
     def build(self) -> WebApp:
