@@ -763,3 +763,144 @@ back `0`; no `SSA122.*` names remain on the seedbox or under `/volume1/data/v5te
 Production `seedsyncarr` fingerprint (Id, image, `StartedAt`) was re-checked read-only before
 and after this session and is byte-identical to the 122-11 baseline — never named by any
 write command in this plan's procedures.
+
+## Plan 06: D-06(d) Restart persistence on the fixed build
+
+Build under test: `seedsyncarr-test` on the same DEV_PIN as Plan 12
+(`ghcr.io/thejuran/seedsyncarr@sha256:e3941f976b5bf43370238ac3a7410f569e04b49f635d4e65382b4c1e3284ebe4`,
+containing 122-10's post-transfer-pending-notice fix), re-confirmed via `docker inspect
+.Config.Image` immediately before this session: equal to the `DEV_PIN` line in `state.env`.
+Capture dir: `/volume1/docker/v5test/results/safe01-122-20261023T165741Z` (same dir prepared
+by 122-11, reused by 122-12 and this plan).
+
+Clocks: NAS host clock read via `date -u` (UTC); app-log time = UTC time − 4h (confirmed by
+matching the release command's own UTC timestamp, `2026-10-23T18:14:22Z`, against its own
+app-log line below, `14:14:22`).
+
+Root used: `SSA122.Bravo3.S01` (E01 8 MiB, E02 300 MiB, E03 300 MiB). Two earlier attempts on
+this session (`SSA122.Bravo.S01`, then `SSA122.Bravo2.S01`) were aborted by two distinct
+test-harness-only bugs in this plan's own orchestration script before any pass/fail evidence
+was produced — both are documented in `122-06-SUMMARY.md`'s Deviations, not reproduced here.
+The sandbox was fully restored (`SANDBOX_RESTORED ok`) after each aborted attempt before the
+next one began; no code under `src/` was changed by either fix.
+
+### D-06(d) Restart persistence — PASS
+
+1. **Hold, one-shot release.** App-log (`14:14:16`/`14:14:22`):
+   ```
+   2026-10-23 14:14:16,293 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold for 'SSA122.Bravo3.S01': No matching queue entry
+   2026-10-23 14:14:22,890 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Received command Action.QUEUE for file SSA122.Bravo3.S01
+   2026-10-23 14:14:22,891 - WARNING - seedsyncarr.Controller.CommandProcessor (MainProcess/ControllerJob) - Manual release of unverified 'SSA122.Bravo3.S01' (No matching queue entry); source-completion check bypassed for this transfer only
+   2026-10-23 14:14:23,067 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold dropped for 'SSA122.Bravo3.S01' (no longer a queue candidate)
+   ```
+   `POST /server/command/queue/SSA122.Bravo3.S01?release_unverified=true` at NAS host UTC
+   `2026-10-23T18:14:22Z` → HTTP 200, body `Queued file 'SSA122.Bravo3.S01'`.
+
+2. **E01 caught DOWNLOADED while E02/E03 are still transferring.** Model snapshot
+   (`model-d-e01ready.json`) immediately before the post: `e01[state=downloaded
+   local=8388608 remote=8388608] e02[state=downloading local=0 remote=314572800]
+   e03[state=downloading local=0 remote=314572800]`. Signed webhook posted for E01
+   (`webhook-post.sh`) → `HTTP_CODE=200`.
+
+3. **Credited while the root is still transferring.** App-log:
+   ```
+   2026-10-23 14:14:30,642 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Credited early import of 'SSA122.Bravo3.S01E01.mkv' in 'SSA122.Bravo3.S01' (root still transferring)
+   ```
+
+4. **Persisted credit confirmed before the restart.** `controller.persist`
+   `imported_children['SSA122.Bravo3.S01']`, read read-only via Python/`json` (saved as
+   `persist-bravo-before.json`):
+   ```
+   [
+     "ssa122.bravo3.s01e01.mkv"
+   ]
+   ```
+
+5. **Restart.** NAS host UTC `2026-10-23T18:14:35Z` (app-log `14:14:35`-ish; the container's
+   own `Caught signal SIGTERM` line is `14:14:37,669`, a couple of seconds later, which is the
+   normal signal-delivery/graceful-shutdown gap, not a discrepancy):
+   ```
+   $ sudo /usr/local/bin/docker restart seedsyncarr-test
+   ```
+   `/server/status` returned 200 again at NAS host UTC `2026-10-23T18:15:13Z` (app-log
+   `14:15:13`-ish; the container's own startup lines land at `14:15:09`-`14:15:12`, slightly
+   before the polling loop's next 200, consistent with poll latency). `docker inspect
+   seedsyncarr-test --format '{{.Config.Image}}'` immediately after the restart still equals
+   the same DEV_PIN as before — a `docker restart`, not a recreate.
+
+6. **Credit survived the restart.** `controller.persist`
+   `imported_children['SSA122.Bravo3.S01']`, re-read after the restart (saved as
+   `persist-bravo-after.json`):
+   ```
+   [
+     "ssa122.bravo3.s01e01.mkv"
+   ]
+   ```
+   Identical to the pre-restart read. Nothing else in `src/python/common/persist.py`'s
+   immediate-callback/periodic-save path was exercised differently by this plan; this is the
+   same `imported_children` field Plan 12 already exercised on this build.
+
+7. **The one-shot release did not survive the restart — the root is held again (D-05).**
+   App-log, the second occurrence of the hold line in this session, well after the restart:
+   ```
+   2026-10-23 14:16:45,752 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold for 'SSA122.Bravo3.S01': No matching queue entry
+   ```
+   `grep -c "Completion hold for 'SSA122.Bravo3.S01': No matching queue entry" log-bravo.txt`
+   = **2** (one before the restart, one after) — confirming the manual, unverified release is
+   an in-memory, one-shot decision that is not persisted: after the restart the root goes back
+   through the same evidence gate fresh and is held for the same reason as the first time.
+   The model's own `state` field for the root stayed `default` (never `downloading` or
+   `queued`) at every sample from the moment the server came back up
+   (`2026-10-23T18:15:16Z`) through the end of the observation window below — the root never
+   resumed transferring without a new release.
+
+8. **No schedule, no delete, local bytes frozen, for well over 360 s after the restart.**
+   The root's total local size (`315` KiB-rounded... exactly `307119406` bytes: E01
+   `8388608` + E02 `162350766` + E03 `136380032`) was read at the first confirmed post-restart
+   hold (`2026-10-23T18:15:16Z`) and at every ~20-25 s poll through the end of a 390 s
+   observation window (`2026-10-23T18:23:00Z`, comfortably over the plan's 360 s floor) —
+   **identical at every single sample, with zero variance**. Per-child reads at the two ends
+   of that window (`model-d-after-1.json` just after the hold reappeared, vs
+   `model-d-after-final.json` at the end of the window) are byte-identical:
+   ```
+   e02: state=default local=162350766 remote=314572800
+   e03: state=default local=136380032 remote=314572800
+   ```
+   `grep -c "Scheduled auto-delete of 'SSA122.Bravo3" log-bravo.txt` = **0**;
+   `grep -c "Auto-deleted local file 'SSA122.Bravo3" log-bravo.txt` = **0** (both confirmed
+   independently via this plan's own literal `<verify>` command pattern, generalized to the
+   root name actually used this session — see `122-06-SUMMARY.md` for the note on why the
+   root was renamed from `SSA122.Bravo.S01`).
+
+**PASS (D-06(d), D-05).** The whole-folder delete still waits for full coverage after a
+restart exactly as it did before one; the early credit is durable; the one-shot manual
+release is not. Unit coverage: `test_import_credit.py::test_restart_with_persisted_credit_arms_on_commit`
+(a fresh `Controller` built from a serialized `ControllerPersist.from_str(seeded.to_str())`
+holding already-credited children plus `downloaded_file_names`, confirming arm-on-commit
+fires correctly on the very first `process()` call after a simulated restart — the same
+level-triggered "it also covers a restart" code path documented at
+`controller.py:888-889`), `test_credit_persists_immediately_via_callback`,
+`test_credit_alone_never_deletes` (119-05, Days of Hope regression, confirming a credit
+alone never arms a delete, restart or not).
+
+### Plan 06 hygiene
+
+Secret handling: fresh `head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9'` secret, 0600
+file, never echoed or logged (same `webhook-post.sh` pattern as every prior plan). The
+exact-match secret scan (`grep -c -F -f secret` over every `log-*.txt`/`model-*.json`/
+`persist-*.json`/`webhooks.log` capture file produced by the successful `SSA122.Bravo3.S01`
+run) recorded **`SECRET_SCAN=0`** in `state.env`. `webhooks.log` for the successful run shows
+one `200` response (the single E01 post), no retries.
+
+Teardown: `bash teardown.sh` (not `--final`) ran after the scan, restoring `lftp.rate_limit`
+to `0`, restoring `webhook_secret` to empty (via the stop/edit-`settings.cfg`/start sequence,
+since the webhook endpoint 400s on an empty value otherwise), and removing the one synthetic
+root (`REMOVED synth roots count=1 refused=0`) from both the seedbox and the sandbox's local
+data root. Last line: **`SANDBOX_RESTORED ok`**. Re-confirmed independently afterward:
+`docker inspect seedsyncarr-test --format '{{.Config.Image}}'` still equals the same DEV_PIN;
+`lftp.rate_limit` reads back `0`; `webhook_secret` length `0`; no `SSA122.*` names remain on
+the seedbox or under `/volume1/data/v5test/torrents`. Production `seedsyncarr` fingerprint
+(`Id`, image, `StartedAt`) was re-checked read-only after this session and is byte-identical
+to the 122-11/122-12 baseline (`2feb4073...`, `:1.7.6@sha256:da6196e0...`,
+`2026-10-23T07:04:18.591254939Z`) — never named by any write command in this plan's
+procedures.
