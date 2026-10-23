@@ -3,17 +3,19 @@ phase: 122-safety-acceptance-and-logging-fixes
 plan: 09
 subsystem: infra
 tags: [incident-records, reconciliation, read-only-production, owner-checkpoint]
-status: paused
+status: complete
 
 # Dependency graph
 requires:
   - phase: 122-safety-acceptance-and-logging-fixes (plan 08)
-    provides: "SAFE-01 verdict PASSED and owner-approved; sandbox restored to IMAGE_PIN_L0; owner declined sandbox Sonarr key rotation this session (follow-up for this plan's ROADMAP update)"
+    provides: "SAFE-01 verdict PASSED and owner-approved; sandbox restored to IMAGE_PIN_L0; owner declined sandbox Sonarr key rotation this session (follow-up carried to ROADMAP operator follow-ups)"
 provides:
   - "Both open incident records (done-group-no-auto-delete.md, extract-staging-autodel-rearm.md) reconciled per-finding against SAFE-01 evidence and live, read-only production facts"
-  - "Owner cleanup checklist delivered for both records, built from live production reads (Sonarr/Radarr API, NAS filesystem, production log)"
-  - "ROADMAP.md Backlog carries extract-staging deferred items C-G by name; Operator follow-ups carries the declined sandbox key rotation"
-affects: ["122-09 Task 3 (close rule, pending owner reply)"]
+  - "Owner cleanup checklist delivered and owner-confirmed for both records (verbatim 'All confirmed')"
+  - "Both records closed per the D-12 close rule: status resolved, moved to .planning/debug/resolved/"
+  - "ROADMAP.md Backlog carries extract-staging deferred items C-G by name; Done-group operator follow-up checked off; Operator follow-ups carries the declined sandbox key rotation"
+  - "STATE.md Deferred Items table reflects both records and 119-VERIFICATION.md as resolved"
+affects: ["Phase 122 success criterion 2 (closed)", "122-10/-11/-12 one-PR-per-phase merge decision"]
 
 # Tech tracking
 tech-stack:
@@ -22,76 +24,83 @@ tech-stack:
 
 key-files:
   modified:
-    - .planning/debug/done-group-no-auto-delete.md
-    - .planning/debug/extract-staging-autodel-rearm.md
+    - .planning/debug/resolved/done-group-no-auto-delete.md
+    - .planning/debug/resolved/extract-staging-autodel-rearm.md
     - .planning/ROADMAP.md
+    - .planning/STATE.md
 
 key-decisions:
-  - "Task 1 only; this plan is PAUSED at Task 2, a blocking checkpoint:decision. Per the orchestrator's explicit instruction, this decision is not auto-answered under any circumstance (including auto-advance config) — it requires the owner's own reply."
+  - "Owner's verbatim reply to Task 2 ('All confirmed') closed both records per D-12: every non-deferred finding was already 'verified fixed (evidence)' from Task 1's live production reads, and the owner confirmed every Remaining operator cleanup item (Days of Hope, Obsession, The Burbs), so neither record stayed open for cleanup-pending reasons."
+  - "Deferred items C-G (extract-staging) do not block closing per D-12 — carried to ROADMAP.md Backlog by name in Task 1, unaffected by the close rule."
 
 patterns-established: []
 
-requirements-completed: []
+requirements-completed: [SAFE-02]
 
 # Metrics
-duration: ~6min (Task 1 only; Task 2/3 pending)
-completed: null
+duration: ~6min active work (Task 1) + ~3min active work (Task 2/3 this session); plan spanned a paused owner-checkpoint interval between sessions
+completed: 2026-10-23
 ---
 
-# Phase 122 Plan 09: Reconcile Incident Records Against SAFE-01 Evidence Summary (PAUSED)
+# Phase 122 Plan 09: Reconcile Incident Records Against SAFE-01 Evidence Summary
 
-**Task 1 complete: both open incident records now carry per-finding "Reconciliation (Phase 122)" tables citing the Phase 119 fix commits and SAFE-01 evidence, plus an owner cleanup checklist built from live read-only production facts. Paused at Task 2 (owner checkpoint) before Task 3 (close rule) runs.**
+**Both open incident records (Days of Hope/Obsession Done-group non-delete, The Burbs extract-staging) reconciled per-finding against SAFE-01 evidence and live read-only production facts, owner-confirmed closed, and moved to `.planning/debug/resolved/` — closing Phase 122 success criterion 2.**
 
 ## Performance
 
-- **Duration:** ~6 min (Task 1 only)
-- **Started:** 2026-10-23T19:34:20Z (session resume)
-- **Paused:** 2026-10-23T19:43:45Z
-- **Tasks:** 1 of 3 completed (Task 2 is the active checkpoint; Task 3 not started)
-- **Files modified:** 3
+- **Duration:** ~6 min (Task 1, prior session) + ~3 min (Task 2 reply recorded / Task 3, this session)
+- **Started:** 2026-10-23T19:34:20Z (Task 1)
+- **Paused:** 2026-10-23T19:43:45Z (Task 2 checkpoint, awaiting owner reply)
+- **Resumed/Completed:** 2026-10-23T21:34:13Z (Task 2 answer recorded, Task 3 executed)
+- **Tasks:** 3 of 3 completed
+- **Files modified:** 4 (2 incident records moved+edited, ROADMAP.md, STATE.md)
 
 ## Accomplishments
 
-- **Task 1 (read-only production inspection, per-finding tables, owner checklist, backlog carry-forward):**
-  - Read-only production checks (NAS `seedsyncarr`, still 1.7.6; no write command issued; all commands and timestamps below are verbatim from this session):
-    - `ls -ld`/`du -sb` at NAS host UTC `2026-10-23T19:37:42Z` (NAS local `14:37:42 -05`) on the exact Days of Hope, The Burbs and Obsession paths under `/volume1/data/torrents/`, and on `/volume1/data/torrents/.seedsyncarr-extracting` — all four returned "No such file or directory" (all absent)
-    - `grep` of `/volume1/docker/seedsync/log/seedsyncarr.log` (covers 2026-08-27 onward, spans both incidents) for each root name, capturing first/last occurrences — Days of Hope's last line is the owner's own `Action.DELETE_LOCAL` command on 2026-10-16 22:03:32; The Burbs' last lines show extraction completing then the owner's own `Action.DELETE_LOCAL` ~19 min later on 2026-09-16 21:58:11
-    - Sonarr GET `/api/v3/episode?seriesId=815` and `/api/v3/episodefile?seriesId=815` (key read into a shell variable, never printed): Days of Hope has all 4 episode files, total `8,007,628,364` B, exactly the original torrent's full size
-    - Radarr GET `/api/v3/movie` (key read into a shell variable, never printed), filtered to The Burbs and Obsession: The Burbs movieFile is `38,482,836,588` B (exact original remux size); Obsession movieFile is `55,389,018,125` B (full-size, not the previously-truncated `54,676,946,944` B — but ~88 MB / 0.16% different from the `55,477,377,022` B originally recorded as the complete remote file, flagged transparently to the owner rather than smoothed over)
-    - Read-only `controller.persist` check: `imported_children` still shows the historical pre-fix bookkeeping (Days of Hope part 4 only; Burbs root-level grandfather entry) — expected per the research note that this dict is historical, not a presence signal, and production has not yet received the 122-10 fix (ships in 1.8.0)
-  - Built "## Reconciliation (Phase 122)" sections in both records:
-    - `done-group-no-auto-delete.md`: rows for Case A (Days of Hope) and Case B (Obsession), both **verified fixed (evidence)**, citing Phase 119 Plan 05 (Case A) and Plans 04/06/07/08/12 (Case B) commits against the SAFE-01 D-06(a)-(e) PASS verdicts, `120-SON5-EVIDENCE.md` §SON5-02, and `119-HUMAN-UAT.md`
-    - `extract-staging-autodel-rearm.md`: rows for Bug 1, Bug 2, A, B, H (all **verified fixed (evidence)**, commit `8142929` + D-07 live evidence or named unit tests) and C, D, E, F, G (**deferred**, carried to ROADMAP by name)
-  - Filled `done-group-no-auto-delete.md`'s previously-empty `fix:`/`verification:`/`files_changed:` Resolution fields
-  - Added a "Remaining operator cleanup" checklist to both records, built entirely from the live facts above — every item in both records came back **verified absent** or **verified present/full-size**, meaning the owner appears to have already done this cleanup (Days of Hope and Obsession on 2026-10-14/16; The Burbs same night as its 2026-09-16 incident), but per the plan's own close rule (D-12) this still requires the owner's explicit confirmation before either record can close
-  - Set both records' frontmatter `status:` to `fixes_verified_cleanup_pending` and `updated:` to 2026-10-23
-  - Added 5 "### Deferred: Extract-staging ..." entries to `ROADMAP.md`'s Backlog (items C-G, by name, each citing the source record)
-  - Added the declined sandbox `sonarr-v5` API key rotation to `ROADMAP.md`'s "Operator follow-ups" (122-08 flagged this; owner's verbatim reply was "I'll replace it myself later")
-  - Verified: `grep -c "Reconciliation (Phase 122)"` = 1 in each record; `grep -c "### Deferred: Extract-staging"` in ROADMAP.md = 5; `grep -n '^fix: ""\|^verification: ""'` on done-group = no matches; neither record's status is `resolved`, neither file moved; post-commit deletion/untracked-file checks both clean
+- **Task 1 (read-only production inspection, per-finding tables, owner checklist, backlog carry-forward)** — see prior session detail below; both records got a "Reconciliation (Phase 122)" section, `fix:`/`verification:`/`files_changed:` fields filled, a live-fact-based "Remaining operator cleanup" checklist, status `fixes_verified_cleanup_pending`, and ROADMAP.md gained 5 "### Deferred: Extract-staging ..." entries (C-G) plus the declined sandbox key rotation under Operator follow-ups.
+- **Task 2 (owner confirms production cleanup status per record)** — the orchestrator presented the full checklist (both records' "Remaining operator cleanup" sections, including the Obsession ~88 MB / 0.16% size-delta note and the deferred item C symlink-hardening flag) to the owner. **Owner's verbatim reply: "All confirmed"** — selecting the "all-confirmed" option: Days of Hope, Obsession, and The Burbs cleanup all confirmed done. Recorded verbatim in both incident records (see each record's new "Owner confirmation" paragraph) and in this SUMMARY.
+- **Task 3 (apply the close rule, update ROADMAP operator follow-ups and STATE)**:
+  - `done-group-no-auto-delete.md`: Case A and Case B were both already `verified fixed (evidence)` (Task 1); with the owner now confirming every cleanup item, per D-12 the record's status was set to `resolved`, a `closed: 2026-10-23 (Phase 122; owner confirmed cleanup)` frontmatter line added, and the file `git mv`'d to `.planning/debug/resolved/`.
+  - `extract-staging-autodel-rearm.md`: Bug 1, Bug 2, A, B, H were all already `verified fixed (evidence)` (Task 1); deferred items C-G do not block closing (D-12, already carried to the Backlog by name). With the owner confirming The Burbs cleanup, status set to `resolved`, same `closed:` line added, moved to `.planning/debug/resolved/`.
+  - `ROADMAP.md` Operator follow-ups: ticked `[x] Confirm one-time Done-group cleanup is complete`, reworded to name the owner's verbatim confirmation and the two now-resolved records. The sandbox Sonarr key rotation line (declined, `owner-later`) and the credential-rotation line are untouched — neither was part of this checkpoint's question.
+  - `STATE.md` "Deferred Items" table: the three rows this plan was scoped to (`done-group-no-auto-delete`, `extract-staging-autodel-rearm`, `Phase 119 119-VERIFICATION.md`) all updated to `resolved`, naming the owner confirmation and the SAFE-01 D-06/D-07 PASS evidence that closed 119-VERIFICATION.md's remaining extraction/import checks. The sibling "Operator follow-up | Confirm one-time Done-group cleanup" row (same table, separate from the plan's named scope) was also updated to `Confirmed 2026-10-23` for internal consistency with the ROADMAP checkbox — see Deviations. `last_updated` frontmatter refreshed to `2026-10-23T21:32:22.000Z`.
 
 ## Task Commits
 
 1. **Task 1: Read-only production inspection, per-finding tables, filled fields, owner checklist, backlog carry-forward** — `27fb1ac` (docs)
-2. **Task 2: Owner confirms production cleanup status per record** — PAUSED, checkpoint:decision, not yet answered
-3. **Task 3: Apply the close rule and update ROADMAP operator follow-ups and STATE** — not started (blocked on Task 2)
+2. **Task 2: Owner confirms production cleanup status per record** — checkpoint:decision, no code commit; owner's verbatim reply ("All confirmed") recorded in both incident records' text, committed as part of Task 3's commit below, and in this SUMMARY.
+3. **Task 3: Apply the close rule and update ROADMAP operator follow-ups and STATE** — `845b7ea` (docs)
+
+**Plan metadata:** this commit (docs: complete plan)
 
 ## Files Created/Modified
 
-- `.planning/debug/done-group-no-auto-delete.md` — added "Reconciliation (Phase 122)" section (Case A/B tables + cleanup checklist), filled `fix`/`verification`/`files_changed`, status → `fixes_verified_cleanup_pending`
-- `.planning/debug/extract-staging-autodel-rearm.md` — added "Reconciliation (Phase 122)" section (Bug 1/2, A/B/H/C/D/E/F/G table + cleanup checklist), status → `fixes_verified_cleanup_pending`
-- `.planning/ROADMAP.md` — 5 new Backlog "### Deferred: Extract-staging ..." entries; 1 new Operator follow-up (sandbox key rotation)
+- `.planning/debug/resolved/done-group-no-auto-delete.md` (moved from `.planning/debug/`) — status `resolved`, `closed:` line added, owner-confirmation paragraph appended under "Remaining operator cleanup"
+- `.planning/debug/resolved/extract-staging-autodel-rearm.md` (moved from `.planning/debug/`) — status `resolved`, `closed:` line added, owner-confirmation paragraph appended under "Remaining operator cleanup"
+- `.planning/ROADMAP.md` — Done-group operator follow-up checkbox ticked and reworded
+- `.planning/STATE.md` — Deferred Items table rows for both records and 119-VERIFICATION.md updated to resolved; sibling operator-follow-up row synced; `last_updated` refreshed
 
 ## Decisions Made
 
-Task 1 followed the plan as specified; all findings/status/checklist content is derived directly from live, read-only production reads and the existing SAFE-01 evidence file, not inferred.
+- Owner's "All confirmed" reply was treated as confirming every item in both records' "Remaining operator cleanup" checklists, including the Obsession Radarr library file item that carried an explicit ~88 MB / 0.16% size-delta caveat — the owner was shown that caveat verbatim before replying, so the confirmation is informed, not a blind "yes."
+- Deferred items C-G (extract-staging) were correctly excluded from the close-rule gate per D-12 — they do not block `extract-staging-autodel-rearm.md` from resolving; they remain tracked only in `ROADMAP.md`'s Backlog.
 
 ## Deviations from Plan
 
-None — plan executed exactly as written for Task 1. No Rule 1-4 triggers encountered: all production commands were read-only exactly as the plan's threat model requires (T-122-35), and no architectural or ambiguous decision arose.
+### Auto-fixed Issues
 
-## Assumption Drift (advisory)
+**1. [Rule 2 - Missing Critical] Synced STATE.md's duplicate "Confirm one-time Done-group cleanup" operator-follow-up row**
+- **Found during:** Task 3
+- **Issue:** The plan named three specific STATE.md "Deferred Items" rows to update (`done-group-no-auto-delete`, `extract-staging-autodel-rearm`, `Phase 119 119-VERIFICATION.md`). STATE.md's same table also carries a separate, differently-worded "Operator follow-up | Confirm one-time Done-group cleanup" row that the plan did not explicitly name, but `ROADMAP.md`'s matching checkbox was ticked in this same task. Leaving the STATE.md row at "Completion unconfirmed" while ROADMAP.md said confirmed would make STATE.md — which the project's global conventions require to stay authoritative and truthful — internally inconsistent with ROADMAP.md on the very fact this plan's checkpoint existed to settle.
+- **Fix:** Updated that row's status to `Confirmed 2026-10-23 (owner, Phase 122-09, verbatim "All confirmed")`, matching the ROADMAP.md checkbox wording.
+- **Files modified:** `.planning/STATE.md`
+- **Verification:** Re-read the file; the row now agrees with `ROADMAP.md`'s ticked checkbox and with both resolved incident records.
+- **Committed in:** `845b7ea` (Task 3 commit)
 
-None material. One thing worth flagging transparently (not a drift, a live fact): the Obsession movie file's current size (`55,389,018,125` B) differs by ~88 MB (0.16%) from the `55,477,377,022` B the original debug session recorded as the complete remote file. This is recorded plainly in both the reconciliation table and the owner checklist rather than rounded off as an exact match.
+---
+
+**Total deviations:** 1 auto-fixed (1 missing critical / correctness-of-truthful-state)
+**Impact on plan:** No scope creep — the fix is strictly a cross-file consistency correction required by the project's STATE.md truthfulness convention, using the exact confirmation fact the plan's own checkpoint already established.
 
 ## Issues Encountered
 
@@ -99,20 +108,23 @@ None.
 
 ## User Setup Required
 
-None for Task 1. Task 2 is itself the required owner input — see "CHECKPOINT REACHED" in this session's response for the exact question and checklist.
+None. Task 2's owner checkpoint (the plan's only required manual step) was answered verbatim "All confirmed" and is recorded above.
 
 ## Next Phase Readiness
 
-**This plan is PAUSED, not complete.** Task 1 is done and committed. Task 2 is a blocking `checkpoint:decision` that must not be auto-answered — it is awaiting the owner's reply (see the structured checkpoint message). Task 3 (apply the close rule, update ROADMAP/STATE) cannot run until that reply is received. No code changes, no record moves, no STATE.md changes have been made yet.
+Phase 122 success criterion 2 is closed: both incident records carried per-finding reconciliation tables (Task 1), neither closed solely because its code shipped, and the Done-group / extract-staging cleanup stayed an open operator follow-up until the owner's explicit confirmation (Task 2) triggered the close rule (Task 3). Both records now live in `.planning/debug/resolved/`. Remaining Phase 122 work is the one-PR-per-phase merge decision noted in this plan's `<orchestrator_amendment>` (PR #134, DEV_PIN re-pinned after 122-10/122-11, SAFE-01 PASSED and owner-approved in 122-08) — nothing in that merge depends on anything changed in this plan beyond this plan itself being complete. Sandbox Sonarr key rotation (`owner-later`) and standard 1.7.6 credential rotation remain separate, already-tracked operator follow-ups, untouched by this plan.
 
 ---
 *Phase: 122-safety-acceptance-and-logging-fixes*
-*Paused: 2026-10-23 (awaiting owner reply to Task 2)*
+*Completed: 2026-10-23*
 
-## Self-Check: PASSED (Task 1 only)
+## Self-Check: PASSED
 
-- FOUND: `.planning/debug/done-group-no-auto-delete.md` (modified, contains "Reconciliation (Phase 122)")
-- FOUND: `.planning/debug/extract-staging-autodel-rearm.md` (modified, contains "Reconciliation (Phase 122)")
-- FOUND: `.planning/ROADMAP.md` (modified, 5 "### Deferred: Extract-staging" entries + 1 new Operator follow-up)
+- FOUND: `.planning/debug/resolved/done-group-no-auto-delete.md` (moved, status `resolved`)
+- FOUND: `.planning/debug/resolved/extract-staging-autodel-rearm.md` (moved, status `resolved`)
+- FOUND: `.planning/ROADMAP.md` (modified, Done-group operator follow-up checkbox ticked)
+- FOUND: `.planning/STATE.md` (modified, Deferred Items rows updated, `last_updated` refreshed)
 - FOUND commit `27fb1ac` (`git log --oneline --all | grep 27fb1ac`)
-- Every production command, timestamp and API result quoted above was read directly from live `ssh nas` / Sonarr / Radarr output during this session, not inferred from the original 2026-10-14/2026-09-16 debug records.
+- FOUND commit `845b7ea` (`git log --oneline --all | grep 845b7ea`)
+- `ls .planning/debug/ .planning/debug/resolved/ | grep -E "done-group|extract-staging"` returned both filenames only under `.planning/debug/resolved/` — confirmed, not present in `.planning/debug/`
+- `grep -n "^status:" .planning/debug/*.md .planning/debug/resolved/*.md | grep -E "done-group|extract-staging"` returned `status: resolved` for both, in `.planning/debug/resolved/` — confirmed
