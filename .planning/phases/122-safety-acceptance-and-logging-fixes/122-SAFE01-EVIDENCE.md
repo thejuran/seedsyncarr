@@ -904,3 +904,228 @@ the seedbox or under `/volume1/data/v5test/torrents`. Production `seedsyncarr` f
 to the 122-11/122-12 baseline (`2feb4073...`, `:1.7.6@sha256:da6196e0...`,
 `2026-10-23T07:04:18.591254939Z`) — never named by any write command in this plan's
 procedures.
+
+## D-07 Extraction staging and auto-delete re-arm
+
+Live-run on the fixed DEV_PIN (`sha256:e3941f976b5bf43370238ac3a7410f569e04b49f635d4e65382b4c1e3284ebe4`,
+same capture dir `safe01-122-20261023T165741Z` reused from Plans 05/06/12), replaying the
+Burbs incident's own two deferred `after_deploy` checks from
+`.planning/debug/extract-staging-autodel-rearm.md`: (1) extraction must stage out of sight
+and publish only when complete, and (2) an import accepted while the root is `EXTRACTING`
+must defer auto-delete and retry until it succeeds.
+
+### Archive and settings
+
+A single incompressible `/dev/urandom` `.mkv` of exactly `1073741824` bytes (1 GiB) was
+built on the seedbox (`nyx.usbx.me`, `/home/jules1651/ssa122-stage/`) and packed with
+`rar a -m0 -v600m` (store mode, no compression — the content is already random) into a
+directory named `SSA122.Rar.Pack/` holding two volumes:
+
+```
+SSA122.Rar.Pack.part1.rar   629145600 bytes
+SSA122.Rar.Pack.part2.rar   444596623 bytes
+```
+
+**Discretion note on volume count (D-07's own "about 11 volumes" is illustrative, not a
+requirement — 122-CONTEXT.md D-07/"Claude's Discretion" leaves the volume size to the
+executor as long as the shape matches D-07's "roughly 1 GB ... split into volumes").**
+Before building the real archive, a throwaway 3-volume test pack was built and extracted
+directly with `unrar` on the NAS host to check how `ExtractDispatch` would treat a modern
+RAR 5.0+ volume set. `__coalesce_extractions` (`dispatch.py`) only filters the **old**
+WinRAR volume-continuation extension pattern `^\.r\d{2,}$` (e.g. `.r00`, `.r01`); RAR 7.11
+(installed on the seedbox) only creates the **new**-style `.partN.rar` naming, where every
+volume — including the first — ends in `.rar`. `Extract.is_archive()` therefore treats
+**every** volume as its own archive to extract, so a task with N volumes runs N fully
+redundant extraction passes (confirmed live below: a `Replacing existing ... with the newly
+extracted copy` warning on the second pass). This is pre-existing, out-of-scope behavior
+(not a safety defect — each redundant pass still stages before publishing, see the samples
+below) but it directly affects timing: with the plan's fixed `delay_seconds = 2` and the
+24-deferral cap (48 s total budget), too many volumes could in principle exhaust the budget
+before extraction finishes. Two volumes (measured ~2.2 s per solo pass on this NAS's host
+`unrar`) keeps the worst case comfortably inside budget while still being "split into
+volumes" per D-07. Logged as a Phase 123 backlog candidate in `deferred-items.md` below —
+not fixed here (Scope Boundary: pre-existing, no safety impact, out of scope for a
+live-acceptance plan).
+
+Settings for the session: `autodelete.delay_seconds` temporarily set to **`2`** (from
+`DELAY_L0 = 300`, read via `/server/config/get` before changing anything) — the timer reads
+`delay_seconds` at arm time (`controller.py` `__arm_auto_delete_timer`), and a ~1 GB
+extraction finishes in low single-digit seconds, far inside 300 s, so 300 s would never let
+the timer fire while the root is still `EXTRACTING`. `lftp.rate_limit` was **not** changed
+(stayed at its baseline `0`, per the plan). A fresh webhook secret was generated the same
+way as every prior plan (0600 file, never logged). `auto_extract = True` and
+`use_local_path_as_extract_path = True` were confirmed live before the run (unchanged from
+every prior plan in this phase).
+
+### Timeline (both clocks; app-log clock = NAS host local clock + 1 h, NAS host local clock
+= UTC − 5 h this session, confirmed via `date` / `date -u` on the NAS)
+
+1. **Hold.** NAS UTC `18:51:03` / app-log equivalent just before the next line:
+   ```
+   2026-10-23 14:50:57,737 - INFO - seedsyncarr.CompletionGate - Completion hold for 'SSA122.Rar.Pack': No matching queue entry
+   ```
+2. **One-shot manual release**, NAS UTC `18:51:03`:
+   ```
+   2026-10-23 14:51:03,783 - INFO - seedsyncarr.Controller - Received command Action.QUEUE for file SSA122.Rar.Pack
+   2026-10-23 14:51:03,784 - WARNING - seedsyncarr.Controller.CommandProcessor - Manual release of unverified 'SSA122.Rar.Pack' (No matching queue entry); source-completion check bypassed for this transfer only
+   2026-10-23 14:51:04,650 - INFO - seedsyncarr.CompletionGate - Completion hold dropped for 'SSA122.Rar.Pack' (no longer a queue candidate)
+   ```
+   (The "dropped" wording here is the LOG-02 prune-path line, correctly distinct from
+   "cleared" — this hold removal is a manual release, not a proof-based completion.)
+3. **Transfer.** Local bytes climbed from `0` to the full `1073742223` (sum of the two
+   volumes) between NAS UTC `18:51:04` and `18:52:02`, sampled every 3 s by the harness
+   (`model-x-1-*.json`); no partial-file exposure risk applies to this phase (the volumes
+   themselves are the only local content, and they are legitimately partial while
+   downloading — Sonarr/Radarr only react to the release folder's *final*, stable content,
+   which is exactly what this scenario is testing for the *extracted* file).
+4. **Extraction starts.** NAS UTC `18:52:02`-`18:52:03` / app-log:
+   ```
+   2026-10-23 14:52:02,931 - INFO - seedsyncarr.AutoQueue - Auto extracting 'SSA122.Rar.Pack'
+   2026-10-23 14:52:03,432 - INFO - seedsyncarr.Controller - Received command Action.EXTRACT for file SSA122.Rar.Pack
+   ```
+5. **Staging grows while the release folder shows only the two `.rar` volumes.** The
+   0.2 s-interval sampler (`extract-samples.txt`, 716 total blocks this run) recorded 7
+   consecutive qualifying samples (`QUALIFYING_SAMPLES=7`, `GROWING_PAIRS=7` — every one
+   strictly larger than the last) during the **first** extraction pass, NAS UTC
+   `18:52:05.121` → `18:52:07.314`, condensed here (`ls -ln` of the release folder,
+   `du -sb` of the staging dir):
+
+   | Sample time (UTC) | Release folder lists | Staging bytes |
+   |---|---|---|
+   | 18:52:05.121 | `SSA122.Rar.Pack.part1.rar`, `.part2.rar` only | 0 |
+   | 18:52:05.329 | same two `.rar` volumes only | 79,691,814 |
+   | 18:52:05.541 | same two `.rar` volumes only | 201,326,630 |
+   | 18:52:05.765 | same two `.rar` volumes only | 310,378,534 |
+   | 18:52:05.973 | same two `.rar` volumes only | 360,710,182 |
+   | 18:52:06.197 | same two `.rar` volumes only | 469,762,086 |
+   | 18:52:07.102 | same two `.rar` volumes only | 692,059,996 |
+   | 18:52:07.314 | same two `.rar` volumes only | 746,585,948 |
+
+   Not one of these samples, nor any other sample taken before the `.mkv` first appears
+   (next item), lists `SSA122.Rar.Pack.mkv` in the release folder — the `.seedsyncarr-extracting/SSA122.Rar.Pack/`
+   staging dir held the growing output the whole time.
+6. **Publish: the full-size `.mkv` appears in the release folder only once, at its complete
+   byte size.** First sample listing the `.mkv`, NAS UTC `18:52:09.909`:
+   ```
+   RELEASE_FOLDER:
+   -rw-rw-r-- 1 1026 100 1073741824 Oct 23 13:49 SSA122.Rar.Pack.mkv
+   -rw-r--r-- 1 1026 100  629145600 Oct 23 13:49 SSA122.Rar.Pack.part1.rar
+   -rw-r--r-- 1 1026 100  444596623 Oct 23 13:49 SSA122.Rar.Pack.part2.rar
+   STAGING_BYTES: 0
+   ```
+   `1073741824` is exactly the dummy file's original size — not a partial byte count at any
+   point. The staging dir read `0` bytes (freshly recreated, see next item) at this exact
+   sample rather than "absent", because the task's second (redundant) archive entry begins
+   its own extraction pass essentially back-to-back with the first pass's publish+cleanup;
+   this does not change the safety property — the release folder already held the complete
+   file from the moment this sample was taken.
+7. **A second, redundant extraction pass runs** (the pre-existing `.partN.rar`
+   coalesce gap described above) — staging grows a second time, NAS UTC `18:52:10.132` →
+   `18:52:11.442` (92 MB → 746 MB), while the release folder **already shows the complete,
+   correctly-sized `.mkv` the whole time**, alongside the two `.rar` volumes — never a
+   partial file, never removed. The app log confirms the second pass's overwrite:
+   ```
+   2026-10-23 14:52:15,595 - WARNING - ExtractDispatch - Replacing existing '/downloads/SSA122.Rar.Pack/SSA122.Rar.Pack.mkv' with the newly extracted copy
+   ```
+8. **Extraction completes.** NAS UTC `18:52:17` / app-log:
+   ```
+   2026-10-23 14:52:17,221 - INFO - ExtractProcess - Extraction completed for SSA122.Rar.Pack
+   ```
+9. **No `.seedsyncarr-extracting` entry in any model snapshot, ever.** `cat model-x-1-*.json
+   | grep -c seedsyncarr-extracting` = **0** across all model-stream snapshots taken every
+   2 s for the entire run (held in `state.env` as `MODEL_SNAPSHOT_HITS_SSA122.Rar.Pack=0`,
+   reconfirmed by this plan's own literal `<verify>` command against `model-x-*.json`).
+
+### Auto-delete re-arm (Bug 2 replay)
+
+10. **Webhook accepted while the root is `EXTRACTING`.** A signed, root-level `Download`
+    webhook (`sourcePath=/data/torrents/SSA122.Rar.Pack`, no child subpath — per the plan's
+    own rationale: during `EXTRACTING` the extracted `.mkv` sits in the excluded staging
+    dir, invisible to the model, so no child-level match is possible; a root-level notice
+    for a root already committed as downloaded is accepted with no per-child credit,
+    letting the coverage guard grandfather the whole root as imported) was posted by the
+    harness's watcher the instant it observed `state == "extracting"` on the model stream
+    (NAS UTC `18:52:04`, `HTTP_CODE=200`). The controller recorded it on its next cycle:
+    ```
+    2026-10-23 14:52:05,842 - INFO - seedsyncarr.WebhookManager (worker 6) - Sonarr webhook import enqueued: 'SSA122.Rar.Pack' (eventType=Download, episodeFile.sourcePath)
+    2026-10-23 14:52:06,316 - INFO - seedsyncarr.WebhookManager - Sonarr import detected: 'SSA122.Rar.Pack' (matched SeedSyncarr file 'SSA122.Rar.Pack'; eventType=Download, episodeFile.sourcePath)
+    2026-10-23 14:52:06,317 - INFO - seedsyncarr.Controller - Recorded webhook import: 'SSA122.Rar.Pack' (child: 'SSA122.Rar.Pack')
+    2026-10-23 14:52:10,210 - INFO - seedsyncarr.Controller - Scheduled auto-delete of 'SSA122.Rar.Pack' in 2 seconds
+    ```
+11. **Deferred three times, each naming the `EXTRACTING` state, exactly as the record's
+    `after_deploy` item 2 specifies** (verbatim, `log-rar.txt`):
+    ```
+    2026-10-23 14:52:12,207 - INFO - seedsyncarr.Controller (Thread-4) - Auto-delete deferred for 'SSA122.Rar.Pack' (attempt 1/24): file is in state State.EXTRACTING; retrying in 2 s
+    2026-10-23 14:52:14,207 - INFO - seedsyncarr.Controller (Thread-5) - Auto-delete deferred for 'SSA122.Rar.Pack' (attempt 2/24): file is in state State.EXTRACTING; retrying in 2 s
+    2026-10-23 14:52:16,207 - INFO - seedsyncarr.Controller (Thread-6) - Auto-delete deferred for 'SSA122.Rar.Pack' (attempt 3/24): file is in state State.EXTRACTING; retrying in 2 s
+    ```
+    Three deferrals (6 s of retrying) is comfortably inside the 24-attempt / 48 s budget,
+    confirming the volume-count discretion above held the redundant-extraction risk well
+    within bounds.
+12. **Auto-deleted once the root left `EXTRACTING`.** NAS UTC `18:52:18` / app-log:
+    ```
+    2026-10-23 14:52:18,211 - INFO - seedsyncarr.Controller (Thread-7) - Auto-deleted local file 'SSA122.Rar.Pack'
+    ```
+13. **Final file state.** Confirmed by direct `stat`/`ls` on the NAS host (not through the
+    container) immediately after:
+    ```
+    $ stat /volume1/data/v5test/torrents/SSA122.Rar.Pack
+    stat: cannot stat '...': No such file or directory
+    $ stat /volume1/data/v5test/torrents/.seedsyncarr-extracting
+    stat: cannot stat '...': No such file or directory
+    ```
+    and on the seedbox, the staging scratch dir was already gone (`ssa122-stage` removed by
+    the harness once the archive was moved into `~/v5test/`).
+
+### Forbidden lines (none observed)
+
+`grep -c "Ignoring webhook import for 'SSA122.Rar" log-rar.txt` = **0**;
+`grep -c "Completion hold cleared for 'SSA122.Rar" log-rar.txt` = **0** (only the D-02/LOG-02
+"dropped" line appears, item 2 above); `grep -c "Auto-delete given up for 'SSA122.Rar"
+log-rar.txt` = **0** — the budget was never exhausted.
+
+### Unit test cross-references
+
+- `test_dispatch_staging.py::TestExtractDispatchStaging::test_output_not_visible_in_release_dir_until_extraction_finishes`
+  — the exact Bug 1 invariant this live run exercised end-to-end with a real multi-volume
+  archive instead of a patched function.
+- `test_dispatch_staging.py::TestExtractDispatchStagingRealArchive::test_zip_is_extracted_via_staging_into_release_dir`
+  — the real-archive-through-patool round trip this live run generalizes to a real RAR set.
+- `test_auto_delete_rearm.py::TestAutoDeleteDeferral::test_incident_replay_webhook_during_extracting_defers_then_deletes`
+  — the exact Bug 2 incident replay (webhook accepted during `EXTRACTING`, defer, delete on
+  the next deletable state) this live run exercised on the running merge build instead of a
+  unit-level model double.
+
+### Secret handling and teardown
+
+Exact-match secret scan (`grep -c -F -f secret` over every `log-rar*.txt` / `model-x-*.json`
+/ `model-held-*.json` / `volume-list-*.txt` / `extract-samples*.txt` /
+`webhook-post-output-*.txt` / `webhooks.log` / `analysis-*.txt` capture file from this
+session): **`SECRET_SCAN=0`**. `autodelete.delay_seconds` was restored to its recorded
+`DELAY_L0 = 300` immediately once deletion was observed, and again by `teardown.sh`
+(idempotent, re-confirmed identical both times). `bash teardown.sh` (not `--final`) printed:
+```
+RESTORED rate_limit ok (not set this session)
+RESTORED delay_seconds ok
+REMOVED synth roots count=1 refused=0
+STOP seedsyncarr-test ok
+RESTORED webhook_secret ok (len=0)
+WAIT server/status ok
+CHECK webhook/sonarr Test http=200
+SANDBOX_RESTORED ok
+```
+Re-run a second time (this plan's own `<verify>` command) and printed the identical
+`SANDBOX_RESTORED ok` last line, confirming idempotence. Sandbox still pinned to the same
+DEV_PIN afterward; no `SSA122.*` material remains on the seedbox or under
+`/volume1/data/v5test/torrents`. Production `seedsyncarr` fingerprint (`Id`, image,
+`StartedAt`) re-confirmed byte-identical to the 122-11/122-12/122-06 baseline
+(`2feb4073...`, `:1.7.6@sha256:da6196e0...`, `2026-10-23T07:04:18.591254939Z`) — never named
+by any write command in this plan.
+
+**PASS (D-07).** Both of the extract-staging-autodel-rearm record's deferred
+`after_deploy` items are confirmed on the running merge build: (1) extraction stages
+out of sight in `.seedsyncarr-extracting/<root>/`, publishes only when complete, and the
+UI/model never lists the staging dir; (2) a webhook accepted while the root is `EXTRACTING`
+defers auto-delete with the exact documented log wording and attempt counter, then deletes
+once the root becomes deletable again. No timing miss occurred (attempt 1 succeeded
+cleanly); no D-03 escalation is needed.

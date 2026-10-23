@@ -40,3 +40,40 @@ rediscovered from scratch.
 
 **Status:** Not investigated further; not fixed; no regression test added. Carried forward
 for Phase 123 triage.
+
+## `ExtractDispatch.__coalesce_extractions` does not recognize modern RAR volume naming (122-07)
+
+**Found during:** 122-07, Task 1, building the D-07 multi-part RAR test archive.
+
+**Observed:** `__coalesce_extractions` (`src/python/controller/extract/dispatch.py`) only
+filters the legacy WinRAR volume-continuation extension pattern `^\.r\d{2,}$` (e.g. `.r00`,
+`.r01`) so that only the first volume (plain `.rar`) is queued as "an archive to extract"
+for a task. RAR 5.0+ (the only creation format available from the `rar` CLI tested live on
+the seedbox, RAR 7.11) uses the new-style `.partN.rar` naming for **every** volume,
+including the first, so every volume file independently passes `Extract.is_archive()`
+(extension-based format detection via `patoolib.get_archive_format`) and none are filtered.
+A task built from a modern multi-volume RAR therefore runs one fully redundant
+extraction-and-publish pass **per volume** (confirmed live: a `Replacing existing ... with
+the newly extracted copy` warning on the second pass of a 2-volume archive, see
+`122-SAFE01-EVIDENCE.md` §D-07 item 7). `unrar` itself is tolerant of this (pointing it at
+any volume finds the sibling volumes and extracts the complete, correct output every time),
+so this is not a correctness or safety defect — the staging-then-publish invariant holds on
+every redundant pass — but it is pure wasted work that scales with volume count, and it
+narrows the margin between a chosen `delay_seconds` and the 24-deferral auto-delete re-arm
+budget on an unusually slow extraction.
+
+**Why out of scope here:** Pre-existing gap in `__coalesce_extractions`, not introduced or
+worsened by anything in this phase; this plan's constraint is live acceptance evidence only,
+no code changes. Worked around for this plan's own timing margin by choosing a 2-volume
+archive (not the ~11 volumes a smaller split would produce) rather than by touching product
+code.
+
+**Why it matters:** A real-world release packed with a modern RAR tool and many small
+volumes (the original Burbs incident used an unspecified tool; a user re-running `rar` today
+would default to this behavior) would multiply extraction time by the volume count for no
+benefit. Worth a small, contained fix extending the coalesce filter to recognize
+`.part\d+\.rar$` (keep only the lowest-numbered part, or `.rar` with no `.partN` infix) the
+next time extraction code is touched.
+
+**Status:** Not investigated further; not fixed; no regression test added. Carried forward
+as a Phase 123 (or later maintenance) candidate.
