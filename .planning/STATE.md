@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: 122-08 complete (SAFE-01 owner-approved; Plan 09 SAFE-02 reconciliation next)
-last_updated: "2026-10-23T21:32:22.000Z"
-last_activity: "2026-10-23 -- 122-08 executed (owner declined sandbox Sonarr key rotation this session, follow-up flagged for Plan 09's ROADMAP operator follow-ups; fixed a Rule 1 regex bug in teardown.sh --final that did not match a digest-only image reference; sandbox restored to IMAGE_PIN_L0 (1.7.6), independently re-verified in a fresh session; production fingerprint confirmed unchanged from the Plan 04 baseline; SAFE-01 verdict recorded PASSED on all six required scenarios; owner reviewed and approved, verbatim 'approve'; Plan 09 SAFE-02 reconciliation unblocked)"
+stopped_at: Completed 122-09-PLAN.md (SAFE-02 reconciliation; both incident records resolved)
+last_updated: "2026-10-23T21:36:54.299Z"
+last_activity: 2026-10-23 -- 122-08 executed (owner declined sandbox Sonarr key rotation this session, follow-up flagged for Plan 09's ROADMAP operator follow-ups; fixed a Rule 1 regex bug in teardown.sh --final that did not match a digest-only image reference; sandbox restored to IMAGE_PIN_L0 (1.7.6), independently re-verified in a fresh session; production fingerprint confirmed unchanged from the Plan 04 baseline; SAFE-01 verdict recorded PASSED on all six required scenarios; owner reviewed and approved, verbatim 'approve'; Plan 09 SAFE-02 reconciliation unblocked)
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 15
-  completed_plans: 14
-  percent: 17
+  completed_plans: 15
+  percent: 33
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 122 (safety-acceptance-and-logging-fixes) — EXECUTING
-Plan: 122-08 of 12 complete (01-04 complete; 05 gaps_found; 06 D-06(d) restart persistence PASS, complete; 07 D-07 extraction staging/auto-delete re-arm PASS, complete; 08 sandbox restore + owner-approved SAFE-01 verdict, complete; 09 still pending execution; 10 gap-closure fix complete; 11 pushed fix to PR #134 and re-pinned sandbox, complete; 12 reran 122-05's D-06 scenarios on the fixed build -- all PASS, gap closed)
-Status: Executing Phase 122 (Plan 09 -- SAFE-02 reconciliation, likely re-merge -- still pending before the phase closes)
-Last activity: 2026-10-23 -- 122-08 executed (owner declined sandbox Sonarr key rotation this session, follow-up flagged for Plan 09's ROADMAP operator follow-ups; fixed a Rule 1 regex bug in teardown.sh --final that did not match a digest-only image reference; sandbox restored to IMAGE_PIN_L0 (1.7.6), independently re-verified in a fresh session; production fingerprint confirmed unchanged from the Plan 04 baseline; SAFE-01 verdict recorded PASSED on all six required scenarios; owner reviewed and approved, verbatim 'approve'; Plan 09 SAFE-02 reconciliation unblocked)
+Plan: 122-09 of 12 complete (01-04 complete; 05 gaps_found, superseded by 10-12's fix, intentionally not counted toward completion; 06 D-06(d) restart persistence PASS, complete; 07 D-07 extraction staging/auto-delete re-arm PASS, complete; 08 sandbox restore + owner-approved SAFE-01 verdict, complete; 09 SAFE-02 reconciliation, owner-confirmed closed, complete; 10 gap-closure fix complete; 11 pushed fix to PR #134 and re-pinned sandbox, complete; 12 reran 122-05's D-06 scenarios on the fixed build -- all PASS, gap closed)
+Status: Phase 122 11/12 plans counted complete (05's gaps_found status is intentionally excluded per GSD completion rules). Remaining work before the phase closes is the one-PR-per-phase merge decision noted in 122-09's orchestrator_amendment (PR #134, DEV_PIN re-pinned after 122-10/122-11, SAFE-01 PASSED and owner-approved in 122-08)
+Last activity: 2026-10-23 -- 122-09 executed (owner verbatim reply "All confirmed" to Task 2's cleanup checklist; both done-group-no-auto-delete.md and extract-staging-autodel-rearm.md closed per D-12, status resolved, moved to .planning/debug/resolved/; ROADMAP Done-group operator follow-up ticked; deferred extract-staging items C-G stay in the Backlog, unaffected; SAFE-02 requirement marked complete)
 
 ## Accumulated Context
 
@@ -93,6 +93,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 122]: 122-06: D-06(d) restart persistence PASS on fixed build (sha256:e3941f97...) using SSA122.Bravo3.S01 after two test-harness-only Rule 3 fixes (a persist-read race, and a stale pre-restart size baseline); credit survived a real docker restart, the one-shot release did not, no auto-delete fired over a 390s post-restart window with local bytes frozen; SAFE-01 stays open pending Plan 07 extraction evidence; a pre-existing lftp-pexpect shutdown warning logged to deferred-items.md for Phase 123
 - [Phase 122]: 122-07: D-07 extraction staging/auto-delete re-arm PASS on fixed build (sha256:e3941f97...) using a 2-volume 1 GiB SSA122.Rar.Pack RAR; staging grew through 7 samples while the release folder showed only the .rar volumes, the mkv published at full size only once complete, zero model snapshots listed the staging dir; a webhook posted the instant the root reached EXTRACTING deferred auto-delete 3 times (naming State.EXTRACTING) then deleted once extraction finished; SAFE-01's three live-acceptance halves (import/auto-delete, restart persistence, extraction) are all now PASS on the build that will ship; a pre-existing gap (ExtractDispatch's coalesce filter does not recognize modern RAR .partN.rar volume naming, causing one redundant-but-safe extraction pass per volume) logged to deferred-items.md for Phase 123
 - [Phase 122]: 122-08: owner reviewed and approved the SAFE-01 verdict (all six required scenarios PASS); sandbox restored to IMAGE_PIN_L0 (1.7.6) and independently re-verified; a Rule 1 regex bug in teardown.sh --final (did not match a digest-only image reference) was found and fixed; owner declined sandbox Sonarr key rotation this session (follow-up flagged for Plan 09's ROADMAP operator follow-ups); Plan 09 (SAFE-02 reconciliation) is unblocked
+- [Phase 122]: 122-09: owner verbatim reply 'All confirmed' (Task 2) closed both open incident records per D-12 -- done-group-no-auto-delete.md and extract-staging-autodel-rearm.md both status resolved, moved to .planning/debug/resolved/; ROADMAP Done-group operator follow-up ticked; deferred extract-staging items C-G stay in the Backlog, unaffected (do not block closing)
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -150,9 +151,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-23T19:34:20.398Z
-Stopped at: 122-08 complete (SAFE-01 owner-approved; Plan 09 SAFE-02 reconciliation next)
-Next action: SAFE-01 is PASSED (all six required scenarios) and owner-approved (verbatim "approve"); sandbox restored to IMAGE_PIN_L0 (1.7.6) and verified, production unchanged. Plan 09 (SAFE-02 reconciliation of done-group-no-auto-delete.md and extract-staging-autodel-rearm.md, plus the one-PR-per-phase merge) is next and unblocked. Owner follow-up: rotate the sandbox Sonarr (`sonarr-v5`) API key, declined this session (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-23T21:36:54.295Z
+Stopped at: Completed 122-09-PLAN.md (SAFE-02 reconciliation; both incident records resolved)
+Next action: SAFE-01 is PASSED (all six required scenarios) and owner-approved (verbatim "approve"); SAFE-02 is now also complete (Plan 09: owner verbatim "All confirmed" closed both incident records per D-12, both moved to `.planning/debug/resolved/`). Remaining before Phase 122 closes: the one-PR-per-phase merge decision (PR #134, DEV_PIN re-pinned after 122-10/122-11). Owner follow-up: rotate the sandbox Sonarr (`sonarr-v5`) API key, declined this session (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -165,7 +166,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- /bm:execute-phase 122 (continue with Plan 09: SAFE-02 reconciliation and the one-PR-per-phase merge, on the same fixed DEV_PIN sha256:e3941f97...)
+- /bm:execute-phase 122 (Plan 09 SAFE-02 reconciliation is complete; remaining phase work is the one-PR-per-phase merge decision, on the same fixed DEV_PIN sha256:e3941f97...)
 
 ## Deferred Items
 

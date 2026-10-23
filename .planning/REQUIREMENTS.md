@@ -15,7 +15,7 @@ Committed scope for this milestone. Each maps to exactly one roadmap phase. Fixe
 ### Safety Acceptance
 
 - [x] **SAFE-01**: Extraction, import and auto-delete checks pass on a running build, with recorded evidence (completes the Phase 119 verification whose browser half passed 2026-10-18)
-- [ ] **SAFE-02**: The Done-group (`done-group-no-auto-delete`) and extract-staging (`extract-staging-autodel-rearm`) incident records each distinguish verified fixes from remaining operator cleanup; neither is closed solely because its code shipped
+- [x] **SAFE-02**: The Done-group (`done-group-no-auto-delete`) and extract-staging (`extract-staging-autodel-rearm`) incident records each distinguish verified fixes from remaining operator cleanup; neither is closed solely because its code shipped
 
 ### Startup/Shutdown Lifecycle
 
@@ -71,7 +71,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | SEC-02 | Phase 121 | Complete |
 | SAFE-01 | Phase 122 | Complete |
-| SAFE-02 | Phase 122 | Pending |
+| SAFE-02 | Phase 122 | Complete |
 | LIFE-01 | Phase 123 | Pending |
 | LIFE-02 | Phase 123 | Pending |
 | STRM-01 | Phase 124 | Pending |
