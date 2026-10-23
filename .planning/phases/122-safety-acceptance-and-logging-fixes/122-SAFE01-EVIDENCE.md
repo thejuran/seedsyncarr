@@ -435,3 +435,100 @@ this point on must run against a build that includes the fix.
   **not** contain the 122-10 fix; D-06(c) evidence captured against it is superseded by the
   rerun this plan prepares the sandbox for).
 - No new PR was created (`gh pr list --head gsd/phase-122-safety-acceptance-and-logging-fixes --json number -q '.[].number'` prints only `134`); no merge; no `gh pr ready` call.
+
+### Sandbox re-pin and LOG-01 recheck
+
+NAS capture dir (0700, not committed): `/volume1/docker/v5test/results/safe01-122-20261023T165741Z`.
+Holds `teardown.sh`, `webhook-post.sh` (byte-identical copies of the committed harness,
+confirmed by local `diff`), `deploy.sh` (one-off, trap-protected re-pin driver for this
+session only), `state.env`, `prod-before.txt`/`prod-after.txt`, and `model_tools.py` /
+`round2.sh` copied from the previous capture dir
+(`/volume1/docker/v5test/results/safe01-122-20261022T195544Z`) for 122-12 to reuse.
+
+**Pre-copy secret scan of the two reused helper files** (`grep -c -i -E
+'password|api_key|secret'`): `model_tools.py` → 0 hits (copied as-is). `round2.sh` → 20 hits,
+all inspected directly (`grep -n`): every hit is the word `secret` in a variable name
+(`SECRET`, `SECRET_BODY`, `SECRET_SCAN...`), a `webhook_secret` config-key literal, or a
+comment — the script generates a fresh random value from `/dev/urandom` at runtime and never
+contains a hardcoded secret value; it is the same pattern `teardown.sh`/`webhook-post.sh`
+already use safely. Judged safe to copy; copied as-is, not skipped.
+
+`IMAGE_PIN_L0` read from the previous capture dir's `state.env` (first/only value) and
+required equal to `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`
+— matched. `state.env` in the new capture dir:
+```
+IMAGE_PIN_L0=ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e
+PREV_DEV_PIN=ghcr.io/thejuran/seedsyncarr@sha256:4463de8e449139496ee9387dac1393297c9268e932870cbd6baa9bb93c0a4cf9
+DEV_PIN=ghcr.io/thejuran/seedsyncarr@sha256:e3941f976b5bf43370238ac3a7410f569e04b49f635d4e65382b4c1e3284ebe4
+```
+
+**Preflight** (before any write): compose file's `seedsyncarr-test` image line and
+`docker inspect seedsyncarr-test --format '{{.Config.Image}}'` both equaled PREV_DEV_PIN;
+`ls /volume1/data/v5test/torrents` showed zero `SSA122.*` names (no leftover synthetic
+material from Plan 05).
+
+**Deploy** (trap-protected: `trap 'exit 130' INT TERM HUP` first, then
+`trap '[ "$OK" = 1 ] || bash "$D/teardown.sh" --final' EXIT INT TERM HUP` — any interruption
+would have restored IMAGE_PIN_L0 rather than leaving a half-deployed sandbox):
+
+```
+EDIT compose image line to NEW_DEV_PIN ok (inode before=101505523 after=101505523)
+$ sudo /usr/local/bin/docker compose -f /volume1/docker/v5test/docker-compose.yml pull seedsyncarr-test
+  seedsyncarr-test Pulled
+$ sudo /usr/local/bin/docker compose -f /volume1/docker/v5test/docker-compose.yml up -d seedsyncarr-test
+  Container seedsyncarr-test  Recreated
+  Container seedsyncarr-test  Started
+WAIT server/status ok
+DEPLOY image verified: ghcr.io/thejuran/seedsyncarr@sha256:e3941f976b5bf43370238ac3a7410f569e04b49f635d4e65382b4c1e3284ebe4
+DEPLOY container_image_id=sha256:6f2719dbb9c2c2e8a56a7e992d2052ad5123a5ce302743a86d0ebc400012a792
+DEPLOY webhook_secret length=0 confirmed
+DEPLOY test_event http=200 body=Test OK
+DEPLOY_OK
+PROD_UNCHANGED
+REPIN_SESSION_OK
+```
+
+Compose file inode unchanged across the edit (`101505523` before and after — confirmed
+inode-preserving, not a file replacement). `docker inspect seedsyncarr-test --format
+'{{.Config.Image}}'` after deploy equals NEW_DEV_PIN exactly (re-confirmed independently via
+the Task 2 verify command, same result).
+
+NAS host clock (UTC, `date -u`) around the deploy: pull/recreate completed and the Test event
+fired between `2026-10-23T17:04:14Z` and `2026-10-23T17:04:53Z` (NAS host local zone is -05,
+so host-local was ~12:04).
+
+### Production unchanged (fingerprint comparison)
+
+```
+before: 2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e 2026-10-23T07:04:18.591254939Z
+after:  2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e 2026-10-23T07:04:18.591254939Z
+```
+`diff` of the two capture files: empty (identical container Id, image and StartedAt). The
+production container `seedsyncarr` was never named by any write command in this plan's
+procedures — only `-f /volume1/docker/v5test/docker-compose.yml` and the `seedsyncarr-test`
+service were ever targeted.
+
+Note: this `StartedAt` (`2026-10-23T07:04:18Z`) differs from the `2026-10-15T22:15:22Z`
+recorded in `122-04-SUMMARY.md`/the orchestrator's prior notes, while the container `Id` and
+pinned image digest are unchanged. This indicates production `seedsyncarr` restarted at some
+point between those two observations (e.g. a host/Docker daemon restart) — not an action taken
+by this plan, whose own before/after fingerprints (captured minutes apart in this session) are
+byte-identical, which is the actual guarantee this plan is responsible for.
+
+### LOG-01 live on the fixed build (webhook handler logging reaches the app log)
+
+Unsigned (`webhook_secret` length confirmed 0, no `X-Webhook-Signature` header sent)
+`{"eventType":"Test"}` posted to `/server/webhook/sonarr` returned HTTP 200, body `Test OK`.
+App log line count immediately before the post: 4989. Verbatim sandbox app-log line found
+after that line (clocks: NAS host UTC ~`2026-10-23T17:04:3xZ` → host-local -05 ~`12:04:3x` →
+app-log local-+1h convention `13:04:37`, matching below):
+```
+2026-10-23 13:04:37,406 - INFO - seedsyncarr.WebhookHandler (MainProcess/worker 1) - Sonarr webhook test event received
+```
+Logger field is `seedsyncarr.WebhookHandler`, timestamped after the re-pin. LOG-01 is
+confirmed still live on the build containing the 122-10 fix.
+
+The sandbox is intentionally left running NEW_DEV_PIN (teardown was not run at the end of this
+plan) for 122-12's rerun of 122-05's D-06(c) scenario and Plans 06-08; Plan 08 runs
+`teardown.sh --final`, which will restore `IMAGE_PIN_L0` (the original 1.7.6 pin), confirmed
+present and correct in this capture dir's `state.env`.
