@@ -102,7 +102,7 @@ Plans:
 
 **Wave 8-10** *(sequential, sandbox only, on the fixed build)*
 
-- [ ] 122-06-PLAN.md — SAFE-01 restart persistence of early credit
+- [x] 122-06-PLAN.md — SAFE-01 restart persistence of early credit
 - [ ] 122-07-PLAN.md — SAFE-01 extraction staging (~1 GB multi-part RAR) and auto-delete re-arm
 - [ ] 122-08-PLAN.md — Sandbox Sonarr key rotation decision, restore sandbox to 1.7.6 pin, SAFE-01 verdict (owner review)
 

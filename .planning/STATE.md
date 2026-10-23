@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: 122-12 complete (D-06 rerun PASS on fixed build; 122-05 gap closed)
-last_updated: "2026-10-23T17:41:51.000Z"
-last_activity: "2026-10-23 -- 122-12 executed (reran D-06(e)/(a)/(c)/(b) on SSA122.Echo.S01 + held decoy on the fixed DEV_PIN sha256:e3941f97...; all PASS, including the critical D-06(c) check -- a deferred SSA122.Echo.S01E04 webhook posted at ~11.6% was accepted via 'Recorded webhook import' instead of dropped; second independent (c)-repeat on SSA122.Foxtrot.S01 also PASS; sandbox restored, SANDBOX_RESTORED ok; production fingerprint unchanged; SAFE-01 import/auto-delete half closed, extraction and restart persistence still owed by Plans 06/07)"
+stopped_at: 122-06 complete (SAFE-01 restart persistence D-06(d) PASS on fixed build)
+last_updated: "2026-10-23T18:30:00.000Z"
+last_activity: "2026-10-23 -- 122-06 executed (D-06(d) restart persistence on SSA122.Bravo3.S01, fixed DEV_PIN sha256:e3941f97...; early per-episode credit survived a full docker restart of seedsyncarr-test with the identical controller.persist entry before and after; the one-shot manual release did not survive the restart, root held again with hold_reason no_queue_entry; over a 390s post-restart window local bytes stayed frozen and no Scheduled auto-delete/Auto-deleted local file lines appeared; two test-harness-only bugs fixed and the scenario rerun clean; sandbox restored, SANDBOX_RESTORED ok; production fingerprint unchanged; SAFE-01 restart-persistence half closed, extraction still owed by Plan 07)"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 15
-  completed_plans: 12
+  completed_plans: 13
   percent: 17
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 122 (safety-acceptance-and-logging-fixes) — EXECUTING
-Plan: 122-12 of 12 complete (01-04 complete; 05 gaps_found; 06-09 re-pointed to the fixed build, still pending execution; 10 gap-closure fix complete; 11 pushed fix to PR #134 and re-pinned sandbox, complete; 12 reran 122-05's D-06 scenarios on the fixed build -- all PASS, gap closed)
-Status: Executing Phase 122 (Plans 06-09 -- restart persistence, extraction, SAFE-02 reconciliation, likely re-merge -- still pending before the phase closes)
-Last activity: 2026-10-23 -- 122-12 executed (reran D-06(e)/(a)/(c)/(b) on SSA122.Echo.S01 + held decoy on the fixed DEV_PIN sha256:e3941f97...; all PASS, including the critical D-06(c) check -- a deferred SSA122.Echo.S01E04 webhook posted at ~11.6% was accepted via 'Recorded webhook import' instead of dropped; second independent (c)-repeat on SSA122.Foxtrot.S01 also PASS; sandbox restored, SANDBOX_RESTORED ok; production fingerprint unchanged; SAFE-01 import/auto-delete half closed, extraction and restart persistence still owed by Plans 06/07)
+Plan: 122-06 of 12 complete (01-04 complete; 05 gaps_found; 06 D-06(d) restart persistence PASS, complete; 07-09 still pending execution; 10 gap-closure fix complete; 11 pushed fix to PR #134 and re-pinned sandbox, complete; 12 reran 122-05's D-06 scenarios on the fixed build -- all PASS, gap closed)
+Status: Executing Phase 122 (Plans 07-09 -- extraction, SAFE-02 reconciliation, likely re-merge -- still pending before the phase closes)
+Last activity: 2026-10-23 -- 122-06 executed (D-06(d) restart persistence of an early per-episode import credit on SSA122.Bravo3.S01, fixed DEV_PIN sha256:e3941f97...; credit survived a full docker restart of seedsyncarr-test; the one-shot manual release did not survive the restart; over a 390s post-restart window local bytes stayed frozen with no auto-delete schedule/fire; two test-harness-only bugs fixed and the scenario rerun clean; sandbox restored, SANDBOX_RESTORED ok; production fingerprint unchanged; SAFE-01 restart-persistence half closed, extraction still owed by Plan 07)
 
 ## Accumulated Context
 
@@ -90,6 +90,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 122]: 122-10: fixed D-06(c) post-transfer pending-notice drop (narrow pending-notice-membership exception in the evidence gate); local gates green (suite subset of 122-03 baseline, ruff clean, RED-before-GREEN); nothing pushed, 122-11 pushes
 - [Phase 122]: 122-11: pushed 122-10's fix to PR #134 (CI run 401 green, all checks pass); re-pinned seedsyncarr-test to new DEV_PIN sha256:e3941f97... (digest cross-checked two ways); production fingerprint unchanged this session (StartedAt drifted from the 122-04 baseline -- host/Docker restart outside this plan, flagged); LOG-01 reconfirmed live; ready for 122-12's live D-06(c) rerun
 - [Phase 122]: 122-12: D-06 rerun PASS on fixed build (sha256:e3941f97...); second independent (c)-repeat on SSA122.Foxtrot.S01 also PASS; a deferred SSA122.Echo.S01E04 webhook posted at ~11.6% was accepted via Recorded webhook import instead of dropped (closing 122-05's gap); SAFE-01 stays open pending Plans 06/07 restart-persistence and extraction evidence
+- [Phase 122]: 122-06: D-06(d) restart persistence PASS on fixed build (sha256:e3941f97...) using SSA122.Bravo3.S01 after two test-harness-only Rule 3 fixes (a persist-read race, and a stale pre-restart size baseline); credit survived a real docker restart, the one-shot release did not, no auto-delete fired over a 390s post-restart window with local bytes frozen; SAFE-01 stays open pending Plan 07 extraction evidence; a pre-existing lftp-pexpect shutdown warning logged to deferred-items.md for Phase 123
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -147,9 +148,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-23T17:37:57Z
-Stopped at: 122-12 complete (D-06 rerun PASS on fixed build; 122-05's D-06(c) gap closed)
-Next action: Plans 06 (restart persistence, D-06d) and 07 (extraction, D-07) still need their own live evidence on this same DEV_PIN (sha256:e3941f97...) before SAFE-01 as a whole can be marked complete in REQUIREMENTS.md; Plan 08 (SAFE-02 reconciliation) and Plan 09 follow. Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-23T18:30:00.000Z
+Stopped at: 122-06 complete (SAFE-01 restart persistence D-06(d) PASS on fixed build)
+Next action: Plan 07 (extraction, D-07) still needs its own live evidence on this same DEV_PIN (sha256:e3941f97...) before SAFE-01 as a whole can be marked complete in REQUIREMENTS.md; Plan 08 (SAFE-02 reconciliation) and Plan 09 follow. Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -162,7 +163,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- /bm:execute-phase 122 (continue with Plans 06-09: restart persistence, extraction, SAFE-02 reconciliation, and the one-PR-per-phase merge, all on the same fixed DEV_PIN sha256:e3941f97...)
+- /bm:execute-phase 122 (continue with Plans 07-09: extraction, SAFE-02 reconciliation, and the one-PR-per-phase merge, all on the same fixed DEV_PIN sha256:e3941f97...)
 
 ## Deferred Items
 
@@ -173,6 +174,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 | Operator follow-up | Remove Hacks.S04E01 test torrent from sandbox Deluge (`~/v5test` on seedbox, label tv-v5test) once TorrentDay seed time is met | Seeding; owner to remove |
 | Deferred fix (Phase 120) | Webhook handler logger not attached to app log ("Sonarr webhook test event received" never written) | Promoted to LOG-01, Phase 122 |
 | Deferred fix (Phase 120) | CompletionGate prune path logs "Completion hold cleared" when a hold is merely dropped (no release; no early transfer) | Promoted to LOG-02, Phase 122 |
+| Deferred fix (Phase 122-06) | `seedsyncarr-test` restart: lftp's pexpect child fails to terminate within the `docker restart` SIGTERM window ("Could not terminate the child"); controller still exits and the container restarts cleanly ~5s later | Logged to `122-safety-acceptance-and-logging-fixes/deferred-items.md`; candidate for Phase 123 |
 
 Open audit artifacts acknowledged at v1.7.7 close (2026-10-20), all from earlier milestones and assigned to Phase 122 (SAFE-01/SAFE-02):
 
