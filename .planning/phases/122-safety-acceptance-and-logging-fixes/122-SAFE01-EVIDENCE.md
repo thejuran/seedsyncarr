@@ -1359,3 +1359,84 @@ live against this new pin.
   This differs from the previous DEV_PIN, as required.
 - **Superseded DEV_PIN (Plans 11-12, 06-07 evidence):** `ghcr.io/thejuran/seedsyncarr@sha256:e3941f976b5bf43370238ac3a7410f569e04b49f635d4e65382b4c1e3284ebe4`
 - No new PR was created (`gh pr list --head gsd/phase-122-safety-acceptance-and-logging-fixes --json number -q '.[].number'` prints only `134`); no merge; no `gh pr ready` call; no force push.
+
+### Sandbox re-pin, LOG-01 and WR-01 live recheck (gap cycle 2)
+
+Capture dir: `/volume1/docker/v5test/results/safe01-122-20261023T234813Z` (`stat -c %a` = `700`;
+holds `teardown.sh`, `webhook-post.sh`, `model_tools.py`, `round2.sh`, `model_tools2.py`,
+`state.env` and this plan's logs/captures; `teardown.sh`/`webhook-post.sh` confirmed
+`sha256sum`-identical to the committed repo copies before use).
+
+**Re-pin:** `IMAGE_PIN_L0` (`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`)
+-> `NEW_DEV_PIN` (`ghcr.io/thejuran/seedsyncarr@sha256:f8204207ef199f183f6230b74bd8967397732a5919570b09dcec7dc3f2341689`,
+the exact digest 122-15 recorded for PR #134 CI run 404). Preflight confirmed the compose
+`seedsyncarr-test` image line and `docker inspect .Config.Image` both equalled
+`IMAGE_PIN_L0` before any edit, and `/downloads` held no `SSA122.` material.
+
+**Compose inode-preserving edit:** `stat -c %i` before = `101505523`, after = `101505523`
+(unchanged — an in-place content rewrite, not a file replacement).
+
+**Deploy transcript (status words only):**
+```
+seedsyncarr-test Pulling
+seedsyncarr-test Pulled
+Container seedsyncarr-test  Recreate
+Container seedsyncarr-test  Recreated
+Container seedsyncarr-test  Starting
+Container seedsyncarr-test  Started
+```
+
+A first deploy attempt in this same session used a single HTTP-200 readiness poll and raced
+the container recreate: the OLD (1.7.6) container's own shutdown sequence (`Caught signal
+SIGTERM` ... `Exited successfully`) was still the most recent thing in the app log at the
+moment the script took its LOG-01 line-count baseline, before the NEW container had printed
+its own `Starting SeedSyncarr` line — so the unsigned Test webhook's log line never fell
+inside the checked window and the check failed, with no product code involved (confirmed by
+reading the full log window afterward: the webhook returned HTTP 200 `Test OK`, but no
+`seedsyncarr.WebhookHandler` / `Sonarr webhook test event received` line exists anywhere in
+that session's capture). Diagnosed as a harness-only timing bug (Rule 3, auto-fixed and
+rerun once per the checkpoint rule's own precedent): the corrected script additionally waits
+for a fresh `Starting SeedSyncarr` app-log line (proof the new process actually started)
+before taking the LOG-01 baseline, adds an 8 s settle delay, and retries each "new line"
+check over a bounded 20 s window instead of a single grep. The first attempt's own `EXIT`
+trap ran `teardown.sh --final`, which printed `SANDBOX_RESTORED ok` and independently
+confirmed the sandbox back on `IMAGE_PIN_L0` (`docker inspect .Config.Image` re-read
+immediately afterward) and production unchanged, before the corrected script ran. The
+transcript and lines quoted below are all from that corrected, successful second run (full
+diagnosis and fix recorded in `122-16-SUMMARY.md`'s Deviations section).
+
+**Container image ID after deploy:** `sha256:315a4744563e326f5663fbebc409d3ee68100c6fcf49133c52d0f40970394d66`.
+
+**Production fingerprint (this session):**
+- Before: `2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e 2026-10-23T07:04:18.591254939Z`
+- After: byte-identical (`diff` empty)
+- No drift vs. the 122-08/interfaces baseline this time: `Id`, pinned `image` and
+  `StartedAt` all match the recorded value exactly (unlike 122-11's session, which saw a
+  `StartedAt` drift from an intervening host restart; none occurred here). Production was
+  never named by any write command — only `-f /volume1/docker/v5test/docker-compose.yml`
+  and the `seedsyncarr-test` service were targeted.
+
+**LOG-01 (verbatim line):**
+```
+2026-10-23 19:59:22,427 - INFO - seedsyncarr.WebhookHandler (MainProcess/worker 1) - Sonarr webhook test event received
+```
+Clocks: NAS UTC `2026-10-23T23:59:22.427Z`; host-local `2026-10-23 18:59:22 -0500`; app-log
+`2026-10-23 19:59:22,427`. The unsigned `{"eventType":"Test"}` POST to
+`/server/webhook/sonarr` returned HTTP 200 body `Test OK`; `webhook_secret` length was
+confirmed `0` beforehand (awk length only, value never read).
+
+**WR-01 (status-burst tally and verbatim line):** 61 sequential `GET /server/status` calls,
+started 65 s after the deploy's own readiness polling ended (to leave that polling's 60 s
+window) -> **200 = 60, 429 = 1**. A further 65 s quiet period followed before Task 2 began.
+```
+2026-10-23 20:00:29,752 - WARNING - seedsyncarr.StatusHandler (MainProcess/worker 2) - Rate limit exceeded for __handle_get_status
+```
+Clocks: NAS UTC `2026-10-24T00:00:29.752Z`; host-local `2026-10-23 19:00:29 -0500`; app-log
+`2026-10-23 20:00:29,752`.
+
+**CR-01:** verified by unit regression only (122-14), per that plan's own stated reason — a
+live check would require writing an invalid key into the sandbox config and reading the real
+key back out to restore it, which conflicts with the absolute "never print API keys" rule
+and the owner's standing decision (122-08) not to touch the sandbox Sonarr key.
+
+**Sandbox left on `NEW_DEV_PIN` for Task 2** (no teardown run on success, per the plan).
