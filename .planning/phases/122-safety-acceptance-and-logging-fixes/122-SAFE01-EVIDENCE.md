@@ -1270,6 +1270,89 @@ fresh session; production `seedsyncarr` is confirmed byte-identical to its Plan 
 throughout. Per D-03, this verdict rests only on scenarios that actually ran and passed live
 on the shipping build — no scenario is marked passed from inference.
 
+#### Gap cycle 2 (122-13..17)
+
+**(a) Why.** The post-SAFE-01 code review and verification pass (`122-REVIEW.md` /
+`122-VERIFICATION.md`) found four gaps after the verdict above was recorded: **CR-01** (a
+stored Sonarr/Radarr API key could leak into a logged traceback via
+`requests.exceptions.InvalidHeader` from `ConfigHandler._test_arr_connection`), **WR-01**
+(the `/server/status` rate-limit warning logged to a detached module logger instead of the
+app logger, a LOG-01-class gap), and **WR-02**/**WR-03** (the D-06(c) post-transfer
+pending-notice exception had no time bound, and the import-credit log line always claimed
+`"(root still transferring)"` even once the root had finished). The owner's decision of
+2026-10-23 is quoted verbatim: **"Key leak + log fixes + narrow D-06(c) (Recommended)"** —
+fix all four in-phase on PR #134, same branch, same one-PR-per-phase policy as Plans 04/11,
+with a D-06(c) sandbox rerun on the resulting build before the verdict can be considered
+final for the shipping code.
+
+**(b) Scenario table.**
+
+| Scenario | D-ID / finding | Build | Verdict | Evidence section |
+|---|---|---|---|---|
+| Waiting hold and one-shot release | D-05, D-06(e) | `DEV_PIN sha256:f8204207...` | PASS | "Plan 16: D-06 rerun on the narrowed build (gap cycle 2)" → "D-06(e) Waiting hold and one-shot release (gap cycle 2)" |
+| Early per-episode credit | D-06(a) | `DEV_PIN sha256:f8204207...` | PASS | → "D-06(a) Early per-episode credit (gap cycle 2)" |
+| Deferral and revalidation, India | D-06(c) | `DEV_PIN sha256:f8204207...` | PASS | → "D-06(c) Deferral and revalidation on the narrowed build" |
+| Deferral and revalidation, Juliet repeat | D-06(c) | `DEV_PIN sha256:f8204207...` | PASS | → "D-06(c) repeat on SSA122.Juliet.S01" |
+| Arm on commit and real 300 s auto-delete | D-06(b) | `DEV_PIN sha256:f8204207...` | PASS | → "D-06(b) Arm on commit and auto-delete (gap cycle 2)" |
+| User STOP discards a pending notice (live, Hotel) | WR-02 | `DEV_PIN sha256:f8204207...` | PASS | → "WR-02 live: user stop discards a pending notice (SSA122.Hotel.S01)" |
+| Grace-window expiry, local-copy-gone discard, DELETE_LOCAL discard (unit) | WR-02 | unit regression, 122-13 | PASS | `122-13-SUMMARY.md` Test Status table — `test_post_transfer_notice_discarded_after_grace_window`, `test_post_transfer_notice_discarded_when_local_copy_gone`, `test_user_delete_local_discards_pending_notice`, all RED→GREEN |
+| Webhook handler Test line reaches the app log (live) | LOG-01 | `DEV_PIN sha256:f8204207...` | PASS | "Sandbox re-pin, LOG-01 and WR-01 live recheck (gap cycle 2)" → "LOG-01 (verbatim line)" |
+| `/server/status` rate-limit warning reaches the app log (live) | WR-01 | `DEV_PIN sha256:f8204207...` | PASS | → "WR-01 (status-burst tally and verbatim line)" |
+| Arr API key never logged from Test Connection | CR-01 | unit regression, 122-14 | PASS | "CR-01: verified by unit regression only (122-14)" note — no live check, per that plan's own stated reason (a live check would require reading the real sandbox key back out, which conflicts with the absolute "never print API keys" rule and the 122-08 owner decision not to touch the sandbox Sonarr key) |
+| Restart persistence of an early credit *(kept)* | D-05, D-06(d) | `DEV_PIN sha256:e3941f976b5bf...` (e3941f97 build) | PASS (kept) | "Plan 06: D-06(d) Restart persistence on the fixed build" |
+| Extraction staging and auto-delete re-arm during EXTRACTING *(kept)* | D-07 | `DEV_PIN sha256:e3941f976b5bf...` (e3941f97 build) | PASS (kept) | "D-07 Extraction staging and auto-delete re-arm" |
+
+**(c) Why the two kept rows still cover the shipping code.** D-06(d) and D-07 were proven on
+the `e3941f976b5bf...` build (122-06/122-07), one gap-closure cycle before 122-13/122-14. The
+122-13/122-14 diff must not touch persist load/save, extraction staging, or the auto-delete
+execute/defer/re-arm path for those rows to still be valid evidence for the shipping build.
+`git diff 81df6b7..a56a1f8 --stat -- src/python` (81df6b7 = the `e3941f97` build's own head;
+a56a1f8 = `NEW_HEAD_SHA`, the build 122-16 tested):
+```
+ src/python/controller/controller.py                | 144 +++++++++++----
+ .../unittests/test_controller/test_controller.py   |   2 +
+ .../test_controller/test_import_credit.py          | 196 +++++++++++++++++++++
+ .../test_web/test_handler/test_config_handler.py   |  28 ++-
+ .../test_handler/test_controller_handler.py        |   2 +-
+ .../test_web/test_handler/test_status_handler.py   |  13 +-
+ .../tests/unittests/test_web/test_rate_limit.py    |  42 +++--
+ .../test_web/test_web_app_builder_logging.py       | 126 ++++++++++++-
+ src/python/web/handler/config.py                   |  24 ++-
+ src/python/web/handler/status.py                   |   7 +-
+ src/python/web/rate_limit.py                        |  19 +-
+ src/python/web/web_app_builder.py                   |   2 +-
+ 12 files changed, 538 insertions(+), 67 deletions(-)
+```
+`src/python/controller/controller_persist.py`, `src/python/controller/model_pipeline.py`,
+and everything under `src/python/controller/extract/` have **zero** diff lines — confirmed
+separately: `git diff 81df6b7..a56a1f8 --stat -- src/python/common/persist.py
+src/python/controller/controller_persist.py src/python/controller/extract
+src/python/controller/model_pipeline.py` prints nothing. Within `src/python/controller/`,
+only `controller.py` changed (144 lines, 1 file). Mapping the changed hunks in
+`controller.py` against its own function boundaries (`git show a56a1f8:...controller.py |
+awk '/^    def |^class /'`) shows every touched line falls inside one of: the module
+constants block (before `class Controller`), `__init__` (the new `__last_transferring_at`
+dict), `__check_webhook_imports`, `__credit_early_child`, `_discard_pending_notices`, or
+`__process_commands` — exactly the plan's own stated scope. None of the auto-delete
+execute/defer/re-arm functions (`__schedule_auto_delete`, `__arm_auto_delete_timer`,
+`__defer_auto_delete`, `__clear_auto_delete_rearms`, `__execute_auto_delete`) appear in any
+changed hunk. Persist load/save, extraction staging, and the auto-delete execute/defer/
+re-arm path are therefore untouched since the build D-06(d) and D-07 were proven on — those
+two rows still cover the shipping code.
+
+**(d) Verdict.** `122-16-SUMMARY.md` records `CHECK_STATUS=PASS` (confirmed again directly
+in this plan's own read of the capture dir's `state.env`), and every row in the table above
+is PASS.
+
+**SAFE-01 (gap cycle 2): PASSED**
+
+**(e) Restore and production.** The sandbox is restored to `IMAGE_PIN_L0`
+(`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`)
+by `teardown.sh --final`, independently re-verified in a fresh `ssh nas` session (see "Final
+teardown after gap cycle 2" and "Fresh-session restore check (gap cycle 2)" above);
+production `seedsyncarr` is confirmed byte-identical before and after (see "Production
+unchanged (gap cycle 2)" above).
+
 ## Re-pin after 122-13/122-14 fixes (build under test for Plans 16-17)
 
 Why: the post-SAFE-01 code review and verification pass (122-REVIEW.md / 122-VERIFICATION.md)
@@ -1754,3 +1837,69 @@ Session teardown status (122-16's own session, not `--final`): `bash teardown.sh
 `RESTORED rate_limit ok`, `REMOVED synth roots count=4 refused=0`, `RESTORED webhook_secret
 ok (len=0)`, ending `SANDBOX_RESTORED ok`. `CHECK_STATUS=PASS` recorded in `state.env`; D-03
 was not triggered.
+
+### Final teardown after gap cycle 2 (`teardown.sh --final`)
+
+Capture dir: `/volume1/docker/v5test/results/safe01-122-20261023T234813Z` (same dir used by
+Plans 16/17).
+
+**Preflight** (read-only, before any change this plan): `seedsyncarr-test`'s
+`.Config.Image` read `ghcr.io/thejuran/seedsyncarr@sha256:f8204207ef199f183f6230b74bd8967397732a5919570b09dcec7dc3f2341689`,
+matching the capture dir's last `DEV_PIN` line in `state.env` exactly. `ls
+/home/jules1651/v5test` on the seedbox and `ls /volume1/data/v5test/torrents` on the NAS both
+showed zero `SSA122.` names (the session teardown had already removed all four synthetic
+roots). `/server/config/get` read `lftp.rate_limit=0` and `webhook_secret` length `0` (`awk
+length` only, value never read). Production fingerprint recorded to `$D/prod-final-before.txt`:
+```
+2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e 2026-10-23T07:04:18.591254939Z
+```
+
+**`bash teardown.sh --final "$D"` — first attempt, PASS (no diagnosis/fix needed this
+time — the Rule 1 digest-vs-tag regex bug from 122-08 stays fixed):**
+```
+RESTORED rate_limit ok (not set this session)
+RESTORED delay_seconds ok (not set this session)
+REMOVED synth roots count=4 refused=0
+STOP seedsyncarr-test ok
+RESTORED webhook_secret ok (len=0)
+ seedsyncarr-test Pulling
+ seedsyncarr-test Pulled
+ Container seedsyncarr-test  Recreate
+ Container seedsyncarr-test  Recreated
+ Container seedsyncarr-test  Starting
+ Container seedsyncarr-test  Started
+WAIT server/status ok
+CHECK webhook/sonarr Test http=200
+CHECK image=restored ok
+SANDBOX_RESTORED ok
+```
+Last line: **`SANDBOX_RESTORED ok`**. Only one attempt was needed; there is no second
+transcript to record.
+
+### Fresh-session restore check (gap cycle 2)
+
+A second, independent `ssh nas` call (a new SSH session, not a continuation of the teardown
+call above) confirmed:
+```
+.Config.Image:  ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e
+compose line:    image: ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e
+GET /server/status: 200
+seedbox ~/v5test SSA122.* count: 0
+seedbox ~/ssa122-stage:         absent
+NAS /volume1/data/v5test/torrents SSA122.* count: 0
+```
+Both `.Config.Image` and the compose file's `seedsyncarr-test` image line equal
+`IMAGE_PIN_L0` (`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`)
+exactly. No `SSA122.` material remains anywhere checked.
+
+### Production unchanged (gap cycle 2)
+
+```
+before: 2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e 2026-10-23T07:04:18.591254939Z
+after:  2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e 2026-10-23T07:04:18.591254939Z
+```
+`diff "$D/prod-final-before.txt" "$D/prod-final-after.txt"` → empty (identical `Id`, pinned
+`image` and `StartedAt`), read in the same fresh second session as the restore check above.
+The production container `seedsyncarr` was never named by any write command across this
+plan's entire procedure — only `-f /volume1/docker/v5test/docker-compose.yml` and the
+`seedsyncarr-test` service were ever targeted.
