@@ -686,6 +686,9 @@ pre-fix build this window produced `Ignoring webhook import ... no transfer evid
 
 **PASS (D-06(c)).**
 
+Superseded for the shipping build: rerun on the 122-13/122-14 build, see "Plan 16: D-06
+rerun on the narrowed build (gap cycle 2)" (verdict: PASS).
+
 ### D-06(c) repeat on SSA122.Foxtrot.S01
 
 A second, (c)-only repeat on a fresh root (no decoy, no E01 webhook posted at all — this
@@ -1440,3 +1443,314 @@ key back out to restore it, which conflicts with the absolute "never print API k
 and the owner's standing decision (122-08) not to touch the sandbox Sonarr key.
 
 **Sandbox left on `NEW_DEV_PIN` for Task 2** (no teardown run on success, per the plan).
+
+## Plan 16: D-06 rerun on the narrowed build (gap cycle 2)
+
+Build under test: `seedsyncarr-test` on the 122-15 `DEV_PIN`
+(`ghcr.io/thejuran/seedsyncarr@sha256:f8204207ef199f183f6230b74bd8967397732a5919570b09dcec7dc3f2341689`,
+containing 122-13's narrowed 120 s post-transfer grace window and STOP/DELETE_LOCAL discard,
+and 122-14's CR-01/WR-01 fixes), re-confirmed via `docker inspect .Config.Image` at this
+plan's own preflight: `ghcr.io/thejuran/seedsyncarr@sha256:f8204207ef199f183f6230b74bd8967397732a5919570b09dcec7dc3f2341689`,
+matching the capture dir `state.env`'s `DEV_PIN` line exactly. Capture dir:
+`/volume1/docker/v5test/results/safe01-122-20261023T234813Z` (same dir prepared by 122-16).
+
+Clocks: NAS host clock read via `date -u` (UTC); host-local = UTC − 5 h; app-log = host-local
++ 1 h, i.e. **app-log time = UTC time − 4 h** (confirmed by matching each release/post
+command's own UTC timestamp against its own app-log line below — e.g. the India release at
+host UTC `2026-10-24T00:08:51Z` appears in the app log at `2026-10-23 20:08:52,087`, and the
+LOG-01 Test event at host UTC `2026-10-23T23:59:22.427Z` appears at app-log
+`2026-10-23 19:59:22,427`, both exactly −4 h).
+
+Sizing used, roots run, fallback: three roots, no Kilo/Hotel2 fallback needed — every
+targeted child was caught genuinely incomplete on the first attempt.
+- **Round A** — `SSA122.India.S01` (E01 8 MiB, E02 300 MiB, E03 800 MiB, E04 1200 MiB) with
+  held decoy `SSA122.IndiaDecoy.S01` (8 MiB).
+- **Round B** — `SSA122.Juliet.S01` (E01 8 MiB staged but never webhooked — by design, same
+  pattern as Plan 12's Foxtrot — E02 800 MiB, E03 1200 MiB), (c)-only repeat, no decoy.
+- **Round C** — `SSA122.Hotel.S01` (E01 8 MiB, E02 1200 MiB), live WR-02 user-stop check.
+
+Why this rerun exists: 122-13 (WR-02) bounded the 122-10 post-transfer pending-notice
+exception to a 120 s grace window, requiring the root to still have a local copy, and added a
+discard on a successful STOP or DELETE_LOCAL. The scenario this phase exists to prove —
+a child webhook arriving while that child is genuinely still incomplete, then being accepted
+(not dropped) once the root's own commit bookkeeping catches up a cycle or two later — must
+still be handled correctly under these new, narrower bounds; this rerun reproduces that exact
+race on the narrowed build and additionally proves the new STOP-discard path live.
+
+### D-06(e) Waiting hold and one-shot release (gap cycle 2)
+
+1. **Both roots held, no queue entry.** App-log:
+   ```
+   2026-10-23 20:08:45,487 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold for 'SSA122.India.S01': No matching queue entry
+   2026-10-23 20:08:45,488 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold for 'SSA122.IndiaDecoy.S01': No matching queue entry
+   ```
+   `model-e-held.json`: both roots `state="default"`, `local_size=None` (zero local bytes),
+   held as `no_queue_entry` (confirmed by the harness's own `HOLD-WAIT-A` poll loop, which
+   reported `SSA122.India.S01=None SSA122.IndiaDecoy.S01=None` — i.e. no hold-reason value
+   other than the unreleased default — until the release call below).
+2. **One-shot manual release of `SSA122.India.S01` only.** `POST
+   /server/command/queue/SSA122.India.S01?release_unverified=true` at NAS host UTC
+   `2026-10-24T00:08:51Z` → HTTP 200, body `Queued file 'SSA122.India.S01'`. App-log:
+   ```
+   2026-10-23 20:08:52,087 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Received command Action.QUEUE for file SSA122.India.S01
+   2026-10-23 20:08:52,087 - WARNING - seedsyncarr.Controller.CommandProcessor (MainProcess/ControllerJob) - Manual release of unverified 'SSA122.India.S01' (No matching queue entry); source-completion check bypassed for this transfer only
+   2026-10-23 20:08:52,261 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold dropped for 'SSA122.India.S01' (no longer a queue candidate)
+   ```
+   `SSA122.IndiaDecoy.S01` was never named by any release call anywhere in the session.
+3. **Decoy never transferred**, confirmed at the moment of release, mid-India-transfer, and
+   after India's own deletion (`model-india-1.json`, `model-india-8.json`, and the harness's
+   own `decoy_check_final` read):
+   ```
+   model-india-1.json:      SSA122.IndiaDecoy.S01 state=default local_size=None remote_size=8388608
+   model-india-8.json:      SSA122.IndiaDecoy.S01 state=default local_size=None remote_size=8388608
+   decoy_check_final (after India auto-deleted): state=default hold=no_queue_entry local=None
+   ```
+   `Completion hold dropped` (never `cleared`) is the only hold-removal wording observed for
+   any of the three roots this session — the full verbatim list (all three occurrences in
+   `log-gap2.txt`):
+   ```
+   2026-10-23 20:08:52,261 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold dropped for 'SSA122.India.S01' (no longer a queue candidate)
+   2026-10-23 20:18:25,464 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold dropped for 'SSA122.Juliet.S01' (no longer a queue candidate)
+   2026-10-23 20:21:51,211 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold dropped for 'SSA122.Hotel.S01' (no longer a queue candidate)
+   ```
+   `grep -c "Completion hold cleared for 'SSA122\." log-gap2.txt` = **0**. No
+   `Completion hold cleared for 'SSA122.` line occurred for any synthetic root this session —
+   the manual-release path is correctly always "dropped", never the proof-based "cleared".
+
+**PASS (D-05, D-06(e)).** Cross-reference: the real Sonarr-queue completion gate is
+`120-SON5-EVIDENCE.md` §SON5-02 / `120-CAPTURE-NOTES.md`, per D-04 — not re-captured here.
+
+### D-06(a) Early per-episode credit (gap cycle 2)
+
+Per-post child state (from `posts-india.txt`, read immediately before each post):
+
+| Child | Post time (UTC) | State | Local bytes | Remote bytes | % complete |
+|---|---|---|---|---|---|
+| E01 | 00:09:03 (e01-ready path) | downloaded | 8,388,608 | 8,388,608 | 100% |
+| E02 | 00:09:05 | downloading | 104,497,152 | 314,572,800 | 33.2% |
+| E03 | 00:09:07 | downloading | 100,433,920 | 838,860,800 | 12.0% |
+| E04 | 00:09:11 | downloading | 129,728,512 | 1,258,291,200 | 10.3% |
+
+1. **E01 caught DOWNLOADED while E02/E03/E04 are still at 0% locally at the moment E01
+   posted** (`model-india-e01ready.json`): `e01[state=downloaded local=8388608
+   remote=8388608] e02[state=downloading local=0 remote=314572800]
+   e03[state=downloading local=0 remote=838860800] e04[state=downloading local=0
+   remote=1258291200]`. Signed webhook posted for E01 → `webhooks.log` HTTP 200.
+2. **Credited immediately, root not committed.** App-log:
+   ```
+   2026-10-23 20:09:03,135 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Credited early import of 'SSA122.India.S01E01.mkv' in 'SSA122.India.S01' (root still transferring)
+   ```
+3. **Two more early credits**, for children that finished individually (E02, E03) while the
+   root's remaining children (E04 at this point) were still transferring:
+   ```
+   2026-10-23 20:09:21,465 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Credited early import of 'SSA122.India.S01E02.mkv' in 'SSA122.India.S01' (root still transferring)
+   2026-10-23 20:09:49,771 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Credited early import of 'SSA122.India.S01E03.mkv' in 'SSA122.India.S01' (root still transferring)
+   ```
+   No `Scheduled auto-delete` line precedes any of these three credits (the first
+   `Recorded webhook import`/`Scheduled auto-delete` pair for this root is the E04 acceptance
+   under D-06(c) below, which comes strictly after all three credits above).
+
+**PASS (D-06(a)).** Unit coverage (unchanged by 122-13):
+`test_import_credit.py::test_child_notices_before_commit_are_credited_not_dropped`,
+`test_credit_persists_immediately_via_callback`, `test_credit_alone_never_deletes`.
+
+### D-06(c) Deferral and revalidation on the narrowed build
+
+`SSA122.India.S01E04.mkv` reproduces the exact race D-06(c) exists to prove, now under
+122-13's 120 s bound instead of the old unbounded exception: a webhook posted on a
+genuinely-incomplete child (10.3% complete, see table above), landing in the window between
+"all children individually DOWNLOADED" and "the root's own commit bookkeeping catching up",
+well inside the new 120 s grace window (not just inside the old 6 h TTL).
+
+1. **E04 posted while genuinely incomplete** (table above; `webhooks.log` confirms exactly
+   one `200` POST for E04, no retries).
+2. **E04's deferred notice was accepted, not dropped — the critical check:**
+   ```
+   2026-10-23 20:10:14,863 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Recorded webhook import: 'SSA122.India.S01' (child: 'SSA122.India.S01E04.mkv')
+   2026-10-23 20:10:15,254 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Scheduled auto-delete of 'SSA122.India.S01' in 300 seconds
+   ```
+   `20:10:14,863 − 20:09:13,051` (E04's webhook-enqueue timestamp) = **61.8 s** after E04's
+   webhook was posted on a genuinely-incomplete child — well inside the new 120 s window (not
+   merely inside the old 6 h TTL). `Scheduled auto-delete` follows 1 line/0.391 s after the
+   accept line (`ORDER first_accept_line=5583 schedule_line=5584` recorded by the harness).
+   `persist-india.json` confirms the practical consequence —
+   `imported_children['SSA122.India.S01']` = `['ssa122.india.s01e01.mkv',
+   'ssa122.india.s01e02.mkv', 'ssa122.india.s01e03.mkv', 'ssa122.india.s01e04.mkv']` — **all
+   four** video children present.
+
+**Count of `Ignoring webhook import for 'SSA122.` lines this session: 0** (`grep -c
+"Ignoring webhook import for 'SSA122\." log-gap2.txt` = `0`, confirmed once for the whole
+44-line session log covering all three rounds). **Count of `Discarding pending webhook
+import` lines for India or Juliet: 0** (`grep -c "Discarding pending webhook import"
+log-gap2.txt` = `0`). On PASS, both counts are 0, as observed.
+
+**Which path accepted each late child:** India's E01/E02/E03 were accepted via the ordinary
+early-credit path (`Credited early import of ... (root still transferring)`, because the
+root's other children — E04 in particular — were still transferring at the moment each was
+revalidated). India's E04 — the child whose own webhook landed in the narrowed post-transfer
+window — was accepted via the commit-time `Recorded webhook import` acceptance path, not via
+`__credit_early_child`'s post-transfer-grace branch.
+
+**WR-03 wording counts recorded by 122-16** (the harness's own `CREDIT_TALLY` line, cross-
+checked directly against `log-gap2.txt`):
+```
+CREDIT_TALLY root=SSA122.India.S01 transfer_finished=0 still_transferring=3
+CREDIT_TALLY root=SSA122.Juliet.S01 transfer_finished=0 still_transferring=1
+```
+`grep -c "(root still transferring)" log-gap2.txt` = `4` (India E01/E02/E03 + Juliet E02);
+`grep -c "(transfer finished, awaiting commit)" log-gap2.txt` = `0`. **Honest finding:**
+neither India's E04 nor Juliet's E03 was credited via `__credit_early_child`'s post-transfer
+branch — both were accepted via the `Recorded webhook import` commit-time path instead (see
+"which path accepted each late child" above and the Juliet repeat below), so this session
+never actually exercised the new `"(transfer finished, awaiting commit)"` wording live. The
+wording fix is covered by its own unit regression
+(`test_import_credit.py::test_post_transfer_credit_line_says_transfer_finished`, 122-13); the
+0/4 split above is reported as observed, not inferred to also cover that specific code path.
+
+**DEBUG `Keeping webhook notice` lines:** **not observable** this session —
+`general.debug=False` was confirmed at preflight and recorded in `state.env` as
+`GENERAL_DEBUG=False` (`grep -c "Keeping webhook notice" log-gap2.txt` = `0`). The verdict
+rests on the outcome checks above (zero `Ignoring`/`Discarding` lines, complete
+`imported_children`, correct accept-before-schedule ordering), not on observing the DEBUG
+line directly — same limitation already documented in Plan 12.
+
+Cross-reference to the regression coverage exercised here: `test_import_credit.py::
+TestPostTransferWindow::test_pending_notice_survives_post_transfer_scan_lag_default_root`
+(the live-reachable shape this session's own timing matches: lftp job ended, local scan
+lagging) and `TestPostTransferWindowBounds` (122-13's six narrowing tests, including
+`test_post_transfer_notice_discarded_after_grace_window`,
+`test_post_transfer_notice_discarded_when_local_copy_gone`, and
+`test_post_transfer_credit_line_says_transfer_finished`).
+
+**PASS (D-06(c)).**
+
+### D-06(c) repeat on SSA122.Juliet.S01
+
+A second, independent repeat on a fresh root (no decoy; E01 8 MiB staged but deliberately
+never given a webhook — same pattern as Plan 12's Foxtrot — so the children under test are
+purely E02 and E03), to confirm the narrowed-build race is handled correctly twice in the same
+session.
+
+Per-post child state (from `posts-juliet.txt`):
+
+| Child | Post time (UTC) | State | Local bytes | Remote bytes | % complete |
+|---|---|---|---|---|---|
+| E02 | 00:18:30 | downloading | 0 | 838,860,800 | 0% |
+| E03 | 00:18:32 | downloading | 0 | 1,258,291,200 | 0% |
+
+1. **E02 credited via the ordinary early-credit path, then E03's deferred notice accepted on
+   commit** — again, not dropped:
+   ```
+   2026-10-23 20:19:18,901 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Credited early import of 'SSA122.Juliet.S01E02.mkv' in 'SSA122.Juliet.S01' (root still transferring)
+   2026-10-23 20:19:46,432 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Recorded webhook import: 'SSA122.Juliet.S01' (child: 'SSA122.Juliet.S01E03.mkv')
+   2026-10-23 20:19:47,167 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Scheduled auto-delete of 'SSA122.Juliet.S01' in 300 seconds
+   ```
+   `20:19:46,432 − 20:18:33,011` (E03's webhook-enqueue timestamp) = **73.4 s** after E03's
+   webhook was posted on a genuinely-incomplete child (0% at post time) — again well inside
+   the 120 s window. No `Ignoring webhook import for 'SSA122.` line for Juliet anywhere in the
+   session (same whole-session `grep -c` = `0` quoted above covers both roots).
+   `persist-juliet.json`: `imported_children['SSA122.Juliet.S01']` =
+   `['ssa122.juliet.s01e02.mkv', 'ssa122.juliet.s01e03.mkv']` — both webhooked children
+   present (E01 correctly absent — it was never webhooked by design; its only path to
+   coverage is the root-level commit itself).
+
+**PASS (D-06(c) repeat, Juliet).** Combined with the India-round pass above, the narrowed-
+build race was hit and handled correctly twice, on two independent roots, in the same
+session.
+
+### D-06(b) Arm on commit and auto-delete (gap cycle 2)
+
+Full 300 s real-delay evidence is captured on `SSA122.India.S01` (Juliet's own schedule line
+is evidenced above; per the plan's own session design, Juliet's delete wait was not required
+once the schedule line was confirmed, since the live WR-02 round still needed to run).
+
+1. **Schedule**, immediately after E04's commit-time acceptance (quoted under D-06(c) above):
+   `Scheduled auto-delete of 'SSA122.India.S01' in 300 seconds` at app-log `20:10:15,254`.
+2. **Real 300 s delay, then deletion:**
+   ```
+   2026-10-23 20:15:15,258 - INFO - seedsyncarr.Controller (MainProcess/Thread-4) - Auto-deleted local file 'SSA122.India.S01'
+   ```
+   `20:15:15,258 − 20:10:15,254 = 300.004 s` — the configured `delay_seconds=300`
+   (`DELAY_L0=300` in `state.env`, unchanged this session). The harness's own independent
+   elapsed-time tracking recorded the delete observed at `elapsed=340s past scheduling` (poll-
+   interval latency in the harness's own detection loop, not the product's timer — the log
+   timestamps themselves show the timer fired at exactly 300.004 s).
+3. **Local removal confirmed:** `ls /downloads/SSA122.India.S01` → `No such file or
+   directory`, checked immediately after the delete line was observed.
+
+**PASS (D-06(b)).** Unit coverage unchanged:
+`test_auto_delete_rearm.py::test_rearmed_timer_fires_and_deletes_once_root_is_deletable`,
+`test_import_credit.py::test_root_commit_then_last_child_webhook_arms_and_deletes`.
+
+### WR-02 live: user stop discards a pending notice (SSA122.Hotel.S01)
+
+`SSA122.Hotel.S01` (E01 8 MiB, E02 1200 MiB) exercises the new STOP-discard path 122-13 added
+to `__process_commands`: a successful STOP command discards the root's pending import
+notices at once, via `_discard_pending_notices(command.filename, "user stop")`, rather than
+letting an old notice survive to be credited against a later re-transfer.
+
+1. **Hold, one-shot release.** App-log:
+   ```
+   2026-10-23 20:21:45,039 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold for 'SSA122.Hotel.S01': No matching queue entry
+   2026-10-23 20:21:51,088 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Received command Action.QUEUE for file SSA122.Hotel.S01
+   2026-10-23 20:21:51,088 - WARNING - seedsyncarr.Controller.CommandProcessor (MainProcess/ControllerJob) - Manual release of unverified 'SSA122.Hotel.S01' (No matching queue entry); source-completion check bypassed for this transfer only
+   2026-10-23 20:21:51,211 - INFO - seedsyncarr.CompletionGate (MainProcess/ControllerJob) - Completion hold dropped for 'SSA122.Hotel.S01' (no longer a queue candidate)
+   ```
+2. **E02's webhook posted the instant it was observed `downloading` at 0% of 1200 MiB**
+   (`posts-hotel.txt`: `SSA122.Hotel.S01E02.mkv posted (ratio<30%)`; harness's own
+   pre-stop re-check confirmed still incomplete immediately before the stop: `PRESTOP-STATE
+   OK state=downloading local=0 remote=1258291200`), kept pending, never credited:
+   ```
+   2026-10-23 20:21:54,902 - INFO - seedsyncarr.WebhookManager (MainProcess/worker 5) - Sonarr webhook import enqueued: 'SSA122.Hotel.S01E02.mkv' (eventType=Download, episodeFile.sourcePath)
+   2026-10-23 20:21:55,236 - INFO - seedsyncarr.WebhookManager (MainProcess/ControllerJob) - Sonarr import detected: 'SSA122.Hotel.S01E02.mkv' (matched SeedSyncarr file 'SSA122.Hotel.S01'; eventType=Download, episodeFile.sourcePath)
+   ```
+3. **`POST /server/command/stop/SSA122.Hotel.S01` returned HTTP 200.** The stop code path
+   (`__process_commands`, `Action.STOP` branch) runs the discard before the next
+   `__check_webhook_imports` cycle, per 122-13's wiring. App-log — the critical lines:
+   ```
+   2026-10-23 20:22:01,477 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Received command Action.STOP for file SSA122.Hotel.S01
+   2026-10-23 20:22:01,580 - INFO - seedsyncarr.Controller (MainProcess/ControllerJob) - Discarded 1 pending import notice(s) for 'SSA122.Hotel.S01': user stop
+   ```
+   `20:22:01,580 − 20:22:01,477 = 0.103 s` — the discard fires 0.1 s after the STOP command is
+   received, not after any TTL or grace-window wait.
+4. **No Credited/Recorded/Scheduled line for Hotel followed.** `log-gap2.txt` (44 lines) ends
+   at the discard line quoted above — `grep -c "Credited early import of '.*SSA122.Hotel\|
+   Recorded webhook import: '.*SSA122.Hotel\|Scheduled auto-delete of '.*SSA122.Hotel"
+   log-gap2.txt` = **0** anywhere in the captured session log. `persist-hotel.json` =
+   `null` — `imported_children['SSA122.Hotel.S01']` was never set. Per 122-16-SUMMARY.md, a
+   further 90 s live watch beyond this saved log window independently found zero
+   `Credited early import of 'SSA122.Hotel.S01E02`, zero `Recorded webhook import:
+   'SSA122.Hotel.S01'` and zero `Scheduled auto-delete of 'SSA122.Hotel.S01'` lines; this
+   plan's own re-check of the saved capture file corroborates that result for the window it
+   covers (zero occurrences, log ends at the discard) without independently re-running the
+   additional 90 s live watch itself.
+
+**PASS (WR-02 live).** Unit coverage:
+`test_import_credit.py::test_user_stop_discards_pending_notice`.
+
+### Hygiene — Completion hold wording (whole session)
+
+Every `Completion hold dropped` line this session is quoted under D-06(e) above (three
+occurrences, one per root). `grep -c "Completion hold cleared for 'SSA122\." log-gap2.txt` =
+**0** — no `Completion hold cleared` line occurred for any synthetic root in this session.
+
+### Plan 16 hygiene
+
+Secret handling: fresh `head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9'` secret, 0600
+file, never echoed or logged (same `webhook-post.sh` pattern as every prior plan). Before
+excerpting any capture file into this evidence section, `state.env`'s `SECRET_SCAN=0` was
+confirmed, and a corrected exact-match scan (`grep -c -F -f secret`) was independently
+re-attempted over every file quoted above; the secret file itself had already been removed
+by the session's own successful `teardown.sh` run (restoring `webhook_secret` to empty) by
+the time this plan ran, so the exact-match re-scan could not be repeated byte-for-byte — in
+its place, a keyword re-check (`grep -n -i -E
+'password|api_key|Authorization|X-Api-Key|X-Webhook-Signature'`) was run over every file
+excerpted into this section (`log-gap2.txt`, `posts-india.txt`, `posts-juliet.txt`,
+`posts-hotel.txt`, `persist-india.json`, `persist-juliet.json`, `persist-hotel.json`,
+`webhooks.log`): **zero hits**. `webhooks.log` shows seven `200` responses (four India + two
+Juliet + one Hotel), one per posted child, no retries.
+
+Session teardown status (122-16's own session, not `--final`): `bash teardown.sh` printed
+`RESTORED rate_limit ok`, `REMOVED synth roots count=4 refused=0`, `RESTORED webhook_secret
+ok (len=0)`, ending `SANDBOX_RESTORED ok`. `CHECK_STATUS=PASS` recorded in `state.env`; D-03
+was not triggered.
