@@ -115,7 +115,7 @@ Plans:
 - [x] 122-13-PLAN.md — TDD: bound post-transfer pending-notice window to 120 s with a local copy, discard on stop/delete-local, accurate credit reason (WR-02, WR-03)
 - [x] 122-14-PLAN.md — TDD: never log the Arr API key from Test Connection; status rate-limit warning on the app logger, rate_limit logger required (CR-01, WR-01)
 - [x] 122-15-PLAN.md — Phase gates, push to PR #134, CI green, new staging digest as DEV_PIN
-- [ ] 122-16-PLAN.md — Re-pin sandbox; LOG-01/WR-01 live; D-06(c) rerun with (e)/(a)/(b) regression and live WR-02 stop check (D-03 checkpoint)
+- [x] 122-16-PLAN.md — Re-pin sandbox; LOG-01/WR-01 live; D-06(c) rerun with (e)/(a)/(b) regression and live WR-02 stop check (D-03 checkpoint)
 - [ ] 122-17-PLAN.md — Rerun evidence, restore sandbox to 1.7.6 pin, SAFE-01 gap-cycle-2 verdict (owner review)
 
 ### Phase 123: Startup and Shutdown Lifecycle
@@ -179,7 +179,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
-| 122. Safety Acceptance and Logging Fixes | 15/17 | In Progress|  |
+| 122. Safety Acceptance and Logging Fixes | 16/17 | In Progress|  |
 | 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
