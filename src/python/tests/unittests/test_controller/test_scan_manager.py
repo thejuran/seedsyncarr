@@ -333,6 +333,201 @@ class TestScanManager(unittest.TestCase):
 
         # Should not raise because health check is skipped
         manager.propagate_exceptions()
+
+    # --- Partial-start cleanup and per-process cleanup isolation (LIFE-01, LIFE-02) ---
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_partial_start_third_process_fails_stops_started(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """LIFE-01: remote.start() raising stops the already-started active
+        and local processes; remote itself is never terminated/joined, and
+        the original exception propagates unchanged."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+
+        error = RuntimeError("remote start failed")
+        mock_remote_process.start.side_effect = error
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        with self.assertRaises(RuntimeError) as ctx:
+            manager.start()
+        self.assertIs(error, ctx.exception)
+
+        mock_active_process.terminate.assert_called_once()
+        mock_active_process.join.assert_called_once()
+        mock_local_process.terminate.assert_called_once()
+        mock_local_process.join.assert_called_once()
+        mock_remote_process.terminate.assert_not_called()
+        mock_remote_process.join.assert_not_called()
+
+        # __started never flipped true, so a later stop() adds no terminate calls
+        mock_active_process.terminate.reset_mock()
+        mock_local_process.terminate.reset_mock()
+        manager.stop()
+        mock_active_process.terminate.assert_not_called()
+        mock_local_process.terminate.assert_not_called()
+        mock_remote_process.terminate.assert_not_called()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_partial_start_second_process_fails_stops_started(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """LIFE-01: local.start() raising stops the already-started active
+        process; local/remote are never terminated/joined and remote.start()
+        is never reached."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+
+        error = RuntimeError("local start failed")
+        mock_local_process.start.side_effect = error
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        with self.assertRaises(RuntimeError) as ctx:
+            manager.start()
+        self.assertIs(error, ctx.exception)
+
+        mock_active_process.terminate.assert_called_once()
+        mock_active_process.join.assert_called_once()
+        mock_local_process.terminate.assert_not_called()
+        mock_local_process.join.assert_not_called()
+        mock_remote_process.terminate.assert_not_called()
+        mock_remote_process.join.assert_not_called()
+        mock_remote_process.start.assert_not_called()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_partial_start_first_process_fails_touches_nothing(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """Characterization of the existing start order: active.start()
+        raising first touches nothing (nothing started yet to clean up),
+        and local/remote start() are never reached."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+
+        error = RuntimeError("active start failed")
+        mock_active_process.start.side_effect = error
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        with self.assertRaises(RuntimeError) as ctx:
+            manager.start()
+        self.assertIs(error, ctx.exception)
+
+        mock_active_process.terminate.assert_not_called()
+        mock_active_process.join.assert_not_called()
+        mock_local_process.start.assert_not_called()
+        mock_remote_process.start.assert_not_called()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_partial_start_cleanup_error_does_not_mask_original(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """D-06: a cleanup-time error during partial-start cleanup is
+        logged and never replaces the original start exception."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+
+        original_error = RuntimeError("remote start failed")
+        cleanup_error = RuntimeError("active terminate failed")
+        mock_remote_process.start.side_effect = original_error
+        mock_active_process.terminate.side_effect = cleanup_error
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        with self.assertRaises(RuntimeError) as ctx:
+            manager.start()
+        self.assertIs(original_error, ctx.exception)
+
+        mock_local_process.terminate.assert_called_once()
+        mock_local_process.join.assert_called_once()
+        manager.logger.exception.assert_called()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_cleanup_isolation_terminate_error_continues(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """LIFE-02: one process's terminate() raising does not skip the
+        other two; the failed process is not joined because it may still
+        be running and join() has no bound."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        mock_active_process.terminate.side_effect = RuntimeError("terminate failed")
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        manager.start()
+
+        manager.stop()  # must not raise
+
+        mock_active_process.terminate.assert_called_once()
+        mock_active_process.join.assert_not_called()
+        mock_local_process.terminate.assert_called_once()
+        mock_local_process.join.assert_called_once()
+        mock_remote_process.terminate.assert_called_once()
+        mock_remote_process.join.assert_called_once()
+        manager.logger.exception.assert_called_once()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_cleanup_isolation_join_error_continues(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """LIFE-02: one process's join() raising does not skip the
+        others."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        mock_local_process.join.side_effect = RuntimeError("join failed")
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        manager.start()
+
+        manager.stop()  # must not raise
+
+        mock_active_process.terminate.assert_called_once()
+        mock_local_process.terminate.assert_called_once()
+        mock_remote_process.terminate.assert_called_once()
+        mock_active_process.join.assert_called_once()
+        mock_remote_process.join.assert_called_once()
+        manager.logger.exception.assert_called_once()
 if __name__ == '__main__':
     unittest.main()
 
