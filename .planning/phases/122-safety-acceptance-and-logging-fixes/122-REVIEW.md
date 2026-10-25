@@ -1,142 +1,103 @@
 ---
 phase: 122-safety-acceptance-and-logging-fixes
-reviewed: 2026-10-23T00:00:00Z
+reviewed: 2026-10-25T15:55:00Z
 depth: standard
-files_reviewed: 15
+review_type: re-review (gap cycle 2, plans 122-13 and 122-14)
+diff_base: 85bdc01
+files_reviewed: 13
 files_reviewed_list:
-  - src/python/controller/completion_gate.py
   - src/python/controller/controller.py
   - src/python/web/handler/config.py
-  - src/python/web/handler/controller.py
-  - src/python/web/handler/webhook.py
+  - src/python/web/handler/status.py
   - src/python/web/rate_limit.py
   - src/python/web/web_app_builder.py
-  - src/python/tests/unittests/test_controller/test_completion_gate.py
+  - src/python/tests/unittests/test_controller/test_controller.py
   - src/python/tests/unittests/test_controller/test_import_credit.py
-  - src/python/tests/unittests/test_sonarr5/test_sonarr5_system_status.py
   - src/python/tests/unittests/test_web/test_handler/test_config_handler.py
   - src/python/tests/unittests/test_web/test_handler/test_controller_handler.py
+  - src/python/tests/unittests/test_web/test_handler/test_status_handler.py
   - src/python/tests/unittests/test_web/test_rate_limit.py
   - src/python/tests/unittests/test_web/test_web_app_builder_logging.py
-  - src/python/tests/unittests/test_web/test_webhook_handler.py
+  - src/python/controller/arr_queue.py
 findings:
-  critical: 1
-  warning: 3
-  info: 3
-  convention: 1
-  total: 8
+  critical: 0
+  warning: 1
+  info: 2
+  convention: 0
+  total: 3
 status: issues_found
 ---
 
-# Phase 122: Code Review Report
+# Phase 122: Code Review Report (re-review after gap cycle 2)
 
-**Reviewed:** 2026-10-23
+**Reviewed:** 2026-10-25
 **Depth:** standard
-**Files Reviewed:** 15
-**Status:** issues_found
+**Files Reviewed:** 13 (12 in the diff, plus `controller/arr_queue.py` read to check the other outbound use of the API key)
+**Status:** issues_found (no blockers)
 
 ## Narrative Findings (AI reviewer)
 
 ## Summary
 
-Scope: `git diff origin/main...HEAD` for phase 122. That covers LOG-01 (web handler loggers moved under the `seedsyncarr` app logger, plus injecting a logger into `rate_limit`), LOG-02 (completion hold "cleared" vs "dropped" wording) and D-06(c) (a revalidated pending import notice is kept or credited between transfer end and commit).
+Scope: `git diff 85bdc01..HEAD -- src`, covering plans 122-13 (WR-02, WR-03) and 122-14 (CR-01, WR-01). The affected unit tests pass (417 passed: `test_import_credit`, `test_controller`, `tests/unittests/test_web`), and `ruff check` passes on the whole Python tree.
 
-LOG-02 is correct and well tested. The proof-based release still logs "cleared" with the exact old wording. Prune paths and the no-integration path log "dropped (<module literal>)", and the root name is sanitized.
+All four prior findings are fixed in code and covered by tests. I found no remaining way for the Arr API key to reach a log:
+- `web/` now has no `logger.exception` or `exc_info` call, and no log call that interpolates exception text.
+- The only other outbound request that carries the key (`controller/arr_queue.py:277-289`) logs only `type(e).__name__`.
+- `StreamQueue` (`web/utils.py:31`) is the only detached logger left under `web/`. Its messages never contain request data, and keeping it detached avoids the log stream logging about itself.
 
-LOG-01 does what it set out to do, but it has a security side effect. Lines that used to go nowhere useful (a detached module logger, so only Python's last-resort stderr handler saw them) now go to the rotating app log file and to the web UI log stream (SSE). One of those lines is `logger.exception` in the Sonarr/Radarr test-connection path. I confirmed by running it that this line can contain the configured API key in plain text (CR-01). The new test that claims to prove "no API key in the log" only uses a `RuntimeError("boom")`, so it does not exercise the failure that leaks the key. LOG-01 also misses one call site: the `StatusHandler` rate-limit logger is still detached (WR-01).
+The fixes introduce one new warning: the CR-01 fix strips whitespace from the key only inside Test Connection, so Test Connection can now report success for a stored key that the runtime queue check cannot use (WR-04). They also add two minor robustness gaps in the WR-02 grace window (IN-04, IN-05). Neither gap can authorize a deletion: a credit still never arms auto-delete (D-14), and both gaps fail closed.
 
-D-06(c) does fix the 2026-10-22 sandbox drop. The new window is wider than its comments say, though. It is not limited to "between transfer end and commit": it applies to any root that still has a remote copy and is not transferring, for up to the 6 h TTL (WR-02). The credit log line on the new path also says "(root still transferring)", which is false there (WR-03).
+## Prior findings
 
-## Critical Issues
-
-### CR-01: Arr API key written to the app log file and web UI log stream via the test-connection exception log
-
-**File:** `src/python/web/handler/config.py:195` (with `:131-160`)
-**Issue:** `_test_arr_connection` sends the stored API key with `headers={"X-Api-Key": api_key}`. It only rejects a key that is empty or all whitespace (line 138); the key is never stripped or validated, and the config uses `Checkers.null` / `Converters.null`. requests checks header values before sending. If the key has leading whitespace or any `\r`/`\n` (for example a value pasted with a leading space or a trailing newline), requests raises `requests.exceptions.InvalidHeader` with this message: `"Invalid leading whitespace, reserved character(s), or return character(s) in header value: ' <APIKEY>\n'"`. That exception is neither `ConnectionError` nor `Timeout`, so it falls into `except Exception:` and `self.logger.exception(...)` logs the full traceback, which includes the key.
-
-Before this phase that logger was detached. Phase 122 attaches it to `seedsyncarr.ConfigHandler`, so the key now goes to:
-- the RotatingFileHandler (`/volume1/docker/seedsync/log/seedsyncarr.log`, which is persisted and kept by log forensics);
-- the web UI log stream. `SerializeLogRecord._redact_sensitive` only covers lftp `-u`, `password=`, and `user@host` patterns. It does nothing for an `X-Api-Key` header value.
-
-Reproduced locally: `_test_arr_connection("Sonarr", url, " SECRETKEY123\n")` with `_validate_url` patched produced a captured `seedsyncarr` log containing `SECRETKEY123`. This breaks the absolute rule "Never log sensitive data (… tokens …, auth headers)". The regression test `test_config_unexpected_error_logged_without_api_key` passes only because a `RuntimeError("boom")` never contains the key.
-
-**Fix:** Do not log exception text or a traceback from this boundary. Log the exception type only, and handle the key-shape error before the request:
-```python
-        api_key = api_key.strip()
-        if not re.fullmatch(r"[A-Za-z0-9]+", api_key):
-            return HTTPResponse(body=json.dumps({"success": False,
-                    "error": "{} API key contains invalid characters".format(service_name)}),
-                content_type="application/json")
-        ...
-        except Exception as e:
-            # Never log the message/traceback: requests embeds header values
-            # (the API key) in InvalidHeader and similar errors.
-            self.logger.error("Unexpected error testing %s connection (%s)",
-                              service_name, type(e).__name__)
-```
-Also add a regression test that leaves `requests` unmocked (or raises a real `requests.exceptions.InvalidHeader` that carries the key) and asserts the key does not appear in the formatted record or the SSE-serialized record. Audit other `logger.exception` sites that are now under the app logger and touch outbound arr requests (`sonarr5`/`arr_queue` clients) for the same pattern.
+| ID | Status | Evidence |
+|----|--------|----------|
+| CR-01 (API key in log via `logger.exception`) | **Resolved** | `config.py:150-155`: the key is stripped and must match `[\x21-\x7e]+` before any request is made, so `InvalidHeader` can no longer be triggered by CR/LF or leading whitespace. `config.py:208-216`: the catch-all logs `type(e).__name__` only, with no traceback and no message. Tests: `test_config_key_with_newline_never_reaches_requests_or_log` captures every record under `seedsyncarr` and checks both the plain-formatted and SSE-serialized forms; `test_config_unexpected_error_with_real_invalid_header_logs_type_only` uses a real `InvalidHeader` that carries the key and asserts `exc_info is None`. |
+| WR-01 (StatusHandler rate-limit logger detached) | **Resolved** | `status.py:9-17` uses `context.logger.getChild("StatusHandler")`. `web_app_builder.py:35` passes `context`. `rate_limit.py:17-30`: `logger` is now a required keyword-only argument, and passing `None` raises `TypeError`. The module-level logger has been removed. All 7 production call sites pass `logger=self.logger` (config x3, webhook x2, controller x1, status x1). Tests: `TestRateLimitRequiresLogger`, `test_status_rate_limit_warning_under_app_logger`. |
+| WR-02 (post-transfer window not limited) | **Resolved** (see IN-04 and IN-05 for leftover gaps) | `controller.py:832-840`: post-transfer keep/credit now requires a local copy and a DOWNLOADING/QUEUED sighting less than 120 s ago (`_POST_TRANSFER_GRACE_SECS`). `controller.py:859-876` discards a pending notice once the root is outside that window. `controller.py:1505-1508` discards on a successful STOP or DELETE_LOCAL. `__last_transferring_at` is pruned against the model on every cycle (`:735-739`) and cleared in `_discard_pending_notices` (`:1166`). Tests: `TestPostTransferWindowBounds` covers the 119/121 s boundary, refresh while transferring, local copy gone, STOP, and DELETE_LOCAL. |
+| WR-03 (credit line says "root still transferring") | **Resolved** | `controller.py:895-901` and `:1022-1025`: the reason is passed through, and the default wording is unchanged so existing greps still match. Test: `test_post_transfer_credit_line_says_transfer_finished`. |
+| IN-01 (duplicate "Keeping" DEBUG line) | Open, out of scope by owner decision | `controller.py:888-894` is still present. |
+| IN-02 (`globals()["logger"]` shadowing) | Resolved as a side effect of WR-01 | The module logger and the `globals()` lookup were both removed. |
+| IN-03 (handlers take `config` and `context`) | Open, out of scope by owner decision | `ConfigHandler(context.config, context)` is unchanged. `StatusHandler` now also takes `context` alongside `context.status`. |
+| CV-01 (import-relativity flag) | Unchanged, advisory only | Likely a false positive. |
 
 ## Warnings
 
-### WR-01: LOG-01 incomplete: StatusHandler rate-limit warning still goes to the detached module logger
+### WR-04: Test Connection strips the API key, but the runtime queue check sends the raw stored key
 
-**File:** `src/python/web/handler/status.py:16`, `src/python/web/rate_limit.py:16,29`
-**Issue:** `StatusHandler` still calls `rate_limit(max_requests=60, window_seconds=60.0)` without `logger=`. The phase leaves the module-level fallback `logging.getLogger("web.rate_limit")` in place, so the status endpoint's "Rate limit exceeded" warning is still not routed to the app log or the UI. This is the exact class of loss LOG-01 was meant to fix. Because the parameter is optional, any future caller will repeat this silently.
-**Fix:** Give `StatusHandler` the context logger (`StatusHandler(context.status, context)` and `logger=self.logger`). Better still, make `logger` a required keyword argument of `rate_limit` so a detached fallback cannot happen again. Then drop the module-level `logger`.
+**File:** `src/python/web/handler/config.py:150`; `src/python/controller/arr_queue.py:171,175,278`
+**Issue:** The CR-01 fix runs `api_key = api_key.strip()` inside `_test_arr_connection` only, and `test_config_key_whitespace_stripped_before_header` locks that behaviour in. The stored value is never normalized: the config property uses `Checkers.null`/`Converters.null`, and the Angular settings form does not trim. `ArrQueueClient` builds `ArrTarget(..., config.sonarr.sonarr_api_key or "")` and sends that raw value in `X-Api-Key`. So for a key pasted with surrounding whitespace:
+- Test Connection reports **success**, because it sent the stripped key.
+- Every runtime queue check fails. A leading space or a newline makes `requests` raise `InvalidHeader`, logged as `Sonarr queue check failed: InvalidHeader`. A trailing space gets HTTP 401 from Sonarr.
+- The completion gate then holds every completion as "Sonarr unavailable".
 
-### WR-02: Post-transfer notice retention is not limited to "transfer ended, awaiting commit"
-
-**File:** `src/python/controller/controller.py:806-835`
-**Issue:** `post_transfer_pending` only requires that the key is already pending and that `root_file.remote_size is not None`. It does not check the root's state or how long ago it left DOWNLOADING/QUEUED. The comments and the docstring (lines 683-685, 786-804) say the notice is kept "after the root's transfer ends and until it commits". In practice, a pending notice now survives and can be credited for up to `_PENDING_NOTICE_TTL_SECS` (6 h) in states that have nothing to do with scan lag:
-- the user stops the transfer, or the lftp job fails, leaving the root DEFAULT with a partial copy;
-- the user deletes the local copy while the remote remains. This is not a "root removed from model" lifecycle reset, and a delete-local does not bump the generation.
-The notice can then be credited if a later, non-USER (auto-queue) re-transfer completes that child within the same generation. Before this change, any of these states dropped the notice on the next cycle. A credit does not arm deletion by itself (D-14), but it does count toward coverage when the root later commits. So in these off-path cases, the change widens what an old notice can authorize. The new tests only cover DEFAULT-with-scan-lag and remote loss.
-**Fix:** Limit the window explicitly. Record when the root was last seen transferring (for example, a per-root `last_transferring_at` set while DOWNLOADING/QUEUED). Allow `post_transfer_pending` only when `now - last_transferring_at` is below a short grace period (a few scan intervals, not 6 h). Also discard pending notices for a root on delete-local and when the user stops it. Add tests for stopped-root and local-deleted-root shapes.
-
-### WR-03: Credit INFO line says "(root still transferring)" on the post-transfer path
-
-**File:** `src/python/controller/controller.py:958-963`
-**Issue:** `__credit_early_child` is now also reached when the root is not transferring (`post_transfer_only`). Its docstring was updated, but the INFO line it emits still says `"Credited early import of '{}' in '{}' (root still transferring)"`. In the 122-10 case this is false. Phase 122 (LOG-02) exists to make log wording match what actually happened, and these lines are used directly in NAS log forensics and Phase 120 evidence greps.
-**Fix:** Pass the reason through, as was already done for `__keep_pending_notice`:
+This fails closed, so nothing is deleted wrongly. But the user's tool for diagnosing a bad key now gives a false all-clear for exactly the key shapes that break the safety gate. Before the fix, Test Connection at least failed for those keys.
+**Fix:** Make validation match what is sent at runtime. Either:
+- reject instead of strip in Test Connection (`if api_key != api_key.strip() or not _API_KEY_CHARS.fullmatch(api_key): return "...contains invalid characters"`), or, preferably,
+- normalize where the key is stored: strip and validate in `ConfigHandler.__handle_set_config` for `sonarr_api_key`/`radarr_api_key` (or add a stripping converter on the PROP). Also strip in `ArrQueueClient` target construction so keys already stored with whitespace keep working:
 ```python
-def __credit_early_child(self, root_file, root_name, matched_name, reason="root still transferring"):
-    ...
-    self.logger.info("Credited early import of '{}' in '{}' ({})".format(
-        sanitize_log_value(matched_name), sanitize_log_value(root_name), reason))
+targets.append(ArrTarget("Sonarr", "sonarr",
+                         config.sonarr.sonarr_url or "",
+                         (config.sonarr.sonarr_api_key or "").strip()))
 ```
-and call it with `reason="transfer finished, awaiting commit"` when `post_transfer_only`. Keep the default string unchanged so existing greps still match.
+Then add a test that a whitespace-padded stored key produces the same outcome in Test Connection and in `ArrQueueClient`.
 
 ## Info
 
-### IN-01: Duplicate and misleading DEBUG lines on the post-transfer path
+### IN-04: After STOP, the same cycle re-stamps `__last_transferring_at` from the not-yet-updated model state
 
-**File:** `src/python/controller/controller.py:831-848`
-**Issue:** When `post_transfer_only` is true, the code logs "Keeping webhook notice ... transfer finished, awaiting commit" before it tries to credit. If the credit succeeds, the "Keeping" line was wrong. If it fails, `__keep_pending_notice` then logs "Deferring webhook notice ... transfer finished, awaiting commit", which says the same thing again. That is two DEBUG lines per pending notice per cycle.
-**Fix:** Remove the "Keeping" block at lines 831-838. The `reason` passed to `__keep_pending_notice` already covers it.
+**File:** `src/python/controller/controller.py:718-720`, `:1505-1506`, `:360-365`
+**Issue:** `process()` runs `__process_commands()` (STOP, then `_discard_pending_notices`, which pops `__last_transferring_at[root]` and bumps the generation) and then `__check_webhook_imports()` in the same call. At that point the model usually still shows the root as DOWNLOADING, because lftp status has not caught up yet. Window 1 therefore stamps `__last_transferring_at[root] = now` again straight away. A fresh webhook notice that arrives in that short gap is kept pending under the new generation. Once the root shows DEFAULT with a partial local copy, that notice is eligible for post-transfer credit for 120 s, on a root the user just stopped. The impact is small: credit still needs the child to be complete (`local_size == remote_size`) and never arms deletion (D-14). Still, the docstring's claim that a stopped transfer "must not be covered" only holds for notices received before the STOP.
+**Fix:** Keep a short per-root "stopped/deleted at" fence that `_discard_pending_notices` sets for the STOP and DELETE_LOCAL causes. Skip the Window 1 stamp (or the `post_transfer_pending` grant) while the fence is newer than the last real state transition. Or simply skip stamping for a root whose STOP was handled in the current `process()` call. Add a test: STOP, then a fresh notice in the same cycle while the model still shows DOWNLOADING, then DEFAULT with the child complete, and assert no credit.
 
-### IN-02: `rate_limit` parameter shadows the module logger; `globals()["logger"]` workaround
+### IN-05: `local_size is None` treats "not scanned yet" as "local copy gone", and the 120 s cap is a hard cliff for slow local scans
 
-**File:** `src/python/web/rate_limit.py:22,29`
-**Issue:** The new `logger` parameter has the same name as the module-level `logger`, so the code has to use `globals()["logger"]` to reach the default. This is fragile: renaming the module variable breaks it at runtime, not at import time.
-**Fix:** Rename the module variable (`_default_logger = logging.getLogger(__name__)`) and use `logger or _default_logger`. Or remove the fallback entirely (see WR-01).
-
-### IN-03: Handlers take both `config` and `context` (redundant constructor arguments)
-
-**File:** `src/python/web/web_app_builder.py:33,36`; `src/python/web/handler/config.py:16`; `src/python/web/handler/webhook.py:24`
-**Issue:** `ConfigHandler(context.config, context)` and `WebhookHandler(webhook_manager, context.config, context)` receive the config twice. `ServerHandler(context)` already reads everything from `context`. The two can drift apart in tests (mocks pass an unrelated `MagicMock()` context).
-**Fix:** Optional cleanup: take `context` only and read `context.config` inside. Or pass `logger` instead of the whole context.
-
-## Conventions
-
-### CV-01: Import-relativity flag on `rate_limit.py` (likely false positive)
-
-**File:** `src/python/web/rate_limit.py:1`
-**Deviation:** The checker reports absolute imports, while its dominant axis is relative. The only absolute imports in this file are stdlib and the third-party `bottle`, which cannot be relative.
-**Convention:** py-import-relativity (relative imports for intra-package modules).
-**Fix:** No action needed for the current imports. Use relative imports if intra-package imports are added later. Advisory only; does not block.
+**File:** `src/python/controller/controller.py:832-840`, `:859-876`
+**Issue:** (a) `post_transfer_pending` requires `root_file.local_size is not None`, and the discard branch logs `"local copy gone"` whenever it is `None`. A root whose lftp job ends before the local scanner has ever seen its directory is a real scan-lag case, which is exactly what D-06(c) targets. That notice is discarded with a misleading reason. (b) The window is measured from the last DOWNLOADING/QUEUED sighting, so if the local scan takes longer than 120 s on a large staging directory, the notice is lost even though the transfer finished normally. Both cases fail closed (no credit, so no deletion), but they bring back the missed-import symptom D-06(c) fixed, and only a WARNING line shows it. The 2.5 s transfer-end-to-commit evidence supports 120 s on the sandbox, but nothing guards the larger-library case.
+**Fix:** (a) Word the reason as `"no local copy seen"`. Optionally, apply the `local_size is None` test only after at least one local scan has finished since the transfer ended. (b) Optionally measure the grace from the first local-scan completion after the last transferring sighting, or log the elapsed scan duration in the discard line so the cliff can be diagnosed from NAS logs. No change is needed if the owner accepts fail-closed loss here.
 
 ---
 
-_Reviewed: 2026-10-23_
+_Reviewed: 2026-10-25T15:55:00Z_
 _Reviewer: Claude (bm-code-reviewer)_
 _Depth: standard_
