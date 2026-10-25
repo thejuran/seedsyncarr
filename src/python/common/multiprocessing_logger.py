@@ -43,6 +43,11 @@ class MultiprocessingLogger:
         self.__listener.start()
 
     def stop(self):
+        # Controller.start()'s partial-start cleanup (or any other caller) may
+        # stop a logger that never started; joining an unstarted thread raises
+        # RuntimeError, so guard on it here.
+        if self.__listener.ident is None:
+            return
         self.__listener_shutdown.set()
         self.__listener.join()
 

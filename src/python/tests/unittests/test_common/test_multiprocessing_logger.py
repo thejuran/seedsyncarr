@@ -127,6 +127,15 @@ class TestMultiprocessingLogger(unittest.TestCase):
             time.sleep(0.01)
 
     @pytest.mark.timeout(5)
+    def test_stop_without_start_is_safe(self):
+        # A caller (e.g. Controller.start()'s partial-start cleanup) may stop a
+        # logger that never started; joining an unstarted thread raises
+        # RuntimeError, so stop() must guard against that (RESEARCH Pitfall 3).
+        mp_logger = MultiprocessingLogger(self.logger)
+        # Should not raise
+        mp_logger.stop()
+
+    @pytest.mark.timeout(5)
     def test_listener_captures_handler_exception_and_shuts_down(self):
         # Attach a handler that raises onto the child logger the listener routes to:
         # the listener calls self.logger.getChild(record.name).handle(record), where
