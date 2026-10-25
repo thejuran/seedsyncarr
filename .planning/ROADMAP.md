@@ -74,7 +74,49 @@ Plans:
   4. When the completion gate prunes a hold (root left the stability sweep), the app log says the hold was *dropped* (no release); `Completion hold cleared` appears only for a proof-based release, with a regression test covering both paths
   5. Phase 119 import safeguards (early credit, pending-notice revalidation, arm-on-commit, Waiting holds, one-shot manual release) are exercised, not rebuilt
 
-**Plans**: TBD
+**Plans**: 17 plans (9 + 8 gap closure)
+
+Plans:
+**Wave 1**
+
+- [x] 122-01-PLAN.md — TDD: completion gate says "dropped (reason)" for prune/no-arr removals, "cleared" only for proof-based release (LOG-02)
+- [x] 122-02-PLAN.md — TDD: webhook/controller/config handlers and rate_limit log under the app logger; D-14 secret review (LOG-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 122-03-PLAN.md — Phase gate (suite, ruff, RED-first, scope) and PR with CI green (owner go-ahead to push)
+
+**Wave 3**
+
+- [x] 122-04-PLAN.md — Owner go-ahead to merge; `:dev` digest of the merge commit pinned on `seedsyncarr-test`; teardown/webhook harness; LOG-01 live
+
+**Wave 4**
+
+- [x] 122-05-PLAN.md — SAFE-01 import: Waiting hold + one-shot release, early credit, deferral/revalidation, arm-on-commit and 300 s auto-delete (D-06(c) FAIL found; gap closed by 122-10..12)
+
+**Wave 5-7** *(gap closure for 122-05 D-06(c); same PR #134)*
+
+- [x] 122-10-PLAN.md — TDD: keep a revalidated pending import notice between transfer end and commit (D-06(c) fix) + local gates
+- [x] 122-11-PLAN.md — Push fix to PR #134, CI green, new staging digest as DEV_PIN, re-pin sandbox, LOG-01 recheck
+- [x] 122-12-PLAN.md — Rerun D-06 (c) on the fixed build plus (e)/(a)/(b) regression and a (c) repeat
+
+**Wave 8-10** *(sequential, sandbox only, on the fixed build)*
+
+- [x] 122-06-PLAN.md — SAFE-01 restart persistence of early credit
+- [x] 122-07-PLAN.md — SAFE-01 extraction staging (~1 GB multi-part RAR) and auto-delete re-arm
+- [x] 122-08-PLAN.md — Sandbox Sonarr key rotation decision, restore sandbox to 1.7.6 pin, SAFE-01 verdict (owner review)
+
+**Wave 11**
+
+- [x] 122-09-PLAN.md — SAFE-02: reconcile both incident records, owner cleanup checklist, close rule, deferred C-G to backlog
+
+**Wave 12-15** *(gap closure for verification CR-01, WR-01..03; owner decision 2026-10-23; same PR #134)*
+
+- [x] 122-13-PLAN.md — TDD: bound post-transfer pending-notice window to 120 s with a local copy, discard on stop/delete-local, accurate credit reason (WR-02, WR-03)
+- [x] 122-14-PLAN.md — TDD: never log the Arr API key from Test Connection; status rate-limit warning on the app logger, rate_limit logger required (CR-01, WR-01)
+- [ ] 122-15-PLAN.md — Phase gates, push to PR #134, CI green, new staging digest as DEV_PIN
+- [ ] 122-16-PLAN.md — Re-pin sandbox; LOG-01/WR-01 live; D-06(c) rerun with (e)/(a)/(b) regression and live WR-02 stop check (D-03 checkpoint)
+- [ ] 122-17-PLAN.md — Rerun evidence, restore sandbox to 1.7.6 pin, SAFE-01 gap-cycle-2 verdict (owner review)
 
 ### Phase 123: Startup and Shutdown Lifecycle
 
@@ -137,7 +179,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
-| 122. Safety Acceptance and Logging Fixes | 0/TBD | Not started | - |
+| 122. Safety Acceptance and Logging Fixes | 14/17 | In Progress|  |
 | 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
@@ -169,6 +211,26 @@ measure realistic update/idle workloads before proposing optimization. Initial m
 
 **Scope:** Bounded maintenance side task, separate from milestone scope. recheck the recorded braces/karma dev-test advisory and related deferred PRs (#128/#125/#117), including current affected versions and runtime/build exposure. Apply the smallest supported fix if still relevant, with the affected build/test checks. Records classify it as dev/test-only; current advisory status has not been refreshed. This is not a separate milestone or a general test-runner rewrite. It is rechecked within REL-05 (Phase 126) as part of the pre-tag Dependabot review; that recheck records the outcome, and the item is rolled into 1.8.0 only if the fix is cheap or current evidence establishes material exposure.
 
+### Deferred: Extract-staging symlink hardening
+
+Refuse symlink entries at publish time in `ExtractDispatch.__publish_staged_output` (skip with a WARNING), closing a pre-existing exposure where patool could write a symlink straight into the release folder. Security HIGH, CWE-59. Source: `.planning/debug/extract-staging-autodel-rearm.md` item C.
+
+### Deferred: Extract-staging max-deferrals config key
+
+Add an `autodelete.max_deferrals` config key (default 24; 0 restores the pre-1.7.3 one-shot behavior) so the auto-delete re-arm cap is configurable instead of a fixed constant. Source: `.planning/debug/extract-staging-autodel-rearm.md` item D.
+
+### Deferred: Extract-staging helper module split
+
+Move the five staging helpers out of `dispatch.py` into a dedicated `controller/extract/staging.py`, and move `_AUTO_DELETE_DEFER_REASONS` next to the reason codes in `auto_delete_manager.py`. Cohesion only, no behavior change. Source: `.planning/debug/extract-staging-autodel-rearm.md` item E.
+
+### Deferred: Extract-staging log sanitization
+
+Apply `sanitize_log_value` to archive-derived paths in the new dispatch log lines (publish, discard, warn-unpublished). Security LOW, CWE-117. Source: `.planning/debug/extract-staging-autodel-rearm.md` item F.
+
+### Deferred: Extract-staging test gaps
+
+Add tests for the three cleanup OSError handlers, a lock-order recorder across a re-arm cycle, and the dispatch loop stop path. Source: `.planning/debug/extract-staging-autodel-rearm.md` item G.
+
 ### 999.5: Move Sonarr integration to API v5
 
 **Scope:** Sonarr 5 lists the v3 API as deprecated (still served as of 5.0.0.2701). Move SeedSyncarr's two Sonarr API calls (`system/status` connection test, `queue/details` completion evidence; the webhook payload is version-independent) to `/api/v5` when Sonarr 4 support can be dropped, or with version detection that keeps v3 for Sonarr 4. Note the v5 queue model differences: one tracked item can cover multiple episodes (`episodeIds`/`episodes` lists), `timeLeft` casing, and `includeSubresources`. Activate when Sonarr announces v3 removal, Sonarr 5 goes stable and prod upgrades, or v1.7.7 finds a v3 gap. Radarr unaffected. Not a Reliability gate.
@@ -195,7 +257,8 @@ Credential forwarding and LAN connection tests belong to v1.8.0 Reliability, not
 ## Operator follow-ups (not development milestones)
 
 - [ ] Confirm credential rotation from the 1.7.6 checklist is complete.
-- [ ] Confirm one-time Done-group cleanup is complete. Do not mark the incident closed solely because its code fix shipped (Phase 122 reconciles the record; the cleanup itself stays with the operator).
+- [x] Confirm one-time Done-group cleanup is complete. Owner confirmed 2026-10-23 (Phase 122-09, verbatim "All confirmed"); `done-group-no-auto-delete.md` and `extract-staging-autodel-rearm.md` both resolved and moved to `.planning/debug/resolved/`.
+- [ ] Rotate the sandbox `sonarr-v5` Sonarr API key (exposed once in a Phase 122 research-session tool transcript, never written to a repo file; test Sonarr only, not production). Owner declined rotation during 122-08, verbatim "I'll replace it myself later" (`owner-later`).
 
 ## Completed releases
 

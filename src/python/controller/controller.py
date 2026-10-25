@@ -56,6 +56,14 @@ _AUTO_DELETE_TERMINAL_SKIPS = frozenset({"bfs_limit", "duplicate_basename"})
 _PENDING_NOTICE_MAX = 1000
 _PENDING_NOTICE_TTL_SECS = 6 * 3600
 
+# Longest time after a root was last seen DOWNLOADING/QUEUED during which an
+# already-pending notice may still be kept or credited (122-10 D-06c,
+# narrowed by 122-13 WR-02). Evidence: a 2.5 s observed transfer-end-to-commit
+# span in the 122-05 live log, 62 s and 104 s full post-to-accept spans in
+# the 122-12 live log, and the 10 s default local scan interval
+# (seedsyncarr.py: interval_ms_local_scan).
+_POST_TRANSFER_GRACE_SECS = 120
+
 
 class _PendingNotice(NamedTuple):
     """A webhook import notice waiting for its child to finish transferring.
@@ -163,6 +171,9 @@ class Controller:
         # lifecycle resets (USER requeue, re-grab, removal) so a pending
         # notice from the previous lifecycle can never be replayed.
         self.__root_lifecycle_generation: Dict[str, int] = collections.defaultdict(int)
+        # Monotonic time of the last cycle that saw the root DOWNLOADING or
+        # QUEUED with a remote copy; controller thread only.
+        self.__last_transferring_at: Dict[str, float] = {}
         self.logger = context.logger.getChild("Controller")
         # Set logger for persist to enable eviction logging
         self.__persist.set_base_logger(self.logger)
@@ -680,11 +691,18 @@ class Controller:
         resolve to exactly one path, equal to its stored path under its stored
         root, in the current generation. Pending notices are discarded on a
         USER requeue, a lifecycle reset or root removal (_discard_pending_notices).
-        Credit alone never authorizes deletion (D-14): it never commits the
-        root or marks it imported. When a credited root later commits to
-        downloaded, the arm-on-commit pass marks it imported and arms
-        auto-delete, whose coverage guard then decides.
+        A pending notice already being tracked is also credited or kept after
+        the root's transfer ends, but only within _POST_TRANSFER_GRACE_SECS
+        of the root last being seen transferring and only while a local copy
+        still exists (122-10, 122-13, WR-02); a FRESH notice never gets this
+        treatment and still requires transfer evidence. A successful STOP or
+        DELETE_LOCAL discards the root's pending notices at once (122-13,
+        WR-02). Credit alone never authorizes deletion (D-14): it never
+        commits the root or marks it imported. When a credited root later
+        commits to downloaded, the arm-on-commit pass marks it imported and
+        arms auto-delete, whose coverage guard then decides.
         """
+        now = time.monotonic()
         # Window 1: Build the basename lookup under lock
         # lowercased basename -> {case-preserving relative path -> root model file name}
         # Includes both root names and all child file names. Keeping every
@@ -697,6 +715,9 @@ class Controller:
                 name_to_paths.setdefault(root_name.lower(), {})[root_name] = root_name
                 try:
                     root_file = self.__model.get_file(root_name)
+                    if root_file.remote_size is not None and root_file.state in (
+                            ModelFile.State.DOWNLOADING, ModelFile.State.QUEUED):
+                        self.__last_transferring_at[root_name] = now
                     if root_file.is_dir:
                         # BFS over children carrying each child's parent path.
                         # Paths are '/'-joined identity keys built from names,
@@ -711,13 +732,17 @@ class Controller:
                             frontier.extend((g, child_path) for g in child.get_children())
                 except ModelError:
                     self.logger.debug("ModelError looking up '{}' for webhook mapping".format(sanitize_log_value(root_name)))
+            # Bound __last_transferring_at by the model so it cannot grow
+            # without limit (T-122-62): drop any root that has left the model.
+            model_names_now = set(self.__model.get_file_names())
+            for stale_root in set(self.__last_transferring_at) - model_names_now:
+                del self.__last_transferring_at[stale_root]
 
         # Revalidate every pending notice against the CURRENT lookup before it
         # can reach either acceptance path below. A replayed notice must pass
         # the same exactly-one-path rule WebhookManager.process applies to a
         # fresh event, still resolve to the path it was bound to, and belong
         # to the root's current transfer lifecycle.
-        now = time.monotonic()
         for key, notice in list(self.__pending_child_notices.items()):
             if self._revalidate_pending_notice(notice, name_to_paths, now) is not None:
                 self.__pending_child_notices.pop(key, None)
@@ -780,6 +805,39 @@ class Controller:
                             root_file.remote_size is not None and
                             root_file.state in transferring_states
                         )
+                        # Post-transfer window (122-10, D-06c; narrowed
+                        # 122-13, WR-02): the root's lftp job can end (no
+                        # LftpJobStatus leaves it DEFAULT) with the local scan
+                        # still lagging, or -- only reachable when a test
+                        # injects the model directly and skips the commit
+                        # pass -- the root can already show DOWNLOADED with a
+                        # stale size aggregate, in both cases before the
+                        # commit pass has run (2026-10-22 sandbox:
+                        # SSA122.Alpha2.S01). A key still present in
+                        # __pending_child_notices here has, this very cycle,
+                        # passed _revalidate_pending_notice (same lifecycle
+                        # generation, unique path, not expired) and could
+                        # only have been kept while this root was
+                        # DOWNLOADING/QUEUED -- a stronger known-tracked-root
+                        # signal than a fresh notice ever gets. Such a notice
+                        # is still credited or kept here only within
+                        # _POST_TRANSFER_GRACE_SECS of the root last being
+                        # seen transferring and only while it still has both
+                        # a remote and a local copy -- a stopped or failed
+                        # transfer, or a deleted local copy, must not be
+                        # covered. A FRESH notice (never pending) for a root
+                        # that is not transferring still needs transfer
+                        # evidence, unchanged (incident 2026-08-21: a foreign
+                        # local-only dir matched via a child basename).
+                        post_transfer_pending = (
+                            key in self.__pending_child_notices and
+                            root_file is not None and
+                            root_file.remote_size is not None and
+                            root_file.local_size is not None and
+                            root_name in self.__last_transferring_at and
+                            now - self.__last_transferring_at[root_name] <
+                            _POST_TRANSFER_GRACE_SECS
+                        )
                         # A root-level notice for a directory root carries
                         # no per-child information: replayed at commit it
                         # would mark the pack imported with no
@@ -787,10 +845,37 @@ class Controller:
                         # would grandfather the whole pack for deletion.
                         # Only child-level notices are credited or kept.
                         root_level_dir = (
-                            transferring and root_file.is_dir and
+                            (transferring or post_transfer_pending) and root_file.is_dir and
                             matched_name.lower() == root_name.lower()
                         )
-                        if not transferring or path is None or root_level_dir:
+                        # A notice that was kept while this root transferred,
+                        # but whose root has since dropped out of the grace
+                        # window or lost its local copy, must not be revived
+                        # (122-13, WR-02): a stopped, failed or re-transferred
+                        # attempt must not be credited from the old notice.
+                        # This runs before the unconditional drop below so
+                        # its own, more specific reason is logged and no
+                        # import credit is ever recorded for it.
+                        if key in self.__pending_child_notices and not transferring and \
+                                not post_transfer_pending and root_file is not None and \
+                                root_file.remote_size is not None and path is not None:
+                            self.__pending_child_notices.pop(key, None)
+                            reason = (
+                                "local copy gone" if root_file.local_size is None
+                                else "no transfer seen for over {} s without commit".format(
+                                    _POST_TRANSFER_GRACE_SECS
+                                )
+                            )
+                            self.logger.warning(
+                                "Discarding pending webhook import '{}' for '{}': {}; "
+                                "no import credit recorded".format(
+                                    sanitize_log_value(matched_name), sanitize_log_value(root_name),
+                                    reason
+                                )
+                            )
+                            continue
+                        if (not transferring and not post_transfer_pending) or \
+                                path is None or root_level_dir:
                             self.__pending_child_notices.pop(key, None)
                             self.logger.warning(
                                 "Ignoring webhook import for '{}': not downloaded "
@@ -799,12 +884,26 @@ class Controller:
                                 )
                             )
                             continue
+                        post_transfer_only = post_transfer_pending and not transferring
+                        if post_transfer_only:
+                            self.logger.debug(
+                                "Keeping webhook notice '{}' for '{}': transfer "
+                                "finished, awaiting commit".format(
+                                    sanitize_log_value(matched_name), sanitize_log_value(root_name)
+                                )
+                            )
+                        credit_reason = "transfer finished, awaiting commit" if post_transfer_only \
+                            else "root still transferring"
                         if matched_name.lower() != root_name.lower() and \
-                                self.__credit_early_child(root_file, root_name, matched_name):
+                                self.__credit_early_child(root_file, root_name, matched_name,
+                                                          reason=credit_reason):
                             self.__pending_child_notices.pop(key, None)
                             persist_changed = True
                             continue
-                        self.__keep_pending_notice(root_name, matched_name, path, now)
+                        self.__keep_pending_notice(
+                            root_name, matched_name, path, now,
+                            reason=credit_reason,
+                        )
                         continue
                     self.logger.info(
                         "Committing '{}' to downloaded list on import evidence".format(
@@ -890,13 +989,19 @@ class Controller:
         path, owner = next(iter(candidates.items()))
         return path if owner == root_name else None
 
-    def __credit_early_child(self, root_file: ModelFile, root_name: str, matched_name: str) -> bool:
+    def __credit_early_child(self, root_file: ModelFile, root_name: str, matched_name: str,
+                             reason: str = "root still transferring") -> bool:
         """Credit matched_name to imported_children[root_name] if that child is
-        fully transferred. Caller holds __model_lock and has checked that the
-        root is a remote release SeedSyncarr is transferring.
+        fully transferred. Caller holds __model_lock and has checked that
+        either the root is a remote release SeedSyncarr is transferring, or
+        it holds a revalidated pending notice for this child within the
+        post-transfer grace window (122-10, D-06c; 122-13, WR-02).
 
         The child must be the unique non-directory descendant with that name,
-        in state DOWNLOADED with local_size == remote_size.
+        in state DOWNLOADED with local_size == remote_size. reason documents
+        why the credit applies, for the INFO line below: the root is still
+        transferring, or (122-13, WR-03) its transfer has ended but it has
+        not yet committed.
         """
         target = matched_name.lower()
         matches = []
@@ -914,14 +1019,21 @@ class Controller:
             return False
         self.__persist.add_imported_child(root_name, target)
         self.logger.info(
-            "Credited early import of '{}' in '{}' (root still transferring)".format(
-                sanitize_log_value(matched_name), sanitize_log_value(root_name)
+            "Credited early import of '{}' in '{}' ({})".format(
+                sanitize_log_value(matched_name), sanitize_log_value(root_name), reason
             )
         )
         return True
 
-    def __keep_pending_notice(self, root_name: str, matched_name: str, path: str, now: float) -> None:
-        """Hold a notice that cannot be credited yet (controller thread only)."""
+    def __keep_pending_notice(self, root_name: str, matched_name: str, path: str, now: float,
+                              reason: str = "root still transferring") -> None:
+        """Hold a notice that cannot be credited yet (controller thread only).
+
+        reason documents why it is being kept, for the DEBUG line below: the
+        root is still transferring, or (122-10, D-06c) its transfer has
+        ended but it has not yet committed and this notice was already
+        pending in the current lifecycle.
+        """
         key = (root_name, matched_name)
         if key not in self.__pending_child_notices:
             self.__pending_child_notices[key] = _PendingNotice(
@@ -938,8 +1050,8 @@ class Controller:
                     )
                 )
         self.logger.debug(
-            "Deferring webhook notice '{}' for '{}': root still transferring".format(
-                sanitize_log_value(matched_name), sanitize_log_value(root_name)
+            "Deferring webhook notice '{}' for '{}': {}".format(
+                sanitize_log_value(matched_name), sanitize_log_value(root_name), reason
             )
         )
 
@@ -1042,14 +1154,16 @@ class Controller:
         transfer-lifecycle generation for it. Returns the number dropped.
 
         Controller thread only. Called after a USER QUEUE (an explicit
-        transfer reset that clears the root's import tracking), and on the
-        same-name re-grab lifecycle reset and root removal. The generation is
+        transfer reset that clears the root's import tracking), on the
+        same-name re-grab lifecycle reset and root removal, and on a
+        successful STOP or DELETE_LOCAL (122-13, WR-02). The generation is
         bumped even when nothing was pending, so no notice recorded under the
         previous lifecycle can ever be credited to the new one.
         """
         keys = [k for k, n in self.__pending_child_notices.items() if n.root_name == root_name]
         for key in keys:
             del self.__pending_child_notices[key]
+        self.__last_transferring_at.pop(root_name, None)
         self.__root_lifecycle_generation[root_name] += 1
         if keys:
             self.logger.info(
@@ -1382,6 +1496,16 @@ class Controller:
                 # The previous lifecycle's auto-delete Timer must not fire
                 # against the re-queued copy (its tracking was just cleared).
                 self._cancel_auto_delete(command.filename, "user requeue")
+
+            # A stopped transfer or a deleted local copy ends the attempt, so
+            # a notice kept for it must not be credited later (122-13,
+            # WR-02). DELETE_LOCAL also adds the root to downloaded_file_names
+            # (CommandProcessor._handle_delete), and a surviving notice would
+            # then be accepted as committed.
+            if command.action == Controller.Command.Action.STOP:
+                self._discard_pending_notices(command.filename, "user stop")
+            elif command.action == Controller.Command.Action.DELETE_LOCAL:
+                self._discard_pending_notices(command.filename, "local copy deleted")
 
             # If we get here, it was a success
             for callback in command.callbacks:

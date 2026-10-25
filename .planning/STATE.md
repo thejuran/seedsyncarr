@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: ready_to_plan
-stopped_at: "Phase 121 complete and verified (3/3); draft PR #132 open, CI green, not merged — ready to discuss Phase 122"
-last_updated: 2026-10-21T23:42:34.740Z
-last_activity: "2026-10-21 -- Phase 121 verified (8/8); PR #132 draft awaiting merge"
+status: executing
+stopped_at: "Completed 122-13-PLAN.md (gap closure: WR-02/WR-03 D-06(c) grace-window narrowing + credit-reason fix, RED-GREEN). Nothing pushed; 122-15 gates both 122-13 and 122-14, then pushes to PR #134; 122-16/17 follow."
+last_updated: "2026-10-23T23:20:01.070Z"
+last_activity: 2026-10-23 -- 122-14 executed (ConfigHandler._test_arr_connection strips/validates the Arr API key before any request, logs only the exception type on failure -- closes CR-01; rate_limit()'s logger is now required and keyword-only, StatusHandler logs under seedsyncarr.StatusHandler -- closes WR-01; D-14 re-audit recorded 0 logger.exception/exc_info sites in scope; nothing pushed, 122-15 pushes)
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 20
+  completed_plans: 17
   percent: 17
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-21)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 122 — safety acceptance and logging fixes (PR #132 for Phase 121 still draft, awaiting merge)
+**Current focus:** Phase 122 — safety-acceptance-and-logging-fixes
 
 ## Current Position
 
-Phase: 122
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-21 -- Phase 121 verified; PR #132 draft awaiting merge
+Phase: 122 (safety-acceptance-and-logging-fixes) — EXECUTING (gap-closure cycle 2: 122-13..17)
+Plan: 122-13 of 12 complete (01-04 complete; 05 gaps_found, superseded by 10-12's fix, intentionally not counted toward completion; 06 D-06(d) restart persistence PASS, complete; 07 D-07 extraction staging/auto-delete re-arm PASS, complete; 08 sandbox restore + owner-approved SAFE-01 verdict, complete; 09 SAFE-02 reconciliation, owner-confirmed closed, complete; 10 gap-closure fix complete; 11 pushed fix to PR #134 and re-pinned sandbox, complete; 12 reran 122-05's D-06 scenarios on the fixed build -- all PASS, gap closed; code review + verification afterward found CR-01/WR-01/WR-02/WR-03 and owner decided to fix all four in-phase on PR #134, producing gap-closure plans 13-17; 14 (CR-01 API-key leak + WR-01 status rate-limit logger) fixed, RED-GREEN-GREEN, complete; 13 (WR-02/WR-03 narrow D-06(c) grace window + credit log wording) fixed, RED-GREEN, complete)
+Status: Gap-closure cycle 2 in progress (122-13..17). 122-13 and 122-14 are both complete; remaining: 122-15 (gate both fix plans and push to PR #134), 122-16 (live LOG-01/D-06(c) rerun), 122-17 (close SAFE-01/LOG-01)
+Last activity: 2026-10-23 -- 122-13 executed (narrowed the 122-10 D-06(c) post-transfer pending-notice exception to a 120 s grace window requiring a local copy; added per-root __last_transferring_at tracking pruned to the model every cycle; a successful STOP or DELETE_LOCAL now discards the root's pending notices at once; __credit_early_child's INFO line now says "(transfer finished, awaiting commit)" instead of the always-false "(root still transferring)" -- closes WR-02/WR-03; RED-GREEN, 285 targeted tests pass, whole test_controller dir shows only the known environment baseline, ruff clean; a hand-rolled test double in test_controller.py needed a one-line fix to seed the new attribute; nothing pushed, 122-15 gates both 122-13/14 and pushes)
 
 ## Accumulated Context
 
@@ -86,6 +86,17 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 119.1]: 119.1-05 complete: owner 'Confirmed' the 1.7.6 prod deploy (Waiting-badge/manual-release UI UAT not reported, stays open); rotation checklist delivered after confirmation (seedbox pw incl. seedsyncarr-test, Sonarr/Radarr keys; webhook/api_token unset)
 - [Phase 120]: SON5-05 verified; no release needed (owner approved 2026-10-20) on builds Sonarr 5.0.0.2701 (linuxserver/sonarr:develop, image 8b59d172e9b4); container-name Test Connection failure classified as Reliability item 5 (D-02)
 - [Phase 121]: 121-03: pushed gsd/phase-121-credential-forwarding and opened draft PR #132 to main only after owner go-ahead 'push'; PR CI green on all 11 jobs incl. 3/3 [chromium-token] auth-token.spec.ts tests in a real browser, closing SEC-02's real-browser half
+- [Phase 122]: 122-04: one-PR-per-phase deploy (no merge); PR #134 staging image ghcr.io/thejuran/seedsyncarr:400 digest-pinned (cross-checked buildx + anonymous GHCR); deployed to seedsyncarr-test only; production fingerprint identical before/after; live LOG-01 confirmed (seedsyncarr.WebhookHandler); seedbox nyx.usbx.me SSH port 22 refused connections, flagged for Plans 05-08
+- [Phase 122]: 122-10: fixed D-06(c) post-transfer pending-notice drop (narrow pending-notice-membership exception in the evidence gate); local gates green (suite subset of 122-03 baseline, ruff clean, RED-before-GREEN); nothing pushed, 122-11 pushes
+- [Phase 122]: 122-11: pushed 122-10's fix to PR #134 (CI run 401 green, all checks pass); re-pinned seedsyncarr-test to new DEV_PIN sha256:e3941f97... (digest cross-checked two ways); production fingerprint unchanged this session (StartedAt drifted from the 122-04 baseline -- host/Docker restart outside this plan, flagged); LOG-01 reconfirmed live; ready for 122-12's live D-06(c) rerun
+- [Phase 122]: 122-12: D-06 rerun PASS on fixed build (sha256:e3941f97...); second independent (c)-repeat on SSA122.Foxtrot.S01 also PASS; a deferred SSA122.Echo.S01E04 webhook posted at ~11.6% was accepted via Recorded webhook import instead of dropped (closing 122-05's gap); SAFE-01 stays open pending Plans 06/07 restart-persistence and extraction evidence
+- [Phase 122]: 122-06: D-06(d) restart persistence PASS on fixed build (sha256:e3941f97...) using SSA122.Bravo3.S01 after two test-harness-only Rule 3 fixes (a persist-read race, and a stale pre-restart size baseline); credit survived a real docker restart, the one-shot release did not, no auto-delete fired over a 390s post-restart window with local bytes frozen; SAFE-01 stays open pending Plan 07 extraction evidence; a pre-existing lftp-pexpect shutdown warning logged to deferred-items.md for Phase 123
+- [Phase 122]: 122-07: D-07 extraction staging/auto-delete re-arm PASS on fixed build (sha256:e3941f97...) using a 2-volume 1 GiB SSA122.Rar.Pack RAR; staging grew through 7 samples while the release folder showed only the .rar volumes, the mkv published at full size only once complete, zero model snapshots listed the staging dir; a webhook posted the instant the root reached EXTRACTING deferred auto-delete 3 times (naming State.EXTRACTING) then deleted once extraction finished; SAFE-01's three live-acceptance halves (import/auto-delete, restart persistence, extraction) are all now PASS on the build that will ship; a pre-existing gap (ExtractDispatch's coalesce filter does not recognize modern RAR .partN.rar volume naming, causing one redundant-but-safe extraction pass per volume) logged to deferred-items.md for Phase 123
+- [Phase 122]: 122-08: owner reviewed and approved the SAFE-01 verdict (all six required scenarios PASS); sandbox restored to IMAGE_PIN_L0 (1.7.6) and independently re-verified; a Rule 1 regex bug in teardown.sh --final (did not match a digest-only image reference) was found and fixed; owner declined sandbox Sonarr key rotation this session (follow-up flagged for Plan 09's ROADMAP operator follow-ups); Plan 09 (SAFE-02 reconciliation) is unblocked
+- [Phase 122]: 122-09: owner verbatim reply 'All confirmed' (Task 2) closed both open incident records per D-12 -- done-group-no-auto-delete.md and extract-staging-autodel-rearm.md both status resolved, moved to .planning/debug/resolved/; ROADMAP Done-group operator follow-up ticked; deferred extract-staging items C-G stay in the Backlog, unaffected (do not block closing)
+- [Phase 122]: Owner 2026-10-23: fix code-review CR-01 (API key leak via config handler traceback), WR-01, WR-02 (narrow D-06(c) pending-notice retention to a short post-transfer grace window) and WR-03 in-phase on PR #134, with D-06(c) sandbox rerun on the new build
+- [Phase 122]: 122-14: closed CR-01 (ConfigHandler._test_arr_connection now strips the stored Arr API key and rejects it with a fixed "contains invalid characters" message if it is not printable-ASCII-without-space, before any outbound request; the unexpected-error path now logs only type(e).__name__, never the message or exc_info) and WR-01 (rate_limit()'s logger parameter is now required and keyword-only with no module-level fallback; StatusHandler logs under seedsyncarr.StatusHandler); RED-GREEN-GREEN, 404 tests passed, ruff clean; D-14 re-audit re-run, 0 logger.exception/exc_info sites remain in scope; no live NAS check (would require reading the real sandbox key); nothing pushed, 122-15 pushes
+- [Phase 122]: 122-13: narrowed 122-10's D-06(c) post-transfer pending-notice exception to a 120 s grace window (_POST_TRANSFER_GRACE_SECS) requiring a local copy, added STOP/DELETE_LOCAL discard, and gave __credit_early_child a reason parameter so its INFO line says '(transfer finished, awaiting commit)' instead of the always-false '(root still transferring)' -- closes WR-02/WR-03; RED-GREEN, 285 targeted tests pass, whole test_controller dir shows only the known environment baseline, ruff clean; nothing pushed, 122-15 gates both 122-13/14 and pushes
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -143,9 +154,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-21T23:34:42.436Z
-Stopped at: Phase 121 executed; PR #132 open, in review, awaiting merge
-Next action: review/merge draft PR #132 (https://github.com/thejuran/seedsyncarr/pull/132, e.g. via /bm:ship), then /bm:discuss-phase 122 (Safety Acceptance and Logging Fixes). Owner follow-up: remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-23T23:20:01.064Z
+Stopped at: Completed 122-13-PLAN.md (gap closure: WR-02/WR-03 D-06(c) grace-window narrowing + credit-reason fix, RED-GREEN). Nothing pushed; 122-15 gates both 122-13 and 122-14, then pushes to PR #134; 122-16/17 follow.
+Next action: Both gap-closure fix plans (122-13, 122-14) are complete. 122-15 gates both together (full suite + ruff) and pushes to PR #134; 122-16 reruns LOG-01/D-06(c) live on the sandbox against the new build; 122-17 closes the second gap cycle (restores the sandbox to its 1.7.6 pin and records SAFE-01/LOG-01 as closed). Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -158,23 +169,24 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Review and merge draft PR #132 (fix(121): attach app token only to SeedSyncarr's own API), or hold it open until a convenient release window
-- /bm:discuss-phase 122 and /bm:plan-phase 122 (Safety Acceptance and Logging Fixes)
+- /bm:execute-phase 122 (Plan 09 SAFE-02 reconciliation is complete; remaining phase work is the one-PR-per-phase merge decision, on the same fixed DEV_PIN sha256:e3941f97...)
 
 ## Deferred Items
 
 | Kind | Item | Status |
 |------|------|--------|
 | Operator follow-up | Confirm 1.7.6 credential rotation | Completion unconfirmed |
-| Operator follow-up | Confirm one-time Done-group cleanup | Completion unconfirmed |
+| Operator follow-up | Confirm one-time Done-group cleanup | Confirmed 2026-10-23 (owner, Phase 122-09, verbatim "All confirmed") |
 | Operator follow-up | Remove Hacks.S04E01 test torrent from sandbox Deluge (`~/v5test` on seedbox, label tv-v5test) once TorrentDay seed time is met | Seeding; owner to remove |
 | Deferred fix (Phase 120) | Webhook handler logger not attached to app log ("Sonarr webhook test event received" never written) | Promoted to LOG-01, Phase 122 |
 | Deferred fix (Phase 120) | CompletionGate prune path logs "Completion hold cleared" when a hold is merely dropped (no release; no early transfer) | Promoted to LOG-02, Phase 122 |
+| Deferred fix (Phase 122-06) | `seedsyncarr-test` restart: lftp's pexpect child fails to terminate within the `docker restart` SIGTERM window ("Could not terminate the child"); controller still exits and the container restarts cleanly ~5s later | Logged to `122-safety-acceptance-and-logging-fixes/deferred-items.md`; candidate for Phase 123 |
+| Deferred fix (Phase 122-07) | `ExtractDispatch.__coalesce_extractions` only filters legacy `.r00`/`.r01` WinRAR volume naming, not modern RAR `.partN.rar` naming where every volume ends in `.rar`; a multi-volume archive runs one fully redundant (but still safe, staging-then-publish) extraction pass per volume | Logged to `122-safety-acceptance-and-logging-fixes/deferred-items.md`; candidate for Phase 123 or later maintenance |
 
 Open audit artifacts acknowledged at v1.7.7 close (2026-10-20), all from earlier milestones and assigned to Phase 122 (SAFE-01/SAFE-02):
 
 | Category | Item | Status |
 |----------|------|--------|
-| debug | done-group-no-auto-delete | diagnosed |
-| debug | extract-staging-autodel-rearm | awaiting_human_verify |
-| verification | Phase 119 119-VERIFICATION.md | human_needed (browser half closed 2026-10-18 in 119-HUMAN-UAT.md; extraction/import checks remain) |
+| debug | done-group-no-auto-delete | resolved (Phase 122-09; owner-confirmed cleanup 2026-10-23, moved to `.planning/debug/resolved/`) |
+| debug | extract-staging-autodel-rearm | resolved (Phase 122-09; owner-confirmed cleanup 2026-10-23, moved to `.planning/debug/resolved/`) |
+| verification | Phase 119 119-VERIFICATION.md | resolved (browser half closed 2026-10-18 in 119-HUMAN-UAT.md; extraction/import checks closed via SAFE-01 D-06/D-07 PASS evidence + Phase 122-09 owner-confirmed cleanup) |

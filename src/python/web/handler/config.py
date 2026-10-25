@@ -1,6 +1,6 @@
 import json
 import ipaddress
-import logging
+import re
 import socket
 from urllib.parse import urlparse, urljoin
 
@@ -8,15 +8,19 @@ import requests
 import bottle
 from bottle import HTTPResponse
 
-from common import overrides, Config, ConfigError
+from common import Context, overrides, Config, ConfigError
 from ..web_app import IHandler, WebApp
 from ..serialize import SerializeConfig
 from ..rate_limit import rate_limit
 
-logger = logging.getLogger(__name__)
+# Printable ASCII without space -- the only characters `requests` accepts in
+# a header value without raising InvalidHeader, whose message would embed
+# the raw key (122-14, CR-01).
+_API_KEY_CHARS = re.compile(r"[\x21-\x7e]+")
 
 class ConfigHandler(IHandler):
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, context: Context):
+        self.logger = context.logger.getChild("ConfigHandler")
         self.__config = config
 
     @overrides(IHandler)
@@ -24,15 +28,15 @@ class ConfigHandler(IHandler):
         web_app.add_handler("/server/config/get", self.__handle_get_config)
         web_app.add_post_handler(
             "/server/config/set",
-            rate_limit(max_requests=60, window_seconds=60.0)(self.__handle_set_config)
+            rate_limit(max_requests=60, window_seconds=60.0, logger=self.logger)(self.__handle_set_config)
         )
         web_app.add_handler(
             "/server/config/sonarr/test-connection",
-            rate_limit(max_requests=5, window_seconds=60.0)(self.__handle_test_sonarr_connection)
+            rate_limit(max_requests=5, window_seconds=60.0, logger=self.logger)(self.__handle_test_sonarr_connection)
         )
         web_app.add_handler(
             "/server/config/radarr/test-connection",
-            rate_limit(max_requests=5, window_seconds=60.0)(self.__handle_test_radarr_connection)
+            rate_limit(max_requests=5, window_seconds=60.0, logger=self.logger)(self.__handle_test_radarr_connection)
         )
 
     @staticmethod
@@ -143,6 +147,13 @@ class ConfigHandler(IHandler):
                 content_type="application/json"
             )
 
+        api_key = api_key.strip()
+        if not _API_KEY_CHARS.fullmatch(api_key):
+            return HTTPResponse(
+                body=json.dumps({"success": False, "error": "{} API key contains invalid characters".format(service_name)}),
+                content_type="application/json"
+            )
+
         # SSRF protection: validate URL before making any outbound request
         error_msg = ConfigHandler._validate_url(raw_url.strip())
         if error_msg is not None:
@@ -194,8 +205,15 @@ class ConfigHandler(IHandler):
                 body=json.dumps({"success": False, "error": "Connection timed out"}),
                 content_type="application/json"
             )
-        except Exception:
-            logger.exception("Unexpected error testing %s connection", service_name)
+        except Exception as e:
+            # requests embeds header values, including the API key, in
+            # InvalidHeader and similar messages, so this boundary logs only
+            # the exception type, never the message or a traceback
+            # (122-14, CR-01; D-14 of 122-CONTEXT).
+            self.logger.error(
+                "Unexpected error testing %s connection (%s)",
+                service_name, type(e).__name__
+            )
             return HTTPResponse(
                 body=json.dumps({"success": False, "error": "An unexpected error occurred"}),
                 content_type="application/json"

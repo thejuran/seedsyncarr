@@ -12,7 +12,7 @@ from web.handler.config import ConfigHandler
 class TestConfigHandlerGet(unittest.TestCase):
     def setUp(self):
         self.mock_config = MagicMock()
-        self.handler = ConfigHandler(self.mock_config)
+        self.handler = ConfigHandler(self.mock_config, MagicMock())
 
     @patch('web.handler.config.SerializeConfig')
     def test_get_returns_200(self, mock_serialize_cls):
@@ -30,7 +30,11 @@ class TestConfigHandlerGet(unittest.TestCase):
 class TestConfigHandlerSet(unittest.TestCase):
     def setUp(self):
         self.mock_config = MagicMock()
-        self.handler = ConfigHandler(self.mock_config)
+        self.mock_context = MagicMock()
+        self.handler = ConfigHandler(self.mock_config, self.mock_context)
+
+    def test_constructor_creates_child_logger(self):
+        self.mock_context.logger.getChild.assert_called_once_with("ConfigHandler")
 
     def test_set_valid_returns_200(self):
         self.mock_config.has_section.return_value = True
@@ -153,7 +157,7 @@ class TestConfigHandlerTestSonarrConnection(unittest.TestCase):
         self.config.sonarr.enabled = False
         self.config.sonarr.sonarr_url = "http://sonarr.example.com:8989"
         self.config.sonarr.sonarr_api_key = "testapikey123"
-        self.handler = ConfigHandler(self.config)
+        self.handler = ConfigHandler(self.config, MagicMock())
 
     def test_sonarr_missing_url_returns_error(self):
         self.config.sonarr.sonarr_url = ""
@@ -275,7 +279,7 @@ class TestConfigHandlerTestRadarrConnection(unittest.TestCase):
         self.config.radarr.enabled = False
         self.config.radarr.radarr_url = "http://localhost:7878"
         self.config.radarr.radarr_api_key = "testapikey123"
-        self.handler = ConfigHandler(self.config)
+        self.handler = ConfigHandler(self.config, MagicMock())
 
     def test_radarr_missing_url_returns_error(self):
         self.config.radarr.radarr_url = ""
@@ -413,6 +417,30 @@ class TestConfigHandlerTestRadarrConnection(unittest.TestCase):
 
     @patch('web.handler.config.requests')
     @patch('web.handler.config.socket')
+    def test_config_key_whitespace_stripped_before_header(self, mock_socket, mock_requests):
+        """CR-01: leading/trailing whitespace around a stored key is
+        stripped before the X-Api-Key header is built."""
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("8.8.8.8", 0))]
+        mock_socket.gaierror = socket.gaierror
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"version": "4.0.2"}
+        mock_requests.get.return_value = mock_response
+        mock_requests.ConnectionError = requests.ConnectionError
+        mock_requests.Timeout = requests.Timeout
+        self.config.sonarr.sonarr_url = "http://sonarr.example.com:8989"
+        self.config.sonarr.sonarr_api_key = "  testapikey123\t"
+
+        self.handler._ConfigHandler__handle_test_sonarr_connection()
+        mock_requests.get.assert_called_once_with(
+            "http://sonarr.example.com:8989/api/v3/system/status",
+            headers={"X-Api-Key": "testapikey123"},
+            timeout=10,
+            allow_redirects=False
+        )
+
+    @patch('web.handler.config.requests')
+    @patch('web.handler.config.socket')
     def test_generic_exception_does_not_leak_details(self, mock_socket, mock_requests):
         mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("8.8.8.8", 0))]
         mock_socket.gaierror = socket.gaierror
@@ -437,14 +465,14 @@ class TestConfigHandlerRateLimit(unittest.TestCase):
         mock_time.time.return_value = 1000.0
 
         mock_config = MagicMock()
-        handler = ConfigHandler(mock_config)
+        handler = ConfigHandler(mock_config, MagicMock())
         # Mock config to accept any set operation
         mock_config.has_section.return_value = True
         mock_inner = MagicMock()
         mock_inner.has_property.return_value = True
         mock_config.lftp = mock_inner
 
-        rate_limited = rate_limit(max_requests=60, window_seconds=60.0)(
+        rate_limited = rate_limit(max_requests=60, window_seconds=60.0, logger=MagicMock())(
             handler._ConfigHandler__handle_set_config
         )
 
@@ -475,9 +503,9 @@ class TestConfigHandlerRateLimit(unittest.TestCase):
         config.sonarr.enabled = False
         config.sonarr.sonarr_url = "http://sonarr.example.com:8989"
         config.sonarr.sonarr_api_key = "testapikey123"
-        handler = ConfigHandler(config)
+        handler = ConfigHandler(config, MagicMock())
 
-        rate_limited = rate_limit(max_requests=5, window_seconds=60.0)(
+        rate_limited = rate_limit(max_requests=5, window_seconds=60.0, logger=MagicMock())(
             handler._ConfigHandler__handle_test_sonarr_connection
         )
 

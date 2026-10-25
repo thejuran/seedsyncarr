@@ -201,6 +201,8 @@ class TestCheckWebhookImportsSanitization(unittest.TestCase):
         # Pending-notice state and the immediate-persist hook (IMP-03)
         c._Controller__pending_child_notices = collections.OrderedDict()
         c._Controller__root_lifecycle_generation = collections.defaultdict(int)
+        # Post-transfer grace-window state (122-13, WR-02)
+        c._Controller__last_transferring_at = {}
         c._Controller__persist_callback = None
 
         return c

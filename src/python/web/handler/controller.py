@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import time
 from pathlib import Path
@@ -9,12 +8,10 @@ from urllib.parse import unquote
 
 from bottle import HTTPResponse, request
 
-from common import overrides
+from common import Context, overrides
 from controller import Controller
 from ..web_app import IHandler, WebApp
 from ..rate_limit import rate_limit
-
-logger = logging.getLogger(__name__)
 
 class WebResponseActionCallback(Controller.Command.ICallback):
     """
@@ -55,7 +52,8 @@ class WebResponseActionCallback(Controller.Command.ICallback):
         return self.__event.wait(timeout=timeout)
 
 class ControllerHandler(IHandler):
-    def __init__(self, controller: Controller, local_path: str = ""):
+    def __init__(self, controller: Controller, context: Context, local_path: str = ""):
+        self.logger = context.logger.getChild("ControllerHandler")
         self.__controller = controller
         self.__local_path_real: Path | None = (
             Path(os.path.realpath(local_path)) if local_path else None
@@ -70,7 +68,7 @@ class ControllerHandler(IHandler):
         web_app.add_delete_handler("/server/command/delete_remote/<file_name>", self.__handle_action_delete_remote)
         web_app.add_post_handler(
             "/server/command/bulk",
-            rate_limit(max_requests=10, window_seconds=60.0)(self.__handle_bulk_command)
+            rate_limit(max_requests=10, window_seconds=60.0, logger=self.logger)(self.__handle_bulk_command)
         )
 
     def _dispatch_command(
@@ -191,7 +189,9 @@ class ControllerHandler(IHandler):
             os.path.join(str(self.__local_path_real), file_name)
         ))
         if not candidate.is_relative_to(self.__local_path_real):
-            logger.warning("Rejected path traversal attempt for: %s", repr(file_name))
+            # repr() here instead of sanitize_log_value is pre-existing and
+            # out of scope for this change; file name only, no credential.
+            self.logger.warning("Rejected path traversal attempt for: %s", repr(file_name))
             return HTTPResponse(body="Invalid file path", status=400)
         return None
 
@@ -349,7 +349,7 @@ class ControllerHandler(IHandler):
         start_time = time.time()
         file_count = len(files)
 
-        logger.info("Bulk {} operation started for {} file(s)".format(action_name, file_count))
+        self.logger.info("Bulk {} operation started for {} file(s)".format(action_name, file_count))
 
         # Calculate timeout: per-file timeout with a maximum cap
         timeout = min(
@@ -383,7 +383,7 @@ class ControllerHandler(IHandler):
             commands_with_callbacks.append((file_name, callback))
 
         queue_time = time.time()
-        logger.debug("Bulk {}: queued {} commands in {:.3f}s".format(
+        self.logger.debug("Bulk {}: queued {} commands in {:.3f}s".format(
             action_name, file_count, queue_time - start_time
         ))
 
@@ -425,13 +425,13 @@ class ControllerHandler(IHandler):
 
         # Log performance summary
         if timed_out > 0:
-            logger.warning(
+            self.logger.warning(
                 "Bulk {} completed: {}/{} succeeded, {} failed, {} timed out in {:.3f}s".format(
                     action_name, succeeded, file_count, failed - timed_out, timed_out, total_time
                 )
             )
         else:
-            logger.info(
+            self.logger.info(
                 "Bulk {} completed: {}/{} succeeded in {:.3f}s ({:.1f} files/sec)".format(
                     action_name, succeeded, file_count, total_time,
                     file_count / total_time if total_time > 0 else 0

@@ -1,4 +1,5 @@
 import json
+import logging
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -8,7 +9,9 @@ from web.handler.status import StatusHandler
 class TestStatusHandler(unittest.TestCase):
     def setUp(self):
         self.mock_status = MagicMock()
-        self.handler = StatusHandler(self.mock_status)
+        self.mock_context = MagicMock()
+        self.mock_context.logger = logging.getLogger("seedsyncarr")
+        self.handler = StatusHandler(self.mock_status, self.mock_context)
 
     @patch('web.handler.status.SerializeStatusJson')
     def test_get_status_returns_200(self, mock_serialize_cls):
@@ -41,11 +44,15 @@ class TestStatusHandlerRateLimit(unittest.TestCase):
         from web.rate_limit import rate_limit
 
         mock_status = MagicMock()
-        handler = StatusHandler(mock_status)
+        mock_context = MagicMock()
+        mock_context.logger = logging.getLogger("seedsyncarr")
+        handler = StatusHandler(mock_status, mock_context)
 
         with patch('web.handler.status.SerializeStatusJson') as mock_serialize:
             mock_serialize.status.return_value = '{"server":{"up":true}}'
-            rate_limited = rate_limit(max_requests=60, window_seconds=60.0)(
+            rate_limited = rate_limit(
+                max_requests=60, window_seconds=60.0, logger=mock_context.logger
+            )(
                 handler._StatusHandler__handle_get_status
             )
 

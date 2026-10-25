@@ -205,7 +205,7 @@ class CompletionGate:
             verdicts = {name: Verdict.not_required() for name in candidates}
             for name in list(self._holds):
                 if prune or name in candidates:
-                    self._clear_hold(name)
+                    self._clear_hold(name, drop_reason="no Sonarr/Radarr integration enabled")
             return verdicts
 
         # (3) Apply completed results (always, even with no candidates).
@@ -233,7 +233,7 @@ class CompletionGate:
         if prune:
             for name in list(self._holds):
                 if name not in candidates:
-                    self._clear_hold(name)
+                    self._clear_hold(name, drop_reason="no longer a queue candidate")
         return verdicts
 
     def _reset_integration_state(self):
@@ -424,6 +424,21 @@ class CompletionGate:
             self.logger.debug("Completion hold unchanged for '%s': %s", safe, self.label(verdict.reason))
         self._holds[name] = verdict.reason
 
-    def _clear_hold(self, name: str):
+    def _clear_hold(self, name: str, drop_reason: Optional[str] = None):
+        """
+        Remove a hold for `name`, if one is registered.
+
+        `drop_reason` is None only for the proof-based release in `_record`:
+        that path logs "cleared" and the wording must stay byte-identical,
+        existing log searches and Phase 120 evidence grep for it exactly.
+        Every other removal (pruned from the candidate set, no Sonarr/Radarr
+        integration enabled) passes a fixed reason literal from this module
+        and logs "dropped (<reason>)" instead (D-16, D-17). drop_reason is
+        always a module literal, never user input, so it needs no sanitizing.
+        """
         if self._holds.pop(name, None) is not None:
-            self.logger.info("Completion hold cleared for '%s'", sanitize_log_value(name))
+            if drop_reason is None:
+                self.logger.info("Completion hold cleared for '%s'", sanitize_log_value(name))
+            else:
+                self.logger.info("Completion hold dropped for '%s' (%s)",
+                                  sanitize_log_value(name), drop_reason)
