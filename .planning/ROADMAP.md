@@ -231,6 +231,14 @@ Apply `sanitize_log_value` to archive-derived paths in the new dispatch log line
 
 Add tests for the three cleanup OSError handlers, a lock-order recorder across a re-arm cycle, and the dispatch loop stop path. Source: `.planning/debug/extract-staging-autodel-rearm.md` item G.
 
+### Deferred: Arr API key normalization (Phase 122 review WR-04)
+
+Test Connection strips and validates the Arr API key before testing (122-14), but the saved key is never normalized and `controller/arr_queue.py` sends it as stored. A key pasted with a stray space or newline passes Test Connection while every real queue check fails, so completions stay held as "Sonarr unavailable" (fail-safe; no wrong deletes, but a false all-clear from the diagnostic). Fix: normalize on save and in `arr_queue.py` so already-saved keys keep working. Owner chose backlog 2026-10-25. Source: `.planning/phases/122-safety-acceptance-and-logging-fixes/122-REVIEW.md` WR-04.
+
+### Deferred: Post-transfer notice window edge cases (Phase 122 review IN-04, IN-05)
+
+Fail-safe edge cases of the 120 s post-transfer grace window (122-13): a STOP handled in the same cycle that records "last seen transferring" can let a brand-new notice be credited for up to 120 s (credit only, never deletes by itself) (IN-04); a root the local scanner hasn't seen yet is logged as "local copy gone", and a local scan slower than 120 s loses the notice even when the transfer finished normally (no credit, no deletion; brings back the missed-import symptom 122-10 fixed) (IN-05). Owner chose backlog 2026-10-25. Source: `.planning/phases/122-safety-acceptance-and-logging-fixes/122-REVIEW.md` IN-04, IN-05.
+
 ### 999.5: Move Sonarr integration to API v5
 
 **Scope:** Sonarr 5 lists the v3 API as deprecated (still served as of 5.0.0.2701). Move SeedSyncarr's two Sonarr API calls (`system/status` connection test, `queue/details` completion evidence; the webhook payload is version-independent) to `/api/v5` when Sonarr 4 support can be dropped, or with version detection that keeps v3 for Sonarr 4. Note the v5 queue model differences: one tracked item can cover multiple episodes (`episodeIds`/`episodes` lists), `timeLeft` casing, and `includeSubresources`. Activate when Sonarr announces v3 removal, Sonarr 5 goes stable and prod upgrades, or v1.7.7 finds a v3 gap. Radarr unaffected. Not a Reliability gate.

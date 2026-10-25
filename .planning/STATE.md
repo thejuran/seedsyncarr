@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: executing
-stopped_at: Completed 122-17-PLAN.md (full gap-cycle-2 rerun evidence written, sandbox restored to IMAGE_PIN_L0 via teardown.sh --final, SAFE-01 verdict addendum PASSED, owner approved verbatim 'approve'). SAFE-01 and LOG-01 closed. Phase 122 gap-closure cycle 2 (122-13..17) complete; phase ready for verification/close-out.
-last_updated: "2026-10-25T15:49:59.432Z"
-last_activity: "2026-10-23 -- 122-16 executed (re-pinned seedsyncarr-test to the 122-15 gap-cycle-2 DEV_PIN sha256:f8204207... via inode-preserving compose edit; fixed a harness-only re-pin-readiness race on the first attempt (Rule 3, rerun once, no product code touched); LOG-01 and WR-01 reconfirmed live on the new build; D-06(c) rerun PASS on SSA122.India.S01 (with held decoy SSA122.IndiaDecoy.S01) and SSA122.Juliet.S01 -- late child webhooks accepted via \"Recorded webhook import\" 62-73s after posting, never dropped, proving 122-13's narrowed 120s grace window still covers the real race; live WR-02 check PASS on SSA122.Hotel.S01 -- a pending notice is discarded within 0.1s of a user STOP, never credited; CHECK_STATUS=PASS, D-03 not triggered; sandbox intentionally left on DEV_PIN for 122-17's --final restore; production fingerprint unchanged throughout)"
+status: phase_complete
+stopped_at: "Phase 122 complete and verified (re-verification passed 5/5 on 2026-10-25); review follow-ups WR-04/IN-04/IN-05 backlogged; PR #134 awaiting owner merge decision; next Phase 123"
+last_updated: "2026-10-25T16:06:01.000Z"
+last_activity: "2026-10-25 -- Phase 122 re-review (CR-01, WR-01..03 resolved) and re-verification passed 5/5; WR-04/IN-04/IN-05 sent to ROADMAP Backlog by owner"
 progress:
   total_phases: 6
   completed_phases: 2
@@ -100,6 +100,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 122]: 122-15: gated 122-13/14 together (suite subset of 122-03 baseline, whole-tree ruff clean, RED-before-GREEN, scope, D-14 grep); pushed to PR #134, CI run 404 green on all checks; new DEV_PIN sha256:f8204207... resolved by two independent methods, superseding sha256:e3941f97...; nothing merged, 122-16 reruns LOG-01/D-06(c) live on this new build
 - [Phase 122]: 122-16: re-pinned sandbox to gap-cycle-2 DEV_PIN (sha256:f8204207...); LOG-01/WR-01 reconfirmed live after fixing a harness-only re-pin-readiness race (Rule 3, rerun once, no product code touched); D-06(c) rerun PASS on the narrowed 120s grace window (122-13) on SSA122.India.S01 (with held decoy) and SSA122.Juliet.S01 -- late child webhooks accepted via Recorded webhook import 62-73s after posting, never dropped; live WR-02 check PASS on SSA122.Hotel.S01 -- a pending notice is discarded within 0.1s of a user STOP, never credited; CHECK_STATUS=PASS, D-03 not triggered; sandbox stays on DEV_PIN for 122-17's --final restore
 - [Phase 122]: 122-17: wrote the full Plan 16 D-06/WR-02 rerun narrative (gap cycle 2) into 122-SAFE01-EVIDENCE.md, restored seedsyncarr-test to IMAGE_PIN_L0 (1.7.6) via teardown.sh --final (fresh-session verified, production byte-identical), and appended the 'Gap cycle 2 (122-13..17)' SAFE-01 verdict addendum (PASSED); owner reviewed and replied verbatim 'approve', accepting the kept D-06(d)/D-07 results from the earlier e3941f97 build with no rerun requested; SAFE-01 and LOG-01 closed
+- [Phase 122]: Owner 2026-10-25: Phase 122 re-verification passed 5/5; re-review follow-ups WR-04 (Arr key normalization), IN-04, IN-05 sent to ROADMAP Backlog, not fixed in-phase; PR #134 merge is a separate owner decision
 
 ### Phase 110 Decisions (2026-06-02)
 
