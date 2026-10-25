@@ -343,9 +343,35 @@ class Controller:
         Must be called after ctor and before process()
         """
         self.logger.debug("Starting controller")
-        self.__scan_manager.start()
-        self.__file_op_manager.start()
-        self.__mp_logger.start()
+        # Mirrors exit()'s per-component isolation below: track which
+        # components actually started and, on a later failure, stop lftp
+        # plus every already-started component independently before
+        # re-raising. lftp is included even though it is not in this
+        # tuple because its pty process is spawned eagerly in __init__,
+        # before start() ever runs, and would otherwise leak. The
+        # original failure then surfaces unchanged to the caller
+        # (ControllerJob's bounded auto-restart).
+        started = []
+        for component, start, stop in (
+                ("scanner", self.__scan_manager.start, self.__scan_manager.stop),
+                ("file operations", self.__file_op_manager.start, self.__file_op_manager.stop),
+                ("multiprocessing logger", self.__mp_logger.start, self.__mp_logger.stop)):
+            try:
+                start()
+            except Exception:
+                self.logger.error(
+                    "Controller start failed at {}; stopping lftp and {} already-started "
+                    "component(s)".format(component, len(started))
+                )
+                for name, component_stop in [("lftp", self.__lftp_manager.exit)] + started:
+                    try:
+                        component_stop()
+                    except Exception:
+                        self.logger.exception(
+                            "Error stopping {} after a failed controller start".format(name)
+                        )
+                raise
+            started.append((component, stop))
         self.__started = True
 
     def process(self):
