@@ -40,9 +40,13 @@ class WebAppJob(Job):
 
     @overrides(Job)
     def cleanup(self):
+        # Job.run now calls cleanup() after a setup() that may have raised
+        # before these were assigned.
         self.__app.stop()
-        self.__server.stop()
-        self.__server_thread.join()
+        if self.__server is not None:
+            self.__server.stop()
+        if self.__server_thread is not None:
+            self.__server_thread.join()
 
 class MyWSGIHandler(httpserver.WSGIHandler):
     """
