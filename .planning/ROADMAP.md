@@ -141,7 +141,7 @@ Plans:
 
 **Wave 2** *(blocked on 123-02 and 123-03)*
 
-- [ ] 123-04-PLAN.md — TDD: D-01 shutdown-aware scanner health check wired from the SIGTERM handler; D-03 sleep kept (recorded)
+- [x] 123-04-PLAN.md — TDD: D-01 shutdown-aware scanner health check wired from the SIGTERM handler; D-03 sleep kept (recorded)
 
 **Wave 3**
 
@@ -203,7 +203,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
-| 123. Startup and Shutdown Lifecycle | 3/7 | In Progress|  |
+| 123. Startup and Shutdown Lifecycle | 4/7 | In Progress|  |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |

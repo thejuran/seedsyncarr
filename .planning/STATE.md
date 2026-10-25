@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: Phase 123 wave 1 complete (123-01..03); wave 2 (123-04) executing
-last_updated: "2026-10-25T18:20:00.000Z"
-last_activity: 2026-10-25 -- Phase 123 wave 1 merged; post-merge suite matches baseline, ruff clean
+stopped_at: Phase 123 waves 1-2 complete (123-01..04); wave 3 (123-05 gate + PR + CI) executing
+last_updated: "2026-10-25T19:00:00.000Z"
+last_activity: 2026-10-25 -- Phase 123 wave 2 merged; post-merge suite matches baseline, ruff clean
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 27
-  completed_plans: 23
+  completed_plans: 24
   percent: 33
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 123 (startup-and-shutdown-lifecycle) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Executing Phase 123
 Last activity: 2026-10-25 -- Phase 123 execution started
 
