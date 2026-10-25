@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: Phase 123 waves 1-2 complete (123-01..04); wave 3 (123-05 gate + PR + CI) executing
-last_updated: "2026-10-25T19:00:00.000Z"
-last_activity: 2026-10-25 -- Phase 123 wave 2 merged; post-merge suite matches baseline, ruff clean
+stopped_at: "Completed 123-05-PLAN.md (phase gates + draft PR #137 + CI green + DEV_PIN); 123-06 next (live restart check)"
+last_updated: "2026-10-25T18:50:30.932Z"
+last_activity: 2026-10-25 -- Phase 123 plan 05 gated 123-01..04, pushed draft PR #137, CI green, DEV_PIN recorded
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 27
-  completed_plans: 24
+  completed_plans: 25
   percent: 33
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 123 (startup-and-shutdown-lifecycle) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Executing Phase 123
-Last activity: 2026-10-25 -- Phase 123 execution started
+Last activity: 2026-10-25 -- Phase 123 plan 05 gated 123-01..04, pushed draft PR #137, CI green, DEV_PIN recorded
 
 ## Accumulated Context
 
@@ -101,6 +101,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 122]: 122-16: re-pinned sandbox to gap-cycle-2 DEV_PIN (sha256:f8204207...); LOG-01/WR-01 reconfirmed live after fixing a harness-only re-pin-readiness race (Rule 3, rerun once, no product code touched); D-06(c) rerun PASS on the narrowed 120s grace window (122-13) on SSA122.India.S01 (with held decoy) and SSA122.Juliet.S01 -- late child webhooks accepted via Recorded webhook import 62-73s after posting, never dropped; live WR-02 check PASS on SSA122.Hotel.S01 -- a pending notice is discarded within 0.1s of a user STOP, never credited; CHECK_STATUS=PASS, D-03 not triggered; sandbox stays on DEV_PIN for 122-17's --final restore
 - [Phase 122]: 122-17: wrote the full Plan 16 D-06/WR-02 rerun narrative (gap cycle 2) into 122-SAFE01-EVIDENCE.md, restored seedsyncarr-test to IMAGE_PIN_L0 (1.7.6) via teardown.sh --final (fresh-session verified, production byte-identical), and appended the 'Gap cycle 2 (122-13..17)' SAFE-01 verdict addendum (PASSED); owner reviewed and replied verbatim 'approve', accepting the kept D-06(d)/D-07 results from the earlier e3941f97 build with no rerun requested; SAFE-01 and LOG-01 closed
 - [Phase 122]: Owner 2026-10-25: Phase 122 re-verification passed 5/5; re-review follow-ups WR-04 (Arr key normalization), IN-04, IN-05 sent to ROADMAP Backlog, not fixed in-phase; PR #134 merge is a separate owner decision
+- [Phase 123]: 123-05: gated 123-01..04 together (suite subset of 122-03 baseline, whole-tree ruff clean, RED-before-GREEN, 16-file scope exact match, no new sleeps, Controller.exit()/auto-delete/lock-ordering unchanged, log hygiene clean); pushed to new draft PR #137, CI run 407 green on all checks; DEV_PIN sha256:b7b894fa... resolved by two independent methods, recorded in 123-LIFE-EVIDENCE.md for 123-06's live restart check; nothing merged
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -115,6 +116,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 ### Blockers/Concerns
 
 - None at v1.8.0 roadmap creation. Watch-out for Phase 126's deploy gate: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — deploy the CI-published multi-arch `:1.8.0` image pinned by digest, never a local build and never `:dev`.
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
@@ -157,8 +159,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-25T16:11:27.361Z
-Stopped at: Phase 123 context gathered
+Last session: 2026-10-25T18:50:30.928Z
+Stopped at: Completed 123-05-PLAN.md (phase gates + draft PR #137 + CI green + DEV_PIN); 123-06 next (live restart check)
 Next action: 122-13, 122-14, 122-15 and 122-16 are complete. The sandbox is on the gap-cycle-2 DEV_PIN (sha256:f8204207...) with D-06(c) and WR-02 proven live (India/Juliet/Hotel) and LOG-01/WR-01 reconfirmed. 122-17 writes the full rerun evidence narrative into 122-SAFE01-EVIDENCE.md, runs teardown.sh --final to restore the sandbox to its 1.7.6 pin, and updates the SAFE-01/LOG-01 verdict to close the second gap cycle. Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**

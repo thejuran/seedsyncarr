@@ -19,8 +19,8 @@ Committed scope for this milestone. Each maps to exactly one roadmap phase. Fixe
 
 ### Startup/Shutdown Lifecycle
 
-- [ ] **LIFE-01**: When startup of the scanner or another component fails partway, already-started children are cleaned up, demonstrated by an injected-failure test
-- [ ] **LIFE-02**: When cleanup of one component fails, cleanup is still attempted for the remaining components, demonstrated by an injected-failure test; existing per-component controller cleanup, auto-delete shutdown guards and lock ordering are preserved
+- [x] **LIFE-01**: When startup of the scanner or another component fails partway, already-started children are cleaned up, demonstrated by an injected-failure test
+- [x] **LIFE-02**: When cleanup of one component fails, cleanup is still attempted for the remaining components, demonstrated by an injected-failure test; existing per-component controller cleanup, auto-delete shutdown guards and lock ordering are preserved
 
 ### Model-Stream Overflow
 
@@ -72,8 +72,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-02 | Phase 121 | Complete |
 | SAFE-01 | Phase 122 | Complete |
 | SAFE-02 | Phase 122 | Complete |
-| LIFE-01 | Phase 123 | Pending |
-| LIFE-02 | Phase 123 | Pending |
+| LIFE-01 | Phase 123 | Complete |
+| LIFE-02 | Phase 123 | Complete |
 | STRM-01 | Phase 124 | Pending |
 | STRM-02 | Phase 124 | Pending |
 | LAN-01 | Phase 125 | Pending |

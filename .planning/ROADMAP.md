@@ -145,7 +145,7 @@ Plans:
 
 **Wave 3**
 
-- [ ] 123-05-PLAN.md — Phase gates (baseline suite, ruff, RED-before-GREEN, scope, criteria 3/4), push to one draft PR, CI green, DEV_PIN digest
+- [x] 123-05-PLAN.md — Phase gates (baseline suite, ruff, RED-before-GREEN, scope, criteria 3/4), push to one draft PR, CI green, DEV_PIN digest
 
 **Wave 4**
 
@@ -203,7 +203,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
-| 123. Startup and Shutdown Lifecycle | 4/7 | In Progress|  |
+| 123. Startup and Shutdown Lifecycle | 5/7 | In Progress|  |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
