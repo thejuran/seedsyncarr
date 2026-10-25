@@ -374,6 +374,20 @@ class Controller:
             started.append((component, stop))
         self.__started = True
 
+    def note_shutdown_requested(self):
+        """
+        Record that the main thread's SIGTERM/SIGINT handler has run.
+
+        Called from the signal handler (Seedsyncarr.signal()) before it
+        raises ServiceExit. Marks shutdown on the scan manager so scanners
+        killed directly by the container's process-group SIGTERM are
+        reported as an expected stop instead of an unexpected death (D-01).
+        Takes no lock and does not touch __shutdown_event -- the auto-delete
+        shutdown guard and its lock ordering are unchanged (success
+        criterion 3).
+        """
+        self.__scan_manager.note_shutdown_requested()
+
     def process(self):
         """
         Advance the controller state
