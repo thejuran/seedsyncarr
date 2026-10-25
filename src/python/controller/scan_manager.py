@@ -1,3 +1,5 @@
+import signal
+import threading
 from typing import List, Optional, Tuple
 
 from common import Context, MultiprocessingLogger, AppError
@@ -83,6 +85,29 @@ class ScanManager:
         self.__remote_scan_process.set_multiprocessing_logger(mp_logger)
 
         self.__started = False
+
+        # D-01: set by the main thread's SIGTERM/SIGINT handler (via
+        # Controller.note_shutdown_requested()) before it raises ServiceExit.
+        # Read only by _check_process_health() to decide whether a dead
+        # scanner is an expected stop or a genuine failure -- it never stops
+        # anything itself and is independent of __started.
+        self.__shutdown_requested = threading.Event()
+        # D-01: set when an all-SIGTERM death has already been given one
+        # extra cycle to resolve (see _check_process_health()); cleared
+        # implicitly whenever the manager is stopped and started again via a
+        # fresh ScanManager instance.
+        self.__sigterm_recheck_pending = False
+
+    def note_shutdown_requested(self) -> None:
+        """
+        Record that the main thread's SIGTERM/SIGINT handler has run.
+
+        Called from the main thread (via Controller.note_shutdown_requested())
+        before it raises ServiceExit. This only changes how the next health
+        check reports scanner processes that are found dead -- it never
+        stops anything itself and does not touch __started.
+        """
+        self.__shutdown_requested.set()
 
     def start(self) -> None:
         """
@@ -221,25 +246,67 @@ class ScanManager:
 
         This catches the case where a process is killed externally (OOM, SIGKILL)
         and no exception reaches the parent process.
-        """
-        dead_processes = []
-        if not self.__remote_scan_process.is_alive():
-            dead_processes.append("RemoteScanner")
-        if not self.__local_scan_process.is_alive():
-            dead_processes.append("LocalScanner")
-        if not self.__active_scan_process.is_alive():
-            dead_processes.append("ActiveScanner")
 
-        if dead_processes:
+        D-01: the container runs under `tini -g`, which forwards the
+        container's SIGTERM to the whole process group. The forked scanner
+        children run SIGTERM as SIG_DFL, so the kernel kills them at the
+        same instant the main process receives the signal -- a few
+        milliseconds before the main thread's own handler runs and marks
+        shutdown requested (note_shutdown_requested()). Two cases follow
+        from that race:
+
+          (a) Shutdown is already requested: every dead process here is an
+              expected stop, regardless of exitcode (INFO, no raise).
+          (b) Shutdown is NOT yet requested, but every dead process was
+              killed by SIGTERM: this is almost certainly the same race
+              observed one cycle early, before the handler ran. Give it
+              exactly one extra cycle to resolve rather than raising
+              immediately -- if shutdown is requested by the next check,
+              case (a) applies; otherwise this was a genuine SIGTERM-only
+              death and the error below fires on the next cycle. Any other
+              death (OOM's SIGKILL, a non-zero exit, a mix that includes a
+              non-SIGTERM code) is never given this grace period.
+        """
+        dead = []
+        for name, process in (
+                ("RemoteScanner", self.__remote_scan_process),
+                ("LocalScanner", self.__local_scan_process),
+                ("ActiveScanner", self.__active_scan_process)):
+            if not process.is_alive():
+                dead.append((name, process))
+
+        if not dead:
+            return
+
+        if self.__shutdown_requested.is_set():
             self.__started = False
-            names = ", ".join(dead_processes)
-            self.logger.error(
-                "Scanner process(es) died unexpectedly: {}".format(names)
+            names = ", ".join(
+                "{} (exitcode {})".format(name, process.exitcode) for name, process in dead
+            )
+            self.logger.info(
+                "Scanner process(es) stopped during shutdown: {}".format(names)
             )
             self._terminate_and_join_all()
-            raise ScannerProcessDiedError(
-                "A scanner process stopped unexpectedly. Please check server logs for details."
+            return
+
+        if (not self.__sigterm_recheck_pending
+                and all(process.exitcode == -signal.SIGTERM for _, process in dead)):
+            self.__sigterm_recheck_pending = True
+            names = ", ".join(name for name, _ in dead)
+            self.logger.debug(
+                "Scanner process(es) ended by SIGTERM: {}; re-checking next cycle".format(names)
             )
+            return
+
+        self.__started = False
+        names = ", ".join(name for name, _ in dead)
+        self.logger.error(
+            "Scanner process(es) died unexpectedly: {}".format(names)
+        )
+        self._terminate_and_join_all()
+        raise ScannerProcessDiedError(
+            "A scanner process stopped unexpectedly. Please check server logs for details."
+        )
 
     def force_local_scan(self) -> None:
         """

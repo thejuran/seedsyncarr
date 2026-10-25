@@ -528,6 +528,179 @@ class TestScanManager(unittest.TestCase):
         mock_active_process.join.assert_called_once()
         mock_remote_process.join.assert_called_once()
         manager.logger.exception.assert_called_once()
+
+    # --- D-01: shutdown-aware health check and SIGTERM one-cycle recheck ---
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_shutdown_aware_dead_scanners_after_request_do_not_raise(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """D-01: once note_shutdown_requested() has been called, dead
+        scanners are reported as an expected stop (INFO, no raise), not an
+        unexpected death (ERROR, ScannerProcessDiedError)."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        for process in (mock_active_process, mock_local_process, mock_remote_process):
+            process.is_alive.return_value = False
+            process.exitcode = -15
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        manager.start()
+        manager.note_shutdown_requested()
+
+        manager.propagate_exceptions()  # must not raise
+
+        manager.logger.error.assert_not_called()
+        info_calls = [str(call) for call in manager.logger.info.call_args_list]
+        self.assertTrue(
+            any("stopped during shutdown" in c and "exitcode -15" in c for c in info_calls),
+            msg="Expected an info log mentioning 'stopped during shutdown' and 'exitcode -15'"
+        )
+        mock_active_process.terminate.assert_called_once()
+        mock_local_process.terminate.assert_called_once()
+        mock_remote_process.terminate.assert_called_once()
+        mock_active_process.join.assert_called_once()
+        mock_local_process.join.assert_called_once()
+        mock_remote_process.join.assert_called_once()
+
+        # Already stopped (__started False) -- a second call skips the
+        # health check entirely, so no new terminate calls happen.
+        mock_active_process.terminate.reset_mock()
+        mock_local_process.terminate.reset_mock()
+        mock_remote_process.terminate.reset_mock()
+        manager.propagate_exceptions()
+        mock_active_process.terminate.assert_not_called()
+        mock_local_process.terminate.assert_not_called()
+        mock_remote_process.terminate.assert_not_called()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_shutdown_aware_any_exitcode_after_request_does_not_raise(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """D-01: after a shutdown request, ANY exitcode on a dead process
+        (not just SIGTERM) is reported as an expected stop, never an error."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        mock_active_process.is_alive.return_value = True
+        mock_local_process.is_alive.return_value = True
+        mock_remote_process.is_alive.return_value = False
+        mock_remote_process.exitcode = -9
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        manager.start()
+        manager.note_shutdown_requested()
+
+        manager.propagate_exceptions()  # must not raise
+
+        manager.logger.error.assert_not_called()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_shutdown_aware_sigterm_death_rechecked_once_then_raises(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """D-01: without a shutdown request, an all-SIGTERM death is
+        re-checked once (covers the few-millisecond gap before the main
+        thread's handler runs) before raising on the next cycle."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        for process in (mock_active_process, mock_local_process, mock_remote_process):
+            process.is_alive.return_value = False
+            process.exitcode = -15
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        manager.start()
+
+        manager.propagate_exceptions()  # first call: re-checked, no raise
+        manager.logger.error.assert_not_called()
+
+        with self.assertRaises(ScannerProcessDiedError):
+            manager.propagate_exceptions()  # second call: raises
+
+        error_calls = [str(call) for call in manager.logger.error.call_args_list]
+        self.assertTrue(
+            any("Scanner process(es) died unexpectedly" in c for c in error_calls)
+        )
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_shutdown_aware_sigterm_death_then_request_is_benign(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """D-01: a SIGTERM death seen before the request, followed by the
+        request arriving before the recheck cycle, resolves benignly."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        for process in (mock_active_process, mock_local_process, mock_remote_process):
+            process.is_alive.return_value = False
+            process.exitcode = -15
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        manager.start()
+
+        manager.propagate_exceptions()  # first call: re-checked, no raise
+        manager.logger.error.assert_not_called()
+
+        manager.note_shutdown_requested()
+
+        manager.propagate_exceptions()  # second call: now shutdown-aware
+        manager.logger.error.assert_not_called()
+        info_calls = [str(call) for call in manager.logger.info.call_args_list]
+        self.assertTrue(any("stopped during shutdown" in c for c in info_calls))
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_shutdown_aware_mixed_exitcodes_raise_immediately(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """Characterization (unchanged before and after this plan): a death
+        where not every dead process was killed by SIGTERM raises
+        immediately, with no shutdown request and no one-cycle recheck."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        mock_active_process.is_alive.return_value = True
+        mock_local_process.is_alive.return_value = False
+        mock_local_process.exitcode = -9
+        mock_remote_process.is_alive.return_value = False
+        mock_remote_process.exitcode = -15
+
+        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        manager.start()
+
+        with self.assertRaises(ScannerProcessDiedError):
+            manager.propagate_exceptions()
 if __name__ == '__main__':
     unittest.main()
 
