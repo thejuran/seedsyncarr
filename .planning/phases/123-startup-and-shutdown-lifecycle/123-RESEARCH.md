@@ -382,16 +382,18 @@ Not applicable in the usual "library version drift" sense — this is a bug-fix 
 
 **If this table is empty:** N/A — see above.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does the chosen D-01 fix shape (shutdown-aware health check vs. shutdown-aware `execute()` early-return vs. both) also eliminate the intermittent lftp "Could not terminate the child" error, or only the deterministic scanner-death error?**
    - What we know: the scanner-death error is a direct, deterministic consequence of the OS signal hitting the forked children; the lftp error's mechanism (why `ptyprocess`'s SIGKILL-escalation sometimes fails to observe death within ~0.4s) is explained structurally (lftp is NOT directly signaled, so whatever delays it is internal — possibly an active transfer/network teardown) but not proven to be fixed by making the controller's OWN exit path calmer/later.
    - What's unclear: whether simply reaching `Lftp.exit()` a little later (via the ordinary, non-panicked shutdown path instead of the self-triggered one) gives lftp enough extra time to have already wound down a transfer on its own, or whether the ~0.4s SIGKILL-escalation budget itself needs lengthening regardless of when it's invoked.
+   - **RESOLVED (planning):** deferred to the D-07 live check in 123-06/07 (idle + active-transfer cycles); a persisting lftp error is a failure checkpoint to the owner.
    - Recommendation: Treat the two as separately provable by D-07's live check — run restart cycles both idle and with an active transfer in flight, and record whether the lftp error still appears in the active-transfer case after the scanner-death fix lands. If it still appears, that's new evidence the lftp side needs its own (still small, evidence-backed) follow-up — possibly out of this phase if `Controller.exit()`'s existing per-component catch is judged sufficient containment (the container still restarts cleanly either way, per every observed log).
 
 2. **Should `Controller.__init__`'s eager, unconditional construction of `LftpManager`/`Lftp` (which immediately spawns the lftp pty process at construction time, before `Controller.start()` is ever called) be brought into LIFE-01's scope?**
    - What we know: if `Controller.__init__` itself raises *after* `LftpManager`'s constructor has run but *before* `__init__` finishes (e.g. a later collaborator's constructor raising), the already-spawned lftp pty process is leaked with no handle to close it, since the partially-constructed `Controller` object is never returned/usable.
    - What's unclear: how likely this is in practice (most of `Controller.__init__`'s later steps construct plain Python objects unlikely to raise) and whether CONTEXT.md's "another component" language in D-04 was meant to reach constructor-time failures, not just `start()`-time ones.
+   - **RESOLVED (planning):** out of scope for Phase 123; recorded for the backlog in 123-07's deferred-items.md.
    - Recommendation: Flag for planner judgment; CONTEXT.md's "Specific Ideas" section only names `ScanManager.start()`/`Controller.start()`, not `Controller.__init__`, suggesting this is a lower-priority, narrower edge case appropriate for a backlog note unless the planner wants it folded in cheaply (e.g. nothing dies is actually at risk here that `Controller.exit()` doesn't already protect once the object exists — the risk window is specifically "exception during `__init__` itself").
 
 ## Environment Availability

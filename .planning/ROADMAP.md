@@ -130,7 +130,30 @@ Plans:
   3. The existing per-component controller cleanup, the auto-delete shutdown guards (`threading.Event` in-flight guard under `__auto_delete_lock`) and the established lock ordering are unchanged, and their existing tests stay green
   4. A clean startup and a clean shutdown behave exactly as before (no new sleeps, no lifecycle-framework rewrite)
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 123-01-PLAN.md — TDD: Job.run surfaces setup() failures and guards cleanup(); ControllerJob routes start failures to RECOV-01 as ControllerError; WebAppJob cleanup None-guard (LIFE-01)
+- [ ] 123-02-PLAN.md — TDD: ScanManager partial-start cleanup and per-process terminate/join isolation; FileOperationManager.stop per-reservation isolation (LIFE-01, LIFE-02)
+- [ ] 123-03-PLAN.md — TDD: Controller.start partial-start cleanup (exit()-style loop, lftp included), exit() pinned unchanged; MultiprocessingLogger.stop never-started guard (LIFE-01, LIFE-02)
+
+**Wave 2** *(blocked on 123-02 and 123-03)*
+
+- [ ] 123-04-PLAN.md — TDD: D-01 shutdown-aware scanner health check wired from the SIGTERM handler; D-03 sleep kept (recorded)
+
+**Wave 3**
+
+- [ ] 123-05-PLAN.md — Phase gates (baseline suite, ruff, RED-before-GREEN, scope, criteria 3/4), push to one draft PR, CI green, DEV_PIN digest
+
+**Wave 4**
+
+- [ ] 123-06-PLAN.md — Sandbox re-pin and live restart cycles (2 idle, 2 active-transfer, 1 idle) with production bracketing; failure gate to owner
+
+**Wave 5**
+
+- [ ] 123-07-PLAN.md — Restart evidence, deferred findings, `--final` sandbox restore with fresh-session check, Phase 123 verdict, owner review
 
 ### Phase 124: Model-Stream Overflow Recovery
 
@@ -180,7 +203,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
-| 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
+| 123. Startup and Shutdown Lifecycle | 0/7 | Planned | - |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
