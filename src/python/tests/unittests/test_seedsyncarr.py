@@ -1056,3 +1056,35 @@ class TestSeedsyncarrReloadPersistPercentSecret(_StartupEnvMixin, unittest.TestC
                         "settings.cfg does not hold the escaped remote_password")
         # The app log was actually written, so the negative check is not vacuous
         self.assertIn("Exited successfully", log_text)
+
+
+class TestSeedsyncarrSignalShutdownRequest(unittest.TestCase):
+    """Seedsyncarr.signal() marks shutdown requested on the live controller
+    before raising ServiceExit (D-01). The handler is called unbound with a
+    fake self so no real signal registration or controller is needed."""
+
+    def test_signal_marks_shutdown_on_controller_then_raises(self):
+        fake = MagicMock()
+        fake._Seedsyncarr__controller = MagicMock()
+
+        with self.assertRaises(ServiceExit):
+            Seedsyncarr.signal(fake, signal.SIGTERM, None)
+
+        fake._Seedsyncarr__controller.note_shutdown_requested.assert_called_once()
+
+    def test_signal_without_controller_still_raises(self):
+        fake = MagicMock()
+        fake._Seedsyncarr__controller = None
+
+        with self.assertRaises(ServiceExit):
+            Seedsyncarr.signal(fake, signal.SIGTERM, None)
+
+    def test_signal_note_failure_is_logged_and_still_raises(self):
+        fake = MagicMock()
+        fake._Seedsyncarr__controller = MagicMock()
+        fake._Seedsyncarr__controller.note_shutdown_requested.side_effect = RuntimeError("boom")
+
+        with self.assertRaises(ServiceExit):
+            Seedsyncarr.signal(fake, signal.SIGTERM, None)
+
+        fake.context.logger.exception.assert_called_once()

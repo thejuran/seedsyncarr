@@ -668,5 +668,18 @@ class TestControllerExitIsolation(BaseControllerTestCase):
         )
 
 
+class TestControllerShutdownRequest(BaseControllerTestCase):
+    """Controller.note_shutdown_requested() delegates to ScanManager without
+    touching the auto-delete shutdown guard (D-01, success criterion 3)."""
+
+    def test_note_shutdown_requested_delegates_to_scan_manager(self):
+        self.controller.note_shutdown_requested()
+        self.mock_scan_manager.note_shutdown_requested.assert_called_once()
+
+    def test_note_shutdown_requested_does_not_touch_auto_delete_guard(self):
+        self.controller.note_shutdown_requested()
+        self.assertFalse(self.controller._Controller__shutdown_event.is_set())
+
+
 if __name__ == "__main__":
     unittest.main()
