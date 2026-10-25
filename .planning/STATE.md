@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: verifying
-stopped_at: "Phase 123 planned (7 plans, 5 waves; plan-checker passed with 3 warnings fixed). Execution blocked until PR #134 (Phase 122) merges to main; then /bm:execute-phase 123"
-last_updated: "2026-10-25T17:10:58.000Z"
-last_activity: "2026-10-25 -- 122-17 Task 3 executed (owner reviewed the \"#### Gap cycle 2 (122-13..17)\" SAFE-01 verdict addendum and replied verbatim \"approve\", accepting the kept D-06(d)/D-07 results with no rerun requested; SAFE-01 and LOG-01 confirmed complete in REQUIREMENTS.md — already [x] since 122-04/122-08, reconfirmed idempotently on the shipping build; ROADMAP.md Phase 122 row set to 17/17 Complete; no code or sandbox change, no push)"
+status: executing
+stopped_at: Phase 123 context gathered
+last_updated: "2026-10-25T17:23:25.395Z"
+last_activity: 2026-10-25 -- Phase 123 execution started
 progress:
   total_phases: 6
   completed_phases: 2
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-21)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 122 complete (safety-acceptance-and-logging-fixes); Phase 123 (startup-and-shutdown-lifecycle) not yet planned
+**Current focus:** Phase 123 — startup-and-shutdown-lifecycle
 
 ## Current Position
 
-Phase: 122 (safety-acceptance-and-logging-fixes) — COMPLETE (17/17 plans; gap-closure cycle 2 closed 2026-10-25)
-Plan: 122-17 of 17 complete (01-04 complete; 05 gaps_found, superseded by 10-12's fix, intentionally not counted toward completion; 06 D-06(d) restart persistence PASS, complete; 07 D-07 extraction staging/auto-delete re-arm PASS, complete; 08 sandbox restore + owner-approved SAFE-01 verdict, complete; 09 SAFE-02 reconciliation, owner-confirmed closed, complete; 10 gap-closure fix complete; 11 pushed fix to PR #134 and re-pinned sandbox, complete; 12 reran 122-05's D-06 scenarios on the fixed build -- all PASS, gap closed; code review + verification afterward found CR-01/WR-01/WR-02/WR-03 and owner decided to fix all four in-phase on PR #134, producing gap-closure plans 13-17; 14 (CR-01 API-key leak + WR-01 status rate-limit logger) fixed, RED-GREEN-GREEN, complete; 13 (WR-02/WR-03 narrow D-06(c) grace window + credit log wording) fixed, RED-GREEN, complete; 15 (gated both together and pushed to PR #134, CI run 404 green, new DEV_PIN sha256:f8204207... recorded) complete; 16 (re-pinned sandbox to the new DEV_PIN, LOG-01/WR-01 reconfirmed live after a one-time harness fix, D-06(c) rerun PASS on India + Juliet, live WR-02 stop-discard check PASS on Hotel, CHECK_STATUS=PASS) complete; 17 (full gap-cycle-2 rerun evidence written, sandbox restored to IMAGE_PIN_L0 via teardown.sh --final, SAFE-01 verdict addendum PASSED, owner reviewed and replied verbatim "approve") complete)
-Status: Phase 122 complete. SAFE-01 and LOG-01 closed on the owner-approved gap-cycle-2 verdict (DEV_PIN sha256:f8204207...), with D-06(d) and D-07 kept from the earlier e3941f97 build on a recorded `git diff` scope proof the owner accepted. Sandbox (`seedsyncarr-test`) restored to IMAGE_PIN_L0 (1.7.6), fresh-session verified; production unchanged throughout the gap-closure cycle. PR #134 unchanged (not merged, not pushed this session) — merging stays a separate owner decision. Next: Phase 123 (Startup and Shutdown Lifecycle) — not yet planned.
-Last activity: 2026-10-25 -- 122-17 Task 3 executed (owner reviewed the "#### Gap cycle 2 (122-13..17)" SAFE-01 verdict addendum and replied verbatim "approve", accepting the kept D-06(d)/D-07 results with no rerun requested; SAFE-01 and LOG-01 confirmed complete in REQUIREMENTS.md — already [x] since 122-04/122-08, reconfirmed idempotently on the shipping build; ROADMAP.md Phase 122 row set to 17/17 Complete; no code or sandbox change, no push)
+Phase: 123 (startup-and-shutdown-lifecycle) — EXECUTING
+Plan: 1 of 7
+Status: Executing Phase 123
+Last activity: 2026-10-25 -- Phase 123 execution started
 
 ## Accumulated Context
 
