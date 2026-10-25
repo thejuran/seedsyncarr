@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: phase_complete
-stopped_at: "Phase 122 complete and verified (re-verification passed 5/5 on 2026-10-25); review follow-ups WR-04/IN-04/IN-05 backlogged; PR #134 awaiting owner merge decision; next Phase 123"
-last_updated: "2026-10-25T16:06:01.000Z"
-last_activity: "2026-10-25 -- Phase 122 re-review (CR-01, WR-01..03 resolved) and re-verification passed 5/5; WR-04/IN-04/IN-05 sent to ROADMAP Backlog by owner"
+status: verifying
+stopped_at: Phase 123 context gathered
+last_updated: "2026-10-25T16:11:27.388Z"
+last_activity: "2026-10-25 -- 122-17 Task 3 executed (owner reviewed the \"#### Gap cycle 2 (122-13..17)\" SAFE-01 verdict addendum and replied verbatim \"approve\", accepting the kept D-06(d)/D-07 results with no rerun requested; SAFE-01 and LOG-01 confirmed complete in REQUIREMENTS.md — already [x] since 122-04/122-08, reconfirmed idempotently on the shipping build; ROADMAP.md Phase 122 row set to 17/17 Complete; no code or sandbox change, no push)"
 progress:
   total_phases: 6
   completed_phases: 2
@@ -158,8 +158,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-25T15:49:59.426Z
-Stopped at: Completed 122-17-PLAN.md (full gap-cycle-2 rerun evidence written, sandbox restored to IMAGE_PIN_L0 via teardown.sh --final, SAFE-01 verdict addendum PASSED, owner approved verbatim 'approve'). SAFE-01 and LOG-01 closed. Phase 122 gap-closure cycle 2 (122-13..17) complete; phase ready for verification/close-out.
+Last session: 2026-10-25T16:11:27.361Z
+Stopped at: Phase 123 context gathered
 Next action: 122-13, 122-14, 122-15 and 122-16 are complete. The sandbox is on the gap-cycle-2 DEV_PIN (sha256:f8204207...) with D-06(c) and WR-02 proven live (India/Juliet/Hotel) and LOG-01/WR-01 reconfirmed. 122-17 writes the full rerun evidence narrative into 122-SAFE01-EVIDENCE.md, runs teardown.sh --final to restore the sandbox to its 1.7.6 pin, and updates the SAFE-01/LOG-01 verdict to close the second gap cycle. Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
