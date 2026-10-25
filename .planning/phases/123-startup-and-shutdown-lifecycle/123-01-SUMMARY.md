@@ -169,6 +169,10 @@ None - no external service configuration required.
 - Plans 02/03 (per this plan's `<objective>`) can now rely on `ControllerJob.setup()` failures being visible to the main loop when they add partial-start cleanup inside `Controller`/`ScanManager` — without this plan's fix, no such cleanup would ever have been followed by a visible failure (RESEARCH Pitfall 1).
 - No blockers identified for dependent plans in this wave.
 
+## Self-Check: PASSED
+
+All 7 created/modified files confirmed present on disk; all 3 commit hashes (`647eef0` RED, `277257f` GREEN, `7aa129c` docs) confirmed present in `git log --oneline --all`.
+
 ---
 *Phase: 123-startup-and-shutdown-lifecycle*
 *Completed: 2026-10-25*
