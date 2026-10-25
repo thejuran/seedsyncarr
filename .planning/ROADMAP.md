@@ -135,9 +135,9 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 123-01-PLAN.md — TDD: Job.run surfaces setup() failures and guards cleanup(); ControllerJob routes start failures to RECOV-01 as ControllerError; WebAppJob cleanup None-guard (LIFE-01)
-- [ ] 123-02-PLAN.md — TDD: ScanManager partial-start cleanup and per-process terminate/join isolation; FileOperationManager.stop per-reservation isolation (LIFE-01, LIFE-02)
-- [ ] 123-03-PLAN.md — TDD: Controller.start partial-start cleanup (exit()-style loop, lftp included), exit() pinned unchanged; MultiprocessingLogger.stop never-started guard (LIFE-01, LIFE-02)
+- [x] 123-01-PLAN.md — TDD: Job.run surfaces setup() failures and guards cleanup(); ControllerJob routes start failures to RECOV-01 as ControllerError; WebAppJob cleanup None-guard (LIFE-01)
+- [x] 123-02-PLAN.md — TDD: ScanManager partial-start cleanup and per-process terminate/join isolation; FileOperationManager.stop per-reservation isolation (LIFE-01, LIFE-02)
+- [x] 123-03-PLAN.md — TDD: Controller.start partial-start cleanup (exit()-style loop, lftp included), exit() pinned unchanged; MultiprocessingLogger.stop never-started guard (LIFE-01, LIFE-02)
 
 **Wave 2** *(blocked on 123-02 and 123-03)*
 
@@ -203,7 +203,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
-| 123. Startup and Shutdown Lifecycle | 0/7 | Planned | - |
+| 123. Startup and Shutdown Lifecycle | 3/7 | In Progress|  |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
