@@ -89,11 +89,26 @@ class ScanManager:
         Start all scanner processes.
 
         Must be called after construction and before pop_latest_results().
+
+        If a process fails to start partway through, every process that
+        already started is terminated and joined before the original
+        exception propagates; processes never reached are left untouched.
         """
         self.logger.debug("Starting scanner processes")
-        self.__active_scan_process.start()
-        self.__local_scan_process.start()
-        self.__remote_scan_process.start()
+        started = []
+        for name, process in (("ActiveScanner", self.__active_scan_process),
+                               ("LocalScanner", self.__local_scan_process),
+                               ("RemoteScanner", self.__remote_scan_process)):
+            try:
+                process.start()
+            except Exception:
+                self.logger.error(
+                    "Scanner start failed at {}; stopping {} already-started process(es) "
+                    "after a failed scanner start".format(name, len(started))
+                )
+                self._terminate_and_join(started)
+                raise
+            started.append((name, process))
         self.__started = True
 
     def stop(self) -> None:
@@ -110,13 +125,36 @@ class ScanManager:
     def _terminate_and_join_all(self) -> None:
         """Terminate and join all scanner processes unconditionally."""
         self.logger.debug("Stopping scanner processes")
-        self.__active_scan_process.terminate()
-        self.__local_scan_process.terminate()
-        self.__remote_scan_process.terminate()
-        self.__active_scan_process.join()
-        self.__local_scan_process.join()
-        self.__remote_scan_process.join()
+        self._terminate_and_join([
+            ("ActiveScanner", self.__active_scan_process),
+            ("LocalScanner", self.__local_scan_process),
+            ("RemoteScanner", self.__remote_scan_process),
+        ])
         self.logger.debug("Scanner processes stopped")
+
+    def _terminate_and_join(self, processes) -> None:
+        """
+        Terminate and join each ``(name, process)`` pair independently.
+
+        One process's terminate() or join() raising does not skip the
+        others: every raised error is logged via logger.exception, never
+        swallowed silently. A process whose terminate() raised is not
+        joined -- it may still be running, and join() has no bound, so
+        joining it could block shutdown indefinitely.
+        """
+        joinable = []
+        for name, process in processes:
+            try:
+                process.terminate()
+            except Exception:
+                self.logger.exception("Error terminating {} process".format(name))
+            else:
+                joinable.append((name, process))
+        for name, process in joinable:
+            try:
+                process.join()
+            except Exception:
+                self.logger.exception("Error joining {} process".format(name))
 
     def pop_latest_results(self) -> Tuple[Optional[ScannerResult], Optional[ScannerResult], Optional[ScannerResult]]:
         """
