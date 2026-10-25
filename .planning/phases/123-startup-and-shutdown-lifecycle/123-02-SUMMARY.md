@@ -154,6 +154,15 @@ None - no external service configuration required.
 - Plan 123-04 (per RESEARCH.md's Open Question 1 / shutdown-aware health check) can build directly on this `ScanManager` shape without further changes here; `_check_process_health()` was deliberately left untouched.
 - No blockers for subsequent Phase 123 plans in this wave.
 
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/123-startup-and-shutdown-lifecycle/123-02-SUMMARY.md
+- FOUND: src/python/controller/scan_manager.py
+- FOUND: src/python/controller/file_operation_manager.py
+- FOUND: cbf6dcd (test commit)
+- FOUND: 04eac94 (fix commit)
+- FOUND: 9dc261c (docs/summary commit)
+
 ---
 *Phase: 123-startup-and-shutdown-lifecycle*
 *Completed: 2026-10-25*
