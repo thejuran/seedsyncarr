@@ -27,7 +27,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 **CI gate (every phase):** full Python suite green AND whole-tree `ruff check src/python/` clean (CI runs ruff as a separate gate from pytest, so build-verify must run it on the whole tree, not just touched files); Python `fail_under` ≥ 88 holds; Angular unit tests and Karma `check.global` thresholds green where Angular code is touched (Phase 121); every targeted regression shown to fail before its fix and pass after.
 
 - [x] **Phase 121: Credential Forwarding** - The app token is attached only to SeedSyncarr's own API requests, never to external destinations such as the GitHub update check (completed 2026-10-21)
-- [ ] **Phase 122: Safety Acceptance and Logging Fixes** - Extraction/import/auto-delete checks pass on a running build, incident records are reconciled, and webhook/completion-gate log messages are accurate
+- [x] **Phase 122: Safety Acceptance and Logging Fixes** - Extraction/import/auto-delete checks pass on a running build, incident records are reconciled, and webhook/completion-gate log messages are accurate (completed 2026-10-25)
 - [ ] **Phase 123: Startup and Shutdown Lifecycle** - Partial startup failures clean up started children; a failing component cleanup does not stop the remaining cleanups
 - [ ] **Phase 124: Model-Stream Overflow Recovery** - A slow client converges to current server state after overflow, with bounded buffering (or a recorded existing guarantee)
 - [ ] **Phase 125: LAN Connection Tests** - Test Connection accepts intended local Sonarr/Radarr addresses, including Docker container names, while unintended destinations stay rejected
@@ -116,7 +116,7 @@ Plans:
 - [x] 122-14-PLAN.md — TDD: never log the Arr API key from Test Connection; status rate-limit warning on the app logger, rate_limit logger required (CR-01, WR-01)
 - [x] 122-15-PLAN.md — Phase gates, push to PR #134, CI green, new staging digest as DEV_PIN
 - [x] 122-16-PLAN.md — Re-pin sandbox; LOG-01/WR-01 live; D-06(c) rerun with (e)/(a)/(b) regression and live WR-02 stop check (D-03 checkpoint)
-- [ ] 122-17-PLAN.md — Rerun evidence, restore sandbox to 1.7.6 pin, SAFE-01 gap-cycle-2 verdict (owner review)
+- [x] 122-17-PLAN.md — Rerun evidence, restore sandbox to 1.7.6 pin, SAFE-01 gap-cycle-2 verdict (owner review)
 
 ### Phase 123: Startup and Shutdown Lifecycle
 
@@ -179,7 +179,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
-| 122. Safety Acceptance and Logging Fixes | 16/17 | In Progress|  |
+| 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
 | 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
