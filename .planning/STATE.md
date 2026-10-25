@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: Phase 123 wave 1 halted at precondition — awaiting PR #134 (Phase 122) merge to main
-last_updated: "2026-10-25T17:28:47.589Z"
-last_activity: 2026-10-25 -- Phase 123 execution halted at PR #134 precondition (no code changed)
+stopped_at: Phase 123 wave 1 executing (PR #134 merged 2026-10-25)
+last_updated: "2026-10-25T17:40:00.000Z"
+last_activity: 2026-10-25 -- PR #134 merged; Phase 123 wave 1 restarted
 progress:
   total_phases: 6
   completed_phases: 2
@@ -115,8 +115,6 @@ Decisions are logged in PROJECT.md Key Decisions table.
 ### Blockers/Concerns
 
 - None at v1.8.0 roadmap creation. Watch-out for Phase 126's deploy gate: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — deploy the CI-published multi-arch `:1.8.0` image pinned by digest, never a local build and never `:dev`.
-- Phase 123 execution gated: PR #134 (Phase 122) must be merged to main before any Phase 123 code (plan precondition, owner rule). Wave 1 halted at precondition 2026-10-25; no code changed.
-
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
