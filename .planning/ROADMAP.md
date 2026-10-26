@@ -130,7 +130,7 @@ Plans:
   3. The existing per-component controller cleanup, the auto-delete shutdown guards (`threading.Event` in-flight guard under `__auto_delete_lock`) and the established lock ordering are unchanged, and their existing tests stay green
   4. A clean startup and a clean shutdown behave exactly as before (no new sleeps, no lifecycle-framework rewrite)
 
-**Plans**: 7 plans
+**Plans**: 12 plans (7 + 5 gap-closure)
 
 Plans:
 **Wave 1**
@@ -151,9 +151,26 @@ Plans:
 
 - [x] 123-06-PLAN.md — Sandbox re-pin and live restart cycles (2 idle, 2 active-transfer, 1 idle) with production bracketing; failure gate to owner
 
-**Wave 5**
+**Wave 5** *(gap closure, GAP-1: live check failed in 123-06; owner chose fix-in-phase)*
 
-- [ ] 123-07-PLAN.md — Restart evidence, deferred findings, `--final` sandbox restore with fresh-session check, Phase 123 verdict, owner review
+- [ ] 123-08-PLAN.md — TDD: time-bounded (10 s, monotonic clock) SIGTERM grace in ScanManager health check, independent of main-thread signal latency
+- [ ] 123-09-PLAN.md — Restart-cycle harness: STARTED/INCOMPLETE outcome markers, detached-run progress, `Exited successfully` recorded-only (pre-existing on 1.7.6)
+
+**Wave 6**
+
+- [ ] 123-10-PLAN.md — Gap-round phase gates, push to draft PR #137, CI green, DEV_PIN_GAP digest
+
+**Wave 7**
+
+- [ ] 123-11-PLAN.md — Outstanding 123-06 SSA123 teardown (seedbox verified clean), re-pin sandbox to DEV_PIN_GAP, idle cycles I1/I2
+
+**Wave 8**
+
+- [ ] 123-12-PLAN.md — Active-transfer cycles A1/A2, idle I3, CHECK_STATUS, session teardown; failure gate to owner
+
+**Wave 9**
+
+- [ ] 123-07-PLAN.md — Restart evidence (gap round), deferred findings, `--final` sandbox restore with fresh-session check, Phase 123 verdict, owner review
 
 ### Phase 124: Model-Stream Overflow Recovery
 
