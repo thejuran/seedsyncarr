@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: "Phase 123 gap round 2 planned (123-13..17, GAP-2 lftp force-close + reap); plan-checker passed; owner approved the bounded reap wait; next /bm:execute-phase 123 --gaps-only; 123-07 runs last (wave 13)"
-last_updated: "2026-10-26T21:00:00.000Z"
-last_activity: "2026-10-26 -- Phase 123 GAP-2 plans 123-13..17 created and verified; criterion-4 exception approved"
+stopped_at: "Phase 123 gap wave 9 complete (123-13 lftp reap fix, 123-14 proc sampler); wave 10 (123-15 gates + push + CI + DEV_PIN_GAP2) executing"
+last_updated: "2026-10-26T22:00:00.000Z"
+last_activity: "2026-10-26 -- Phase 123 gap wave 9 merged; post-merge suite matches baseline, ruff clean"
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 37
-  completed_plans: 31
+  completed_plans: 33
   percent: 33
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 123 (startup-and-shutdown-lifecycle) — EXECUTING
-Plan: 13 of 17 (gap round 2)
+Plan: 15 of 17 (gap round 2)
 Status: Executing Phase 123
 Last activity: 2026-10-26 -- Phase 123 plan 10 gated 123-01..04 + 123-08 (9 gates), pushed to draft PR #137 (reused), CI run 409 green, DEV_PIN_GAP recorded
 

@@ -170,8 +170,8 @@ Plans:
 
 **Wave 9** *(gap closure, GAP-2: lftp `Could not terminate the child` on active-transfer restarts in 123-12; owner chose fix-in-phase)*
 
-- [ ] 123-13-PLAN.md — TDD: Lftp.exit() reaps an lftp child that outlives pexpect's force close (process-group SIGKILL, bounded 2 s on an injected clock, WARNING not ERROR, still raises if it never dies); `exit kill`; idle path unchanged
-- [ ] 123-14-PLAN.md — Restart-cycle harness: process sampler proving lftp and its children are reaped before the old container stops (`procs_*` fail rule), lftp fallback counts recorded
+- [x] 123-13-PLAN.md — TDD: Lftp.exit() reaps an lftp child that outlives pexpect's force close (process-group SIGKILL, bounded 2 s on an injected clock, WARNING not ERROR, still raises if it never dies); `exit kill`; idle path unchanged
+- [x] 123-14-PLAN.md — Restart-cycle harness: process sampler proving lftp and its children are reaped before the old container stops (`procs_*` fail rule), lftp fallback counts recorded
 
 **Wave 10**
 
@@ -237,7 +237,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
-| 123. Startup and Shutdown Lifecycle | 11/12 | In Progress|  |
+| 123. Startup and Shutdown Lifecycle | 13/17 | In Progress|  |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
