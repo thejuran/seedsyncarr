@@ -83,3 +83,60 @@ Production fingerprint: unchanged across both sessions (`PROD_UNCHANGED_S1`, `PR
 Session teardown: NOT run. The executor stalled before the teardown step. No `SSA123.` name under `/volume1/data/v5test/torrents`; seedbox staging is not yet verified clean. The sandbox remains on DEV_PIN and healthy, pending the gap round.
 
 Owner decision (123-06 Task 3, 2026-10-26): "Fix in this phase (Recommended)" (= option `fix-in-phase`). Route: `/bm:plan-phase 123 --gaps`.
+
+## Gap round (GAP-1)
+
+### Gap
+
+123-06's live sandbox restart check found that the 123-04 one-cycle SIGTERM recheck lost the race against the real main-thread shutdown-signal handler on 3 of 5 restart cycles (I1, A1, A2): the handler ran 0.67-1.55 s after the scanners died, longer than the single 0.5 s `ControllerJob` cycle the recheck allowed, so the false "Scanner process(es) died unexpectedly" ERROR and `ScannerProcessDiedError` still fired. Owner decision (123-06 Task 3, 2026-10-26): fix in this phase (route `/bm:plan-phase 123 --gaps`), rather than deferring GAP-1 past Phase 123.
+
+### Fix (123-08)
+
+`ScanManager` now takes an injected monotonic clock (`clock: Callable[[], float] = time.monotonic`, matching the existing `arr_queue.py` / `completion_gate.py` clock-injection pattern) and replaces the one-cycle boolean recheck latch with a deadline measured from the first sighting of an all-SIGTERM death: `__sigterm_first_seen: Optional[float]` is set once, and every later check within `now - first_seen < _SIGTERM_SHUTDOWN_GRACE_IN_SECS` (10.0 s) returns without logging or raising. The window is 10.0 s because that is docker's own default `stop` timeout — the handler either runs inside that window, or docker SIGKILLs the container when the window ends, so the false-positive ERROR is bounded to zero on any real `docker stop`/`docker restart` either way. The deadline is fixed at the first sighting and is not extended by a second scanner dying SIGTERM later inside the same window (`test_sigterm_grace_measured_from_first_sighting`).
+
+**Documented detection-delay cost:** a genuine SIGTERM-only death with no shutdown request now surfaces up to 10 s plus one `ControllerJob` cycle later than before this change (previously, one 0.5 s cycle). Every other kind of death (SIGKILL/OOM's exitcode `-9`, a non-zero exit, or a mix that includes a non-SIGTERM code) is unaffected and still raises on the same check it is first seen, unchanged (`test_sigterm_grace_then_non_sigterm_death_raises_immediately`, `test_nonzero_exit_raises_on_first_check`).
+
+**Rejected alternatives:**
+- `signal.pthread_sigmask` blocking SIGTERM in worker threads — rejected because forked children inherit the forking thread's signal mask, and the scanner processes are forked from the `ControllerJob` thread, so blocking SIGTERM there would be inherited by those same children and would break `AppProcess.terminate()`, which relies on sending them SIGTERM. It also cannot cover threads created by libraries outside this code's control (the web server, multiprocessing feeders, `Timer` threads).
+- Children handling SIGTERM themselves — rejected as a wider change to child-process signal-handling semantics than this gap needs, and it would not by itself fix the parent-side race (the parent still has to distinguish an expected stop from a genuine death).
+
+**RED/GREEN:** RED `17387a6` (`test(123-08)`, only `src/python/tests/unittests/test_controller/test_scan_manager.py`, 9 failed / 24 passed) → GREEN `1ffc601` (`fix(123-08)`, only `src/python/controller/scan_manager.py`, 133 passed / 0 failed across the touched suites). RED test names: `test_sigterm_grace_defaults`, `test_sigterm_death_not_reported_within_grace_across_many_cycles`, `test_sigterm_death_handler_late_1_55s_resolves_as_shutdown`, `test_sigterm_death_handler_late_0_67s_resolves_as_shutdown`, `test_sigterm_death_raises_when_grace_elapses`, `test_sigterm_grace_measured_from_first_sighting`, `test_sigterm_grace_then_non_sigterm_death_raises_immediately`, `test_nonzero_exit_raises_on_first_check`, `test_shutdown_aware_sigterm_death_then_request_is_benign` (modified to pass `clock=`).
+
+### D-02 split (gap round)
+
+**Unit-proven (123-08, fake clock, no real processes or sleeps):** the 10.0 s grace window itself and that nothing is reported within it across many intervening cycles; the exact live I1 (+1.55 s) and A2 (+0.67 s) handler-latency timings from the sandbox re-pin table above, replayed as deterministic regression tests; the bounded surfacing of a genuine SIGTERM-only death once the window elapses; that the deadline is fixed at first sighting and not extended; that any non-SIGTERM death still raises immediately, unchanged.
+
+**Live-proven only (123-11/123-12 — not claimed here):** that a real `docker restart`/`docker stop` on the DEV_PIN_GAP build below logs neither the false "Scanner process(es) died unexpectedly" ERROR nor raises `ScannerProcessDiedError`, across repeated idle and active-transfer cycles, closing the 3-of-5 FAIL result from the sandbox re-pin table above; that the 10 s window never collides with docker's own stop-timeout-then-SIGKILL behavior on the real NAS sandbox; the lftp "Could not terminate the child" half (no lftp code was touched by 123-08).
+
+### Harness change (123-09)
+
+`123-restart-cycle.sh`'s "Exited successfully" line moved from a PASS/FAIL criterion to recorded-only (`EXITED_SUCCESSFULLY` is still counted and written to `cycle-<label>.env`, just no longer a fail reason). Justification: that line is logged only after the full shutdown sequence completes, so it is absent whenever docker's 10 s stop timeout has to SIGKILL the process instead — this is the same gap D-01's done criterion is about (a normal restart should log no error and come back up, not necessarily log every possible completion message), and the pre-existing 1.7.6 production baseline already shows this exact gap (`BASELINE_EXITED_SUCCESSFULLY=0`), confirmed again live by I3 in the sandbox re-pin table above (`"Exited successfully"` column = 0, yet I3's only recorded failure reason was `exited_successfully`, not a real shutdown error). Every D-01 shutdown-error criterion that actually gates a cycle's pass/fail (`scanner_died`, `could_not_terminate`, `caught_exception_in_job`, `error_stopping`, `restart_rc`) is unchanged, still hard pass/fail. The harness also gained a `CYCLE_<label>_STARTED=<utc>` marker written before each restart and an `INCOMPLETE:<step>` EXIT-trap outcome, so a cycle that is interrupted (SIGTERM/SIGINT/SIGHUP, or the executor stalling as it did in 123-06) is always visible in `state.env` as started-without-verdict rather than silently missing, plus `RESTART_ELAPSED_S` recording docker restart wall time for each cycle.
+
+### Gates (gap round)
+
+| Gate | Result |
+|------|--------|
+| 1 — full unit-suite failure set subset of the 122-03 baseline | PASS — `21 failed, 1840 passed, 2 warnings, 3 errors, 77 subtests passed in 83.04s`; `comm -23 current baseline` empty (24/24 lines identical to the documented environment baseline) |
+| 2 — whole-tree ruff | PASS — `ruff check src/python/` → `All checks passed!` |
+| 3 — RED before GREEN (incl. 123-08) | PASS — `test(123-NN)` precedes `fix(123-NN)` for NN = 01, 02, 03, 04, 08 (`17387a6` < `1ffc601` for 08); every test commit (incl. `17387a6`) touches only `src/python/tests/` paths |
+| 4 — scope (src/ diff since BASE, 16-file list) | PASS — `git diff --name-only BASE..HEAD -- src/` sorted equals exactly the 16 declared files (`wc -l` = 16) |
+| 5 — no new sleeps (criterion 4) | PASS — 0 new `sleep(` lines in non-test src/python vs BASE; `time.sleep(Constants.MAIN_THREAD_SLEEP_INTERVAL_IN_SECS)` count in `seedsyncarr.py` = 2 (both DEFER-SHUTDOWN sleeps kept) |
+| 6 — criterion 3 (exit(), auto-delete unchanged) | PASS — `Controller.exit()` byte-identical BASE vs HEAD; `test_auto_delete.py` + `test_auto_delete_rearm.py` = 161 passed, 0 failed; `__shutdown_event.set()` count = 3 at both BASE and HEAD |
+| 7 — log hygiene (gap delta) | PASS — the only new log call in the gap delta is one `logger.debug(...)` in `ScanManager._check_process_health()`, interpolating only scanner process names and the grace-window constant; no config values or secrets |
+| 8 — gap delta scope (vs 123-05 PR head `0cae081`) | PASS — `git diff --name-only 0cae081..HEAD -- src/` prints exactly `src/python/controller/scan_manager.py` and `src/python/tests/unittests/test_controller/test_scan_manager.py` |
+| 9 — untouched wiring (controller.py/seedsyncarr.py/job.py/constants.py vs `0cae081`) | PASS — empty diff |
+
+Quick suite (`123-VALIDATION.md`): `cd src/python && timeout 300 poetry run pytest tests/unittests/test_common/test_job.py tests/unittests/test_controller/test_scan_manager.py tests/unittests/test_controller/test_controller.py tests/unittests/test_controller/test_controller_job.py tests/unittests/test_controller/test_file_operation_manager.py tests/unittests/test_controller/test_auto_delete.py -p no:cacheprovider -q` → `250 passed, 1 warning in 2.05s`.
+
+### Build under test (gap round)
+
+- **PR:** https://github.com/thejuran/seedsyncarr/pull/137 (draft, base `main`, head `gsd/phase-123-startup-and-shutdown-lifecycle`)
+- **NEW_HEAD_SHA_GAP:** `ff527dc9037f93eca2772c44fe4dace3838f90f5`
+- **CI run:** https://github.com/thejuran/seedsyncarr/actions/runs/40379266127 (run_number **409**), conclusion **success**, headSha matches NEW_HEAD_SHA_GAP
+- **Per-check conclusions** (`gh pr checks 137`): Analyze (actions) pass 42s; Analyze (javascript-typescript) pass 54s; Analyze (python) pass 51s; Angular unit tests pass 2m22s; Build Docker Image pass 5m3s; CodeQL pass 3s; End-to-end tests on Docker Image (amd64) pass 3m46s; Lint (Angular) pass 16s; Lint (Python) pass 6s; Python unit tests pass 5m10s; Verify Python package pass 21s; Verify release metadata pass 4s; Release metadata verifier tests pass 7s; Publish Docker Image / Publish Docker Image (:dev) / Publish Documentation / Publish GitHub Release / Publish to PyPI all `skipping` (pull_request event, expected)
+- **Digest lookup 1 (buildx):** `docker buildx imagetools inspect ghcr.io/thejuran/seedsyncarr:409` → `Digest: sha256:991e4e1f28b90c6020c911a65c4814314aa5860682df8aa9e389e365d7872da6`
+- **Digest lookup 2 (anonymous GHCR token HEAD):** `docker-content-digest: sha256:991e4e1f28b90c6020c911a65c4814314aa5860682df8aa9e389e365d7872da6` (identical to lookup 1)
+- **Equivalence guard:** confirmed immediately before and immediately after both digest lookups that `git rev-parse HEAD` and `gh pr view 137 --json headRefOid -q .headRefOid` both still equal `ff527dc9037f93eca2772c44fe4dace3838f90f5` — no later push occurred; `git merge-base --is-ancestor 1ffc601 ff527dc9037f93eca2772c44fe4dace3838f90f5` exits 0 (fix(123-08) is an ancestor of NEW_HEAD_SHA_GAP)
+- `DEV_PIN_GAP=ghcr.io/thejuran/seedsyncarr@sha256:991e4e1f28b90c6020c911a65c4814314aa5860682df8aa9e389e365d7872da6`
+- `OLD_DEV_PIN=ghcr.io/thejuran/seedsyncarr@sha256:b7b894fa88b371eac4456389b7b7c78f26fb9f61f6501dae9729d1d584ed9f22` (what the sandbox is on now)
+- Differs from the 123-05 DEV_PIN (`sha256:b7b894fa...`), the 1.7.6 production digest (`sha256:da6196e0...`) and the Phase 122 pin (`sha256:f8204207...`)
