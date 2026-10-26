@@ -327,6 +327,146 @@ RED `01045b8` (`test(123-13)`, only `src/python/tests/unittests/test_lftp/test_l
 
 **Live-proven only (123-16/123-17 — not claimed here):** that a real active-transfer restart now logs no `Error stopping lftp` / `Could not terminate the child`; that the lftp pid and its children are gone before the old container stops (123-14's process sampler, `PROCS_RESULT=ok`); the actual `/proc` state letter seen at the fallback, settling the D-state hypothesis left open above.
 
+## Restart cycles on the Phase 123 build (gap round 2, 123-16/123-17)
+
+Build under test: `DEV_PIN_GAP2=ghcr.io/thejuran/seedsyncarr@sha256:7f354c149f2df586e7045ca47e971448b57dc1459a1a450f7a12aca885471a0c`, re-confirmed at the 123-16 re-pin (`.Config.Image` = `DEV_PIN_GAP2` exactly; image id `sha256:c55ad0d216f7cbf74384623224f4e48e7224f52002dee026640305e63b3f229e`). This is the build 123-07 restores the sandbox away from -- the sandbox stayed on it, healthy, from the 123-16 re-pin through the end of 123-17.
+
+"## Sandbox re-pin (123-06)" above is the failed first round on plain `DEV_PIN`: 3 of 5 cycles failed on the scanner-died race.
+
+"## Gap-round live check (123-11/123-12)" above is the GAP-1 round on `DEV_PIN_GAP`: the scanner race closed live (0 of 6 restarts), but both active-transfer cycles still failed on the lftp half (`Could not terminate the child` / `Error stopping lftp during controller exit`).
+
+Clocks: the app log is America/New_York local time (EDT, UTC-4 on 2026-10-26, before the 2026-11-01 US DST change); every quoted log line below is paired with its NAS UTC equivalent (local + 4h).
+
+Cycle order and reruns: I1, I2 (idle, run in 123-16) -> A1 (active, `SSA123.Foxtrot.S01`, first attempt -- restart itself clean but mid-transfer proof invalid, see 123-17's Deviations) -> A2 (active, `SSA123.Golf.S01`) -> A1r (active, `SSA123.Hotel.S01`, the harness-miss rerun of A1 on a new synthetic root) -> I3 (idle, final). All six `CYCLE_<label>=` lines in `GD2/state.env` (the capture dir on the `GAP2_CAPTURE_DIR=` line above) read `PASS`.
+
+### Cycle I1 (idle)
+
+- RESTART_UTC `2026-10-26T21:43:19Z`
+- `Caught signal SIGTERM` `2026-10-26 17:43:24,947` (`21:43:24.947Z`)
+- `Scanner process(es) stopped during shutdown: RemoteScanner (exitcode -15), LocalScanner (exitcode -15), ActiveScanner (exitcode -15)` `17:43:25,439` (`21:43:25.439Z`)
+- `Lftp process 78 did not exit on force close (state=D child processes=?); sending SIGKILL to its process group` `17:43:26,646` (`21:43:26.646Z`)
+- `Lftp process 78 reaped after force close in 0.45s (group kill sent: yes)` `17:43:27,098` (`21:43:27.098Z`)
+- `Exited controller` `17:43:27,113` (`21:43:27.113Z`)
+- No `Exited successfully` line in this window (recorded-only per 123-09; `EXITED_SUCCESSFULLY=0`)
+- First `Starting SeedSyncarr` after restart: `17:46:05,275` (`21:46:05.275Z`)
+- PRE_SCAN=`1793050977.337816`, POST_SCAN=`1793051165.930753` (POST_SCAN > PRE_SCAN confirms a fresh remote scan ran after the restart; `SCAN_OK=1`)
+- Counts (`cycle-I1.env`): SCANNER_DIED=0, COULD_NOT_TERMINATE=0, CAUGHT_EXCEPTION_IN_JOB=0, ERROR_STOPPING=0, EXITED_SUCCESSFULLY=0, STOPPED_DURING_SHUTDOWN=1, ERROR_LINES=0, LFTP_FORCE_KILL=1, LFTP_REAPED=1
+- Process verdict (`procs-I1.env`): PROCS_RESULT=ok, OLD_LFTP_PIDS=3012, OLD_LFTP_CHILD_PIDS=(none), LFTP_STATES_SEEN=S,D, LFTP_ZOMBIE_SEEN=0, LFTP_GONE_UTC=`2026-10-26T21:43:27.307Z`, BG_LFTP_SEEN=0
+- ` - ERROR - ` lines in window: none (ERROR_LINES=0)
+- Not an active-transfer cycle; no pre-restart snapshot taken
+- **PASS (clean idle restart; the 123-13 fallback genuinely fired even on this idle restart -- lftp caught `state=D`, hard-killed by process group and reaped in 0.45s, well inside the 2.0s bound; `PROCS_RESULT=ok`, zero D-01 strings)**
+
+### Cycle I2 (idle)
+
+- RESTART_UTC `2026-10-26T21:47:34Z`
+- `Caught signal SIGTERM` `17:47:39,998` (`21:47:39.998Z`)
+- `Scanner process(es) stopped during shutdown: RemoteScanner (exitcode -15), LocalScanner (exitcode -15), ActiveScanner (exitcode -15)` `17:47:40,347` (`21:47:40.347Z`)
+- `Lftp process 69 did not exit on force close (state=D child processes=?); sending SIGKILL to its process group` `17:47:41,555` (`21:47:41.555Z`)
+- `Lftp process 69 reaped after force close in 0.84s (group kill sent: yes)` `17:47:42,397` (`21:47:42.397Z`)
+- `Exited controller` `17:47:42,496` (`21:47:42.496Z`)
+- No `Exited successfully` line in this window (`EXITED_SUCCESSFULLY=0`)
+- First `Starting SeedSyncarr` after restart: `17:50:52,978` (`21:50:52.978Z`)
+- PRE_SCAN=`1793051225.933174`, POST_SCAN=`1793051454.611606` (`SCAN_OK=1`)
+- Counts (`cycle-I2.env`): SCANNER_DIED=0, COULD_NOT_TERMINATE=0, CAUGHT_EXCEPTION_IN_JOB=0, ERROR_STOPPING=0, EXITED_SUCCESSFULLY=0, STOPPED_DURING_SHUTDOWN=1, ERROR_LINES=0, LFTP_FORCE_KILL=1, LFTP_REAPED=1
+- Process verdict (`procs-I2.env`): PROCS_RESULT=ok, OLD_LFTP_PIDS=8599, OLD_LFTP_CHILD_PIDS=(none), LFTP_STATES_SEEN=S,D, LFTP_ZOMBIE_SEEN=0, LFTP_GONE_UTC=`2026-10-26T21:47:41.731Z`, BG_LFTP_SEEN=0
+- ` - ERROR - ` lines in window: none (ERROR_LINES=0)
+- Not an active-transfer cycle; no pre-restart snapshot taken
+- **PASS (clean idle restart; the 123-13 fallback fired again -- `state=D`, reaped in 0.84s; `PROCS_RESULT=ok`)**
+
+### Cycle A1 (active, SSA123.Foxtrot.S01, first attempt)
+
+- RESTART_UTC `2026-10-26T22:02:44Z`
+- `Caught signal SIGTERM` `18:02:55,852` (`22:02:55.852Z`)
+- `Scanner process(es) stopped during shutdown: RemoteScanner (exitcode -15), LocalScanner (exitcode -15), ActiveScanner (exitcode -15)` `18:02:56,127` (`22:02:56.127Z`)
+- No lftp force-kill/reap line (the fallback was never reached -- lftp was not mid-transfer at the moment of restart, see snapshot pair below)
+- `Exited controller` `18:02:56,956` (`22:02:56.956Z`)
+- No `Exited successfully` line in this window (`EXITED_SUCCESSFULLY=0`)
+- First `Starting SeedSyncarr` after restart: `18:05:35,754` (`22:05:35.754Z`)
+- PRE_SCAN=`1793052144.631931`, POST_SCAN=`1793052336.46255` (`SCAN_OK=1`)
+- Counts (`cycle-A1.env`): SCANNER_DIED=0, COULD_NOT_TERMINATE=0, CAUGHT_EXCEPTION_IN_JOB=0, ERROR_STOPPING=0, EXITED_SUCCESSFULLY=0, STOPPED_DURING_SHUTDOWN=1, ERROR_LINES=0, LFTP_FORCE_KILL=0, LFTP_REAPED=0
+- Process verdict (`procs-A1.env`): PROCS_RESULT=ok, OLD_LFTP_PIDS=15367, OLD_LFTP_CHILD_PIDS=27100:sh,27128:sh,27129:sh,27131:sh, LFTP_STATES_SEEN=S, LFTP_ZOMBIE_SEEN=0, LFTP_GONE_UTC=`2026-10-26T22:02:56.490Z`, BG_LFTP_SEEN=0
+- ` - ERROR - ` lines in window: none (ERROR_LINES=0)
+- Active-transfer snapshot (`SSA123.Foxtrot.S01`): `model-foxtrot-pre-1.json` downloading, local=1,331,396,608/2,516,582,400 (52.9%); `model-foxtrot-pre-2.json` (+4s) same local=1,331,396,608 (52.9%, **flat**, not increasing). Post-restart `model-foxtrot-post.json`: state=default, local frozen at 1,665,302,528 (66.2% -- the download continued for a time after the pre-2 snapshot and before the restart actually executed, then froze once held again)
+- **PASS (the restart itself is clean -- zero D-01 strings, `PROCS_RESULT=ok`, all four live pget children reaped -- but the flat pre-1/pre-2 pair means lftp was not provably mid-transfer at the moment of SIGTERM; not counted as this phase's active-transfer proof per the 123-17 Deviations; superseded by A1r below)**
+
+### Cycle A2 (active, SSA123.Golf.S01)
+
+- RESTART_UTC `2026-10-26T22:08:37Z`
+- `Caught signal SIGTERM` `18:08:45,173` (`22:08:45.173Z`)
+- No `Scanner process(es) stopped during shutdown` INFO line in this window (`STOPPED_DURING_SHUTDOWN=0`) -- the same timing artifact documented for the GAP-1 round's A1 (`Controller.exit()` stops lftp first; lftp's `exit()` call blocked the `ControllerJob` thread, so no intervening health-check cycle observed the dead scanners before `stop()` directly terminated and joined them). `SCANNER_DIED` stayed 0 regardless.
+- `Lftp process 69 did not exit on force close (state=D child processes=?); sending SIGKILL to its process group` `18:08:47,031` (`22:08:47.031Z`, +1.858s after SIGTERM)
+- `Lftp process 69 reaped after force close in 0.35s (group kill sent: yes)` `18:08:47,383` (`22:08:47.383Z`)
+- `Exited controller` `18:08:47,441` (`22:08:47.441Z`)
+- No `Exited successfully` line in this window (`EXITED_SUCCESSFULLY=0`)
+- First `Starting SeedSyncarr` after restart: `18:11:37,517` (`22:11:37.517Z`)
+- PRE_SCAN=`1793052486.467504`, POST_SCAN=`1793052698.23381` (`SCAN_OK=1`)
+- Counts (`cycle-A2.env`): SCANNER_DIED=0, COULD_NOT_TERMINATE=0, CAUGHT_EXCEPTION_IN_JOB=0, ERROR_STOPPING=0, EXITED_SUCCESSFULLY=0, STOPPED_DURING_SHUTDOWN=0, ERROR_LINES=0, LFTP_FORCE_KILL=1, LFTP_REAPED=1
+- Process verdict (`procs-A2.env`): PROCS_RESULT=ok, OLD_LFTP_PIDS=1044, OLD_LFTP_CHILD_PIDS=4231:sh,4249:sh,4250:sh,4253:sh, LFTP_STATES_SEEN=S,D, LFTP_ZOMBIE_SEEN=0, LFTP_GONE_UTC=`2026-10-26T22:08:47.665Z`, BG_LFTP_SEEN=0
+- ` - ERROR - ` lines in window: none (ERROR_LINES=0)
+- Active-transfer snapshot (`SSA123.Golf.S01`): attempt 1 flat (local=167,742,430 both readings, rejected by the growth gate); attempt 2 (the counted pair) `model-golf-pre-1.json` local=167,742,430/2,516,582,400 (6.7%) -> `model-golf-pre-2.json` (+4s) local=334,399,335 (13.3%, increasing, in band). Post-restart `model-golf-post.json`: state=default, local frozen at 500,105,216 (19.9%)
+- **PASS (genuine active-transfer restart with valid growing/in-band proof; the 123-13 fallback genuinely fired -- lftp caught `state=D` with four live `sh`-comm pget children present pre-restart, hard-killed by process group and reaped in 0.35s, `PROCS_RESULT=ok`, zero survivors, zero zombies, zero backgrounded lftp -- the single most important remaining live proof this phase needed)**
+
+### Cycle A1r (active, SSA123.Hotel.S01, rerun of A1)
+
+- RESTART_UTC `2026-10-26T22:16:14Z`
+- `Caught signal SIGTERM` `18:16:20,440` (`22:16:20.440Z`)
+- `Scanner process(es) stopped during shutdown: RemoteScanner (exitcode -15), LocalScanner (exitcode -15), ActiveScanner (exitcode -15)` `18:16:20,806` (`22:16:20.806Z`, +0.366s)
+- No lftp force-kill/reap line (the fallback was not needed this time, see note below)
+- `Exited controller` `18:16:21,658` (`22:16:21.658Z`)
+- No `Exited successfully` line in this window (`EXITED_SUCCESSFULLY=0`)
+- First `Starting SeedSyncarr` after restart: `18:18:51,975` (`22:18:51.975Z`)
+- PRE_SCAN=`1793052968.242922`, POST_SCAN=`1793053132.69001` (`SCAN_OK=1`)
+- Counts (`cycle-A1r.env`): SCANNER_DIED=0, COULD_NOT_TERMINATE=0, CAUGHT_EXCEPTION_IN_JOB=0, ERROR_STOPPING=0, EXITED_SUCCESSFULLY=0, STOPPED_DURING_SHUTDOWN=1, ERROR_LINES=0, LFTP_FORCE_KILL=0, LFTP_REAPED=0
+- Process verdict (`procs-A1r.env`): PROCS_RESULT=ok, OLD_LFTP_PIDS=9286, OLD_LFTP_CHILD_PIDS=13984:sh,14012:sh,14013:sh,14015:sh, LFTP_STATES_SEEN=S, LFTP_ZOMBIE_SEEN=0, LFTP_GONE_UTC=`2026-10-26T22:16:21.921Z`, BG_LFTP_SEEN=0
+- ` - ERROR - ` lines in window: none (ERROR_LINES=0)
+- Active-transfer snapshot (`SSA123.Hotel.S01`, staged at 4800 MiB per the harness-miss retry rule): `model-hotel-pre-1.json` local=642,351,104 (12.8%) -> `model-hotel-pre-2.json` (+4s) local=764,116,992 (15.2%, increasing, in band). Post-restart `model-hotel-post.json`: state=default, local frozen at 944,057,727 (18.8%)
+- **PASS (genuinely proven mid-transfer restart -- growing, in-band snapshots immediately before launch, and live `sh`-comm children present in the pre-restart sampler sample -- but lftp exited cleanly on pexpect's own first attempt; the 123-13 fallback was not exercised this time, stated plainly as "not exercised in this run," never claimed as evidence against the D-state hypothesis already confirmed live by A2)**
+
+### Cycle I3 (idle, final)
+
+- RESTART_UTC `2026-10-26T22:19:46Z`
+- `Caught signal SIGTERM` `18:19:48,340` (`22:19:48.340Z`)
+- `Scanner process(es) stopped during shutdown: RemoteScanner (exitcode -15), LocalScanner (exitcode -15), ActiveScanner (exitcode -15)` `18:19:48,607` (`22:19:48.607Z`, +0.267s)
+- No lftp force-kill/reap line
+- `Exited controller` `18:19:49,420` (`22:19:49.420Z`)
+- No `Exited successfully` line in this window (`EXITED_SUCCESSFULLY=0`)
+- First `Starting SeedSyncarr` after restart: `18:22:32,816` (`22:22:32.816Z`)
+- PRE_SCAN=`1793053162.69122`, POST_SCAN=`1793053353.518993` (`SCAN_OK=1`)
+- Counts (`cycle-I3.env`): SCANNER_DIED=0, COULD_NOT_TERMINATE=0, CAUGHT_EXCEPTION_IN_JOB=0, ERROR_STOPPING=0, EXITED_SUCCESSFULLY=0, STOPPED_DURING_SHUTDOWN=1, ERROR_LINES=0, LFTP_FORCE_KILL=0, LFTP_REAPED=0
+- Process verdict (`procs-I3.env`): PROCS_RESULT=ok, OLD_LFTP_PIDS=19457, OLD_LFTP_CHILD_PIDS=(none), LFTP_STATES_SEEN=S, LFTP_ZOMBIE_SEEN=0, LFTP_GONE_UTC=`2026-10-26T22:19:49.522Z`, BG_LFTP_SEEN=0
+- ` - ERROR - ` lines in window: none (ERROR_LINES=0)
+- Not an active-transfer cycle; no pre-restart snapshot taken
+- **PASS (clean final idle restart; zero D-01 strings; lftp exited cleanly on pexpect's own first attempt; `PROCS_RESULT=ok`)**
+
+### Detector check (older builds' shutdowns during the re-pins)
+
+Informational detector samples of each *older* build's own shutdown, captured during the re-pin that moved off it -- not a pass/fail gate for this plan's own cycles above.
+
+| Build | Source | SIGTERM (local / UTC) | SCANNER_DIED | COULD_NOT_TERMINATE | CAUGHT_EXCEPTION_IN_JOB | ERROR_STOPPING | EXITED_SUCCESSFULLY | STOPPED_DURING_SHUTDOWN | ERROR_LINES | LFTP_FORCE_KILL | LFTP_REAPED |
+|-------|--------|------------------------|--------------|----------------------|--------------------------|-----------------|------------------------|---------------------------|--------------|--------------------|---------------|
+| 1.7.6 (production digest) | `OLD_D/log-repin-baseline.txt` (123-06 capture dir) | 2026-10-25 15:10:12 / 19:10:12Z | 1 | 0 | 1 | 0 | 0 | 0 | 2 | 0 | 0 |
+| OLD_DEV_PIN (123-04 build) | GAP-1 dir's `log-repin-baseline.txt` | 2026-10-26 15:10:42 / 19:10:42Z | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
+| DEV_PIN_GAP (123-08 build) | `GD2/log-repin-baseline.txt` (this plan's re-pin) | 2026-10-26 17:37:36 / 21:37:36Z | 0 | 3 | 0 | 1 | 0 | 0 | 1 | 0 | 0 |
+
+What they show: the 1.7.6 window shows the scanner-died race (`Scanner process(es) died unexpectedly`, `Caught exception in job`) was already present in production before Phase 123 touched any code -- confirming D-01's scanner half is a pre-existing bug this phase fixed, not a regression it introduced. The OLD_DEV_PIN/123-04 window (already carrying the 123-01..04 fixes but not yet the GAP-1 grace window) happened to win the race and shows a clean scanner stop, consistent with the documented probabilistic failure rate from 123-06's table, not a contradiction of it. The DEV_PIN_GAP/123-08 window (carrying the GAP-1 scanner fix but not yet the GAP-2 lftp fix) shows exactly the `Could not terminate the child` / `Error stopping lftp during controller exit` error this phase's GAP-2 fix (123-13) closes, with zero of the new `LFTP_FORCE_KILL`/`LFTP_REAPED` recorded-only signals (that build has no fallback to produce them).
+
+### D-01 lftp half
+
+Gap-round-2 `COULD_NOT_TERMINATE`/`ERROR_STOPPING` counts and process verdicts, all six cycles: 0/0 on every cycle (I1, I2, A1, A2, A1r, I3), with `PROCS_RESULT=ok` on every cycle -- lftp and every live child process confirmed reaped before the old container generation exited, on both idle and active-transfer restarts.
+
+Against:
+- the single 2026-10-23 14:14:38 occurrence on 1.7.6 (122-06, see "## D-03 decision" above and `.planning/phases/122-safety-acceptance-and-logging-fixes/deferred-items.md`'s first section)
+- the 3 lines in 123-06's A2 (pre-any-fix, `COULD_NOT_TERMINATE=3` after the scanner-error exit path)
+- the GAP-1 round's A1/A2 (`COULD_NOT_TERMINATE=3`, `ERROR_STOPPING=1` on both, see "### lftp re-measurement (D-01 lftp half)" above)
+
+gap round 2 is a clean break from every one of those prior active-transfer measurements: zero of either string on any of this round's three active cycles (A1, A2, A1r).
+
+Live root-cause verdict (from "### Live root cause (GAP-2)" above): **(a) confirmed live** (A2 -- lftp caught `state=D` during a genuine active transfer, with four live pget children present, reaped in 0.35s); **(b) not observed** (no cycle showed a slow exit through a state other than D); **(c) not exercised** (A1r -- a genuinely proven mid-transfer restart whose lftp nonetheless exited cleanly on pexpect's own first attempt, not claimed as evidence against the hypothesis).
+
+123-17 failure-gate outcome: **not triggered**. `CHECK_STATUS=PASS`; per the plan's own Task 3 instruction, no owner decision was required at that gate.
+
+Plain statement of proof: the bounded process-group SIGKILL-and-reap fallback itself (123-13: the idle no-op, the fallback reap with and without a group kill, the 2.0s bound and honest raise, `ProcessLookupError` tolerance, `exit kill`, the `/proc` diagnostic parser) is **unit-proven**, with fakes, no real processes or sleeps. That a real active-transfer restart on the shipping build reaches zero `COULD_NOT_TERMINATE`/`ERROR_STOPPING` occurrences, that lftp and its children are actually gone before the old container exits, and the actual `/proc` state letter at the fallback are **live-proven only** (D-02) -- confirmed in this round by A2's genuine `state=D` catch with four live pget children reaped cleanly within the bound.
+
 ### Owner flag: success criterion 4
 
 Gate 5b's single matched line: `waiter: Callable[[float], None] = time.sleep,` — the `waiter` parameter default in `Lftp.__init__`. In plain words: this is the one bounded wait (at most 2.0 seconds total, polling every 0.05 seconds) added to `Lftp.exit()`. It runs only when lftp has already refused to die after pexpect's own kill sequence (SIGHUP, SIGCONT, SIGINT, SIGKILL, each with its own 0.1s check) has already failed and raised — which, per the 123-12 live evidence, only happened during active transfers, never on an idle restart. A normal shutdown never reaches this wait at all (`test_idle_close_succeeds_no_poll_no_signal_no_wait` pins zero waiter/kill_group/isalive calls on a clean close). The alternative without any wait — a blocking `os.waitpid(pid, 0)` — was rejected because it is unbounded if the child stays in uninterruptible I/O (state D): it could hang the in-process controller restart (RECOV-01) indefinitely, which is a worse outcome than a documented, bounded wait that, if exceeded, still raises `LftpError` so the leak surfaces honestly. The owner approved exactly this one bounded wait in advance (123-13-PLAN.md `<owner_decision>`, verbatim: "Allow it (Recommended)"); Gate 5b (this plan) confirms no other new sleep exists anywhere in the GAP-2 delta.
