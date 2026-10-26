@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: "Completed 123-06 (live restart check FAIL: scanner false ERROR in 3/5 cycles); owner chose fix-in-phase -> /bm:plan-phase 123 --gaps; 123-07 on hold"
-last_updated: "2026-10-26T14:00:00.000Z"
-last_activity: 2026-10-26 -- Phase 123 live restart check failed on DEV_PIN; owner chose gap fix in phase
+stopped_at: "Phase 123 gap round planned (123-08..12, GAP-1: 10 s monotonic SIGTERM grace); plan-checker passed; next /bm:execute-phase 123 --gaps-only; 123-07 now runs last (wave 9)"
+last_updated: "2026-10-26T15:00:00.000Z"
+last_activity: 2026-10-26 -- Phase 123 gap-closure plans 123-08..12 created and verified
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 27
+  total_plans: 32
   completed_plans: 26
   percent: 33
 ---
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 123 (startup-and-shutdown-lifecycle) — EXECUTING
-Plan: 6 of 7
+Plan: 8 of 12 (gap round)
 Status: Executing Phase 123
 Last activity: 2026-10-25 -- Phase 123 plan 05 gated 123-01..04, pushed draft PR #137, CI green, DEV_PIN recorded
 
