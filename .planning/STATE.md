@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: "Completed 123-12 (GAP-1 closed live; lftp 'Could not terminate the child' on active-transfer restarts = GAP-2); owner chose fix-in-phase -> /bm:plan-phase 123 --gaps; 123-07 on hold"
-last_updated: "2026-10-26T20:15:00.000Z"
-last_activity: "2026-10-26 -- Phase 123 gap-round live check: scanner false ERROR gone in 6/6 restarts; lftp error remains on A1/A2; owner chose second gap fix"
+stopped_at: "Phase 123 gap round 2 planned (123-13..17, GAP-2 lftp force-close + reap); plan-checker passed; owner approved the bounded reap wait; next /bm:execute-phase 123 --gaps-only; 123-07 runs last (wave 13)"
+last_updated: "2026-10-26T21:00:00.000Z"
+last_activity: "2026-10-26 -- Phase 123 GAP-2 plans 123-13..17 created and verified; criterion-4 exception approved"
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 32
+  total_plans: 37
   completed_plans: 31
   percent: 33
 ---
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 123 (startup-and-shutdown-lifecycle) — EXECUTING
-Plan: 12 of 12 (gap round)
+Plan: 13 of 17 (gap round 2)
 Status: Executing Phase 123
 Last activity: 2026-10-26 -- Phase 123 plan 10 gated 123-01..04 + 123-08 (9 gates), pushed to draft PR #137 (reused), CI run 409 green, DEV_PIN_GAP recorded
 
@@ -58,6 +58,8 @@ Last activity: 2026-10-26 -- Phase 123 plan 10 gated 123-01..04 + 123-08 (9 gate
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
+
+**Phase 123 GAP-2 (2026-10-26): owner approved one exception to success criterion 4 ("no new sleeps").** The bounded reap wait in `Lftp.exit()` (≤2.0 s, 0.05 s polls, injectable) runs only when pexpect's forced close fails, never on a normal shutdown. Gate 5b in 123-15 must list exactly that one line.
 
 **Roadmap shape (v1.7.4): three phases, owner-approved split from the design spec (`docs/superpowers/specs/2026-10-08-safety-patch-design.md`), ordered by risk — deletion safety first.** Numbering continues from v1.4.1's last phase (115). All three are Python-only, behavior-narrowing fixes with no on-disk format change and no UI work. Sequenced 116→117→118 but they touch disjoint code paths; per the spec, Phase 116 may ship alone as 1.7.4 if 117/118 slip, otherwise all three ship as one patch.
 
