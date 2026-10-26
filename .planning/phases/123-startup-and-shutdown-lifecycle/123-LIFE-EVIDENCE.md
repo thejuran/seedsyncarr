@@ -210,3 +210,82 @@ All three restarts on `DEV_PIN_GAP` logged the clean `Scanner process(es) stoppe
 
 - **Duplicate I1 launch (harness/operational, no product impact).** The first attempt to launch `restart-cycle.sh ... I1` used a `cd "$GD" && nohup ... &` shell form; on this NAS's remote command shell, a `&&`-joined command immediately followed by `&` does not actually detach (confirmed by a minimal `sleep` reproduction: the `&&` form blocks for the full duration, a `;`-joined form returns in ~0.2s). The executor's tool call was therefore auto-backgrounded by its own 120s local timeout while the remote I1 cycle was still genuinely running attached; believing the launch had not yet started, a second `I1` cycle was launched (correctly detached, with `;`) before realizing the first had already completed and recorded `CYCLE_I1=PASS`. Both runs are real, both are clean idle restarts with zero shutdown-error strings on `DEV_PIN_GAP` (see table above); the original run's window/env files were preserved as `cycle-I1-orig.env` / `log-cycle-I1-orig.txt` before the second run overwrote `cycle-I1.env` / `log-cycle-I1.txt`. All subsequent detached launches (I2, and onward) used the `;`-joined form and confirmed sub-second return before polling separately, per the plan's stall-prevention requirement. Production was not touched by this deviation; only `seedsyncarr-test` restarted an extra time.
 
+### Active cycles A1 (SSA123.Delta.S01), A2 (SSA123.Echo.S01) and final idle cycle I3 on DEV_PIN_GAP
+
+| Cycle | Kind | Restart (UTC) | RESTART_ELAPSED_S | SCANNER_DIED | COULD_NOT_TERMINATE | CAUGHT_EXCEPTION_IN_JOB | ERROR_STOPPING | STOPPED_DURING_SHUTDOWN | EXITED_SUCCESSFULLY (recorded only) | Result |
+|-------|------|---------------|--------------------|--------------|----------------------|--------------------------|-----------------|---------------------------|--------------------------------------|--------|
+| A1 | active (SSA123.Delta.S01) | 19:38:01Z | 150 | 0 | 3 | 0 | 1 | 0 | 0 | FAIL:could_not_terminate,error_stopping |
+| A2 | active (SSA123.Echo.S01) | 19:44:27Z | 131 | 0 | 3 | 0 | 1 | 1 | 0 | FAIL:could_not_terminate,error_stopping |
+| I3 | idle | 19:49:36Z | 137 | 0 | 0 | 0 | 0 | 1 | 1 | PASS |
+
+Shutdown sequence per cycle, both clocks:
+
+- A1: SIGTERM `2026-10-26 15:38:12,292` (`19:38:12.292Z`); no `Scanner process(es) stopped during shutdown` line appears in this window (see note below); `Error stopping lftp during controller exit` `15:38:14,093` (`19:38:14.093Z`, +1.801s); Exited controller `15:38:14,405` (+2.113s). Zero scanner-died ERROR.
+- A2: SIGTERM `15:44:33,587` (`19:44:33.587Z`); stopped-during-shutdown `15:44:33,998` (+0.411s); `Error stopping lftp during controller exit` `15:44:35,232` (+1.645s); Exited controller `15:44:35,332` (+1.745s). Zero scanner-died ERROR.
+- I3: SIGTERM `15:49:46,006` (`19:49:46.006Z`); stopped-during-shutdown `15:49:46,331` (+0.325s); Exited controller `15:49:47,282` (+1.276s); Exited successfully `15:50:00,072` (+14.066s). Zero scanner-died ERROR, zero lftp error.
+
+Note on A1's missing "stopped during shutdown" line: `Controller.exit()` (`src/python/controller/controller.py:433-440`) stops components in a fixed order -- lftp first, then scanner. That INFO line is logged only inside `ScanManager._check_process_health()` (`src/python/controller/scan_manager.py:307`), which runs on the `ControllerJob`'s periodic health-check cycle, not inside `ScanManager.stop()` itself. In A1, lftp's `exit()` call blocked for ~1.8s on the same thread before raising, so no intervening health-check cycle observed the dead scanners before `stop()` directly terminated and joined them -- a timing artifact of this recorded-only signal, not a correctness gap: `SCANNER_DIED` stayed 0 in both A1 and A2, i.e. the GAP-1 fix held in every active-transfer cycle regardless of whether this INFO line happened to fire.
+
+**Active-transfer proof:**
+
+- Delta (A1): released `2026-10-26 15:36:29,385` local (`19:36:29.385Z`), http 200 (`RELEASED_SSA123.Delta.S01=1`). `model-delta-pre-1.json`: downloading, local=979,988,071 / remote=2,516,582,400 (38.9%). `model-delta-pre-2.json` (+4s): downloading, local=1,237,909,504 / remote=2,516,582,400 (49.2%, increasing). Restart launched immediately after the second snapshot, in the same `ssh` call. Post-restart: held again -- `Completion hold for 'SSA123.Delta.S01': No matching queue entry` logged `15:42:26,220` local (`19:42:26.220Z`); `model-delta-post.json` confirms `hold=no_queue_entry`, local frozen at 1,378,025,472 (no further growth observed over three 5s-spaced polls beforehand).
+- Echo (A2): released `2026-10-26 15:43:47,554` local (`19:43:47.554Z`), http 200 (`RELEASED_SSA123.Echo.S01=1`). `model-echo-pre-1.json`: downloading, local=328,164,513 / remote=2,516,582,400 (13.0%). `model-echo-pre-2.json` (+4s): downloading, local=488,632,558 / remote=2,516,582,400 (19.4%, increasing). Restart launched immediately after, in the same `ssh` call. Post-restart: held again -- `Completion hold for 'SSA123.Echo.S01': No matching queue entry` logged `15:48:57,645` local (`19:48:57.645Z`); `model-echo-post.json` confirms `hold=no_queue_entry`, local frozen at 681,443,328.
+
+### lftp re-measurement (D-01 lftp half)
+
+| Cycle | COULD_NOT_TERMINATE | ERROR_STOPPING |
+|-------|----------------------|-----------------|
+| A1 (GAP-1, SSA123.Delta.S01) | 3 | 1 |
+| A2 (GAP-1, SSA123.Echo.S01) | 3 | 1 |
+| A2 (123-06, pre-fix, SSA123.Bravo.S01) | 3 (after the scanner-error exit path) | not separately recorded in 123-06's table |
+
+Reading: both GAP-1 active cycles show the same `COULD_NOT_TERMINATE=3` count seen in 123-06's A2, but now with `SCANNER_DIED=0` on both -- the lftp `Could not terminate the child` / `Error stopping lftp during controller exit` failure is unchanged by the GAP-1 scanner-grace fix (123-08) and remains a separate, already-isolated mechanism: `Controller.exit()`'s per-component loop catches the exception, logs it, and proceeds to stop the remaining components and exit cleanly regardless (`RESTART_RC=0`, `STARTING_OK=1`, `READY_OK=1`, `SCAN_OK=1` on both A1 and A2 -- the container always came back up and resumed scanning).
+
+### Recorded-only signals
+
+| Cycle | EXITED_SUCCESSFULLY | RESTART_ELAPSED_S |
+|-------|----------------------|--------------------|
+| I1 (first run) | 0 | 124 |
+| I1 (rerun) | 1 | 146 |
+| I2 | 0 | 143 |
+| A1 | 0 | 150 |
+| A2 | 0 | 131 |
+| I3 | 1 | 137 |
+
+`BASELINE_EXITED_SUCCESSFULLY=0` (1.7.6, recorded during this session's re-pin window as `BASELINE_REPIN_EXITED_SUCCESSFULLY`) -- 4 of 6 gap-round cycles also read 0, consistent with the pre-existing gap documented at 123-09 (the line logs only after the full shutdown sequence completes, so it is absent whenever docker's 10s stop timeout would otherwise SIGKILL the process first). None of these readings affected any cycle's PASS/FAIL, per the 123-09 harness change.
+
+SIGTERM -> `Scanner process(es) stopped during shutdown` gap, where present, across every cycle in the gap round:
+
+| Cycle | Gap |
+|-------|-----|
+| I1 (first run) | +0.347s |
+| I1 (rerun) | +0.130s |
+| I2 | +0.400s |
+| A1 | not present (see note above) |
+| A2 | +0.411s |
+| I3 | +0.325s |
+
+Every observed gap is well inside the 10.0s GAP-1 grace window (123-08); the window comfortably absorbs the handler-latency variance seen live (0.13s-1.55s across all of 123-06/123-11/123-12).
+
+### Gap-round verdict
+
+`CHECK_STATUS=FAIL:A1:could_not_terminate,error_stopping,A2:could_not_terminate,error_stopping` (state.env).
+
+Production: `prod-before-s2b.txt` and `prod-after-s2b.txt` byte-identical (`PROD_UNCHANGED_S2B`); production `seedsyncarr` was never restarted, edited or otherwise touched anywhere in this plan.
+
+Session teardown: `run-session-teardown.out` (session mode, not `--final`):
+
+```
+RESTORED rate_limit ok
+RESTORED delay_seconds ok (not set this session)
+REMOVED synth roots count=2 refused=0
+RESTORED webhook_secret ok (not set this session)
+WAIT server/status ok
+CHECK webhook/sonarr Test http=200
+SANDBOX_RESTORED ok
+```
+
+Clean check (separate call, after teardown): no `SSA123.`-prefixed name under seedbox `/home/jules1651/v5test`; `/home/jules1651/ssa123-stage` absent; no `SSA123.`-prefixed name under `/volume1/data/v5test/torrents`; `.lftp.rate_limit` = `0` (equal to `RATE_LIMIT_L0`); `seedsyncarr-test` `.Config.Image` still equals `DEV_PIN_GAP` exactly. The sandbox stays on `DEV_PIN_GAP`; 123-07 restores `IMAGE_PIN_L0` (1.7.6) with `--final`.
+
+Diagnosis (for the failure gate): every scanner and exception check passed cleanly in all five cycles of this gap round (I1 x2, I2, A1, A2, I3 all show `SCANNER_DIED=0`, `CAUGHT_EXCEPTION_IN_JOB=0`) -- the GAP-1 fix (123-08) is confirmed live: the false "Scanner process(es) died unexpectedly" ERROR that fired on 3 of 5 pre-fix cycles (123-06) did not reproduce in any of the 6 live restarts across 123-11/123-12. The only failing checks are `could_not_terminate` / `error_stopping`, both on active-transfer cycles (A1, A2), both from `Lftp.exit()` (`src/python/lftp/lftp.py:463`, via `pexpect`/`ptyprocess`) timing out while a transfer is in flight -- a mechanism no 123-01..04/123-08 commit touched (confirmed again by gate 9's untouched-wiring diff in the gap-round gates table above). `Controller.exit()`'s per-component loop (controller.py:433-440) isolates the failure: it is caught, logged, and the remaining components (scanner, file operations, multiprocessing logger) still stop cleanly, the container still restarts (`RESTART_RC=0`) and still comes back up scanning (`STARTING_OK=1`, `READY_OK=1`, `SCAN_OK=1` on both A1 and A2). "Exited successfully" is recorded only (123-09) and was not the reason for either FAIL (A1/A2's actual fail reasons are `could_not_terminate,error_stopping`, not `exited_successfully`).
+
