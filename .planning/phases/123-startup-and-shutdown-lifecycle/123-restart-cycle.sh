@@ -22,6 +22,8 @@
 #   "Starting SeedSyncarr"
 #   "Scanner process(es) stopped during shutdown"
 #   " - ERROR - "
+#   "did not exit on force close"
+#   "reaped after force close"
 #
 # PASS requires a clean restart exit code, a fresh start-up line, a ready
 # status, a new remote scan, no rotation, and zero of the three shutdown-error
@@ -30,12 +32,21 @@
 # production container.
 #
 # Recorded only (never a pass/fail criterion): EXITED_SUCCESSFULLY,
-# STOPPED_DURING_SHUTDOWN, ERROR_LINES and RESTART_ELAPSED_S. "Exited
-# successfully" is logged only once the whole shutdown sequence completes, so
-# it is absent whenever docker's stop timeout SIGKILLs the process first; the
-# 1.7.6 baseline window shows the identical gap (BASELINE_EXITED_SUCCESSFULLY=0),
-# so this is pre-existing and not a regression signal. RESTART_ELAPSED_S is an
-# informational signal of whether the stop hit docker's 10 s timeout.
+# STOPPED_DURING_SHUTDOWN, ERROR_LINES, RESTART_ELAPSED_S, LFTP_FORCE_KILL
+# ("did not exit on force close") and LFTP_REAPED ("reaped after force
+# close"). "Exited successfully" is logged only once the whole shutdown
+# sequence completes, so it is absent whenever docker's stop timeout
+# SIGKILLs the process first; the 1.7.6 baseline window shows the identical
+# gap (BASELINE_EXITED_SUCCESSFULLY=0), so this is pre-existing and not a
+# regression signal. RESTART_ELAPSED_S is an informational signal of
+# whether the stop hit docker's 10 s timeout.
+#
+# Live process verdict (GAP-2): a sampler script, copied into the capture
+# dir as <capture-dir>/proc-sampler.sh, watches the OLD container's
+# processes across the restart and writes PROCS_RESULT to
+# <capture-dir>/procs-<label>.env. PROCS_RESULT must be "ok"; a
+# "FAIL:<r1>,<r2>" result adds "procs_<r1>", "procs_<r2>" etc. to
+# FAIL_REASONS, and any "UNDETERMINED:*" result adds "procs_undetermined".
 #
 # This script always leaves a cycle outcome in <capture-dir>/state.env, on
 # every exit path except SIGKILL:
@@ -64,6 +75,7 @@ STEP=init
 VERDICT_WRITTEN=0
 
 on_exit() {
+  touch "$D/sampler-${LABEL}.stop" 2>/dev/null
   if [ "$VERDICT_WRITTEN" != "1" ]; then
     echo "CYCLE_${LABEL}=INCOMPLETE:${STEP}" >> "$D/state.env"
     echo "CYCLE ${LABEL} INCOMPLETE ${STEP}"
@@ -107,6 +119,21 @@ M="$(wc -l < "$LOG" 2>/dev/null)"
 M="${M:-0}"
 RESTART_UTC="$(date -u +%FT%TZ)"
 
+# Step 2.5: start the live process sampler (GAP-2) before the restart
+step sampler_start
+rm -f "$D/sampler-${LABEL}.ready" "$D/sampler-${LABEL}.stop" "$D/procs-${LABEL}.txt"
+bash "$D/proc-sampler.sh" sample "$D" "$LABEL" > "$D/run-sampler-${LABEL}.out" 2>&1 &
+SAMPLER_PID=$!
+SAMPLER_READY=0
+for _ in $(seq 1 20); do
+  if [ -f "$D/sampler-${LABEL}.ready" ]; then
+    SAMPLER_READY=1
+    break
+  fi
+  sleep 0.5
+done
+[ "$SAMPLER_READY" = "1" ] || add_fail procs_sampler_not_ready
+
 # Step 3: restart the sandbox container
 # (the one and only lifecycle action this script performs):
 # sudo /usr/local/bin/docker restart seedsyncarr-test
@@ -116,6 +143,14 @@ $DOCKER restart seedsyncarr-test >/dev/null 2>&1
 RESTART_RC=$?
 RESTART_END_S="$(date +%s)"
 RESTART_ELAPSED_S="$((RESTART_END_S - RESTART_START_S))"
+
+# Stop the sampler now that the restart has returned, and wait (bounded at
+# 10 s) for it to exit so it never outlives this cycle.
+touch "$D/sampler-${LABEL}.stop"
+for _ in $(seq 1 20); do
+  kill -0 "$SAMPLER_PID" 2>/dev/null || break
+  sleep 0.5
+done
 
 # Step 4: STARTING-POLL -- a fresh "Starting SeedSyncarr" line after the
 # pre-restart marker, polled every 5s for up to 180s.
@@ -200,6 +235,28 @@ EXITED_SUCCESSFULLY="$(count_str "Exited successfully" "$WINDOW_FILE")"
 STARTING_SEEN="$(count_str "Starting SeedSyncarr" "$WINDOW_FILE")"
 STOPPED_DURING_SHUTDOWN="$(count_str "Scanner process(es) stopped during shutdown" "$WINDOW_FILE")"
 ERROR_LINES="$(count_str " - ERROR - " "$WINDOW_FILE")"
+LFTP_FORCE_KILL="$(count_str "did not exit on force close" "$WINDOW_FILE")"
+LFTP_REAPED="$(count_str "reaped after force close" "$WINDOW_FILE")"
+
+# Step 10.5: lftp-gone verdict from the live process sampler (GAP-2)
+step procs_verdict
+bash "$D/proc-sampler.sh" verdict "$D" "$LABEL"
+PROCS_RESULT="$(grep -F "PROCS_RESULT=" "$D/procs-${LABEL}.env" 2>/dev/null | tail -n 1 | cut -d= -f2-)"
+case "$PROCS_RESULT" in
+  ok) ;;
+  FAIL:*)
+    reasons="${PROCS_RESULT#FAIL:}"
+    old_ifs="$IFS"
+    IFS=','
+    for r in $reasons; do
+      add_fail "procs_${r}"
+    done
+    IFS="$old_ifs"
+    ;;
+  *)
+    add_fail procs_undetermined
+    ;;
+esac
 
 # Step 11: write the per-cycle fact file
 step env
@@ -225,6 +282,9 @@ ENV_FILE="$D/cycle-${LABEL}.env"
   echo "STARTING_SEEN=$STARTING_SEEN"
   echo "STOPPED_DURING_SHUTDOWN=$STOPPED_DURING_SHUTDOWN"
   echo "ERROR_LINES=$ERROR_LINES"
+  echo "LFTP_FORCE_KILL=$LFTP_FORCE_KILL"
+  echo "LFTP_REAPED=$LFTP_REAPED"
+  echo "PROCS_RESULT=$PROCS_RESULT"
 } > "$ENV_FILE"
 
 # Step 12: PASS/FAIL verdict
@@ -236,7 +296,7 @@ if [ "$CAUGHT_EXCEPTION_IN_JOB" -ne 0 ]; then add_fail caught_exception_in_job; 
 if [ "$ERROR_STOPPING" -ne 0 ]; then add_fail error_stopping; fi
 
 echo "RESTART_RC=$RESTART_RC RESTART_ELAPSED_S=$RESTART_ELAPSED_S STARTING_OK=$STARTING_OK READY_OK=$READY_OK SCAN_OK=$SCAN_OK ROTATED=$ROTATED"
-echo "SCANNER_DIED=$SCANNER_DIED COULD_NOT_TERMINATE=$COULD_NOT_TERMINATE CAUGHT_EXCEPTION_IN_JOB=$CAUGHT_EXCEPTION_IN_JOB ERROR_STOPPING=$ERROR_STOPPING EXITED_SUCCESSFULLY=$EXITED_SUCCESSFULLY STARTING_SEEN=$STARTING_SEEN STOPPED_DURING_SHUTDOWN=$STOPPED_DURING_SHUTDOWN ERROR_LINES=$ERROR_LINES"
+echo "SCANNER_DIED=$SCANNER_DIED COULD_NOT_TERMINATE=$COULD_NOT_TERMINATE CAUGHT_EXCEPTION_IN_JOB=$CAUGHT_EXCEPTION_IN_JOB ERROR_STOPPING=$ERROR_STOPPING EXITED_SUCCESSFULLY=$EXITED_SUCCESSFULLY STARTING_SEEN=$STARTING_SEEN STOPPED_DURING_SHUTDOWN=$STOPPED_DURING_SHUTDOWN ERROR_LINES=$ERROR_LINES LFTP_FORCE_KILL=$LFTP_FORCE_KILL LFTP_REAPED=$LFTP_REAPED PROCS_RESULT=$PROCS_RESULT"
 
 if [ -z "$FAIL_REASONS" ]; then
   VERDICT_WRITTEN=1
