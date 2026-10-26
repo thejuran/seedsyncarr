@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: "Phase 123 gap round planned (123-08..12, GAP-1: 10 s monotonic SIGTERM grace); plan-checker passed; next /bm:execute-phase 123 --gaps-only; 123-07 now runs last (wave 9)"
-last_updated: "2026-10-26T15:00:00.000Z"
-last_activity: 2026-10-26 -- Phase 123 gap-closure plans 123-08..12 created and verified
+stopped_at: "Phase 123 gap wave 5 complete (123-08 grace fix, 123-09 harness); wave 6 (123-10 gates + push + CI + DEV_PIN_GAP) executing"
+last_updated: "2026-10-26T16:00:00.000Z"
+last_activity: 2026-10-26 -- Phase 123 gap wave 5 merged; post-merge suite matches baseline, ruff clean
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 32
-  completed_plans: 26
+  completed_plans: 28
   percent: 33
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 123 (startup-and-shutdown-lifecycle) — EXECUTING
-Plan: 8 of 12 (gap round)
+Plan: 10 of 12 (gap round)
 Status: Executing Phase 123
 Last activity: 2026-10-25 -- Phase 123 plan 05 gated 123-01..04, pushed draft PR #137, CI green, DEV_PIN recorded
 

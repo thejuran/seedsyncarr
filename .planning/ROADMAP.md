@@ -153,8 +153,8 @@ Plans:
 
 **Wave 5** *(gap closure, GAP-1: live check failed in 123-06; owner chose fix-in-phase)*
 
-- [ ] 123-08-PLAN.md — TDD: time-bounded (10 s, monotonic clock) SIGTERM grace in ScanManager health check, independent of main-thread signal latency
-- [ ] 123-09-PLAN.md — Restart-cycle harness: STARTED/INCOMPLETE outcome markers, detached-run progress, `Exited successfully` recorded-only (pre-existing on 1.7.6)
+- [x] 123-08-PLAN.md — TDD: time-bounded (10 s, monotonic clock) SIGTERM grace in ScanManager health check, independent of main-thread signal latency
+- [x] 123-09-PLAN.md — Restart-cycle harness: STARTED/INCOMPLETE outcome markers, detached-run progress, `Exited successfully` recorded-only (pre-existing on 1.7.6)
 
 **Wave 6**
 
@@ -220,7 +220,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
-| 123. Startup and Shutdown Lifecycle | 6/7 | In Progress|  |
+| 123. Startup and Shutdown Lifecycle | 8/12 | In Progress|  |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
