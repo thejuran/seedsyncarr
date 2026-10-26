@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: "Phase 123 gap wave 5 complete (123-08 grace fix, 123-09 harness); wave 6 (123-10 gates + push + CI + DEV_PIN_GAP) executing"
-last_updated: "2026-10-26T16:00:00.000Z"
-last_activity: 2026-10-26 -- Phase 123 gap wave 5 merged; post-merge suite matches baseline, ruff clean
+stopped_at: "Completed 123-10-PLAN.md (gap-round gates + PR #137 push + CI green run 409 + DEV_PIN_GAP sha256:991e4e1f...); 123-11 next (live restart re-check on DEV_PIN_GAP)"
+last_updated: "2026-10-26T18:55:27.244Z"
+last_activity: "2026-10-26 -- Phase 123 plan 10 gated 123-01..04 + 123-08 (9 gates), pushed to draft PR #137 (reused), CI run 409 green, DEV_PIN_GAP recorded"
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 32
-  completed_plans: 28
+  completed_plans: 29
   percent: 33
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 123 (startup-and-shutdown-lifecycle) — EXECUTING
-Plan: 10 of 12 (gap round)
+Plan: 11 of 12 (gap round)
 Status: Executing Phase 123
-Last activity: 2026-10-25 -- Phase 123 plan 05 gated 123-01..04, pushed draft PR #137, CI green, DEV_PIN recorded
+Last activity: 2026-10-26 -- Phase 123 plan 10 gated 123-01..04 + 123-08 (9 gates), pushed to draft PR #137 (reused), CI run 409 green, DEV_PIN_GAP recorded
 
 ## Accumulated Context
 
@@ -102,6 +102,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 122]: 122-17: wrote the full Plan 16 D-06/WR-02 rerun narrative (gap cycle 2) into 122-SAFE01-EVIDENCE.md, restored seedsyncarr-test to IMAGE_PIN_L0 (1.7.6) via teardown.sh --final (fresh-session verified, production byte-identical), and appended the 'Gap cycle 2 (122-13..17)' SAFE-01 verdict addendum (PASSED); owner reviewed and replied verbatim 'approve', accepting the kept D-06(d)/D-07 results from the earlier e3941f97 build with no rerun requested; SAFE-01 and LOG-01 closed
 - [Phase 122]: Owner 2026-10-25: Phase 122 re-verification passed 5/5; re-review follow-ups WR-04 (Arr key normalization), IN-04, IN-05 sent to ROADMAP Backlog, not fixed in-phase; PR #134 merge is a separate owner decision
 - [Phase 123]: 123-05: gated 123-01..04 together (suite subset of 122-03 baseline, whole-tree ruff clean, RED-before-GREEN, 16-file scope exact match, no new sleeps, Controller.exit()/auto-delete/lock-ordering unchanged, log hygiene clean); pushed to new draft PR #137, CI run 407 green on all checks; DEV_PIN sha256:b7b894fa... resolved by two independent methods, recorded in 123-LIFE-EVIDENCE.md for 123-06's live restart check; nothing merged
+- [Phase 123]: 123-10: gated 123-01..04 + 123-08 together (9 gates incl. gap-delta scope and untouched-wiring); pushed to existing draft PR #137 (reused), CI run 409 green; DEV_PIN_GAP sha256:991e4e1f... resolved by two independent methods, superseding sha256:b7b894fa...; appended Gap round (GAP-1) section to 123-LIFE-EVIDENCE.md; nothing merged, 123-11 reruns the live restart check on this build
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -160,9 +161,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-25T18:50:30.928Z
-Stopped at: Completed 123-05-PLAN.md (phase gates + draft PR #137 + CI green + DEV_PIN); 123-06 next (live restart check)
-Next action: 122-13, 122-14, 122-15 and 122-16 are complete. The sandbox is on the gap-cycle-2 DEV_PIN (sha256:f8204207...) with D-06(c) and WR-02 proven live (India/Juliet/Hotel) and LOG-01/WR-01 reconfirmed. 122-17 writes the full rerun evidence narrative into 122-SAFE01-EVIDENCE.md, runs teardown.sh --final to restore the sandbox to its 1.7.6 pin, and updates the SAFE-01/LOG-01 verdict to close the second gap cycle. Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-26T18:55:27.238Z
+Stopped at: Completed 123-10-PLAN.md (gap-round gates + PR #137 push + CI green run 409 + DEV_PIN_GAP sha256:991e4e1f...); 123-11 next (live restart re-check on DEV_PIN_GAP)
+Next action: Phase 123 gap wave 6 (123-10) is complete: gates 1-9 passed over 123-01..04 + 123-08, PR #137 (reused, still draft) is pushed with CI run 409 green at head ff527dc, and DEV_PIN_GAP (sha256:991e4e1f...) is recorded in 123-LIFE-EVIDENCE.md. 123-11 re-runs the live NAS sandbox `docker restart` cycles (idle and active-transfer) against DEV_PIN_GAP to confirm the clock-bounded SIGTERM grace (123-08) actually eliminates the false scanner-death ERROR, closing GAP-1's live-provable half; also run the outstanding SSA123 session teardown left open by 123-06 (seedbox staging not yet verified clean). 123-12 restores the sandbox to its original 1.7.6 pin afterward. Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 

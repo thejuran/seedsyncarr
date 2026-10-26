@@ -158,7 +158,7 @@ Plans:
 
 **Wave 6**
 
-- [ ] 123-10-PLAN.md — Gap-round phase gates, push to draft PR #137, CI green, DEV_PIN_GAP digest
+- [x] 123-10-PLAN.md — Gap-round phase gates, push to draft PR #137, CI green, DEV_PIN_GAP digest
 
 **Wave 7**
 
@@ -220,7 +220,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
-| 123. Startup and Shutdown Lifecycle | 8/12 | In Progress|  |
+| 123. Startup and Shutdown Lifecycle | 9/12 | In Progress|  |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
