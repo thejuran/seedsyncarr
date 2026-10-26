@@ -162,7 +162,7 @@ Plans:
 
 **Wave 7**
 
-- [ ] 123-11-PLAN.md — Outstanding 123-06 SSA123 teardown (seedbox verified clean), re-pin sandbox to DEV_PIN_GAP, idle cycles I1/I2
+- [x] 123-11-PLAN.md — Outstanding 123-06 SSA123 teardown (seedbox verified clean), re-pin sandbox to DEV_PIN_GAP, idle cycles I1/I2
 
 **Wave 8**
 
@@ -220,7 +220,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
-| 123. Startup and Shutdown Lifecycle | 9/12 | In Progress|  |
+| 123. Startup and Shutdown Lifecycle | 10/12 | In Progress|  |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
