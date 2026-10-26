@@ -446,3 +446,102 @@ Byte-identical across s0, s1 and s2a (`PROD_UNCHANGED_S1`, `PROD_UNCHANGED_S2A`)
 ### Deviations (this section)
 
 - **Re-pin launch-return time 1.54s, over the 1s target (harness/operational, no product impact).** The detached launch of `repin.sh` (`cd "$GD2"; nohup bash ... &`) returned in 1.54s rather than well under 1s. This was not treated as a failed detach (per the plan's rule, a failed detach would show as the ssh call blocking for the backgrounded command's full multi-minute duration instead); the subsequent polls confirmed the image pull was progressing in the background exactly as expected, so the extra ~0.5s is attributed to ssh connection-setup overhead, not a blocking shell form. Both idle-cycle launches (I1, I2) returned in 0.16s/0.17s, well under 1s, confirming the `;`-joined form works correctly on this NAS's remote shell.
+
+### Active cycles A1 (SSA123.Foxtrot.S01, first run + SSA123.Hotel.S01 rerun), A2 (SSA123.Golf.S01) and final idle cycle I3 on DEV_PIN_GAP2
+
+| Cycle | Kind | Restart (UTC) | RESTART_ELAPSED_S | SCANNER_DIED | COULD_NOT_TERMINATE | CAUGHT_EXCEPTION_IN_JOB | ERROR_STOPPING | LFTP_FORCE_KILL (recorded) | LFTP_REAPED (recorded) | PROCS_RESULT | LFTP_STATES_SEEN | EXITED_SUCCESSFULLY (recorded only) | Result |
+|-------|------|----------------|--------------------|--------------|----------------------|--------------------------|-----------------|------------------------------|---------------------------|---------------|--------------------|---------------------------------------|--------|
+| A1 (first run, SSA123.Foxtrot.S01) | active | 22:02:44Z | 149 | 0 | 0 | 0 | 0 | 0 | 0 | ok | S | 0 | PASS (restart itself clean; mid-transfer proof invalid -- see Deviations) |
+| A2 (SSA123.Golf.S01) | active | 22:08:37Z | 165 | 0 | 0 | 0 | 0 | 1 | 1 | ok | S,D | 0 | PASS |
+| A1r (SSA123.Hotel.S01 rerun) | active | 22:16:14Z | 140 | 0 | 0 | 0 | 0 | 0 | 0 | ok | S | 0 | PASS |
+| I3 | idle | 22:19:46Z | 148 | 0 | 0 | 0 | 0 | 0 | 0 | ok | S | 0 | PASS |
+
+Shutdown sequence per cycle, both clocks:
+
+- A1 (first run): SIGTERM `2026-10-26 18:02:55,852` local (`22:02:55.852Z`); `Scanner process(es) stopped during shutdown` `18:02:56,127` (`22:02:56.127Z`, +0.275s); Exited controller `18:02:56,956` (`22:02:56.956Z`, +1.104s). Zero scanner-died ERROR, zero lftp error, `LFTP_STATES_SEEN=S` only (the fallback was never reached -- lftp was not mid-transfer at the moment of restart, consistent with the flat pre-1/pre-2 snapshot below).
+- A2: SIGTERM `18:08:45,173` (`22:08:45.173Z`); `Lftp process 69 did not exit on force close (state=D child processes=?); sending SIGKILL to its process group` `18:08:47,031` (`22:08:47.031Z`, +1.858s); `Lftp process 69 reaped after force close in 0.35s (group kill sent: yes)` `18:08:47,383` (`22:08:47.383Z`); Exited controller `18:08:47,441` (`22:08:47.441Z`, +2.268s). Zero scanner-died ERROR.
+- A1r: SIGTERM `18:16:20,440` (`22:16:20.440Z`); `Scanner process(es) stopped during shutdown` `18:16:20,806` (`22:16:20.806Z`, +0.366s); Exited controller `18:16:21,658` (`22:16:21.658Z`, +1.218s). Zero scanner-died ERROR, zero lftp error; `LFTP_STATES_SEEN=S` only -- the fallback was not needed this time even though lftp was genuinely mid-transfer (confirmed by the growing snapshot pair below and by live `sh`-comm lftp children present in the sampler's pre-restart sample, `OLD_LFTP_CHILD_PIDS=13984:sh,14012:sh,14013:sh,14015:sh`).
+- I3: SIGTERM `18:19:48,340` (`22:19:48.340Z`); `Scanner process(es) stopped during shutdown` `18:19:48,607` (`22:19:48.607Z`, +0.267s); Exited controller `18:19:49,420` (`22:19:49.420Z`, +1.080s). Zero scanner-died ERROR, zero lftp error.
+
+**Active-transfer proof:**
+
+- Foxtrot (A1, first run): released `2026-10-26 18:01:09,878` local (`22:01:09.878Z`), http 200 (`RELEASED_SSA123.Foxtrot.S01=1`). `model-foxtrot-pre-1.json`: downloading, local=1,331,396,608 / remote=2,516,582,400 (52.9%). `model-foxtrot-pre-2.json` (+4s): downloading, local=1,331,396,608 / remote=2,516,582,400 (52.9%, **not increasing** -- a flat read across the 4s gap, inside band but not proving motion). The restart was launched anyway because this session's first capture script omitted the required pre-launch growth gate (see Deviations); the resulting cycle is a legitimate, clean restart (PROCS_RESULT=ok, zero D-01 strings) but does not satisfy T-123-72's mid-transfer proof requirement, so it is not counted as this plan's active-transfer evidence. Post-restart: `model-foxtrot-post.json` shows `state=default`, local frozen at 1,665,302,528 (66.2%, download had continued for a time after the pre-2 snapshot and before the restart actually executed, then froze once held again).
+- Golf (A2): released `2026-10-26 18:08:08,719` local (`22:08:08.719Z`), http 200 (`RELEASED_SSA123.Golf.S01=1`). Growth-gated capture (corrected script, see Deviations) took 2 polling attempts: attempt 1 read local=167,742,430 both times (flat, rejected); attempt 2's pair, saved as `model-golf-pre-1.json`/`model-golf-pre-2.json`: local=167,742,430 (6.7%) -> local=334,399,335 (13.3%, increasing, in band). Restart launched immediately after the second snapshot, in the same `ssh` call (12.9s total call time, including the rejected first attempt's 4s poll). Post-restart: `model-golf-post.json` shows `state=default`, local frozen at 500,105,216 (19.9%).
+- Hotel (A1r): released `2026-10-26 18:15:16,414` local (`22:15:16.414Z`), http 200 (`RELEASED_SSA123.Hotel.S01=1`), staged at 4800 MiB per the harness-miss retry rule. Growth-gated capture found a valid pair on the first attempt: `model-hotel-pre-1.json` local=642,351,104 (12.8%) -> `model-hotel-pre-2.json` local=764,116,992 (15.2%, increasing, in band). Restart launched immediately after, in the same `ssh` call (6.5s total). Post-restart: `model-hotel-post.json` shows `state=default`, local frozen at 944,057,727 (18.8%).
+
+### lftp outcome (D-01 lftp half, gap round 2)
+
+| Cycle | COULD_NOT_TERMINATE | ERROR_STOPPING |
+|-------|----------------------|-----------------|
+| A1 (first run, GAP-2, SSA123.Foxtrot.S01) | 0 | 0 |
+| A2 (GAP-2, SSA123.Golf.S01) | 0 | 0 |
+| A1r (GAP-2, SSA123.Hotel.S01) | 0 | 0 |
+| A1 (123-12, pre-123-13-fix, SSA123.Delta.S01) | 3 | 1 |
+| A2 (123-12, pre-123-13-fix, SSA123.Echo.S01) | 3 | 1 |
+
+Reading: all three gap-round-2 active-transfer restarts, including the one that genuinely caught lftp in uninterruptible I/O and forced a process-group SIGKILL (A2), show zero of the old `Could not terminate the child` / `Error stopping lftp during controller exit` strings that fired 3 and 1 times on every pre-123-13 active cycle (123-12's A1/A2) -- the D-01 lftp half of GAP-2 is closed live.
+
+### Live root cause (GAP-2)
+
+| Cycle | LFTP_FORCE_KILL | LFTP_REAPED | WARNING state/children | Reap time | LFTP_STATES_SEEN | LFTP_ZOMBIE_SEEN | Children present pre-restart |
+|-------|-------------------|---------------|---------------------------|-------------|---------------------|---------------------|-------------------------------|
+| A1 (first run) | 0 | 0 | not triggered | n/a | S | 0 | 27100:sh,27128:sh,27129:sh,27131:sh (all reaped, PROCS_RESULT=ok) |
+| A2 | 1 | 1 | `state=D child processes=?` | 0.35s | S,D | 0 | 4231:sh,4249:sh,4250:sh,4253:sh (all reaped, PROCS_RESULT=ok) |
+| A1r | 0 | 0 | not triggered | n/a | S | 0 | 13984:sh,14012:sh,14013:sh,14015:sh (all reaped, PROCS_RESULT=ok) |
+
+Verdict on the 123-13 hypotheses:
+
+- **(a) uninterruptible I/O (state D) at SIGKILL time during an active transfer: confirmed live.** A2 is the first live confirmation of the D-state hypothesis specifically during a genuine active-transfer restart (123-16's I1/I2 confirmed it only on idle restarts): the app log explicitly shows `state=D` at the fallback WARNING (`Lftp process 69 did not exit on force close (state=D child processes=?); sending SIGKILL to its process group`), with four live `sh`-comm children present in the pre-restart sampler sample (pget workers, confirming a real transfer was in flight), and the sampler's own `LFTP_STATES_SEEN=S,D` independently agrees. The bounded fallback reaped it in 0.35s, far inside the 2.0s bound, and `PROCS_RESULT=ok` confirms lftp and all four children were gone from the old container generation before it exited -- no zombie, no survivor, no backgrounded lftp.
+- **(b) slow exit without D:** not observed in this round -- every cycle's lftp either stayed in `S` only (clean, fast close) or was seen in `D` and reaped promptly; no cycle showed a slow exit through a state other than `D`.
+- **(c) not exercised:** true for A1r. Despite A1r being a genuinely proven mid-transfer restart (growing, in-band snapshots immediately before launch, and live `sh` children present in the pre-restart sample), its lftp exited cleanly on pexpect's own first attempt -- the 123-13 fallback was never reached (`LFTP_FORCE_KILL=0`, `LFTP_STATES_SEEN=S` only). This is stated plainly as "not exercised in this run" and is not claimed as evidence against the D-state hypothesis; whether lftp is caught in state D at SIGKILL time is evidently probabilistic (also true for A1's first run, which was not provably mid-transfer at all and likewise never reached the fallback).
+- No lftp child survived, no lftp zombie, and no backgrounded lftp was seen on any of the three active cycles (`LFTP_ZOMBIE_SEEN=0`, `BG_LFTP_SEEN=0` on all three) -- the related `exit kill` risk identified in 123-13's diagnosis was not observed live.
+
+### Recorded-only signals
+
+| Cycle | LFTP_FORCE_KILL | LFTP_REAPED | EXITED_SUCCESSFULLY | RESTART_ELAPSED_S |
+|-------|-------------------|---------------|------------------------|----------------------|
+| A1 (first run) | 0 | 0 | 0 | 149 |
+| A2 | 1 | 1 | 0 | 165 |
+| A1r | 0 | 0 | 0 | 140 |
+| I3 | 0 | 0 | 0 | 148 |
+
+`EXITED_SUCCESSFULLY=0` on all four, consistent with the pre-existing 123-09 gap; no cycle's PASS depended on it.
+
+SIGTERM -> Exited controller, every cycle this round, compared with 123-12's pre-123-13-fix active cycles (A1 +2.113s, A2 +1.745s):
+
+| Cycle | SIGTERM -> Exited controller |
+|-------|-------------------------------|
+| A1 (first run) | +1.104s |
+| A2 | +2.268s |
+| A1r | +1.218s |
+| I3 | +1.080s |
+
+### Gap-round-2 verdict
+
+`CHECK_STATUS_GAP2=PASS` (identical to `GD2/state.env`'s `CHECK_STATUS=PASS`). I1, I2 (123-16), A2 and I3 passed on their first attempt; A1's first attempt completed cleanly but could not be counted as active-transfer proof (flat pre-1/pre-2 snapshot), so it was retried once as A1r (SSA123.Hotel.S01, 4800 MiB) per the harness-miss retry rule, which passed with valid mid-transfer proof. Per the plan's own counting rule (the last outcome line of the label or its single `r` rerun), A1r's PASS is what counts toward `CHECK_STATUS_GAP2`.
+
+Production: `prod-before-s2b.txt` and `prod-after-s2b.txt` byte-identical (`PROD_UNCHANGED_S2B`); production `seedsyncarr` was never restarted, edited or otherwise touched anywhere in this plan.
+
+Session teardown: `run-session-teardown.out` (session mode, not `--final`), first attempt:
+
+```
+RESTORED rate_limit ok
+RESTORED delay_seconds ok (not set this session)
+REMOVED synth roots count=3 refused=0
+RESTORED webhook_secret ok (not set this session)
+WAIT server/status ok
+CHECK webhook/sonarr Test http=200
+SANDBOX_RESTORED ok
+```
+
+Clean check (separate call, after teardown): no `SSA123.`-prefixed name under seedbox `/home/jules1651/v5test`; `/home/jules1651/ssa123-stage` absent; no `SSA123.`-prefixed name under sandbox `/volume1/data/v5test/torrents`; `.lftp.rate_limit` = `0` (equal to `RATE_LIMIT_L0=0`); `seedsyncarr-test` `.Config.Image` still equals `DEV_PIN_GAP2` exactly. The sandbox stays on `DEV_PIN_GAP2`; 123-07 restores `IMAGE_PIN_L0` (1.7.6) with `--final`.
+
+### Deviations (gap round 2 active cycles and teardown)
+
+- **A1's first attempt (Foxtrot) launched without a pre-launch growth gate (harness bug, auto-fixed, Rule 1/Rule 3).** The single-`ssh`-call script used to capture A1's two pre-restart snapshots and launch the restart cycle recorded `model-foxtrot-pre-1.json` and `model-foxtrot-pre-2.json` (4s apart) and printed both readings, but did not actually gate the restart launch on the required "local increased" check from the plan's own action text -- it launched unconditionally. The two snapshots happened to read the identical local size (1,331,396,608 bytes, 52.9%, in band but flat), which in hindsight was the correct signal to abort and retry rather than launch: the resulting cycle's own outcome (`LFTP_STATES_SEEN=S` only, `LFTP_FORCE_KILL=0`) independently confirms lftp was not actually mid-transfer at the moment of restart (the force-kill fallback is only reached when lftp is still running/closing uncleanly; an idle lftp session closes instantly via pexpect's own clean path). Fix: every subsequent capture script (A2, A1r) adds an explicit bounded poll loop inside the same single `ssh` call that only proceeds to launch once two consecutive 4s-apart readings show `state=downloading`, a strictly increasing `local`, and the ratio in the 5%-60% band; both A2 (2 attempts) and A1r (1 attempt) found a valid pair and launched correctly. A1's first-run files (`cycle-A1.env`, `procs-A1.env`, `log-cycle-A1.txt`, `model-foxtrot-pre-1/2.json`) are preserved unmodified as the original run's record, distinct from `cycle-A1r.env` etc.
+- **A1 harness-miss retry (SSA123.Hotel.S01, 4800 MiB), per the plan's own retry rule.** Because A1's first attempt could not be counted as active-transfer proof, it was retried once as `A1r` using a new synthetic root (`SSA123.Hotel.S01`, appended to `SYNTH_ROOTS`, staged at 4800 MiB rather than re-releasing `SSA123.Foxtrot.S01` a second time, consistent with the "at most one `RELEASED_<root>=1` per root" rule) exactly as the plan's text prescribes for an active cycle that could not produce valid mid-transfer proof. A1r passed with valid, growing, in-band snapshots.
+- **No second harness-miss occurred.** Both A2 and A1r obtained valid mid-transfer proof within their single retry budget (A2's growth-gate loop needed 2 of its allotted 15 polling attempts; A1r needed 1), so no second active-transfer root (which would have failed the check per the plan's "a second miss is a failed check" rule) was required.
+
+**Total deviations this section:** 1 auto-fixed (Rule 1/3: missing pre-launch growth gate in the first capture script, fixed before A2/A1r); 1 harness-miss retry consumed (A1 -> A1r, per the plan's own designed retry path, not a new deviation category).
+
+**Impact on plan:** None on the plan's truthfulness or scope. The flawed first A1 attempt is fully preserved and disclosed rather than silently discarded or silently counted as proof it is not; the corrected growth-gate loop produced genuine, defensible mid-transfer proof for both A2 and A1r, and A2 additionally delivered the single most important remaining live proof this phase needed: the D-state hypothesis confirmed during an actual active-transfer restart, reaped cleanly within the 123-13 bound.
