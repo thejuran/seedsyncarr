@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: "Completed 123-05-PLAN.md (phase gates + draft PR #137 + CI green + DEV_PIN); 123-06 next (live restart check)"
-last_updated: "2026-10-25T18:50:30.932Z"
-last_activity: 2026-10-25 -- Phase 123 plan 05 gated 123-01..04, pushed draft PR #137, CI green, DEV_PIN recorded
+stopped_at: "Completed 123-06 (live restart check FAIL: scanner false ERROR in 3/5 cycles); owner chose fix-in-phase -> /bm:plan-phase 123 --gaps; 123-07 on hold"
+last_updated: "2026-10-26T14:00:00.000Z"
+last_activity: 2026-10-26 -- Phase 123 live restart check failed on DEV_PIN; owner chose gap fix in phase
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 27
-  completed_plans: 25
+  completed_plans: 26
   percent: 33
 ---
 
@@ -116,6 +116,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 ### Blockers/Concerns
 
 - None at v1.8.0 roadmap creation. Watch-out for Phase 126's deploy gate: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — deploy the CI-published multi-arch `:1.8.0` image pinned by digest, never a local build and never `:dev`.
+- Phase 123 D-01 live check FAILED on DEV_PIN (123-06, 2026-10-25): the one-cycle SIGTERM recheck loses the race with the main-thread signal handler (0.67–1.55 s late live), so the false scanner ERROR still fires in 3/5 restarts. Owner chose fix-in-phase → `/bm:plan-phase 123 --gaps`. Open items for the gap round: run the SSA123 session teardown (not run in 123-06, seedbox staging not verified clean); sandbox `seedsyncarr-test` is still on DEV_PIN. 123-07 must not mark the live check passed while this is open.
 
 ### Quick Tasks Completed
 

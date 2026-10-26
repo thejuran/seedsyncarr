@@ -61,3 +61,25 @@ Evidence (RESEARCH.md): the kernel delivers the container's process-group SIGTER
 - `DEV_PIN=ghcr.io/thejuran/seedsyncarr@sha256:b7b894fa88b371eac4456389b7b7c78f26fb9f61f6501dae9729d1d584ed9f22`
 - Differs from the 1.7.6 production digest (`sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`) and from the Phase 122 pin (`sha256:f8204207ef199f183f6230b74bd8967397732a5919570b09dcec7dc3f2341689`)
 - Sandbox's expected restore pin: `IMAGE_PIN_L0=ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`
+
+## Sandbox re-pin (123-06)
+
+Capture dir (NAS, mode 0700, not committed): `/volume1/docker/v5test/results/life01-123-20261025T185719Z`.
+Sandbox `seedsyncarr-test` re-pinned from the 1.7.6 pin (`IMAGE_PIN_L0`) to DEV_PIN (`.Config.Image` = DEV_PIN, image id `sha256:c9f26006…`). App-log clock is America/New_York (UTC-4 on 2026-10-25), so log `15:19:47` = `19:19:47Z`.
+
+| Cycle | Kind | Restart (UTC) | Scanner ERROR | lftp "Could not terminate" | "stopped during shutdown" INFO | "Exited successfully" | Result |
+|-------|------|---------------|---------------|----------------------------|--------------------------------|-----------------------|--------|
+| I1 | idle | 19:19:38Z | 1 (19:19:47.355Z, SIGTERM caught 19:19:48.901Z, +1.55 s) | 0 | 0 | 0 | FAIL |
+| I2 | idle | 19:22:09Z | 0 | 0 | 1 (SIGTERM caught 19:22:15.890Z first) | 1 | pass (window); no CYCLE_I2 line was written to state.env |
+| A1 | active (SSA123.Alpha.S01) | — | 1 | 0 | 0 | 0 | FAIL |
+| A2 | active (SSA123.Bravo.S01) | 19:30:54Z | 1 (19:30:58.639Z, SIGTERM caught 19:30:59.307Z, +0.67 s) | 3 (after the scanner-error exit path) | 0 | 0 | FAIL |
+| I3 | idle | 19:33:28Z | 0 | 0 | 0 | 0 | FAIL (exited_successfully only) |
+
+CHECK_STATUS=FAIL (state.env).
+
+Diagnosis: the 123-04 one-cycle SIGTERM recheck (`ScanManager._check_process_health()`) assumes the main thread's SIGTERM handler (`Seedsyncarr.signal()` → `note_shutdown_requested()`) runs within milliseconds of tini's group SIGTERM. Live, it ran 0.67–1.55 s after the scanners died, longer than one 0.5 s ControllerJob cycle, so the grace expired and the ERROR + ScannerProcessDiedError fired (I1, A1, A2). When the handler ran first (I2) the new INFO path worked as designed. The lftp error in A2 followed the scanner-error exit path. The missing "Exited successfully" (I3) also appears in the 1.7.6 baseline (`BASELINE_EXITED_SUCCESSFULLY=0`), so it is pre-existing, not a Phase 123 regression.
+
+Production fingerprint: unchanged across both sessions (`PROD_UNCHANGED_S1`, `PROD_UNCHANGED_S2`).
+Session teardown: NOT run. The executor stalled before the teardown step. No `SSA123.` name under `/volume1/data/v5test/torrents`; seedbox staging is not yet verified clean. The sandbox remains on DEV_PIN and healthy, pending the gap round.
+
+Owner decision (123-06 Task 3, 2026-10-26): "Fix in this phase (Recommended)" (= option `fix-in-phase`). Route: `/bm:plan-phase 123 --gaps`.

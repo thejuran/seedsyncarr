@@ -149,7 +149,7 @@ Plans:
 
 **Wave 4**
 
-- [ ] 123-06-PLAN.md — Sandbox re-pin and live restart cycles (2 idle, 2 active-transfer, 1 idle) with production bracketing; failure gate to owner
+- [x] 123-06-PLAN.md — Sandbox re-pin and live restart cycles (2 idle, 2 active-transfer, 1 idle) with production bracketing; failure gate to owner
 
 **Wave 5**
 
@@ -203,7 +203,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
-| 123. Startup and Shutdown Lifecycle | 5/7 | In Progress|  |
+| 123. Startup and Shutdown Lifecycle | 6/7 | In Progress|  |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
