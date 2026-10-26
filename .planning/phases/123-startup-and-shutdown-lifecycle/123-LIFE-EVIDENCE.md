@@ -140,3 +140,73 @@ Quick suite (`123-VALIDATION.md`): `cd src/python && timeout 300 poetry run pyte
 - `DEV_PIN_GAP=ghcr.io/thejuran/seedsyncarr@sha256:991e4e1f28b90c6020c911a65c4814314aa5860682df8aa9e389e365d7872da6`
 - `OLD_DEV_PIN=ghcr.io/thejuran/seedsyncarr@sha256:b7b894fa88b371eac4456389b7b7c78f26fb9f61f6501dae9729d1d584ed9f22` (what the sandbox is on now)
 - Differs from the 123-05 DEV_PIN (`sha256:b7b894fa...`), the 1.7.6 production digest (`sha256:da6196e0...`) and the Phase 122 pin (`sha256:f8204207...`)
+
+## Gap-round live check (123-11/123-12)
+
+`GAP_CAPTURE_DIR=/volume1/docker/v5test/results/life01-123-gap-20261026T185841Z` (mode 0700, not committed). `OLD_CAPTURE_DIR=/volume1/docker/v5test/results/life01-123-20261025T185719Z`.
+
+Clock offset used throughout: the app log is America/New_York local time (EDT, UTC-4 on 2026-10-26, before the 2026-11-01 US DST change). Every quoted log line below is paired with its NAS UTC equivalent (local + 4h).
+
+### Outstanding 123-06 session teardown (seedbox verified clean)
+
+The SSA123 session teardown left open by 123-06 was run against `OLD_CAPTURE_DIR` (`bash OLD_D/teardown.sh OLD_D`, session mode, no `--final`), detached and polled. Output (`run-old-teardown.out`):
+
+```
+RESTORED rate_limit ok (not set this session)
+RESTORED delay_seconds ok (not set this session)
+REMOVED synth roots count=2 refused=0
+RESTORED webhook_secret ok (not set this session)
+WAIT server/status ok
+CHECK webhook/sonarr Test http=200
+SANDBOX_RESTORED ok
+```
+
+Pre-check (before running teardown) already showed the seedbox and sandbox were clean — the data-removal work was effectively done earlier, but the formal `SANDBOX_RESTORED ok` marker and `OLD_TEARDOWN=ok` record from 123-06 were missing until this run:
+- Seedbox `/home/jules1651/v5test` listing: no `SSA123.`-prefixed name
+- Seedbox `/home/jules1651/ssa123-stage`: absent
+- Sandbox `/volume1/data/v5test/torrents`: no `SSA123.`-prefixed name (contains only `Hacks.S01.XviD-AFG`, `Hacks.S03E07.1080p.BluRay.x264-BRAVERY`)
+- `/server/config/get` `.lftp.rate_limit` = `0`, equal to `OLD_D`'s `RATE_LIMIT_L0=0`
+- `seedsyncarr-test` `.Config.Image` = `OLD_DEV_PIN` (`sha256:b7b894fa...`) at check time
+- `/server/status` returned 200
+
+`OLD_TEARDOWN=ok` and `SEEDBOX_CLEAN=ok` recorded in `GD/state.env`. The post-teardown app-log window (`MT=6664` marker, `log-old-teardown.txt`) held only the two `Action.STOP` commands for the already-absent SSA123 roots and the webhook Test event — zero of any restart-related string, because this teardown step runs `compose start` (a no-op on an already-running container, not a restart) rather than a lifecycle restart.
+
+Production fingerprint before this plan's work (`prod-before-s0.txt`) was byte-identical to `OLD_D`'s last recorded production fingerprint (`prod-after-s2.txt`): no drift.
+
+### Re-pin: OLD_DEV_PIN -> DEV_PIN_GAP
+
+Preflight confirmed both the compose `seedsyncarr-test` image line and `.Config.Image` equal `OLD_DEV_PIN` before any edit. Compose-file inode preserved across the edit: `INODE_BEFORE=101505523`, `INODE_AFTER=101505523` (identical — inode-preserving awk-to-temp-then-cat edit confirmed).
+
+Readiness transcript:
+- Pre-deploy marker `M0=6669`
+- `compose pull seedsyncarr-test` then `compose up -d seedsyncarr-test`: container recreated (`Recreate` -> `Recreated` -> `Starting` -> `Started`)
+- Fresh `Starting SeedSyncarr` app-log line observed at `2026-10-26 15:15:27,167` local (`2026-10-26T19:15:27Z`), after the `M0` marker — `STARTING_OK=1`
+- `/server/status` HTTP 200 immediately after — `READY_OK=1`
+- 8 s settle, then `.Config.Image` verified equal to `DEV_PIN_GAP` exactly; `.Image` (image id) = `sha256:e85e11af8bf441bd7fa08d22d71f6ecc1db06256d6d1c2a811b0694837d42e7e`
+
+The `M0` window (the OLD_DEV_PIN build's shutdown, an informational detector sample, not gating) showed: `SCANNER_DIED=0`, `COULD_NOT_TERMINATE=0`, `CAUGHT_EXCEPTION_IN_JOB=0`, `ERROR_STOPPING=0`, `EXITED_SUCCESSFULLY=0`, `STARTING_SEEN=1`, `STOPPED_DURING_SHUTDOWN=1`, `ERROR_LINES=0`. This particular OLD_DEV_PIN shutdown happened to win the race (handler ran before the scanners were checked, same as I2 in the 123-06 table) — consistent with the previously documented probabilistic 3-of-5 failure rate on that build, not a contradiction of it.
+
+`prod-after-s1.txt` was byte-identical to `prod-before-s1.txt` (`PROD_UNCHANGED_S1`).
+
+### Idle cycles I1, I2 on DEV_PIN_GAP
+
+| Cycle | Kind | Restart (UTC) | RESTART_ELAPSED_S | SCANNER_DIED | COULD_NOT_TERMINATE | CAUGHT_EXCEPTION_IN_JOB | ERROR_STOPPING | STOPPED_DURING_SHUTDOWN | EXITED_SUCCESSFULLY (recorded only) | Result |
+|-------|------|----------------|--------------------|--------------|----------------------|--------------------------|-----------------|---------------------------|--------------------------------------|--------|
+| I1 (first run) | idle | 19:16:09Z | 124 | 0 | 0 | 0 | 0 | 1 | 0 | PASS |
+| I1 (rerun, see Deviations) | idle | 19:20:38Z | 146 | 0 | 0 | 0 | 0 | 1 | 1 | PASS |
+| I2 | idle | 19:24:02Z | 143 | 0 | 0 | 0 | 0 | 1 | 0 | PASS |
+
+Each row's `SIGTERM caught` -> `stopped during shutdown` (INFO) -> `Exited controller` sequence, with both clocks:
+
+- I1 (first run): SIGTERM `2026-10-26 15:16:15,700` (`19:16:15.700Z`); stopped-during-shutdown `15:16:16,047` (`19:16:16.047Z`, +0.35s); Exited controller `15:16:16,854` (`19:16:16.854Z`). No scanner-died ERROR.
+- I1 (rerun): SIGTERM `15:20:47,925` (`19:20:47.925Z`); stopped-during-shutdown `15:20:48,055` (`19:20:48.055Z`, +0.13s); Exited controller `15:20:48,901`; Exited successfully `15:21:02,080`. No scanner-died ERROR.
+- I2: SIGTERM `15:24:10,473` (`19:24:10.473Z`); stopped-during-shutdown `15:24:10,873` (`19:24:10.873Z`, +0.40s); Exited controller `15:24:11,704`. No scanner-died ERROR.
+
+All three restarts on `DEV_PIN_GAP` logged the clean `Scanner process(es) stopped during shutdown` INFO path (the 123-04/123-08 expected-stop path) and zero of `Scanner process(es) died unexpectedly`, `Could not terminate the child`, `Caught exception in job`, or `Error stopping` — the false alarm that fired on 3 of 5 cycles pre-fix (123-06) did not reproduce on any of these three live restarts post-fix.
+
+`prod-before-s2a.txt` and `prod-after-s2a.txt` were byte-identical (`PROD_UNCHANGED_S2A`).
+
+### Deviations (this section)
+
+- **Duplicate I1 launch (harness/operational, no product impact).** The first attempt to launch `restart-cycle.sh ... I1` used a `cd "$GD" && nohup ... &` shell form; on this NAS's remote command shell, a `&&`-joined command immediately followed by `&` does not actually detach (confirmed by a minimal `sleep` reproduction: the `&&` form blocks for the full duration, a `;`-joined form returns in ~0.2s). The executor's tool call was therefore auto-backgrounded by its own 120s local timeout while the remote I1 cycle was still genuinely running attached; believing the launch had not yet started, a second `I1` cycle was launched (correctly detached, with `;`) before realizing the first had already completed and recorded `CYCLE_I1=PASS`. Both runs are real, both are clean idle restarts with zero shutdown-error strings on `DEV_PIN_GAP` (see table above); the original run's window/env files were preserved as `cycle-I1-orig.env` / `log-cycle-I1-orig.txt` before the second run overwrote `cycle-I1.env` / `log-cycle-I1.txt`. All subsequent detached launches (I2, and onward) used the `;`-joined form and confirmed sub-second return before polling separately, per the plan's stall-prevention requirement. Production was not touched by this deviation; only `seedsyncarr-test` restarted an extra time.
+
