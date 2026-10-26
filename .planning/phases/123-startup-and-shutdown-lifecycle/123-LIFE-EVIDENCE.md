@@ -364,3 +364,85 @@ Quick suite: `cd src/python && timeout 300 poetry run pytest tests/unittests/tes
 - `DEV_PIN_GAP2=ghcr.io/thejuran/seedsyncarr@sha256:7f354c149f2df586e7045ca47e971448b57dc1459a1a450f7a12aca885471a0c`
 - `OLD_DEV_PIN_GAP2_ROUND=ghcr.io/thejuran/seedsyncarr@sha256:991e4e1f28b90c6020c911a65c4814314aa5860682df8aa9e389e365d7872da6` (DEV_PIN_GAP, what the sandbox is on now)
 - Differs from DEV_PIN (`sha256:b7b894fa...`), DEV_PIN_GAP (`sha256:991e4e1f...`), the 1.7.6 production digest (`sha256:da6196e0...`) and the Phase 122 pin (`sha256:f8204207...`)
+
+## Gap-round-2 live check (123-16/123-17)
+
+`GAP2_CAPTURE_DIR=/volume1/docker/v5test/results/life01-123-gap2-20261026T212618Z` (mode 0700, not committed). `PREV_CAPTURE_DIR=/volume1/docker/v5test/results/life01-123-gap-20261026T185841Z`.
+
+Clock offset used throughout: the app log is America/New_York local time (EDT, UTC-4 on 2026-10-26, before the 2026-11-01 US DST change). Every quoted log line below is paired with its NAS UTC equivalent (local + 4h).
+
+### Preflight (GAP-1 round left a clean state)
+
+- `PREV_CAPTURE_DIR/state.env`: `SESSION_TEARDOWN=ok`
+- `seedsyncarr-test` `.Config.Image` = `OLD_DEV_PIN` (`DEV_PIN_GAP`, `sha256:991e4e1f...`) before any edit
+- Seedbox `/home/jules1651/v5test` listing: no `SSA123.`-prefixed name (only `Hacks.*`, the owner's real torrents)
+- Seedbox `/home/jules1651/ssa123-stage`: absent
+- Sandbox `/volume1/data/v5test/torrents`: no `SSA123.`-prefixed name (`Hacks.S01.XviD-AFG`, `Hacks.S03E07.1080p.BluRay.x264-BRAVERY`)
+- `/server/config/get` `.lftp.rate_limit` = `0`, equal to `PREV_CAPTURE_DIR`'s `RATE_LIMIT_L0=0`
+- `/server/status` returned 200
+
+`PREFLIGHT=ok` recorded in `GD2/state.env`. Production fingerprint before this plan's work (`prod-before-s0.txt`) byte-identical to `PREV_CAPTURE_DIR`'s last recorded fingerprint (`prod-after-s2b.txt`): no drift.
+
+### Sampler probe (live, before any restart)
+
+`SAMPLER_MAX_S=3 bash GD2/proc-sampler.sh sample GD2 PROBE` ran in the foreground against the live `DEV_PIN_GAP` container, finishing in about 3s with no restart: 5 `S ` sample blocks, each with `init=2493` (non-zero), each containing exactly one `lftp`-comm process line:
+
+```
+P 3198 3187 3198 3198 S lftp
+```
+
+pid=3198, ppid=3187 (a pid also listed as `python`), pgid=3198, sid=3198 -- `pgid == sid == pid` confirms live that lftp is its own session leader (RESEARCH line 56). `SAMPLER_PROBE=ok` recorded.
+
+### Re-pin: OLD_DEV_PIN (DEV_PIN_GAP) -> DEV_PIN (DEV_PIN_GAP2)
+
+Preflight confirmed both the compose `seedsyncarr-test` image line and `.Config.Image` equal `OLD_DEV_PIN` before any edit. Compose-file inode preserved across the edit: `INODE_BEFORE=101505523`, `INODE_AFTER=101505523` (identical -- inode-preserving awk-to-temp-then-cat edit confirmed).
+
+Readiness transcript:
+- Pre-deploy marker `M0` set before the edit
+- `compose pull seedsyncarr-test` (full image pull, no cached layers reused for the final several, ~9 min wall time, `21:28:06Z` to `21:37:21Z`) then `compose up -d seedsyncarr-test`: container recreated (`Recreate` -> `Recreated` -> `Starting` -> `Started`)
+- Fresh `Starting SeedSyncarr` app-log line observed after the `M0` marker during the `starting_poll` step (started `21:40:57Z`) -- `STARTING_OK=1`
+- `/server/status` HTTP 200 on the first `ready_poll` check (`21:42:28Z`) -- `READY_OK=1`
+- 8s settle (`21:42:28Z` -> `21:42:36Z`), then `.Config.Image` verified equal to `DEV_PIN_GAP2` exactly; `.Image` (image id) = `sha256:c55ad0d216f7cbf74384623224f4e48e7224f52002dee026640305e63b3f229e`
+
+The `M0` window (the `DEV_PIN_GAP` build's shutdown during the recreate, an informational detector sample, not gating) showed: `SCANNER_DIED=0`, `COULD_NOT_TERMINATE=3`, `CAUGHT_EXCEPTION_IN_JOB=0`, `ERROR_STOPPING=1`, `EXITED_SUCCESSFULLY=0`, `STARTING_SEEN=1`, `STOPPED_DURING_SHUTDOWN=0`, `ERROR_LINES=1`, `LFTP_FORCE_KILL=0`, `LFTP_REAPED=0` -- consistent with the pre-GAP-2-fix `Lftp.exit()` behavior this plan is live-checking against (`DEV_PIN_GAP` lacks 123-13; it has no fallback to count `LFTP_FORCE_KILL`/`LFTP_REAPED` against, so the old `could_not_terminate`/`error_stopping` detector strings fire instead, exactly as expected of the unfixed build).
+
+`prod-after-s1.txt` was byte-identical to `prod-before-s1.txt` (`PROD_UNCHANGED_S1`).
+
+Launch-return time: the detached launch of `repin.sh` returned in 1.54s -- slightly over the plan's 1s target, but confirmed genuinely detached (not blocking) by the subsequent short polls, which showed the ~9min image pull progressing in the background while the launching `ssh` call itself had already returned; this is well under the many-minutes duration a non-detached block would have produced.
+
+### Idle cycles I1, I2 on DEV_PIN_GAP2
+
+| Cycle | Kind | Restart (UTC) | RESTART_ELAPSED_S | SCANNER_DIED | COULD_NOT_TERMINATE | CAUGHT_EXCEPTION_IN_JOB | ERROR_STOPPING | LFTP_FORCE_KILL (recorded) | LFTP_REAPED (recorded) | PROCS_RESULT | LFTP_STATES_SEEN | EXITED_SUCCESSFULLY (recorded only) | Result |
+|-------|------|----------------|--------------------|--------------|----------------------|--------------------------|-----------------|------------------------------|---------------------------|---------------|--------------------|---------------------------------------|--------|
+| I1 | idle | 21:43:19Z | 148 | 0 | 0 | 0 | 0 | 1 | 1 | ok | S,D | 0 | PASS |
+| I2 | idle | 21:47:34Z | 172 | 0 | 0 | 0 | 0 | 1 | 1 | ok | S,D | 0 | PASS |
+
+Both cycle launches returned in well under 1s (0.16s, 0.17s) using the corrected `;`-joined detached form.
+
+Shutdown sequence per cycle, both clocks:
+
+- I1: SIGTERM `2026-10-26 17:43:24,947` local (`21:43:24.947Z`); `Scanner process(es) stopped during shutdown` `17:43:25,439` (`21:43:25.439Z`, +0.492s); lftp `did not exit on force close (state=D child processes=?); sending SIGKILL to its process group` `17:43:26,646` (`21:43:26.646Z`); lftp `reaped after force close in 0.45s (group kill sent: yes)` `17:43:27,098` (`21:43:27.098Z`); `Exited controller` `17:43:27,113` (`21:43:27.113Z`). Zero scanner-died ERROR.
+- I2: SIGTERM `17:47:39,998` (`21:47:39.998Z`); stopped-during-shutdown `17:47:40,347` (`21:47:40.347Z`, +0.349s); lftp `did not exit on force close (state=D child processes=?); sending SIGKILL to its process group` `17:47:41,555` (`21:47:41.555Z`); lftp `reaped after force close in 0.84s (group kill sent: yes)` `17:47:42,397` (`21:47:42.397Z`); `Exited controller` `17:47:42,496` (`21:47:42.496Z`). Zero scanner-died ERROR.
+
+`prod-before-s2a.txt` and `prod-after-s2a.txt` were byte-identical (`PROD_UNCHANGED_S2A`).
+
+### D-state hypothesis settled live (both idle cycles)
+
+Both I1 and I2 directly confirm the 123-13/123-14 diagnosis instead of only inferring it from a quiet log: the app log explicitly shows `state=D` at the fallback warning on both idle restarts (`Lftp process <pid> did not exit on force close (state=D child processes=?)`), and the live process sampler independently confirms `LFTP_STATES_SEEN=S,D` with `PROCS_RESULT=ok` for both -- lftp and its children were actually reaped before the old container's init exited (`OLD_LFTP_CHILD_PIDS=` empty in both samples, i.e. lftp had no children at sampling time on an idle restart; `LFTP_ZOMBIE_SEEN=0`, `BG_LFTP_SEEN=0` for both). This settles the remaining open question from 123-13's diagnosis: lftp entering brief uninterruptible I/O (state D) at SIGKILL time is not confined to active-transfer restarts -- it reproduced on two consecutive idle restarts here -- and the bounded process-group-SIGKILL-and-reap fallback (123-13) handles it cleanly within the 2.0s bound on both (reaped in 0.45s and 0.84s respectively, well inside the bound). `123-17` still runs the active-transfer cycles, which is where GAP-2 was originally found.
+
+### Recorded-only signals
+
+| Cycle | LFTP_FORCE_KILL | LFTP_REAPED | EXITED_SUCCESSFULLY | RESTART_ELAPSED_S |
+|-------|-------------------|---------------|------------------------|----------------------|
+| I1 | 1 | 1 | 0 | 148 |
+| I2 | 1 | 1 | 0 | 172 |
+
+`EXITED_SUCCESSFULLY=0` on both, consistent with the pre-existing 123-09 gap (the line logs only once the whole shutdown sequence completes); neither cycle's PASS depended on it, per the 123-09 harness rule.
+
+### Production fingerprint
+
+Byte-identical across s0, s1 and s2a (`PROD_UNCHANGED_S1`, `PROD_UNCHANGED_S2A`); production `seedsyncarr` was never restarted, edited or otherwise touched anywhere in this plan.
+
+### Deviations (this section)
+
+- **Re-pin launch-return time 1.54s, over the 1s target (harness/operational, no product impact).** The detached launch of `repin.sh` (`cd "$GD2"; nohup bash ... &`) returned in 1.54s rather than well under 1s. This was not treated as a failed detach (per the plan's rule, a failed detach would show as the ssh call blocking for the backgrounded command's full multi-minute duration instead); the subsequent polls confirmed the image pull was progressing in the background exactly as expected, so the extra ~0.5s is attributed to ssh connection-setup overhead, not a blocking shell form. Both idle-cycle launches (I1, I2) returned in 0.16s/0.17s, well under 1s, confirming the `;`-joined form works correctly on this NAS's remote shell.
