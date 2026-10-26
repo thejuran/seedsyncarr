@@ -130,7 +130,7 @@ Plans:
   3. The existing per-component controller cleanup, the auto-delete shutdown guards (`threading.Event` in-flight guard under `__auto_delete_lock`) and the established lock ordering are unchanged, and their existing tests stay green
   4. A clean startup and a clean shutdown behave exactly as before (no new sleeps, no lifecycle-framework rewrite)
 
-**Plans**: 12 plans (7 + 5 gap-closure)
+**Plans**: 17 plans (7 + 10 gap-closure)
 
 Plans:
 **Wave 1**
@@ -168,9 +168,26 @@ Plans:
 
 - [x] 123-12-PLAN.md — Active-transfer cycles A1/A2, idle I3, CHECK_STATUS, session teardown; failure gate to owner
 
-**Wave 9**
+**Wave 9** *(gap closure, GAP-2: lftp `Could not terminate the child` on active-transfer restarts in 123-12; owner chose fix-in-phase)*
 
-- [ ] 123-07-PLAN.md — Restart evidence (gap round), deferred findings, `--final` sandbox restore with fresh-session check, Phase 123 verdict, owner review
+- [ ] 123-13-PLAN.md — TDD: Lftp.exit() reaps an lftp child that outlives pexpect's force close (process-group SIGKILL, bounded 2 s on an injected clock, WARNING not ERROR, still raises if it never dies); `exit kill`; idle path unchanged
+- [ ] 123-14-PLAN.md — Restart-cycle harness: process sampler proving lftp and its children are reaped before the old container stops (`procs_*` fail rule), lftp fallback counts recorded
+
+**Wave 10**
+
+- [ ] 123-15-PLAN.md — Gap-round-2 phase gates (incl. Gate 5b: the one owner-flagged bounded wait), push to draft PR #137, CI green, DEV_PIN_GAP2 digest
+
+**Wave 11**
+
+- [ ] 123-16-PLAN.md — New capture dir, preflight, sampler probe, re-pin sandbox DEV_PIN_GAP -> DEV_PIN_GAP2, idle cycles I1/I2
+
+**Wave 12**
+
+- [ ] 123-17-PLAN.md — Active-transfer cycles A1 (Foxtrot) / A2 (Golf), idle I3, live lftp root cause, CHECK_STATUS, session teardown; failure gate to owner
+
+**Wave 13**
+
+- [ ] 123-07-PLAN.md — Restart evidence (gap round 2), deferred findings, `--final` sandbox restore with fresh-session check, Phase 123 verdict, owner review
 
 ### Phase 124: Model-Stream Overflow Recovery
 
