@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: Completed 123-11-PLAN.md (gap teardown closed out, sandbox re-pinned to DEV_PIN_GAP, idle cycles I1/I2 PASS); 123-12 next (active-transfer cycles A1/A2, I3, session teardown --final, failure gate)
-last_updated: "2026-10-26T19:30:51.487Z"
-last_activity: "2026-10-26 -- Phase 123 plan 10 gated 123-01..04 + 123-08 (9 gates), pushed to draft PR #137 (reused), CI run 409 green, DEV_PIN_GAP recorded"
+stopped_at: "Completed 123-12 (GAP-1 closed live; lftp 'Could not terminate the child' on active-transfer restarts = GAP-2); owner chose fix-in-phase -> /bm:plan-phase 123 --gaps; 123-07 on hold"
+last_updated: "2026-10-26T20:15:00.000Z"
+last_activity: "2026-10-26 -- Phase 123 gap-round live check: scanner false ERROR gone in 6/6 restarts; lftp error remains on A1/A2; owner chose second gap fix"
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 32
-  completed_plans: 30
+  completed_plans: 31
   percent: 33
 ---
 
@@ -118,7 +118,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 ### Blockers/Concerns
 
 - None at v1.8.0 roadmap creation. Watch-out for Phase 126's deploy gate: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — deploy the CI-published multi-arch `:1.8.0` image pinned by digest, never a local build and never `:dev`.
-- Phase 123 D-01 live check FAILED on DEV_PIN (123-06, 2026-10-25): the one-cycle SIGTERM recheck loses the race with the main-thread signal handler (0.67–1.55 s late live), so the false scanner ERROR still fires in 3/5 restarts. Owner chose fix-in-phase → `/bm:plan-phase 123 --gaps`. Open items for the gap round: run the SSA123 session teardown (not run in 123-06, seedbox staging not verified clean); sandbox `seedsyncarr-test` is still on DEV_PIN. 123-07 must not mark the live check passed while this is open.
+- Phase 123 D-01 live check: GAP-1 (scanner false ERROR) CLOSED live on DEV_PIN_GAP (123-11/12, 2026-10-26, 0 occurrences in 6 restarts). GAP-2 OPEN: lftp `Error stopping lftp during controller exit` / `Could not terminate the child` on both active-transfer restarts (A1, A2); contained, app restarts normally. Owner chose fix-in-phase → `/bm:plan-phase 123 --gaps`. Sandbox `seedsyncarr-test` is on DEV_PIN_GAP, teardown done (SANDBOX_RESTORED ok). 123-07 must not mark the live check passed while GAP-2 is open.
 
 ### Quick Tasks Completed
 
