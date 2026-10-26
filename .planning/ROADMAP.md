@@ -179,7 +179,7 @@ Plans:
 
 **Wave 11**
 
-- [ ] 123-16-PLAN.md — New capture dir, preflight, sampler probe, re-pin sandbox DEV_PIN_GAP -> DEV_PIN_GAP2, idle cycles I1/I2
+- [x] 123-16-PLAN.md — New capture dir, preflight, sampler probe, re-pin sandbox DEV_PIN_GAP -> DEV_PIN_GAP2, idle cycles I1/I2
 
 **Wave 12**
 
@@ -237,7 +237,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
-| 123. Startup and Shutdown Lifecycle | 14/17 | In Progress|  |
+| 123. Startup and Shutdown Lifecycle | 15/17 | In Progress|  |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
