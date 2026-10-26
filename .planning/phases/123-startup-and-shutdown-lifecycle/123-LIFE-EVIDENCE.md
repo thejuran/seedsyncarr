@@ -467,6 +467,75 @@ Live root-cause verdict (from "### Live root cause (GAP-2)" above): **(a) confir
 
 Plain statement of proof: the bounded process-group SIGKILL-and-reap fallback itself (123-13: the idle no-op, the fallback reap with and without a group kill, the 2.0s bound and honest raise, `ProcessLookupError` tolerance, `exit kill`, the `/proc` diagnostic parser) is **unit-proven**, with fakes, no real processes or sleeps. That a real active-transfer restart on the shipping build reaches zero `COULD_NOT_TERMINATE`/`ERROR_STOPPING` occurrences, that lftp and its children are actually gone before the old container exits, and the actual `/proc` state letter at the fallback are **live-proven only** (D-02) -- confirmed in this round by A2's genuine `state=D` catch with four live pget children reaped cleanly within the bound.
 
+### Final teardown (`teardown.sh --final`)
+
+Preflight (read-only, over `ssh nas`), all confirmed before any restore action: `seedsyncarr-test` `.Config.Image` equal to `GD2`'s `DEV_PIN` (`DEV_PIN_GAP2`, `sha256:7f354c149f...`); `GD2/state.env` `SESSION_TEARDOWN=ok` (123-17); no `SSA123.`-prefixed name on the seedbox (`/home/jules1651/v5test`) or under the sandbox torrents dir; `/home/jules1651/ssa123-stage` absent; `/server/config/get` `.lftp.rate_limit` = `0`, equal to `RATE_LIMIT_L0`; `/server/status` 200. Production fingerprint recorded to `GD2/prod-final-before.txt` (container id, image digest, config image, state, StartedAt `2026-10-23T07:04:18Z` -- unchanged since before this phase). App-log line-count marker `MF=7025` recorded against the host-mounted log file.
+
+Restore: `bash GD2/teardown.sh --final GD2` was launched detached and polled with short bounded `ssh` calls (per the stall-prevention protocol). Transcript:
+
+```
+RESTORED rate_limit ok (not set this session)
+RESTORED delay_seconds ok (not set this session)
+REMOVED synth roots count=3 refused=0
+STOP seedsyncarr-test ok
+RESTORED webhook_secret ok (len=0)
+ seedsyncarr-test Pulling
+ seedsyncarr-test Pulled
+ Container seedsyncarr-test  Recreate
+ Container seedsyncarr-test  Recreated
+ Container seedsyncarr-test  Starting
+ Container seedsyncarr-test  Started
+WAIT server/status ok
+CHECK webhook/sonarr Test http=200
+CHECK image=restored ok
+SANDBOX_RESTORED ok
+```
+
+Last line `SANDBOX_RESTORED ok` on the first attempt; no re-run or harness fix was needed.
+
+Final-stop detector sample (the `DEV_PIN_GAP2` container's own shutdown during this restore's `compose stop` step, informational, not gating -- the window after the `MF=7025` marker, saved to `GD2/log-final-stop.txt`, secret-scanned clean): `Caught signal SIGTERM` `2026-10-26 19:49:06,332` local (`23:49:06.332Z`); `Scanner process(es) stopped during shutdown: RemoteScanner (exitcode -15), LocalScanner (exitcode -15), ActiveScanner (exitcode -15)` `19:49:06,539`; `Exited controller` `19:49:07,413`; `Exited successfully` `19:49:10,374` (present this time -- a graceful `compose stop` gives the app its full shutdown window, unlike the restart-cycle harness's `docker restart`, which can hit docker's 10s timeout first per the 123-09 harness note). Counts: SCANNER_DIED=0, COULD_NOT_TERMINATE=0, CAUGHT_EXCEPTION_IN_JOB=0, ERROR_STOPPING=0, EXITED_SUCCESSFULLY=1, STOPPED_DURING_SHUTDOWN=1, ERROR_LINES=0, LFTP_FORCE_KILL=0, LFTP_REAPED=0 -- a clean shutdown sample, zero D-01 strings.
+
+### Fresh-session restore check
+
+A second, independent `ssh nas` call (no state carried over from the restore call above) confirmed:
+- `.Config.Image` == `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e` (`IMAGE_PIN_L0`) exactly
+- The `docker-compose.yml` `seedsyncarr-test` image line equals the same `IMAGE_PIN_L0` pin exactly (`grep -n` match on line 20)
+- `GET /server/status` returned `200`
+- No `SSA123.`-prefixed name on the seedbox (`/home/jules1651/v5test`) or in the sandbox torrents dir (both greps returned 0 matches)
+
+### Production unchanged
+
+`GD2/prod-final-before.txt` and `GD2/prod-final-after.txt` (container id, image digest, config image, state, StartedAt) are byte-identical (`diff` empty). Production `seedsyncarr` was never restarted, stopped, edited or otherwise touched anywhere in this plan or in any prior plan of this phase -- `StartedAt` reads `2026-10-23T07:04:18.591254939Z` in both readings, well before this phase began.
+
+## Phase 123 verdict
+
+| Item | Decision / criterion | Evidence | Verdict |
+|------|----------------------|----------|---------|
+| LIFE-01 (SC1) | A failure partway through startup stops and joins everything already started, then the original failure surfaces unchanged | 123-01 `test_setup_exception_propagates` + 6 more (`647eef0`→`277257f`); 123-02 `test_partial_start_third_process_fails_stops_started`, `test_partial_start_second_process_fails_stops_started` (`cbf6dcd`→`04eac94`); 123-03 `test_partial_start_file_ops_fails_stops_started`, `test_partial_start_mp_logger_fails_stops_started`, `test_partial_start_scanner_fails_exits_lftp_only` (`1908ed8`→`29dd4c4`) | PASS |
+| LIFE-02 (SC2) | A failure during cleanup of one component does not skip cleanup of the rest; the first error is logged | 123-02 `test_cleanup_isolation_terminate_error_continues`, `test_cleanup_isolation_join_error_continues`, `test_stop_cleanup_isolation_release_error_continues`, `test_partial_start_cleanup_error_does_not_mask_original`; 123-03 `test_partial_start_cleanup_error_does_not_mask_original`, `test_stop_without_start_is_safe` (`Controller.exit()`'s per-component loop, pinned byte-identical) | PASS |
+| SC3 (existing cleanup/guards/lock order unchanged) | `Controller.exit()`, the auto-delete shutdown guard and lock ordering are preserved unchanged | 123-05 Gate 6 (`Controller.exit()` byte-identical BASE vs HEAD across every plan through 123-15; `test_auto_delete.py`+`test_auto_delete_rearm.py` = 161 passed, 0 failed at every gate run; `__shutdown_event.set()` count = 3 throughout) | PASS |
+| SC4 (no new sleeps, no lifecycle-framework rewrite) | No new unconditional sleep; no new lifecycle abstraction | 123-05 Gate 5 (0 new `sleep(` lines in non-test src, both DEFER-SHUTDOWN sleeps kept); 123-15 Gate 5b (exactly one new owner-flagged bounded wait, see below); no new lifecycle class/framework introduced anywhere in the 18-file scope diff | PASS (with the one owner-approved exception below) |
+| D-01 scanner half | A normal restart logs no false "Scanner process(es) died unexpectedly" ERROR / `ScannerProcessDiedError` | Unit: 123-04 `test_shutdown_aware_dead_scanners_after_request_do_not_raise` + 7 more (`2c87bcf`→`c69559c`); 123-08 `test_sigterm_grace_defaults` + 8 more, the 10.0s monotonic-clock grace window (`17387a6`→`1ffc601`). Live: the GAP-1 round (123-11/123-12) showed `SCANNER_DIED=0`/`CAUGHT_EXCEPTION_IN_JOB=0` across all 6 restarts; this plan's gap-round-2 cycles I1, I2, A1, A2, A1r, I3 on `DEV_PIN_GAP2` show the same (0 across all 6). The 123-06 round on plain `DEV_PIN` (123-04's fix only, no GAP-1 grace window yet) **failed live** (3 of 5 cycles) because the one-cycle recheck lost the race against the real main-thread SIGTERM handler by up to 1.55s -- fixed by 123-08's 10.0s deadline, confirmed held ever since | PASS |
+| D-01 lftp half | A normal restart during an active transfer logs no `Error stopping lftp during controller exit` / `Could not terminate the child` | Unit: 123-13 `test_idle_close_succeeds_no_poll_no_signal_no_wait` + 10 more, the bounded process-group SIGKILL-and-reap fallback (`01045b8`→`e03e3bd`). Live: this plan's gap-round-2 active cycles A1, A2, A1r on `DEV_PIN_GAP2` all show `COULD_NOT_TERMINATE=0`/`ERROR_STOPPING=0` with `PROCS_RESULT=ok`; A2 genuinely triggered the fallback (lftp caught `state=D` with 4 live pget children, reaped in 0.35s). The GAP-1 round (123-11/123-12, scanner fix only, no GAP-2 fallback yet) **failed live** on this half (both active cycles A1/A2 showed `COULD_NOT_TERMINATE=3`/`ERROR_STOPPING=1`) -- fixed by 123-13, confirmed closed live by this plan (see "### D-01 lftp half" above) | PASS |
+| SC4 owner flag | The one bounded wait in `Lftp.exit()`'s reap fallback | 123-15 Gate 5b: exactly one new `time.sleep` reference (the `waiter` parameter default), never reached on a clean shutdown (`test_idle_close_succeeds_no_poll_no_signal_no_wait`), owner-approved in advance (123-13-PLAN.md, verbatim "Allow it (Recommended)") | PASS (owner-approved exception) |
+| D-02 (unit-proven vs. live-proven split) | Every fix states which part is proven by a fake-based unit test and which only by the live restart check | See "## D-02 split" (123-01..04), "### D-02 split (gap round)" (123-08), "### D-02 split (gap round 2)" (123-13) above -- each lists the unit-proven and live-proven halves explicitly | PASS |
+| D-03 | Keep the DEFER-SHUTDOWN sleep unless shown to cause/contribute to the restart errors | "## D-03 decision" above: both sleep sites byte-identical throughout the phase; the kernel delivers process-group SIGTERM to forked children independently of the sleep; the self-triggered path, not the sleep-gated path, ran `Lftp.exit()` in the originally observed failing case. Also recorded in `deferred-items.md` | PASS (kept, no code change) |
+| D-04/D-05 | A startup failure stops/joins what started, then surfaces through the existing bounded auto-restart (RECOV-01); no degraded mode; no new "exit the container" path | 123-01 `ControllerJob.setup()` wraps non-`AppError` exceptions in `ControllerError` routed to the existing RECOV-01 `except AppError` main-loop path; 123-03's per-component cleanup loop always stops everything already started before re-raising; no new code path exits the process or runs with a subset of components started | PASS |
+| D-06 | The original startup/shutdown exception is never masked by a secondary cleanup exception | 123-01 `test_setup_error_not_masked_by_cleanup_error`, `test_cleanup_error_surfaces_on_clean_run`; 123-02/123-03's `test_partial_start_cleanup_error_does_not_mask_original` (both components); the unchanged `if self.exc_info is None: ...` guard | PASS |
+| D-07 | A short live restart check on the NAS sandbox, a few `docker restart` cycles each logging no lftp/scanner shutdown errors and coming back up normally | 17 live restart cycles total across this phase (123-06: 5, failed; 123-11/123-12: 6, failed on lftp half; 123-16/123-17/this plan: 6, all PASS) on three successive builds (`DEV_PIN`, `DEV_PIN_GAP`, `DEV_PIN_GAP2`); every gap-round-2 cycle shows `/server/status` 200 and `SCAN_OK=1` (a fresh remote scan ran after each restart) | PASS |
+
+**Phase 123 live restart check: PASSED**
+
+Basis: the gap-round-2 `CHECK_STATUS` (`GD2/state.env`) = `PASS`, and every one of the six gap-round-2 cycle rows (`CYCLE_I1`, `CYCLE_I2`, `CYCLE_A1`, `CYCLE_A2`, `CYCLE_A1r`, `CYCLE_I3`) reads `PASS`. No 123-17 failure-gate decision was needed (the gate was not triggered).
+
+### Behaviour notes
+
+A non-`AppError` controller start failure now reaches the UI as the generic "Controller failed to start..." message, with details in the server log. A `WebAppJob` `setup()` failure now surfaces through the main loop as a `WebAppJob` `execute()` failure already does (practically unreachable). A scanner that dies by SIGTERM with no app shutdown under way is now reported up to 10 s later than before (the GAP-1 grace window); SIGKILL/OOM and other deaths are still reported at once. When lftp survives pexpect's force close (seen only during active transfers, and twice on idle restarts in this round), shutdown now waits up to 2 s more while lftp is hard-killed and collected, and logs a WARNING instead of an ERROR. lftp is told `exit kill`, so it never moves itself to the background with unfinished jobs.
+
+### Sandbox and production state
+
+The sandbox is restored to `IMAGE_PIN_L0` (1.7.6), verified in an independent fresh `ssh nas` session (`.Config.Image`, the compose line, `/server/status` 200, no `SSA123.` material anywhere). Production `seedsyncarr` is unchanged (byte-identical fingerprint before and after this plan's work, and across every plan in this phase; never restarted, stopped or edited). The Phase 123 PR (#137) remains draft, not merged -- merging is a separate owner decision after this verdict.
+
 ### Owner flag: success criterion 4
 
 Gate 5b's single matched line: `waiter: Callable[[float], None] = time.sleep,` — the `waiter` parameter default in `Lftp.__init__`. In plain words: this is the one bounded wait (at most 2.0 seconds total, polling every 0.05 seconds) added to `Lftp.exit()`. It runs only when lftp has already refused to die after pexpect's own kill sequence (SIGHUP, SIGCONT, SIGINT, SIGKILL, each with its own 0.1s check) has already failed and raised — which, per the 123-12 live evidence, only happened during active transfers, never on an idle restart. A normal shutdown never reaches this wait at all (`test_idle_close_succeeds_no_poll_no_signal_no_wait` pins zero waiter/kill_group/isalive calls on a clean close). The alternative without any wait — a blocking `os.waitpid(pid, 0)` — was rejected because it is unbounded if the child stays in uninterruptible I/O (state D): it could hang the in-process controller restart (RECOV-01) indefinitely, which is a worse outcome than a documented, bounded wait that, if exceeded, still raises `LftpError` so the leak surfaces honestly. The owner approved exactly this one bounded wait in advance (123-13-PLAN.md `<owner_decision>`, verbatim: "Allow it (Recommended)"); Gate 5b (this plan) confirms no other new sleep exists anywhere in the GAP-2 delta.
