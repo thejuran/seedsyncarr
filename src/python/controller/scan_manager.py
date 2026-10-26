@@ -1,6 +1,7 @@
 import signal
 import threading
-from typing import List, Optional, Tuple
+import time
+from typing import Callable, List, Optional, Tuple
 
 from common import Context, MultiprocessingLogger, AppError
 from .scan import ScannerProcess, ScannerResult, ActiveScanner, LocalScanner, RemoteScanner
@@ -28,15 +29,23 @@ class ScanManager:
     methods can be called from any thread.
     """
 
+    # GAP-1: docker's default stop timeout. The live main-thread SIGTERM
+    # handler latency was measured at 0.67-1.55 s (123-06), so the grace
+    # window must comfortably exceed that while still being bounded by the
+    # same deadline docker itself uses before escalating to SIGKILL.
+    _SIGTERM_SHUTDOWN_GRACE_IN_SECS = 10.0
+
     def __init__(self,
                  context: Context,
-                 mp_logger: MultiprocessingLogger):
+                 mp_logger: MultiprocessingLogger,
+                 clock: Callable[[], float] = time.monotonic):
         """
         Create the scan manager with all scanner processes.
 
         Args:
             context: Application context with config
             mp_logger: Multiprocessing logger for child processes
+            clock: monotonic clock, injectable for tests
         """
         self.__context = context
         self.logger = context.logger.getChild("ScanManager")
@@ -85,6 +94,7 @@ class ScanManager:
         self.__remote_scan_process.set_multiprocessing_logger(mp_logger)
 
         self.__started = False
+        self.__clock = clock
 
         # D-01: set by the main thread's SIGTERM/SIGINT handler (via
         # Controller.note_shutdown_requested()) before it raises ServiceExit.
@@ -92,11 +102,11 @@ class ScanManager:
         # scanner is an expected stop or a genuine failure -- it never stops
         # anything itself and is independent of __started.
         self.__shutdown_requested = threading.Event()
-        # D-01: set when an all-SIGTERM death has already been given one
-        # extra cycle to resolve (see _check_process_health()); cleared
-        # implicitly whenever the manager is stopped and started again via a
-        # fresh ScanManager instance.
-        self.__sigterm_recheck_pending = False
+        # GAP-1: records the clock reading (self.__clock()) when an
+        # all-SIGTERM death was first seen without a shutdown request yet;
+        # cleared implicitly whenever the manager is stopped and started
+        # again via a fresh ScanManager instance.
+        self.__sigterm_first_seen: Optional[float] = None
 
     def note_shutdown_requested(self) -> None:
         """
@@ -247,25 +257,35 @@ class ScanManager:
         This catches the case where a process is killed externally (OOM, SIGKILL)
         and no exception reaches the parent process.
 
-        D-01: the container runs under `tini -g`, which forwards the
-        container's SIGTERM to the whole process group. The forked scanner
-        children run SIGTERM as SIG_DFL, so the kernel kills them at the
-        same instant the main process receives the signal -- a few
-        milliseconds before the main thread's own handler runs and marks
-        shutdown requested (note_shutdown_requested()). Two cases follow
-        from that race:
+        GAP-1 (D-01, D-07): the container runs under `tini -g`, which forwards
+        the container's SIGTERM to the whole process group. The forked scanner
+        children run SIGTERM as SIG_DFL, so the kernel kills them the instant
+        the main process receives the signal. The main thread's own handler
+        (note_shutdown_requested()) does not necessarily run anywhere near
+        that instant: CPython only runs Python-level signal handlers on the
+        main thread, at its next bytecode boundary, and live measurement
+        (123-06) found that handler running 0.67 to 1.55 s after the
+        scanners died -- long enough to lose a one-ControllerJob-cycle grace.
+        The decision is therefore made on a monotonic-clock window instead of
+        a cycle count, so it does not depend on handler latency:
 
           (a) Shutdown is already requested: every dead process here is an
               expected stop, regardless of exitcode (INFO, no raise).
           (b) Shutdown is NOT yet requested, but every dead process was
-              killed by SIGTERM: this is almost certainly the same race
-              observed one cycle early, before the handler ran. Give it
-              exactly one extra cycle to resolve rather than raising
-              immediately -- if shutdown is requested by the next check,
-              case (a) applies; otherwise this was a genuine SIGTERM-only
-              death and the error below fires on the next cycle. Any other
+              killed by SIGTERM: this is the same race as (a), just not yet
+              resolved. The deadline is fixed at the first sighting and is
+              _SIGTERM_SHUTDOWN_GRACE_IN_SECS (10.0 s, docker's default stop
+              timeout) wide, so on a real `docker stop`/`docker restart`
+              either the handler runs inside the window or docker SIGKILLs
+              the container when the window ends -- the false ERROR cannot
+              fire on that path whatever the handler latency. Any other
               death (OOM's SIGKILL, a non-zero exit, a mix that includes a
-              non-SIGTERM code) is never given this grace period.
+              non-SIGTERM code) is never given this grace period and raises
+              on the same check it is first seen.
+
+        Documented cost: a genuine SIGTERM-only death with no shutdown
+        request surfaces up to 10 s plus one ControllerJob cycle later than
+        before this change.
         """
         dead = []
         for name, process in (
@@ -289,14 +309,20 @@ class ScanManager:
             self._terminate_and_join_all()
             return
 
-        if (not self.__sigterm_recheck_pending
-                and all(process.exitcode == -signal.SIGTERM for _, process in dead)):
-            self.__sigterm_recheck_pending = True
-            names = ", ".join(name for name, _ in dead)
-            self.logger.debug(
-                "Scanner process(es) ended by SIGTERM: {}; re-checking next cycle".format(names)
-            )
-            return
+        if all(process.exitcode == -signal.SIGTERM for _, process in dead):
+            now = self.__clock()
+            if self.__sigterm_first_seen is None:
+                self.__sigterm_first_seen = now
+                names = ", ".join(name for name, _ in dead)
+                self.logger.debug(
+                    "Scanner process(es) ended by SIGTERM: {}; waiting up to {} s "
+                    "for the shutdown request before reporting".format(
+                        names, self._SIGTERM_SHUTDOWN_GRACE_IN_SECS
+                    )
+                )
+                return
+            if now - self.__sigterm_first_seen < self._SIGTERM_SHUTDOWN_GRACE_IN_SECS:
+                return
 
         self.__started = False
         names = ", ".join(name for name, _ in dead)

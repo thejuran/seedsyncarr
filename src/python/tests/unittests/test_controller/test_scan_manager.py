@@ -1,7 +1,19 @@
+import inspect
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 
 from controller import ScanManager, ScannerProcessDiedError
+
+
+class _FakeClock:
+    """Deterministic monotonic-clock stand-in for GAP-1 SIGTERM grace tests."""
+
+    def __init__(self, now: float = 0.0):
+        self.now = now
+
+    def __call__(self) -> float:
+        return self.now
 
 
 class TestScanManager(unittest.TestCase):
@@ -529,7 +541,7 @@ class TestScanManager(unittest.TestCase):
         mock_remote_process.join.assert_called_once()
         manager.logger.exception.assert_called_once()
 
-    # --- D-01: shutdown-aware health check and SIGTERM one-cycle recheck ---
+    # --- D-01 / GAP-1: shutdown-aware health check and time-bounded SIGTERM grace ---
 
     @patch('controller.scan_manager.ScannerProcess')
     @patch('controller.scan_manager.ActiveScanner')
@@ -608,16 +620,24 @@ class TestScanManager(unittest.TestCase):
 
         manager.logger.error.assert_not_called()
 
+    def test_sigterm_grace_defaults(self):
+        """GAP-1: ScanManager defaults clock to time.monotonic and fixes
+        the SIGTERM grace window at 10.0 s, docker's default stop
+        timeout."""
+        params = inspect.signature(ScanManager.__init__).parameters
+        self.assertIs(params["clock"].default, time.monotonic)
+        self.assertEqual(ScanManager._SIGTERM_SHUTDOWN_GRACE_IN_SECS, 10.0)
+
     @patch('controller.scan_manager.ScannerProcess')
     @patch('controller.scan_manager.ActiveScanner')
     @patch('controller.scan_manager.LocalScanner')
     @patch('controller.scan_manager.RemoteScanner')
-    def test_shutdown_aware_sigterm_death_rechecked_once_then_raises(
+    def test_sigterm_death_not_reported_within_grace_across_many_cycles(
             self, mock_remote_scanner, mock_local_scanner,
             mock_active_scanner, mock_scanner_process):
-        """D-01: without a shutdown request, an all-SIGTERM death is
-        re-checked once (covers the few-millisecond gap before the main
-        thread's handler runs) before raising on the next cycle."""
+        """GAP-1: without a shutdown request, an all-SIGTERM death stays
+        unreported for the whole 10.0 s grace window, however many
+        ControllerJob cycles land inside it."""
         mock_active_process = MagicMock()
         mock_local_process = MagicMock()
         mock_remote_process = MagicMock()
@@ -628,19 +648,275 @@ class TestScanManager(unittest.TestCase):
             process.is_alive.return_value = False
             process.exitcode = -15
 
-        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        clock = _FakeClock()
+        manager = ScanManager(self.mock_context, self.mock_mp_logger, clock=clock)
         manager.start()
 
-        manager.propagate_exceptions()  # first call: re-checked, no raise
+        for i in range(20):
+            clock.now = i * 0.5
+            manager.propagate_exceptions()  # must not raise
+
+        manager.logger.error.assert_not_called()
+        mock_active_process.terminate.assert_not_called()
+        mock_local_process.terminate.assert_not_called()
+        mock_remote_process.terminate.assert_not_called()
+
+        debug_calls = [
+            str(call) for call in manager.logger.debug.call_args_list
+            if "ended by SIGTERM" in str(call)
+        ]
+        self.assertEqual(len(debug_calls), 1)
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_sigterm_death_handler_late_1_55s_resolves_as_shutdown(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """GAP-1: replays the live I1 timing (123-LIFE-EVIDENCE.md), where
+        the main thread's SIGTERM handler ran 1.55 s after the scanners
+        died -- longer than the old one-cycle grace, which caused the
+        false ERROR on a real docker restart."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        for process in (mock_active_process, mock_local_process, mock_remote_process):
+            process.is_alive.return_value = False
+            process.exitcode = -15
+
+        clock = _FakeClock()
+        manager = ScanManager(self.mock_context, self.mock_mp_logger, clock=clock)
+        manager.start()
+
+        for t in (0.0, 0.5, 1.0, 1.5):
+            clock.now = t
+            manager.propagate_exceptions()  # must not raise
+
+        manager.note_shutdown_requested()
+
+        clock.now = 2.0
+        manager.propagate_exceptions()  # must not raise
+
+        manager.logger.error.assert_not_called()
+        info_calls = [str(call) for call in manager.logger.info.call_args_list]
+        self.assertTrue(
+            any("stopped during shutdown" in c and "exitcode -15" in c for c in info_calls)
+        )
+        mock_active_process.terminate.assert_called_once()
+        mock_local_process.terminate.assert_called_once()
+        mock_remote_process.terminate.assert_called_once()
+        mock_active_process.join.assert_called_once()
+        mock_local_process.join.assert_called_once()
+        mock_remote_process.join.assert_called_once()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_sigterm_death_handler_late_0_67s_resolves_as_shutdown(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """GAP-1: replays the live A2 timing (123-LIFE-EVIDENCE.md), where
+        the main thread's SIGTERM handler ran 0.67 s after the scanners
+        died -- still longer than the old one-cycle grace."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        for process in (mock_active_process, mock_local_process, mock_remote_process):
+            process.is_alive.return_value = False
+            process.exitcode = -15
+
+        clock = _FakeClock()
+        manager = ScanManager(self.mock_context, self.mock_mp_logger, clock=clock)
+        manager.start()
+
+        for t in (0.0, 0.5):
+            clock.now = t
+            manager.propagate_exceptions()  # must not raise
+
+        clock.now = 0.67
+        manager.note_shutdown_requested()
+
+        clock.now = 1.0
+        manager.propagate_exceptions()  # must not raise
+
+        manager.logger.error.assert_not_called()
+        info_calls = [str(call) for call in manager.logger.info.call_args_list]
+        self.assertTrue(
+            any("stopped during shutdown" in c and "exitcode -15" in c for c in info_calls)
+        )
+        mock_active_process.terminate.assert_called_once()
+        mock_local_process.terminate.assert_called_once()
+        mock_remote_process.terminate.assert_called_once()
+        mock_active_process.join.assert_called_once()
+        mock_local_process.join.assert_called_once()
+        mock_remote_process.join.assert_called_once()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_sigterm_death_raises_when_grace_elapses(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """GAP-1: a genuine SIGTERM-only death with no shutdown request
+        still surfaces, bounded at the 10.0 s grace deadline."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        for process in (mock_active_process, mock_local_process, mock_remote_process):
+            process.is_alive.return_value = False
+            process.exitcode = -15
+
+        clock = _FakeClock()
+        manager = ScanManager(self.mock_context, self.mock_mp_logger, clock=clock)
+        manager.start()
+
+        clock.now = 0.0
+        manager.propagate_exceptions()  # must not raise
+        clock.now = 9.999
+        manager.propagate_exceptions()  # must not raise
         manager.logger.error.assert_not_called()
 
+        clock.now = 10.0
         with self.assertRaises(ScannerProcessDiedError):
-            manager.propagate_exceptions()  # second call: raises
+            manager.propagate_exceptions()
 
         error_calls = [str(call) for call in manager.logger.error.call_args_list]
         self.assertTrue(
-            any("Scanner process(es) died unexpectedly" in c for c in error_calls)
+            any(
+                "Scanner process(es) died unexpectedly: RemoteScanner, LocalScanner, ActiveScanner" in c
+                for c in error_calls
+            )
         )
+        mock_active_process.terminate.assert_called_once()
+        mock_local_process.terminate.assert_called_once()
+        mock_remote_process.terminate.assert_called_once()
+        mock_active_process.join.assert_called_once()
+        mock_local_process.join.assert_called_once()
+        mock_remote_process.join.assert_called_once()
+
+        mock_active_process.terminate.reset_mock()
+        mock_local_process.terminate.reset_mock()
+        mock_remote_process.terminate.reset_mock()
+        clock.now = 10.5
+        manager.propagate_exceptions()  # already stopped: no new terminate calls
+        mock_active_process.terminate.assert_not_called()
+        mock_local_process.terminate.assert_not_called()
+        mock_remote_process.terminate.assert_not_called()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_sigterm_grace_measured_from_first_sighting(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """GAP-1: the 10 s grace deadline is fixed at the first sighting
+        of an all-SIGTERM death; a second scanner dying later inside the
+        window does not push the deadline out."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        mock_active_process.is_alive.return_value = True
+        mock_local_process.is_alive.return_value = True
+        mock_remote_process.is_alive.return_value = False
+        mock_remote_process.exitcode = -15
+
+        clock = _FakeClock()
+        manager = ScanManager(self.mock_context, self.mock_mp_logger, clock=clock)
+        manager.start()
+
+        clock.now = 0.0
+        manager.propagate_exceptions()  # first sighting: RemoteScanner only
+
+        mock_local_process.is_alive.return_value = False
+        mock_local_process.exitcode = -15
+        clock.now = 6.0
+        manager.propagate_exceptions()  # LocalScanner also dies; deadline not extended
+
+        clock.now = 9.9
+        manager.propagate_exceptions()  # still within the window measured from t=0.0
+        manager.logger.error.assert_not_called()
+
+        clock.now = 10.0
+        with self.assertRaises(ScannerProcessDiedError):
+            manager.propagate_exceptions()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_sigterm_grace_then_non_sigterm_death_raises_immediately(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """GAP-1: any non-SIGTERM death (here, exitcode -9 from the OOM
+        killer) raises immediately, even while a SIGTERM grace window for
+        another scanner is already open."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        mock_active_process.is_alive.return_value = True
+        mock_local_process.is_alive.return_value = True
+        mock_remote_process.is_alive.return_value = False
+        mock_remote_process.exitcode = -15
+
+        clock = _FakeClock()
+        manager = ScanManager(self.mock_context, self.mock_mp_logger, clock=clock)
+        manager.start()
+
+        clock.now = 0.0
+        manager.propagate_exceptions()  # RemoteScanner SIGTERM death: no raise
+
+        mock_local_process.is_alive.return_value = False
+        mock_local_process.exitcode = -9
+        clock.now = 0.5
+        with self.assertRaises(ScannerProcessDiedError):
+            manager.propagate_exceptions()
+
+    @patch('controller.scan_manager.ScannerProcess')
+    @patch('controller.scan_manager.ActiveScanner')
+    @patch('controller.scan_manager.LocalScanner')
+    @patch('controller.scan_manager.RemoteScanner')
+    def test_nonzero_exit_raises_on_first_check(
+            self, mock_remote_scanner, mock_local_scanner,
+            mock_active_scanner, mock_scanner_process):
+        """Characterization (unchanged before and after this plan): a
+        non-zero, non-SIGTERM exit code raises on the very first check."""
+        mock_active_process = MagicMock()
+        mock_local_process = MagicMock()
+        mock_remote_process = MagicMock()
+        mock_scanner_process.side_effect = [
+            mock_active_process, mock_local_process, mock_remote_process
+        ]
+        mock_active_process.is_alive.return_value = True
+        mock_local_process.is_alive.return_value = True
+        mock_remote_process.is_alive.return_value = False
+        mock_remote_process.exitcode = 1
+
+        clock = _FakeClock()
+        manager = ScanManager(self.mock_context, self.mock_mp_logger, clock=clock)
+        manager.start()
+
+        clock.now = 0.0
+        with self.assertRaises(ScannerProcessDiedError):
+            manager.propagate_exceptions()
 
     @patch('controller.scan_manager.ScannerProcess')
     @patch('controller.scan_manager.ActiveScanner')
@@ -650,7 +926,7 @@ class TestScanManager(unittest.TestCase):
             self, mock_remote_scanner, mock_local_scanner,
             mock_active_scanner, mock_scanner_process):
         """D-01: a SIGTERM death seen before the request, followed by the
-        request arriving before the recheck cycle, resolves benignly."""
+        request arriving before the grace deadline, resolves benignly."""
         mock_active_process = MagicMock()
         mock_local_process = MagicMock()
         mock_remote_process = MagicMock()
@@ -661,10 +937,11 @@ class TestScanManager(unittest.TestCase):
             process.is_alive.return_value = False
             process.exitcode = -15
 
-        manager = ScanManager(self.mock_context, self.mock_mp_logger)
+        clock = _FakeClock()
+        manager = ScanManager(self.mock_context, self.mock_mp_logger, clock=clock)
         manager.start()
 
-        manager.propagate_exceptions()  # first call: re-checked, no raise
+        manager.propagate_exceptions()  # first call: grace started, no raise
         manager.logger.error.assert_not_called()
 
         manager.note_shutdown_requested()
