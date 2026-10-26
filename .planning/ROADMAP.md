@@ -183,7 +183,7 @@ Plans:
 
 **Wave 12**
 
-- [ ] 123-17-PLAN.md — Active-transfer cycles A1 (Foxtrot) / A2 (Golf), idle I3, live lftp root cause, CHECK_STATUS, session teardown; failure gate to owner
+- [x] 123-17-PLAN.md — Active-transfer cycles A1 (Foxtrot) / A2 (Golf), idle I3, live lftp root cause, CHECK_STATUS, session teardown; failure gate to owner
 
 **Wave 13**
 
@@ -237,7 +237,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
-| 123. Startup and Shutdown Lifecycle | 15/17 | In Progress|  |
+| 123. Startup and Shutdown Lifecycle | 16/17 | In Progress|  |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |

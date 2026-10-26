@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: Completed 123-16-PLAN.md (gap-round-2 capture dir, preflight, sampler probe, re-pin to DEV_PIN_GAP2, idle cycles I1/I2 both PASS); 123-17 next (active-transfer cycles A1/A2, I3, session teardown, failure gate)
-last_updated: "2026-10-26T21:55:36.129Z"
-last_activity: "2026-10-26 -- Phase 123 plan 15 gated 123-01..04 + 123-08 + 123-13 (9 gates incl. Gate 5b), pushed to draft PR #137 (reused), CI run 410 green, DEV_PIN_GAP2 recorded"
+stopped_at: Completed 123-17-PLAN.md (gap-round-2 active-transfer cycles A1/A2 + A1r rerun, final idle cycle I3, CHECK_STATUS_GAP2=PASS, session teardown SANDBOX_RESTORED ok); 123-07 next (Phase 123 final verdict, sandbox --final restore to 1.7.6)
+last_updated: "2026-10-26T22:33:00.000Z"
+last_activity: 2026-10-26 -- Phase 123 plan 17 ran both GAP-2 active-transfer restart cycles live on DEV_PIN_GAP2 (A2 genuinely triggered the 123-13 fallback, lftp caught state=D with live pget children, reaped in 0.35s; A1's first attempt had invalid mid-transfer proof and was retried once as A1r, which passed with valid proof) plus the final idle cycle I3, all PASS; CHECK_STATUS_GAP2=PASS recorded; session teardown SANDBOX_RESTORED ok; production unchanged
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 37
-  completed_plans: 35
+  completed_plans: 37
   percent: 33
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 123 (startup-and-shutdown-lifecycle) — EXECUTING
-Plan: 17 of 17 (gap round 2)
+Plan: 17 of 17 (gap round 2) complete; 123-07 (Phase 123 final verdict, sandbox --final restore) outstanding
 Status: Executing Phase 123
-Last activity: 2026-10-26 -- Phase 123 plan 16 re-pinned sandbox to DEV_PIN_GAP2 (GAP-2 build), live sampler probe confirmed lftp session-leader, idle cycles I1/I2 both PASS with PROCS_RESULT=ok, directly confirming the 123-13 lftp reap fix and D-state hypothesis live
+Last activity: 2026-10-26 -- Phase 123 plan 17 ran both GAP-2 active-transfer restart cycles live on DEV_PIN_GAP2 (A2 genuinely triggered the 123-13 fallback, lftp caught state=D with live pget children, reaped in 0.35s; A1's first attempt had invalid mid-transfer proof and was retried once as A1r, which passed with valid proof) plus the final idle cycle I3, all PASS; CHECK_STATUS_GAP2=PASS recorded; session teardown SANDBOX_RESTORED ok; production unchanged
 
 ## Accumulated Context
 
@@ -108,6 +108,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 123]: 123-11: closed 123-06's outstanding SSA123 teardown (SANDBOX_RESTORED ok); re-pinned seedsyncarr-test to DEV_PIN_GAP (sha256:991e4e1f...); idle cycles I1/I2 on DEV_PIN_GAP all PASS with zero scanner/lftp shutdown-error strings, live-confirming the GAP-1 fix
 - [Phase 123]: 123-15: gated 123-01..04 + 123-08 + 123-13 together (9 gates incl. new Gate 5b for the one owner-approved bounded wait); pushed to existing draft PR #137 (reused), CI run 410 green; DEV_PIN_GAP2 sha256:7f354c149f... resolved by two independent methods, superseding sha256:991e4e1f...; appended Gap round 2 (GAP-2) section to 123-LIFE-EVIDENCE.md; nothing merged, 123-16 reruns the live active-transfer restart check on this build
 - [Phase 123-16]: Re-pinned sandbox to DEV_PIN_GAP2, idle cycles I1/I2 both PASS with PROCS_RESULT=ok, confirming the 123-13 lftp reap fix and D-state hypothesis live
+- [Phase 123-17]: Active-transfer cycles A2 (Golf) and A1r (Hotel rerun) plus final idle cycle I3 all PASS on DEV_PIN_GAP2; A2 genuinely triggered the 123-13 fallback (lftp caught state=D with four live pget children, reaped in 0.35s, PROCS_RESULT=ok) -- the first live D-state confirmation during an actual active-transfer restart, not just idle; A1's first attempt (Foxtrot) had an invalid flat mid-transfer snapshot and was excluded from the proof, retried once as A1r per the plan's harness-miss rule; CHECK_STATUS_GAP2=PASS recorded, closing GAP-2 live; session teardown SANDBOX_RESTORED ok; production untouched; 123-07 (final verdict, --final sandbox restore to 1.7.6) is the remaining phase 123 work
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -122,7 +123,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 ### Blockers/Concerns
 
 - None at v1.8.0 roadmap creation. Watch-out for Phase 126's deploy gate: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — deploy the CI-published multi-arch `:1.8.0` image pinned by digest, never a local build and never `:dev`.
-- Phase 123 D-01 live check: GAP-1 (scanner false ERROR) CLOSED live on DEV_PIN_GAP (123-11/12, 2026-10-26, 0 occurrences in 6 restarts). GAP-2 OPEN: lftp `Error stopping lftp during controller exit` / `Could not terminate the child` on both active-transfer restarts (A1, A2); contained, app restarts normally. Owner chose fix-in-phase → `/bm:plan-phase 123 --gaps`. Sandbox `seedsyncarr-test` is on DEV_PIN_GAP, teardown done (SANDBOX_RESTORED ok). 123-07 must not mark the live check passed while GAP-2 is open.
+- Phase 123 D-01 live check: GAP-1 (scanner false ERROR) CLOSED live on DEV_PIN_GAP (123-11/12, 2026-10-26, 0 occurrences in 6 restarts). GAP-2 (lftp `Error stopping lftp during controller exit` / `Could not terminate the child`) also now CLOSED live on DEV_PIN_GAP2 (123-16/123-17, 2026-10-26): zero occurrences of the old detector strings across 5 restarts (I1, I2, A1, A2, I3) plus the A1r rerun; A2 independently confirmed the 123-13 fallback genuinely reaping lftp out of a live `state=D` condition during an actual active-transfer restart (0.35s, well inside the 2.0s bound). `CHECK_STATUS_GAP2=PASS` recorded in 123-LIFE-EVIDENCE.md. Sandbox `seedsyncarr-test` stays on DEV_PIN_GAP2, session teardown done (SANDBOX_RESTORED ok). Not yet closed: 123-07 still needs to run and write the Phase 123 final verdict and restore the sandbox to 1.7.6 (`IMAGE_PIN_L0`) via `teardown.sh --final`.
 
 ### Quick Tasks Completed
 
@@ -166,9 +167,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-26T21:55:36.125Z
-Stopped at: Completed 123-16-PLAN.md (gap-round-2 capture dir, preflight, sampler probe, re-pin to DEV_PIN_GAP2, idle cycles I1/I2 both PASS); 123-17 next (active-transfer cycles A1/A2, I3, session teardown, failure gate)
-Next action: Phase 123 gap wave 10 (123-15) is complete: gates 1-9 plus Gate 5b passed over 123-01..04 + 123-08 + 123-13, PR #137 (reused, still draft) is pushed with CI run 410 green at head 4074b0c, and DEV_PIN_GAP2 (sha256:7f354c149f...) is recorded in 123-LIFE-EVIDENCE.md. 123-16 re-runs the live NAS sandbox `docker restart` active-transfer cycles against DEV_PIN_GAP2, using 123-14's new process sampler to directly confirm lftp and its children are reaped before the old container stops, closing GAP-2's live-provable half and settling the D-state hypothesis from 123-13's diagnosis. 123-17 restores the sandbox to its prior pin afterward. Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-26T22:33:00.000Z
+Stopped at: Completed 123-17-PLAN.md (gap-round-2 active-transfer cycles A1/A2 + A1r rerun, final idle cycle I3, CHECK_STATUS_GAP2=PASS, session teardown SANDBOX_RESTORED ok); 123-07 next (Phase 123 final verdict, sandbox --final restore to 1.7.6)
+Next action: Phase 123's gap-round-2 live check is now complete and truthful: I1, I2 (123-16), A2, I3 passed on their first attempt, A1's first attempt (SSA123.Foxtrot.S01) produced an invalid flat mid-transfer snapshot and was retried once as A1r (SSA123.Hotel.S01) per the plan's own harness-miss rule, which passed with valid proof. A2 delivered the phase's remaining key live proof: the 123-13 fallback genuinely caught lftp in `state=D` during an actual active-transfer restart, with four live pget children all reaped within 0.35s (well inside the 2.0s bound), independently confirmed by the process sampler (`PROCS_RESULT=ok`). `CHECK_STATUS_GAP2=PASS` is recorded in 123-LIFE-EVIDENCE.md, closing both GAP-1 and GAP-2 live. Session teardown ended `SANDBOX_RESTORED ok`; production untouched; sandbox remains on DEV_PIN_GAP2 pending 123-07's `--final` restore to `IMAGE_PIN_L0` (1.7.6) and the Phase 123 final verdict write-up (123-07-PLAN.md already exists, held since 123-06 first found GAP-1). Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
