@@ -119,9 +119,18 @@ class _FakeLftpProcess:
 
 
 class _FakeClock:
-    """Mutable monotonic-clock stand-in (never a lambda bound to a name, ruff E731)."""
+    """
+    Mutable monotonic-clock stand-in (never a lambda bound to a name, ruff
+    E731). Starts at 0.0: summing many additions of a non-power-of-two
+    interval (0.05) onto a larger base (e.g. 1000.0, closer to a real
+    time.monotonic() reading) accumulates more binary floating-point
+    rounding error per addition, which can make the running total land
+    fractionally short of an exact N * 0.05 deadline. Starting at 0.0 keeps
+    these tests' arithmetic exact, matching real time.monotonic()/time.sleep()
+    behaviour where OS scheduling rounds actual elapsed time up, not down.
+    """
 
-    def __init__(self, start: float = 1000.0):
+    def __init__(self, start: float = 0.0):
         self.now = start
 
     def __call__(self) -> float:

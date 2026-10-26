@@ -1,6 +1,10 @@
+import errno
 import logging
+import os
 import re
 import secrets
+import signal
+import time
 from functools import wraps
 from typing import Callable, Union, List, Optional
 
@@ -17,6 +21,41 @@ class LftpError(AppError):
     Custom exception that describes the failure of the lftp command
     """
     pass
+
+
+def describe_lftp_process(pid: int, proc_root: str = "/proc") -> str:
+    """
+    Best-effort diagnostic for a pid that is still unreaped: its /proc state
+    letter and its live child-process count. Used only to enrich the
+    GAP-2 fallback's WARNING/LftpError text; it never raises, since a pid
+    that is already gone (or a sandboxed /proc) is itself diagnostic
+    information, not a failure of this function.
+
+    :param pid: process id to describe
+    :param proc_root: root of the /proc filesystem (overridable for tests)
+    :return: "state=<letter> child processes=<n>"; either field is "?" when
+             it cannot be read or parsed
+    """
+    state = "?"
+    try:
+        with open(os.path.join(proc_root, str(pid), "stat"), "r") as f:
+            contents = f.read()
+        # comm (field 2) may itself contain spaces or parentheses, so the
+        # state letter is the first token after the LAST ')' in the line.
+        state = contents.rsplit(")", 1)[1].split()[0]
+    except (OSError, ValueError, IndexError):
+        state = "?"
+
+    child_count = "?"
+    try:
+        children_path = os.path.join(proc_root, str(pid), "task", str(pid), "children")
+        with open(children_path, "r") as f:
+            contents = f.read()
+        child_count = str(len(contents.split()))
+    except (OSError, ValueError, IndexError):
+        child_count = "?"
+
+    return "state={} child processes={}".format(state, child_count)
 
 class Lftp:
     """
@@ -41,11 +80,26 @@ class Lftp:
     RESYNC_TIMEOUT_SECS = 15
     __SYNC_MARKER_PREFIX = "SEEDSYNCARR-SYNC-"
 
+    # Bound on the GAP-2 post-force-close reap fallback (20x pexpect's own
+    # 0.1s post-SIGKILL check); see exit()'s docstring.
+    EXIT_REAP_TIMEOUT_SECS = 2.0
+    # Poll interval while waiting for the fallback's SIGKILL to be reaped.
+    EXIT_REAP_POLL_INTERVAL_SECS = 0.05
+
     def __init__(self,
                  address: str,
                  port: int,
                  user: str,
-                 password: Optional[str]):
+                 password: Optional[str],
+                 *,
+                 clock: Callable[[], float] = time.monotonic,
+                 waiter: Callable[[float], None] = time.sleep,
+                 kill_group: Callable[[int, int], None] = os.killpg,
+                 describe_process: Callable[[int], str] = describe_lftp_process):
+        self.__clock = clock
+        self.__waiter = waiter
+        self.__kill_group = kill_group
+        self.__describe_process = describe_process
         self.__user = user
         self.__password = password
         self.__address = address
@@ -455,12 +509,115 @@ class Lftp:
         The process is force-closed even when the graceful kill/exit commands
         fail (e.g. the command stream could not be resynchronized after a
         timeout); the graceful failure still propagates after the close.
+
+        Sends "exit kill" rather than "exit": lftp's documented behaviour is
+        to move itself to nohup mode in the background (forking a detached,
+        new-session child) if it is asked to exit while jobs are still
+        running. "exit kill" kills all numbered jobs first, so that fork
+        path is never taken and a process-group signal can always reach it.
+
+        GAP-2 (D-01): pexpect's own close(force=True) sends SIGHUP, SIGCONT,
+        SIGINT and SIGKILL to the child, waiting up to 0.1s of in-kernel exit
+        after each. During an active transfer the lftp pid can still be
+        mid-exit (e.g. blocked tearing down sockets/dirty pages) when that
+        0.1s elapses, so ptyprocess raises PtyProcessError("Could not
+        terminate the child.") -- which pexpect re-raises as
+        ExceptionPexpect -- without reaping the child. On a clean (idle)
+        shutdown this path is never taken: close() returns normally and
+        exit() does nothing further.
+
+        Only when close(force=True) raises does this fall back to:
+        one isalive() poll (which itself reaps a child that has since died),
+        then, if still alive, a SIGKILL to the child's own process group
+        (safe: the pid is confirmed unreaped, so group <pid> can only be the
+        session/process group lftp created as its own leader via
+        pty.fork()), then bounded polling (EXIT_REAP_TIMEOUT_SECS, default
+        2.0s) for it to be reaped. If it is still alive at the deadline,
+        this raises LftpError so the leak surfaces honestly instead of being
+        silently swallowed.
         """
         try:
             self.kill_all()
-            self.__process.sendline("exit")
+            self.__process.sendline("exit kill")
         finally:
-            self.__process.close(force=True)
+            try:
+                self.__process.close(force=True)
+            except pexpect.exceptions.ExceptionPexpect:
+                self.__reap_after_failed_close()
+
+    def __poll_isalive(self) -> Optional[bool]:
+        """
+        :return: True if still alive, False if reaped, None if the status
+                 itself is unavailable (pexpect raised, e.g. ECHILD)
+        """
+        try:
+            return self.__process.isalive()
+        except pexpect.exceptions.ExceptionPexpect:
+            return None
+
+    def __reap_after_failed_close(self) -> None:
+        """
+        GAP-2 fallback, reached only after pexpect's own close(force=True)
+        raised ExceptionPexpect. See exit()'s docstring for the mechanism.
+        """
+        pid = self.__process.pid
+        start = self.__clock()
+
+        status = self.__poll_isalive()
+        if status is None:
+            self.logger.warning(
+                "Lftp process {} status unavailable after force close; it was already reaped elsewhere".format(pid)
+            )
+            return
+        if status is False:
+            elapsed = self.__clock() - start
+            self.logger.info(
+                "Lftp process {} reaped after force close in {:.2f}s (group kill sent: no)".format(pid, elapsed)
+            )
+            return
+
+        describe = self.__describe_process(pid)
+        self.logger.warning(
+            "Lftp process {} did not exit on force close ({}); sending SIGKILL to its process group".format(
+                pid, describe
+            )
+        )
+        try:
+            self.__kill_group(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            # Already gone: a concurrent reaper (or the kernel) won the race.
+            pass
+        except OSError as e:
+            self.logger.warning(
+                "Lftp process {} process-group SIGKILL failed: {}".format(
+                    pid, errno.errorcode.get(e.errno, str(e.errno))
+                )
+            )
+
+        while True:
+            status = self.__poll_isalive()
+            if status is False:
+                elapsed = self.__clock() - start
+                self.logger.info(
+                    "Lftp process {} reaped after force close in {:.2f}s (group kill sent: yes)".format(pid, elapsed)
+                )
+                return
+            if status is None:
+                self.logger.warning(
+                    "Lftp process {} status unavailable after force close; "
+                    "it was already reaped elsewhere".format(pid)
+                )
+                return
+            now = self.__clock()
+            if now >= start + Lftp.EXIT_REAP_TIMEOUT_SECS:
+                describe = self.__describe_process(pid)
+                raise LftpError(
+                    "Lftp process {} still running {}s after SIGKILL to its process group ({})".format(
+                        pid, Lftp.EXIT_REAP_TIMEOUT_SECS, describe
+                    )
+                )
+            remaining = start + Lftp.EXIT_REAP_TIMEOUT_SECS - now
+            self.__waiter(min(Lftp.EXIT_REAP_POLL_INTERVAL_SECS, remaining))
 
     # Mark decorators as static (must be at end of class)
     # Source: https://stackoverflow.com/a/3422823
