@@ -1,12 +1,36 @@
+import ast
 import json
+import re
 import socket
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import requests
 
 from common import Config, ConfigError
 from web.handler.config import ConfigHandler
+
+
+# Locked refusal strings (D-07) -- literals, not imported from config.py, so
+# these tests pin the exact wording rather than drift silently with the
+# implementation.
+LOOPBACK_MSG = "Loopback addresses are only allowed on port 8989 (Sonarr) or 7878 (Radarr)"
+LINK_LOCAL_MSG = "URL points to a link-local or cloud-metadata address, which is not allowed"
+UNSPECIFIED_MSG = "URL points to an unspecified address (0.0.0.0 or ::), which is not allowed"
+MULTICAST_MSG = "URL points to a multicast address, which is not allowed"
+RESERVED_MSG = "URL points to a reserved IP address, which is not allowed"
+UNCHECKABLE_MSG = "URL resolves to an address that could not be checked, which is not allowed"
+BAD_PORT_MSG = "Invalid URL: invalid port"
+BAD_URL_MSG = "Invalid URL"
+
+
+def _resolve_all(mock_socket, *ips):
+    """Stub getaddrinfo so the hostname resolves to one or more addresses."""
+    mock_socket.getaddrinfo.return_value = [
+        (None, None, None, None, (ip, 0)) for ip in ips
+    ]
+    mock_socket.gaierror = socket.gaierror
 
 
 class TestConfigHandlerGet(unittest.TestCase):
@@ -189,15 +213,23 @@ class TestConfigHandlerTestSonarrConnection(unittest.TestCase):
         self.assertFalse(body["success"])
         self.assertIn("Only http and https", body["error"])
 
+    @patch('web.handler.config.requests')
     @patch('web.handler.config.socket')
-    def test_sonarr_rejects_private_ip(self, mock_socket):
+    def test_sonarr_accepts_loopback_on_default_port(self, mock_socket, mock_requests):
+        # D-02: loopback is allowed on Sonarr's own default port.
         mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("127.0.0.1", 0))]
         mock_socket.gaierror = socket.gaierror
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"version": "4.0.2"}
+        mock_requests.get.return_value = mock_response
+        mock_requests.ConnectionError = requests.ConnectionError
+        mock_requests.Timeout = requests.Timeout
         self.config.sonarr.sonarr_url = "http://sonarr.local:8989"
         response = self.handler._ConfigHandler__handle_test_sonarr_connection()
         body = json.loads(response.body)
-        self.assertFalse(body["success"])
-        self.assertIn("private", body["error"])
+        self.assertTrue(body["success"])
+        mock_requests.get.assert_called_once()
 
     @patch('web.handler.config.requests')
     @patch('web.handler.config.socket')
@@ -272,6 +304,91 @@ class TestConfigHandlerTestSonarrConnection(unittest.TestCase):
         self.assertFalse(body["success"])
         self.assertEqual("Connection timed out", body["error"])
 
+    @patch('web.handler.config.requests')
+    @patch('web.handler.config.socket')
+    def test_sonarr_accepts_loopback_on_radarr_port(self, mock_socket, mock_requests):
+        # D-02: either allowed port is accepted on either service's test.
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("127.0.0.1", 0))]
+        mock_socket.gaierror = socket.gaierror
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"version": "4.0.2"}
+        mock_requests.get.return_value = mock_response
+        mock_requests.ConnectionError = requests.ConnectionError
+        mock_requests.Timeout = requests.Timeout
+        self.config.sonarr.sonarr_url = "http://localhost:7878"
+        response = self.handler._ConfigHandler__handle_test_sonarr_connection()
+        body = json.loads(response.body)
+        self.assertTrue(body["success"])
+
+    @patch('web.handler.config.requests')
+    @patch('web.handler.config.socket')
+    def test_sonarr_accepts_lan_ip_and_reports_version(self, mock_socket, mock_requests):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("192.168.1.20", 0))]
+        mock_socket.gaierror = socket.gaierror
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"version": "4.0.2"}
+        mock_requests.get.return_value = mock_response
+        mock_requests.ConnectionError = requests.ConnectionError
+        mock_requests.Timeout = requests.Timeout
+        self.config.sonarr.sonarr_url = "http://192.168.1.20:8989"
+        response = self.handler._ConfigHandler__handle_test_sonarr_connection()
+        body = json.loads(response.body)
+        self.assertEqual({"success": True, "version": "4.0.2"}, body)
+
+    @patch('web.handler.config.requests')
+    @patch('web.handler.config.socket')
+    def test_sonarr_rejects_cloud_metadata_without_request(self, mock_socket, mock_requests):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("169.254.169.254", 0))]
+        mock_socket.gaierror = socket.gaierror
+        mock_requests.ConnectionError = requests.ConnectionError
+        mock_requests.Timeout = requests.Timeout
+        self.config.sonarr.sonarr_url = "http://169.254.169.254"
+        response = self.handler._ConfigHandler__handle_test_sonarr_connection()
+        body = json.loads(response.body)
+        self.assertEqual({"success": False, "error": LINK_LOCAL_MSG}, body)
+        self.assertEqual(200, response.status_code)
+        self.assertNotIn("testapikey123", response.body)
+        mock_requests.get.assert_not_called()
+
+    @patch('web.handler.config.requests')
+    @patch('web.handler.config.socket')
+    def test_sonarr_invalid_port_returns_json_error(self, mock_socket, mock_requests):
+        mock_requests.ConnectionError = requests.ConnectionError
+        mock_requests.Timeout = requests.Timeout
+        self.config.sonarr.sonarr_url = "http://sonarr.local:99999"
+        response = self.handler._ConfigHandler__handle_test_sonarr_connection()
+        body = json.loads(response.body)
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(BAD_PORT_MSG, body["error"])
+        mock_socket.getaddrinfo.assert_not_called()
+        mock_requests.get.assert_not_called()
+
+    @patch('web.handler.config.requests')
+    @patch('web.handler.config.socket')
+    def test_sonarr_redirect_to_metadata_is_not_followed(self, mock_socket, mock_requests):
+        # D-05 lock: uses a public address (already allowed before and after
+        # this phase) so the test exercises redirect handling unchanged by
+        # the LAN classifier rewrite, not the classifier itself.
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("8.8.8.8", 0))]
+        mock_socket.gaierror = socket.gaierror
+        mock_response = MagicMock()
+        mock_response.status_code = 302
+        mock_response.headers = {"Location": "http://169.254.169.254/latest/meta-data/"}
+        mock_requests.get.return_value = mock_response
+        mock_requests.ConnectionError = requests.ConnectionError
+        mock_requests.Timeout = requests.Timeout
+        self.config.sonarr.sonarr_url = "http://8.8.8.8:8989"
+        response = self.handler._ConfigHandler__handle_test_sonarr_connection()
+        body = json.loads(response.body)
+        self.assertFalse(body["success"])
+        self.assertTrue(body["error"].startswith("URL redirects to "))
+        self.assertTrue(body["error"].endswith("Update the URL to the final destination."))
+        mock_requests.get.assert_called_once()
+        _, kwargs = mock_requests.get.call_args
+        self.assertIs(False, kwargs["allow_redirects"])
+
 
 class TestConfigHandlerTestRadarrConnection(unittest.TestCase):
     def setUp(self):
@@ -311,15 +428,23 @@ class TestConfigHandlerTestRadarrConnection(unittest.TestCase):
         self.assertFalse(body["success"])
         self.assertIn("Only http and https", body["error"])
 
+    @patch('web.handler.config.requests')
     @patch('web.handler.config.socket')
-    def test_radarr_rejects_private_ip(self, mock_socket):
+    def test_radarr_accepts_loopback_on_default_port(self, mock_socket, mock_requests):
+        # D-02: loopback is allowed on Radarr's own default port.
         mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("127.0.0.1", 0))]
         mock_socket.gaierror = socket.gaierror
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"version": "5.0.0"}
+        mock_requests.get.return_value = mock_response
+        mock_requests.ConnectionError = requests.ConnectionError
+        mock_requests.Timeout = requests.Timeout
         self.config.radarr.radarr_url = "http://radarr.local:7878"
         response = self.handler._ConfigHandler__handle_test_radarr_connection()
         body = json.loads(response.body)
-        self.assertFalse(body["success"])
-        self.assertIn("private", body["error"])
+        self.assertTrue(body["success"])
+        mock_requests.get.assert_called_once()
 
     @patch('web.handler.config.requests')
     @patch('web.handler.config.socket')
@@ -453,6 +578,45 @@ class TestConfigHandlerTestRadarrConnection(unittest.TestCase):
         self.assertEqual("An unexpected error occurred", body["error"])
         self.assertNotIn("internal details", body["error"])
 
+    @patch('web.handler.config.requests')
+    @patch('web.handler.config.socket')
+    def test_radarr_rejects_loopback_on_other_port_without_request(self, mock_socket, mock_requests):
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("127.0.0.1", 0))]
+        mock_socket.gaierror = socket.gaierror
+        mock_requests.ConnectionError = requests.ConnectionError
+        mock_requests.Timeout = requests.Timeout
+        self.config.radarr.radarr_url = "http://localhost:9090"
+        response = self.handler._ConfigHandler__handle_test_radarr_connection()
+        body = json.loads(response.body)
+        self.assertEqual({"success": False, "error": LOOPBACK_MSG}, body)
+        self.assertEqual(200, response.status_code)
+        self.assertNotIn("testapikey123", response.body)
+        mock_requests.get.assert_not_called()
+
+    @patch('web.handler.config.requests')
+    @patch('web.handler.config.socket')
+    def test_radarr_redirect_is_not_followed(self, mock_socket, mock_requests):
+        # D-05 lock: uses a public address (already allowed before and after
+        # this phase) so the test exercises redirect handling unchanged by
+        # the LAN classifier rewrite, not the classifier itself.
+        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("8.8.8.8", 0))]
+        mock_socket.gaierror = socket.gaierror
+        mock_response = MagicMock()
+        mock_response.status_code = 307
+        mock_response.headers = {"Location": "/login"}
+        mock_requests.get.return_value = mock_response
+        mock_requests.ConnectionError = requests.ConnectionError
+        mock_requests.Timeout = requests.Timeout
+        self.config.radarr.radarr_url = "http://8.8.8.8:7878"
+        response = self.handler._ConfigHandler__handle_test_radarr_connection()
+        body = json.loads(response.body)
+        self.assertFalse(body["success"])
+        self.assertTrue(body["error"].startswith("URL redirects to "))
+        self.assertTrue(body["error"].endswith("Update the URL to the final destination."))
+        mock_requests.get.assert_called_once()
+        _, kwargs = mock_requests.get.call_args
+        self.assertIs(False, kwargs["allow_redirects"])
+
 
 class TestConfigHandlerRateLimit(unittest.TestCase):
     """Rate limit integration tests for config endpoints."""
@@ -524,104 +688,336 @@ class TestConfigHandlerRateLimit(unittest.TestCase):
 
 
 class TestValidateUrl(unittest.TestCase):
-    """Full-path coverage for the SSRF guard ConfigHandler._validate_url (COVMED-02).
+    """Full-path coverage for the SSRF guard ConfigHandler._validate_url.
 
-    _validate_url is a pure @staticmethod, so each case calls it directly with
-    web.handler.config.socket patched (no bottle stack, no real DNS). The IP under
-    test is supplied via socket.getaddrinfo's return value at addr_info[4][0].
-    Every resolving test re-assigns mock_socket.gaierror = socket.gaierror so the
-    real `except socket.gaierror` clause in config.py keeps catching.
+    LAN-01/LAN-02 (Phase 125) replace the single "private or loopback or
+    reserved or link-local" check with an explicit allow/refuse classifier:
+    named private ranges, CGNAT/Tailscale and public addresses are allowed
+    (D-01); loopback is allowed only on Sonarr/Radarr's own default ports,
+    8989 or 7878 (D-02); link-local/cloud-metadata, unspecified, multicast,
+    other reserved ranges (including IPv4-mapped/compatible/NAT64 bypass
+    notations), and loopback on any other port stay refused with a
+    category-specific message (D-03). Each case calls _validate_url directly
+    with web.handler.config.socket patched (no bottle stack, no real DNS).
+    The IP under test is supplied via socket.getaddrinfo's return value at
+    addr_info[4][0]. Every resolving test re-assigns
+    mock_socket.gaierror = socket.gaierror so the real
+    `except socket.gaierror` clause in config.py keeps catching.
     """
 
-    # --- IPv4 reserved ranges (blocked) ---
+    # --- D-01: named private ranges, CGNAT/Tailscale, public -- allowed ---
 
     @patch('web.handler.config.socket')
-    def test_rejects_ipv4_private(self, mock_socket):
-        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("10.0.0.1", 0))]
-        mock_socket.gaierror = socket.gaierror
+    def test_accepts_ipv4_private_10(self, mock_socket):
+        _resolve_all(mock_socket, "10.0.0.1")
         result = ConfigHandler._validate_url("http://host.example/")
-        self.assertIn("private/reserved", result)
+        self.assertIsNone(result)
 
     @patch('web.handler.config.socket')
-    def test_rejects_ipv4_loopback(self, mock_socket):
-        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("127.0.0.1", 0))]
-        mock_socket.gaierror = socket.gaierror
-        result = ConfigHandler._validate_url("http://host.example/")
-        self.assertIn("private/reserved", result)
+    def test_accepts_ipv4_private_192_168(self, mock_socket):
+        _resolve_all(mock_socket, "192.168.1.50")
+        result = ConfigHandler._validate_url("http://host.example:8989/")
+        self.assertIsNone(result)
 
     @patch('web.handler.config.socket')
-    def test_rejects_ipv4_link_local(self, mock_socket):
-        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("169.254.0.1", 0))]
-        mock_socket.gaierror = socket.gaierror
+    def test_accepts_ipv4_private_172_16(self, mock_socket):
+        _resolve_all(mock_socket, "172.16.0.1")
         result = ConfigHandler._validate_url("http://host.example/")
-        self.assertIn("private/reserved", result)
-
-    # --- IPv6 reserved ranges (blocked) ---
+        self.assertIsNone(result)
 
     @patch('web.handler.config.socket')
-    def test_rejects_ipv6_link_local(self, mock_socket):
-        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("fe80::1", 0))]
-        mock_socket.gaierror = socket.gaierror
+    def test_accepts_ipv4_private_172_31_upper_edge(self, mock_socket):
+        _resolve_all(mock_socket, "172.31.255.254")
         result = ConfigHandler._validate_url("http://host.example/")
-        self.assertIn("private/reserved", result)
+        self.assertIsNone(result)
 
     @patch('web.handler.config.socket')
-    def test_rejects_ipv6_loopback(self, mock_socket):
-        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("::1", 0))]
-        mock_socket.gaierror = socket.gaierror
+    def test_accepts_ipv6_unique_local(self, mock_socket):
+        _resolve_all(mock_socket, "fc00::1")
         result = ConfigHandler._validate_url("http://host.example/")
-        self.assertIn("private/reserved", result)
+        self.assertIsNone(result)
 
     @patch('web.handler.config.socket')
-    def test_rejects_ipv6_unique_local(self, mock_socket):
-        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("fc00::1", 0))]
-        mock_socket.gaierror = socket.gaierror
+    def test_accepts_ipv6_unique_local_fd(self, mock_socket):
+        _resolve_all(mock_socket, "fd12:3456::1")
         result = ConfigHandler._validate_url("http://host.example/")
-        self.assertIn("private/reserved", result)
-
-    # --- IPv6-mapped IPv4: private/loopback/link-local blocked, PUBLIC allowed ---
+        self.assertIsNone(result)
 
     @patch('web.handler.config.socket')
-    def test_rejects_ipv6_mapped_private_ipv4(self, mock_socket):
-        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("::ffff:10.0.0.1", 0))]
-        mock_socket.gaierror = socket.gaierror
+    def test_accepts_ipv6_mapped_private_ipv4(self, mock_socket):
+        _resolve_all(mock_socket, "::ffff:10.0.0.1")
         result = ConfigHandler._validate_url("http://host.example/")
-        self.assertIn("private/reserved", result)
+        self.assertIsNone(result)
 
     @patch('web.handler.config.socket')
-    def test_rejects_ipv6_mapped_loopback_ipv4(self, mock_socket):
-        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("::ffff:127.0.0.1", 0))]
-        mock_socket.gaierror = socket.gaierror
-        result = ConfigHandler._validate_url("http://host.example/")
-        self.assertIn("private/reserved", result)
+    def test_accepts_container_name_resolving_to_docker_bridge(self, mock_socket):
+        # The Phase 120 D-02 motivating case: a Docker container name
+        # resolves to the bridge network's private address (LAN-01).
+        _resolve_all(mock_socket, "172.19.0.6")
+        result = ConfigHandler._validate_url("http://sonarr-v5:8989")
+        self.assertIsNone(result)
+        mock_socket.getaddrinfo.assert_called_once_with("sonarr-v5", None)
 
     @patch('web.handler.config.socket')
-    def test_rejects_ipv6_mapped_link_local_ipv4(self, mock_socket):
-        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("::ffff:169.254.0.1", 0))]
-        mock_socket.gaierror = socket.gaierror
+    def test_accepts_cgnat_tailscale_range(self, mock_socket):
+        _resolve_all(mock_socket, "100.64.0.1")
         result = ConfigHandler._validate_url("http://host.example/")
-        self.assertIn("private/reserved", result)
+        self.assertIsNone(result)
+
+        _resolve_all(mock_socket, "100.127.255.254")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIsNone(result)
+
+    @patch('web.handler.config.socket')
+    def test_accepts_public_just_outside_172_16_block(self, mock_socket):
+        _resolve_all(mock_socket, "172.32.0.1")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIsNone(result)
 
     @patch('web.handler.config.socket')
     def test_ACCEPTS_ipv6_mapped_PUBLIC_ipv4(self, mock_socket):
         # PROVES the guard does unmap-AND-recheck, not a blanket block of all
         # IPv4-mapped addresses: ::ffff:8.8.8.8 unmaps to the PUBLIC 8.8.8.8.
-        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("::ffff:8.8.8.8", 0))]
-        mock_socket.gaierror = socket.gaierror
+        _resolve_all(mock_socket, "::ffff:8.8.8.8")
         result = ConfigHandler._validate_url("http://host.example/")
         self.assertIsNone(result)
 
-    # --- multi-address result: ANY private => rejected (loop checks ALL results) ---
+    @patch('web.handler.config.socket')
+    def test_accepts_public_ip(self, mock_socket):
+        _resolve_all(mock_socket, "8.8.8.8")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIsNone(result)
+
+    # --- D-02: loopback, allowed only on Sonarr/Radarr's own ports ---
 
     @patch('web.handler.config.socket')
-    def test_rejects_multi_address_when_any_private(self, mock_socket):
-        mock_socket.getaddrinfo.return_value = [
-            (None, None, None, None, ("8.8.8.8", 0)),
-            (None, None, None, None, ("10.0.0.1", 0)),
-        ]
+    def test_accepts_loopback_on_sonarr_port(self, mock_socket):
+        _resolve_all(mock_socket, "127.0.0.1")
+        result = ConfigHandler._validate_url("http://localhost:8989")
+        self.assertIsNone(result)
+
+    @patch('web.handler.config.socket')
+    def test_accepts_loopback_on_radarr_port(self, mock_socket):
+        _resolve_all(mock_socket, "127.0.0.1")
+        result = ConfigHandler._validate_url("http://localhost:7878/")
+        self.assertIsNone(result)
+
+    @patch('web.handler.config.socket')
+    def test_accepts_loopback_127_range_on_sonarr_port(self, mock_socket):
+        _resolve_all(mock_socket, "127.0.1.1")
+        result = ConfigHandler._validate_url("http://localhost:8989")
+        self.assertIsNone(result)
+
+    @patch('web.handler.config.socket')
+    def test_accepts_ipv6_loopback_on_sonarr_port(self, mock_socket):
+        _resolve_all(mock_socket, "::1")
+        result = ConfigHandler._validate_url("http://[::1]:8989/")
+        self.assertIsNone(result)
+
+    @patch('web.handler.config.socket')
+    def test_accepts_ipv6_mapped_loopback_on_radarr_port(self, mock_socket):
+        _resolve_all(mock_socket, "::ffff:127.0.0.1")
+        result = ConfigHandler._validate_url("http://localhost:7878")
+        self.assertIsNone(result)
+
+    @patch('web.handler.config.socket')
+    def test_accepts_https_loopback_on_sonarr_port(self, mock_socket):
+        _resolve_all(mock_socket, "127.0.0.1")
+        result = ConfigHandler._validate_url("https://localhost:8989")
+        self.assertIsNone(result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv4_loopback_without_port(self, mock_socket):
+        _resolve_all(mock_socket, "127.0.0.1")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(LOOPBACK_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_loopback_without_port(self, mock_socket):
+        _resolve_all(mock_socket, "::1")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(LOOPBACK_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_mapped_loopback_ipv4_without_port(self, mock_socket):
+        _resolve_all(mock_socket, "::ffff:127.0.0.1")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(LOOPBACK_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_loopback_on_other_port(self, mock_socket):
+        _resolve_all(mock_socket, "127.0.0.1")
+        result = ConfigHandler._validate_url("http://localhost:8080/")
+        self.assertEqual(LOOPBACK_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_loopback_https_default_port(self, mock_socket):
+        _resolve_all(mock_socket, "127.0.0.1")
+        result = ConfigHandler._validate_url("https://localhost/")
+        self.assertEqual(LOOPBACK_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_mapped_loopback_on_other_port(self, mock_socket):
+        _resolve_all(mock_socket, "::ffff:127.0.0.1")
+        result = ConfigHandler._validate_url("http://host.example:22/")
+        self.assertEqual(LOOPBACK_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_mixed_resolution_with_loopback_on_wrong_port(self, mock_socket):
+        _resolve_all(mock_socket, "192.168.1.10", "127.0.0.1")
+        result = ConfigHandler._validate_url("http://host.example:8080/")
+        self.assertEqual(LOOPBACK_MSG, result)
+
+    # --- D-03: link-local / cloud metadata ---
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv4_link_local(self, mock_socket):
+        _resolve_all(mock_socket, "169.254.0.1")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(LINK_LOCAL_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_link_local(self, mock_socket):
+        _resolve_all(mock_socket, "fe80::1")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(LINK_LOCAL_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_mapped_link_local_ipv4(self, mock_socket):
+        _resolve_all(mock_socket, "::ffff:169.254.0.1")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(LINK_LOCAL_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_cloud_metadata(self, mock_socket):
+        _resolve_all(mock_socket, "169.254.169.254")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(LINK_LOCAL_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_mapped_cloud_metadata(self, mock_socket):
+        _resolve_all(mock_socket, "::ffff:169.254.169.254")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(LINK_LOCAL_MSG, result)
+
+    # --- D-03: unspecified ---
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv4_unspecified(self, mock_socket):
+        _resolve_all(mock_socket, "0.0.0.0")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(UNSPECIFIED_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_unspecified(self, mock_socket):
+        _resolve_all(mock_socket, "::")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(UNSPECIFIED_MSG, result)
+
+    # --- D-03: multicast (previously an unguarded gap) ---
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv4_multicast(self, mock_socket):
+        _resolve_all(mock_socket, "224.0.0.1")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(MULTICAST_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv4_multicast_ssdp(self, mock_socket):
+        _resolve_all(mock_socket, "239.255.255.250")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(MULTICAST_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_multicast(self, mock_socket):
+        _resolve_all(mock_socket, "ff02::1")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(MULTICAST_MSG, result)
+
+    # --- D-03: other reserved ranges ---
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv4_documentation_range(self, mock_socket):
+        _resolve_all(mock_socket, "192.0.2.1")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(RESERVED_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv4_class_e(self, mock_socket):
+        _resolve_all(mock_socket, "240.0.0.1")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(RESERVED_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv4_limited_broadcast(self, mock_socket):
+        _resolve_all(mock_socket, "255.255.255.255")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(RESERVED_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv6_deprecated_site_local(self, mock_socket):
+        # Orchestrator decision 1 (125-RESEARCH.md Open Question 1): fec0::/10
+        # is deprecated IPv6 site-local, treated as D-03's "other reserved".
+        _resolve_all(mock_socket, "fec0::1")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(RESERVED_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_ipv4_compatible_loopback_bypass_on_allowed_port(self, mock_socket):
+        # Orchestrator decision 2: ::127.0.0.1 is deprecated IPv4-compatible
+        # notation embedding 127.0.0.1 that reports is_loopback=False,
+        # is_global=True AND is_reserved=True in stdlib -- the "not
+        # is_reserved" guard must catch it even on an allowed port (bypass).
+        _resolve_all(mock_socket, "::127.0.0.1")
+        result = ConfigHandler._validate_url("http://host.example:8989/")
+        self.assertEqual(RESERVED_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_nat64_embedded_loopback_bypass_on_allowed_port(self, mock_socket):
+        # NAT64 well-known prefix embedding 127.0.0.1 in the low 32 bits --
+        # same bypass shape as ::127.0.0.1, same guard closes it.
+        _resolve_all(mock_socket, "64:ff9b::7f00:1")
+        result = ConfigHandler._validate_url("http://host.example:8989/")
+        self.assertEqual(RESERVED_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_nat64_embedded_metadata(self, mock_socket):
+        # 64:ff9b::a9fe:a9fe embeds 169.254.169.254 (cloud metadata) in NAT64
+        # notation.
+        _resolve_all(mock_socket, "64:ff9b::a9fe:a9fe")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(RESERVED_MSG, result)
+
+    # --- D-04: mixed resolution -- any refused address refuses the URL ---
+
+    @patch('web.handler.config.socket')
+    def test_rejects_multi_address_when_any_refused(self, mock_socket):
+        _resolve_all(mock_socket, "8.8.8.8", "169.254.169.254")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(LINK_LOCAL_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_accepts_multi_address_when_all_allowed(self, mock_socket):
+        _resolve_all(mock_socket, "192.168.1.10", "fd00::10")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertIsNone(result)
+
+    # --- unparseable / empty resolution -- fail closed ---
+
+    @patch('web.handler.config.socket')
+    def test_rejects_unparseable_resolved_address(self, mock_socket):
+        # Today this is silently skipped (bare `except ValueError: pass`);
+        # D-04 requires it to fail closed instead.
+        _resolve_all(mock_socket, "not-an-ip")
+        result = ConfigHandler._validate_url("http://host.example/")
+        self.assertEqual(UNCHECKABLE_MSG, result)
+
+    @patch('web.handler.config.socket')
+    def test_rejects_empty_resolution(self, mock_socket):
+        mock_socket.getaddrinfo.return_value = []
         mock_socket.gaierror = socket.gaierror
         result = ConfigHandler._validate_url("http://host.example/")
-        self.assertIn("private/reserved", result)
+        self.assertEqual("Cannot resolve hostname", result)
 
     # --- unresolved hostname ---
 
@@ -632,14 +1028,23 @@ class TestValidateUrl(unittest.TestCase):
         result = ConfigHandler._validate_url("http://host.example/")
         self.assertEqual("Cannot resolve hostname", result)
 
-    # --- valid public host ---
+    # --- malformed port / URL -- rejected before any socket call (Pitfall 1) ---
 
     @patch('web.handler.config.socket')
-    def test_accepts_public_ip(self, mock_socket):
-        mock_socket.getaddrinfo.return_value = [(None, None, None, None, ("8.8.8.8", 0))]
-        mock_socket.gaierror = socket.gaierror
-        result = ConfigHandler._validate_url("http://host.example/")
-        self.assertIsNone(result)
+    def test_rejects_non_numeric_port(self, mock_socket):
+        result = ConfigHandler._validate_url("http://host.example:abc/")
+        self.assertEqual(BAD_PORT_MSG, result)
+        mock_socket.getaddrinfo.assert_not_called()
+
+    @patch('web.handler.config.socket')
+    def test_rejects_out_of_range_port(self, mock_socket):
+        result = ConfigHandler._validate_url("http://host.example:99999/")
+        self.assertEqual(BAD_PORT_MSG, result)
+        mock_socket.getaddrinfo.assert_not_called()
+
+    def test_rejects_malformed_ipv6_url(self):
+        result = ConfigHandler._validate_url("http://[::1/")
+        self.assertEqual(BAD_URL_MSG, result)
 
     # --- early returns: no socket call ---
 
@@ -650,3 +1055,92 @@ class TestValidateUrl(unittest.TestCase):
     def test_rejects_no_hostname(self):
         result = ConfigHandler._validate_url("http:///path")
         self.assertEqual("Invalid URL: no hostname", result)
+
+    # --- D-07: refusal messages never mention "private" or echo the host ---
+
+    @patch('web.handler.config.socket')
+    def test_refusal_messages_never_mention_private_or_echo_host(self, mock_socket):
+        refused_single_addresses = [
+            "169.254.169.254", "::ffff:169.254.169.254",
+            "0.0.0.0", "::",
+            "224.0.0.1", "239.255.255.250", "ff02::1",
+            "192.0.2.1", "240.0.0.1", "255.255.255.255",
+            "fec0::1", "::127.0.0.1", "64:ff9b::7f00:1", "64:ff9b::a9fe:a9fe",
+            "127.0.0.1", "not-an-ip",
+        ]
+        for ip in refused_single_addresses:
+            with self.subTest(ip=ip):
+                _resolve_all(mock_socket, ip)
+                result = ConfigHandler._validate_url("http://secret-host.example:8080/")
+                self.assertIsNotNone(result)
+                self.assertNotIn("private", result)
+                self.assertNotIn("secret-host", result)
+
+
+class TestLanRelaxationScope(unittest.TestCase):
+    """D-06: the relaxed LAN guard must stay reachable from exactly one
+    production call site, and no other outbound-HTTP module may bypass it."""
+
+    @staticmethod
+    def _src_root() -> Path:
+        # .../src/python/tests/unittests/test_web/test_handler/test_config_handler.py
+        return Path(__file__).resolve().parents[4]
+
+    @classmethod
+    def _production_py_files(cls):
+        root = cls._src_root()
+        for path in root.rglob("*.py"):
+            if path.relative_to(root).parts[0] == "tests":
+                continue
+            yield path
+
+    def test_validate_url_only_called_from_test_arr_connection(self):
+        config_py = self._src_root() / "web" / "handler" / "config.py"
+        tree = ast.parse(config_py.read_text())
+
+        callers = []
+        call_count = 0
+
+        class _Visitor(ast.NodeVisitor):
+            def __init__(self):
+                self._stack = []
+
+            def visit_FunctionDef(self, node):
+                self._stack.append(node.name)
+                self.generic_visit(node)
+                self._stack.pop()
+
+            def visit_Call(self, node):
+                nonlocal call_count
+                func = node.func
+                if isinstance(func, ast.Attribute) and func.attr == "_validate_url":
+                    call_count += 1
+                    if self._stack:
+                        callers.append(self._stack[-1])
+                self.generic_visit(node)
+
+        _Visitor().visit(tree)
+        self.assertEqual({"_test_arr_connection"}, set(callers))
+        self.assertEqual(1, call_count)
+
+    def test_validate_url_not_referenced_outside_config_handler(self):
+        root = self._src_root()
+        matches = {
+            path.relative_to(root).as_posix()
+            for path in self._production_py_files()
+            if "_validate_url" in path.read_text()
+        }
+        self.assertEqual({"web/handler/config.py"}, matches)
+
+    def test_outbound_http_modules_are_known(self):
+        root = self._src_root()
+        pattern = re.compile(r"^import requests|^from requests", re.M)
+        matches = {
+            path.relative_to(root).as_posix()
+            for path in self._production_py_files()
+            if pattern.search(path.read_text())
+        }
+        self.assertEqual({"web/handler/config.py", "controller/arr_queue.py"}, matches)
+
+        arr_queue = root / "controller" / "arr_queue.py"
+        self.assertNotIn("_validate_url", arr_queue.read_text())

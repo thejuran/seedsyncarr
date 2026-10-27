@@ -5,10 +5,10 @@ Feeds the recorded Sonarr 5 ``GET /api/v3/system/status`` body to the real
 the fixture manifest (``fixtures.tested_version()``), never from a literal, so the
 tests hold unchanged when the fixture is replaced by a newer capture (D-01, D-08).
 
-The LAN-guard test records a known limitation rather than a fix: a Sonarr
-reached by docker-network container name resolves to a private address, which
-the SSRF guard rejects before Sonarr is contacted. Relaxing that guard is
-deferred to the Reliability milestone (D-02).
+The LAN-guard test proves a fix, not a limitation: Phase 125 (LAN-01) relaxed
+the SSRF guard so a Sonarr reached by docker-network container name, which
+resolves to a private bridge address, is now accepted and contacted. This
+closes the known limitation recorded against the Phase 120 D-02 failure.
 """
 import json
 import re
@@ -75,23 +75,26 @@ class TestSonarr5SystemStatus(unittest.TestCase):
 
     @patch('web.handler.config.requests')
     @patch('web.handler.config.socket')
-    def test_docker_network_url_rejected_by_lan_guard_known_limitation(self, mock_socket, mock_requests):
-        """Known limitation (D-02, deferred to Reliability item 5).
+    def test_docker_network_url_accepted_by_lan_guard(self, mock_socket, mock_requests):
+        """LAN-01 fix for the Phase 120 D-02 known limitation.
 
         A Sonarr addressed by docker-network container name resolves to a
-        private bridge address. The SSRF guard rejects it before any request is
-        made. This documents current behavior; it is not a fix.
+        private bridge address. The relaxed SSRF guard now accepts it and
+        the request reaches Sonarr.
         """
         _resolve_to(mock_socket, "172.19.0.6")
         _bind_request_errors(mock_requests)
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.side_effect = lambda: json.loads(fixture_bytes(_STATUS))
+        mock_requests.get.return_value = mock_response
         self.config.sonarr.sonarr_url = "http://sonarr-v5:8989"
 
         response = self.handler._ConfigHandler__handle_test_sonarr_connection()
         body = json.loads(response.body)
 
-        self.assertFalse(body["success"])
-        self.assertIn("private", body["error"])
-        mock_requests.get.assert_not_called()
+        self.assertEqual({"success": True, "version": fixtures.tested_version()}, body)
+        mock_requests.get.assert_called_once()
 
     @patch('web.handler.config.socket')
     def test_cgnat_address_passes_url_validation(self, mock_socket):
