@@ -2,8 +2,10 @@ from unittest.mock import patch, ANY
 from threading import Timer
 
 from tests.integration.test_web.test_web_app import BaseTestWebApp
-from tests.helpers.wsgi_stream import collect_sse_chunks
+from tests.helpers.wsgi_stream import collect_sse_chunks, open_sse_stream
+from tests.helpers.model_stream_client import ModelStreamClient, parse_sse_events, server_snapshot
 from web.serialize import SerializeModel
+from web.web_app import WebApp
 from model import ModelFile
 
 
@@ -76,3 +78,54 @@ class TestModelStreamHandler(BaseTestWebApp):
         self.assertEqual(SerializeModel.UpdateEvent.Change.UPDATED, call3[0][0].change)
         self.assertEqual(old_file, call3[0][0].old_file)
         self.assertEqual(new_file, call3[0][0].new_file)
+
+    @patch.object(WebApp, "_STREAM_YIELD_INTERVAL_IN_MS", 0)
+    @patch.object(WebApp, "_STREAM_POLL_INTERVAL_IN_MS", 5)
+    def test_stalled_consumer_converges_after_overflow(self):
+        # STRM-02 (D-07b): proves convergence through the real WSGI
+        # generator and real SSE serialization (no SerializeModel patch).
+        self.model_files = [ModelFile("ghost.txt", False)]
+        server = {"ghost.txt": ModelFile("ghost.txt", False)}
+        self.controller.resync_model_files.side_effect = \
+            lambda discard: (discard(), list(server.values()))[1]
+
+        client = ModelStreamClient()
+        response_started, body = open_sse_stream(self.web_app)
+        it = iter(body)
+        timer = None
+        try:
+            for _ in range(50):
+                chunk = next(it)
+                events = parse_sse_events([chunk])
+                client.apply_all(events)
+                if any(name == "model-init" for name, _ in events):
+                    break
+            else:
+                self.fail("model-init not observed within 50 chunks")
+
+            self.assertIsNotNone(self.model_listener)
+
+            # Stall: 1501 model events land on the listener's queue (1
+            # remove + 1500 adds) without ever calling next(it) -- the
+            # queue drops 501 of them (production order).
+            self.model_listener.file_removed(server.pop("ghost.txt"))
+            for i in range(1500):
+                new_file = ModelFile("file-%04d" % i, False)
+                server[new_file.name] = new_file
+                self.model_listener.file_added(new_file)
+
+            self.assertEqual(501, self.model_listener.get_dropped_count())
+
+            # Resume: drain the rest through the real generator/socket path.
+            timer = Timer(1.5, self.web_app.stop)
+            timer.start()
+            rest = list(it)
+            client.apply_all(parse_sse_events(rest))
+
+            self.assertEqual(server_snapshot(list(server.values())), client.files)
+        finally:
+            if timer is not None:
+                timer.cancel()
+            self.web_app.stop()
+            if hasattr(body, "close"):
+                body.close()

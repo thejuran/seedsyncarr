@@ -150,3 +150,107 @@ class TestModelStreamHandler(unittest.TestCase):
         self.assertIn("realtime.txt", result2)
         result3 = self.handler.get_value()
         self.assertIsNone(result3)
+
+
+class TestModelStreamHandlerResync(unittest.TestCase):
+    """STRM-02 (D-02..D-05, D-08): a mocked Controller proving the resync
+    gate's coalescing, bounded state, and rate-limited warning in isolation
+    from the real lock (covered separately by TestModelStreamConvergence)."""
+
+    def setUp(self):
+        self.mock_controller = MagicMock(spec=Controller)
+        self.mock_controller.get_model_files_and_add_listener.return_value = []
+        self.mock_controller.resync_model_files.side_effect = \
+            lambda discard: (discard(), [ModelFile("snap.txt", False)])[1]
+        self.handler = ModelStreamHandler(self.mock_controller)
+        self.handler.setup()
+        self.handler.get_value()  # consume initial model-init
+        self._overflow_offset = 0
+
+    def _overflow(self, n=1001):
+        """Floods the listener's queue past maxsize without draining it,
+        using a unique name offset per call so repeated bursts never collide."""
+        for i in range(n):
+            self.handler.model_listener.file_added(
+                ModelFile("f%d" % (self._overflow_offset + i), False)
+            )
+        self._overflow_offset += n
+
+    def test_no_resync_without_drops(self):
+        self.handler.model_listener.file_added(ModelFile("one.txt", False))
+        result = self.handler.get_value()
+        self.assertIn("model-added", result)
+        self.mock_controller.resync_model_files.assert_not_called()
+
+    def test_drop_triggers_single_model_init_resync(self):
+        self._overflow()
+
+        result = self.handler.get_value()
+        self.assertIn("model-init", result)
+        self.assertIn("snap.txt", result)
+
+        self.mock_controller.resync_model_files.assert_called_once()
+        call_args = self.mock_controller.resync_model_files.call_args[0]
+        self.assertEqual(1, len(call_args))
+        self.assertTrue(callable(call_args[0]))
+
+        self.assertIsNone(self.handler.get_value())
+
+    def test_multiple_drops_coalesce_into_one_resync(self):
+        self._overflow()
+        self._overflow()
+        self._overflow()
+
+        self.handler.get_value()
+        result2 = self.handler.get_value()
+
+        self.mock_controller.resync_model_files.assert_called_once()
+        self.assertIsNone(result2)
+
+    def test_resync_pending_state_is_bounded(self):
+        self._overflow()
+        self._overflow()
+        self._overflow()
+
+        self.assertLessEqual(
+            self.handler.model_listener.get_queue_size(),
+            self.handler.model_listener.get_maxsize(),
+        )
+
+        self.handler.get_value()
+
+        self.assertEqual(0, self.handler.model_listener.get_queue_size())
+        # No handler attribute holds a list of snapshots -- a single bool.
+        self.assertIsNone(self.handler.initial_model_files)
+
+    def test_resync_warning_rate_limited_by_resync_count(self):
+        with self.assertLogs("ModelStreamHandler", level="WARNING") as cm:
+            for _ in range(101):
+                self._overflow(1001)
+                self.handler.get_value()
+
+        self.assertEqual(2, len(cm.records))
+        for record in cm.records:
+            message = record.getMessage()
+            self.assertNotIn("f1", message)
+
+    def test_drop_during_resync_is_absorbed(self):
+        def resync_with_concurrent_drop(discard):
+            # Simulate drops that land before the discard runs inside the
+            # lock (D-04): they must be absorbed by this same resync, not
+            # trigger a second one.
+            for i in range(1001):
+                self.handler.model_listener.file_added(
+                    ModelFile("concurrent-%d" % i, False)
+                )
+            discard()
+            return [ModelFile("snap.txt", False)]
+
+        self.mock_controller.resync_model_files.side_effect = resync_with_concurrent_drop
+
+        self._overflow()
+        self.handler.get_value()  # triggers the resync above
+
+        result = self.handler.get_value()
+        self.assertIsNone(result)
+        self.mock_controller.resync_model_files.assert_called_once()
