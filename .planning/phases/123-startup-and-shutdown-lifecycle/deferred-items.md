@@ -235,3 +235,13 @@ verdict and this phase's "done" claim rest on.
 **Status:** Not investigated further as a code issue; not fixed; treated as one-off
 environment flakiness. Recorded here per the phase-close objective's instruction to mention
 it, for awareness if `test_app_process.py` flakes again in a future phase's gate run.
+
+## SIGINT-killed scanners fall outside the D-01 shutdown grace (123-REVIEW WR-01, verifier: minor)
+
+**Source:** Phase 123 code review (`123-REVIEW.md` WR-01, 2026-10-27), confirmed by `123-VERIFICATION.md`. This was found after the owner signed off the 123-07 verdict. The owner was told about it at phase completion, and per the workflow's minor-gap rule it was auto-parked to the ROADMAP backlog.
+
+`ScanManager._check_process_health()` (`src/python/controller/scan_manager.py` ~line 312) gives the shutdown grace only to `-signal.SIGTERM` deaths. `seedsyncarr.py` installs the same handler for SIGINT, so a Ctrl-C on a foreground run (or `docker run -it`) can still log the false "Scanner process(es) died unexpectedly" ERROR and start an auto-restart that the late shutdown then cuts off. This does not happen on the project's docker stop/restart path, which always sends SIGTERM: all 17 live restart cycles were clean.
+
+**Fix (backlog):** accept `{-signal.SIGTERM, -signal.SIGINT}` and add a matching fake-clock test.
+
+**Status:** Not fixed. Parked as backlog ("Deferred: SIGINT-killed scanners outside the shutdown grace" in ROADMAP.md).
