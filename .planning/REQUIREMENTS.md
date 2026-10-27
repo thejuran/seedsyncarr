@@ -24,8 +24,8 @@ Committed scope for this milestone. Each maps to exactly one roadmap phase. Fixe
 
 ### Model-Stream Overflow
 
-- [ ] **STRM-01**: Overflow is reproduced at the model-stream boundary; if reproduction shows an existing recovery guarantee, it is recorded and the item closes with no code change
-- [ ] **STRM-02**: After overflow, a slow client converges to the current server state, with bounded buffering (producer atomicity alone is not sufficient)
+- [x] **STRM-01**: Overflow is reproduced at the model-stream boundary; if reproduction shows an existing recovery guarantee, it is recorded and the item closes with no code change
+- [x] **STRM-02**: After overflow, a slow client converges to the current server state, with bounded buffering (producer atomicity alone is not sufficient)
 
 ### LAN Connection Tests
 
@@ -74,8 +74,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SAFE-02 | Phase 122 | Complete |
 | LIFE-01 | Phase 123 | Complete |
 | LIFE-02 | Phase 123 | Complete |
-| STRM-01 | Phase 124 | Pending |
-| STRM-02 | Phase 124 | Pending |
+| STRM-01 | Phase 124 | Complete |
+| STRM-02 | Phase 124 | Complete |
 | LAN-01 | Phase 125 | Pending |
 | LAN-02 | Phase 125 | Pending |
 | LOG-01 | Phase 122 | Complete |

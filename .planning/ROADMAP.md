@@ -251,7 +251,7 @@ Plans:
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
-| 124. Model-Stream Overflow Recovery | 3/3 | Complete   | 2026-10-27 |
+| 124. Model-Stream Overflow Recovery | 3/3 | Complete    | 2026-10-27 |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
 
@@ -328,6 +328,10 @@ Only `ControllerJob.setup()` failures are wrapped into `ControllerError` for the
 ### Deferred: SIGINT-killed scanners outside the shutdown grace (Phase 123 review WR-01)
 
 The D-01 shutdown-grace window in `ScanManager._check_process_health()` (`src/python/controller/scan_manager.py` ~line 312) recognizes only `-signal.SIGTERM` scanner deaths, although `seedsyncarr.py` handles SIGINT identically. A Ctrl-C on a foreground run or `docker run -it` can still log the false "Scanner process(es) died unexpectedly" ERROR and trigger an auto-restart. Not on this project's docker stop/restart path (always SIGTERM; clean across 17 live cycles). Fix: accept `{-SIGTERM, -SIGINT}` plus a matching test. Verifier classified minor/non-blocking and auto-parked 2026-10-27. Source: `123-REVIEW.md` WR-01, `123-VERIFICATION.md`.
+
+### Deferred: Model-stream resync comment accuracy and test tightening (Phase 124 review WR-01/WR-02)
+
+In `ModelStreamHandler.get_value()` (`src/python/web/handler/stream_model.py` ~lines 81-107), the dropped-count check and `get_next_event()` are two separate unlocked reads. An overflow landing between them can let one post-gap incremental event through before the *next* call resyncs. Convergence still holds, but the comment's "the first value after a drop is never a stale backlog event" overstates it. Fix: either re-check the dropped count after dequeuing and resync instead of emitting, or correct the comment (WR-01). Also: `test_resync_pending_state_is_bounded` asserts `initial_model_files` rather than resync state (WR-02, real property covered by `test_multiple_drops_coalesce_into_one_resync`), and the `_drain` loops in `test_stream_model_overflow.py` have no iteration cap, so a resync-forever regression would hang instead of fail (IN-02). Verifier classified minor/non-blocking and auto-parked 2026-10-27. Source: `124-REVIEW.md`, `124-VERIFICATION.md`.
 
 ### Phase 999.6: README documentation discoverability and accurate security defaults (BACKLOG)
 
