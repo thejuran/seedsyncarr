@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: "Completed 125-02-PLAN.md (CHANGELOG draft, phase gates, draft PR #140 CI-green, DEV_PIN resolved); 125-03 next"
-last_updated: "2026-10-27T19:51:01.401Z"
+stopped_at: Completed 125-03-PLAN.md (LAN Test Connection live check PASS, sandbox restored, owner approved the Phase 125 verdict); Phase 125 ready for verification/close-out
+last_updated: "2026-10-27T21:39:37.339Z"
 last_activity: 2026-10-27 -- Phase 125 execution started
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 43
-  completed_plans: 42
-  percent: 57
+  completed_plans: 43
+  percent: 71
 ---
 
 # Project State
@@ -112,6 +112,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 123]: 123-07: Owner reviewed the Phase 123 verdict after an independent PR #137 deep review (5 reviewers, 0 findings scored >=70, impact 'shippable as-is'); verbatim reply 'approve, backlog both items' naming WebAppJob.cleanup() isolation gap and ControllerJob.execute() non-AppError bypass of RECOV-01 as backlog items (not fixed in-phase); LIFE-01/LIFE-02 closed
 - [Phase 125]: 125-01: ordered ipaddress classifier replaces the single is_private/is_loopback/is_reserved/is_link_local check in ConfigHandler._validate_url; RED (test(125-01), 8a69fdf) landed before GREEN (fix(125-01), f82e256); 158 tests + 74 subtests pass in the targeted suite, whole-tree ruff clean; fixes the Phase 120 D-02 Docker container-name Test Connection failure (LAN-01) and refuses link-local/metadata/unspecified/multicast/other-reserved/off-port-loopback with specific messages (LAN-02)
 - [Phase 125]: 125-02: recorded 1.8.0 draft CHANGELOG entry (D-10); gated 125-01 (5/5 gates, suite matches fixed 24-line baseline, whole-tree ruff clean, RED-before-GREEN, exact 3-file scope, zero new log/secret lines); pushed to new draft PR #140, CI run 415 green on all 13 non-publish checks; DEV_PIN sha256:162d4532... resolved by two independent methods, recorded in 125-LAN-EVIDENCE.md for 125-03's live sandbox check
+- [Phase 125]: 125-03: owner reviewed the Phase 125 verdict and replied verbatim "approved" after the live D-09 check (LAN-01/LAN-02 PASS on DEV_PIN, sandbox restored to IMAGE_PIN_L0 and fresh-session verified, production byte-identical); PR #140 remains draft, merge is a separate owner decision
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -170,8 +171,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-27T19:51:01.397Z
-Stopped at: Completed 125-02-PLAN.md (CHANGELOG draft, phase gates, draft PR #140 CI-green, DEV_PIN resolved); 125-03 next
+Last session: 2026-10-27T21:39:37.334Z
+Stopped at: Completed 125-03-PLAN.md (LAN Test Connection live check PASS, sandbox restored, owner approved the Phase 125 verdict); Phase 125 ready for verification/close-out
 Next action: Phase 123 is now fully executed. 123-07 wrote the gap-round-2 restart evidence into 123-LIFE-EVIDENCE.md, restored the sandbox to `IMAGE_PIN_L0` (1.7.6) via `teardown.sh --final` (fresh-session verified, production byte-identical throughout), and wrote the Phase 123 verdict ("**Phase 123 live restart check: PASSED**"). Before approving, the owner ran an independent vibe-check deep review of PR #137 (5 reviewers: bugs/architecture on Opus, security, impact, language-python; 0 findings scored >=70; impact verdict "shippable as-is"), which surfaced two items -- `WebAppJob.cleanup()`'s missing per-step isolation and `ControllerJob.execute()`'s non-`AppError` failures bypassing RECOV-01 auto-restart -- and replied verbatim "approve, backlog both items"; both items are logged in `deferred-items.md`, not fixed in-phase. LIFE-01 and LIFE-02 are closed. Remaining step: phase verification/close-out (orchestrator-driven, not yet run) -- this session did not run phase verification or mark the phase complete in ROADMAP.md beyond updating the plan-progress row. Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
