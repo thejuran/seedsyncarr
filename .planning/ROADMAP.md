@@ -206,7 +206,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 124-01-PLAN.md — STRM-01: recorded overflow reproduction (stalled listener diverges: 500 missing + ghost), D-06 status evidence, wire-format client + stall-capable SSE harness, go/no-go verdict
+- [x] 124-01-PLAN.md — STRM-01: recorded overflow reproduction (stalled listener diverges: 500 missing + ghost), D-06 status evidence, wire-format client + stall-capable SSE harness, go/no-go verdict
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -251,7 +251,7 @@ Plans:
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
-| 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
+| 124. Model-Stream Overflow Recovery | 1/3 | In Progress|  |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
 
