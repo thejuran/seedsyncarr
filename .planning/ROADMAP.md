@@ -237,7 +237,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 125-02-PLAN.md — CHANGELOG 1.8.0 draft entry (minor-version driver), phase gates, single draft PR, CI green, staging digest (DEV_PIN)
+- [x] 125-02-PLAN.md — CHANGELOG 1.8.0 draft entry (minor-version driver), phase gates, single draft PR, CI green, staging digest (DEV_PIN)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -265,7 +265,7 @@ Plans:
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
 | 124. Model-Stream Overflow Recovery | 3/3 | Complete    | 2026-10-27 |
-| 125. LAN Connection Tests | 1/3 | In Progress|  |
+| 125. LAN Connection Tests | 2/3 | In Progress|  |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
 
 **Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks and is deployed to NAS production by digest. Record residual limitations explicitly. Conditional investigations in the Backlog are not completion gates unless evidence justifies explicitly promoting a bounded fix.

@@ -103,7 +103,14 @@ None - no external service configuration required.
 
 ## Self-Check: PASSED
 
-All claimed files exist on disk and all referenced commit hashes are present in `git log --oneline --all` (verified below before finalizing).
+Verified on disk and in git history:
+
+- `FOUND: CHANGELOG.md`
+- `FOUND: .planning/phases/125-lan-connection-tests/125-LAN-EVIDENCE.md`
+- `FOUND: .planning/phases/125-lan-connection-tests/125-02-SUMMARY.md`
+- `FOUND: 3022056` (docs, Task 1 CHANGELOG commit)
+- `FOUND: 6fac07f` (docs, Task 3 evidence+summary commit)
+- `FOUND: 3ba9bb5` (docs, summary self-reference fix)
 
 ---
 *Phase: 125-lan-connection-tests*
