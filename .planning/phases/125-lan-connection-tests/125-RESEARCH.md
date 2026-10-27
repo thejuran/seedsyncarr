@@ -285,25 +285,28 @@ This mirrors the exact `config/get` → `config/set` → read-back-verify idiom 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 | A1 | The exact refusal message wording ("loopback is only allowed on port 8989...", "link-local or cloud-metadata...", etc.) is ASSUMED — D-07 gives example wording and explicitly leaves exact strings to discretion; the strings shown in this document are a recommendation, not a locked requirement. | Code Examples / Pattern 1 | None if the planner treats these as a starting point rather than a literal requirement — D-07 explicitly delegates this |
-| A2 | `fec0::/10` (deprecated IPv6 "site-local", RFC 3879) is not named in any locked decision and falls through to "allowed" under the Pattern 1 classifier (`is_global=True`, no reserved/multicast/link-local/unspecified flag) in this session's verification. This is ASSUMED to be out of scope / acceptable, since it is not in D-01's or D-03's named ranges and the form is obsolete/essentially unused in practice. | Pattern 1 | Low — if the owner wants this explicitly blocked, it requires one additional named-range check (`fec0::/10`), trivial to add |
+| A2 | (Superseded — see Open Question 1 RESOLVED: `fec0::/10` is refused.) `fec0::/10` (deprecated IPv6 "site-local", RFC 3879) is not named in any locked decision and falls through to "allowed" under the Pattern 1 classifier (`is_global=True`, no reserved/multicast/link-local/unspecified flag) in this session's verification. This is ASSUMED to be out of scope / acceptable, since it is not in D-01's or D-03's named ranges and the form is obsolete/essentially unused in practice. | Pattern 1 | Low — if the owner wants this explicitly blocked, it requires one additional named-range check (`fec0::/10`), trivial to add |
 | A3 | The IPv4-compatible (`::a.b.c.d`) and NAT64 (`64:ff9b::/96`) bypass forms described in Pitfall 2 are correctly caught by the `is_reserved` guard in this session's testing, but D-03's context text names only `::ffff:` (mapped) forms explicitly as an example ("e.g. `::ffff:169.254.169.254`, `::ffff:127.0.0.1`"), not these rarer forms by name. Treating them as in-scope (since the guard already closes them for free) is ASSUMED rather than confirmed as a hard requirement. | Common Pitfalls / Pitfall 2 | Low — the recommended classifier already closes this gap at no extra cost; the only risk is a planner reading D-03 narrowly and choosing not to write a regression test for it, leaving the behavior correct but unproven |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `fec0::/10` (deprecated IPv6 site-local) be explicitly refused?**
    - What we know: it is not in D-01's allow-list nor D-03's refuse-list; stdlib reports it `is_global=True`, so Pattern 1 allows it today.
    - What's unclear: whether the owner considers this in-scope "other reserved range" (D-03's catch-all phrase) or out-of-scope because it's an obsolete, essentially-never-seen form.
    - Recommendation: leave allowed (matches "public addresses allowed today" framing — there is no record of this ever being blocked), note it in the plan's scope boundary, do not add a special case unless the owner asks.
+   - **RESOLVED (orchestrator, 2026-10-27):** Refuse `fec0::/10` (fail-closed, treated as D-03 "other reserved ranges"). This overrides the recommendation above; 125-01 adds it to `_REFUSED_NETWORKS` with a regression test.
 
 2. **Should the implementation add explicit regression tests for the IPv4-compatible (`::127.0.0.1`) and NAT64 (`64:ff9b::7f00:1`) bypass forms from Pitfall 2?**
    - What we know: the recommended classifier already refuses both, for free, as a side effect of the `is_reserved` guard needed for other reasons.
    - What's unclear: D-08's explicit test list doesn't name these forms; they're a byproduct finding of this research session, not a locked requirement.
    - Recommendation: add them as two small bonus regression tests (cheap, directly prevents a real bypass class) but don't block phase completion on them if time-constrained — they are defense-in-depth beyond the locked D-08 list, not a requirement.
+   - **RESOLVED (orchestrator, 2026-10-27):** Yes — dedicated regression tests for `::127.0.0.1` and `64:ff9b::7f00:1` are required in 125-01.
 
 3. **Exact wording for the loopback-port refusal message when the hostname is not literally "localhost"** (e.g. a custom hostname that happens to resolve to `127.0.0.1` on port 3000).
    - What we know: D-07's example wording says "localhost is only allowed on port 8989 (Sonarr) or 7878 (Radarr)," but the actual input could be any hostname/IP that resolves to loopback.
    - What's unclear: whether the message should name the literal hostname/IP (sanitized, per D-07's redirect-location precedent) or stay fully generic.
    - Recommendation: use a fully generic message ("loopback is only allowed on port 8989 (Sonarr) or 7878 (Radarr)") as shown in Pattern 1 — avoids needing any new sanitization logic and is accurate regardless of what the user actually typed.
+   - **RESOLVED (orchestrator, 2026-10-27):** Use a fully generic loopback refusal message that never echoes the hostname or IP.
 
 ## Environment Availability
 
