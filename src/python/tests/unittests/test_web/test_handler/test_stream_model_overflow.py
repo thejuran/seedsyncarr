@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 from model import ModelFile
 from tests.helpers.model_stream_client import ModelStreamClient, parse_sse_events, server_snapshot
 from tests.unittests.test_controller.base import BaseControllerTestCase
-from web.handler.stream_model import WebResponseModelListener
+from web.handler.stream_model import ModelStreamHandler, WebResponseModelListener
 from web.handler.stream_status import StatusListener
 from web.serialize import SerializeModel
 
@@ -65,6 +65,94 @@ class TestModelStreamOverflowReproduction(BaseControllerTestCase):
             )
         finally:
             self.controller.remove_model_listener(listener)
+
+
+class TestModelStreamConvergence(BaseControllerTestCase):
+    """STRM-02 (D-07b): real Controller, real __model_lock, real
+    ModelStreamHandler -- the actual class a browser tab talks to -- proving
+    the wire-reconstructed client model converges to the server's current
+    model after a stalled consumer overflows the model stream."""
+
+    def setUp(self):
+        super().setUp()
+        self._add_file_to_model("ghost.txt")
+        self.handler = ModelStreamHandler(self.controller)
+        self.handler.setup()
+
+    def tearDown(self):
+        self.handler.cleanup()
+        super().tearDown()
+
+    def _drain(self, client):
+        """Pull get_value() until None, applying each value to client via the
+        same wire-format reducer a real browser tab uses. Returns the ordered
+        list of event names observed."""
+        names = []
+        while True:
+            value = self.handler.get_value()
+            if value is None:
+                break
+            events = parse_sse_events([value])
+            client.apply_all(events)
+            names.extend(name for name, _ in events)
+        return names
+
+    def test_stalled_tab_converges_to_server_model_after_overflow(self):
+        client = ModelStreamClient()
+        client.apply_all(parse_sse_events([self.handler.get_value()]))  # initial model-init
+
+        _flood(self.controller)
+
+        # D-05: the queue stays bounded during the stall.
+        self.assertLessEqual(
+            self.handler.model_listener.get_queue_size(),
+            self.handler.model_listener.get_maxsize(),
+        )
+
+        self._drain(client)
+
+        self.assertEqual(server_snapshot(self.controller.get_model_files()), client.files)
+
+    def test_first_value_after_overflow_is_model_init(self):
+        self.handler.get_value()  # consume initial model-init
+        _flood(self.controller)
+
+        value = self.handler.get_value()
+        names = [name for name, _ in parse_sse_events([value])]
+        self.assertIn("model-init", names)
+
+    def test_no_stale_or_duplicate_events_after_resync(self):
+        client = ModelStreamClient()
+        client.apply_all(parse_sse_events([self.handler.get_value()]))  # initial model-init
+
+        _flood(self.controller)
+        self._drain(client)
+
+        self.assertIsNone(self.handler.get_value())
+        self.assertEqual(0, self.handler.model_listener.get_queue_size())
+
+        with self.controller._Controller__model_lock:
+            self.controller._Controller__model.add_file(ModelFile("after.txt", False))
+            updated = ModelFile("file-0000", False)
+            updated.local_size = 7
+            self.controller._Controller__model.update_file(updated)
+
+        names = self._drain(client)
+
+        self.assertEqual(["model-added", "model-updated"], names)
+        self.assertEqual(server_snapshot(self.controller.get_model_files()), client.files)
+        self.assertEqual(0, client.ignored_added)
+
+    def test_overflow_before_initial_init_still_converges(self):
+        client = ModelStreamClient()
+
+        _flood(self.controller)
+
+        names = self._drain(client)
+
+        self.assertEqual("model-init", names[0])
+        self.assertEqual(2, names.count("model-init"))
+        self.assertEqual(server_snapshot(self.controller.get_model_files()), client.files)
 
 
 class TestStatusStreamSelfHealingEvidence(unittest.TestCase):
