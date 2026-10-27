@@ -12,8 +12,8 @@ than a patch.
 
 ### Changed
 
-- Test Connection for Sonarr and Radarr now accepts local network and Docker
-  container addresses (examples: `http://192.168.1.20:8989`,
+- Test Connection for Sonarr and Radarr now accepts local network and
+  Docker container addresses (examples: `http://192.168.1.20:8989`,
   `http://sonarr:8989`), including Tailscale addresses as before; `localhost`
   and other loopback addresses are accepted only on port 8989 or 7878, so a
   Sonarr or Radarr on a custom port should be entered by LAN address or
@@ -21,12 +21,33 @@ than a patch.
   `169.254.169.254` stay blocked, as do unspecified, multicast and reserved
   addresses, and redirects are still not followed. A refused address now gets
   a specific reason instead of the old "private/reserved IP address" message.
+  Leading and trailing spaces around a saved URL are now ignored.
   (LAN-01, LAN-02)
+- Test Connection now refuses URLs that are malformed or could be read two
+  ways: URLs containing spaces, backslashes, control or non-ASCII characters
+  (enter international host names in their `xn--` form), a user name or password
+  in the URL, a query string or fragment (`?` or `#`), or a malformed host
+  name are all refused, each with a specific reason. (LAN-02)
 
 ### Security
 
+- Upgrading fixes an issue present in SeedSyncarr 1.7.6 and earlier: a
+  specially crafted URL could trick Test Connection into sending its request
+  somewhere other than the address shown.
 - Test Connection now also refuses multicast addresses and deprecated IPv6
   site-local addresses, which the previous check did not block. (LAN-02)
+- A crafted URL containing a backslash could make Test Connection reach a
+  destination the check had refused, because the check and the connection
+  library read the URL differently. Test Connection now checks the exact URL
+  it connects to and refuses any URL the two could read differently, which is
+  why international host names must be entered in their `xn--` form.
+- The cloud-metadata addresses `fd00:ec2::254` (AWS, IPv6) and
+  `100.100.100.200` (Alibaba Cloud) are blocked even though they sit inside
+  the IPv6 unique-local and Tailscale/CGNAT ranges that are otherwise
+  allowed (`100.100.100.100`, Tailscale MagicDNS, is unaffected), and IPv6
+  transition-address forms (6to4, Teredo, NAT64, IPv4-compatible) are
+  refused explicitly so behaviour does not depend on the Python version.
+  (LAN-02)
 
 ## [1.7.6] - 2026-10-15
 
