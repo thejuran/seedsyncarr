@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: ready_to_plan
-stopped_at: Phase 124 complete (3/3, verified; 1 minor review/verifier item parked to backlog) — ready to discuss Phase 125
-last_updated: "2026-10-27T11:14:30.000Z"
-last_activity: 2026-10-27 -- Phase 124 complete: overflow reproduced (124-01), atomic resync primitives (124-02), model-stream resync gate (124-03); verifier 9/9 must-haves, Docker suite 1986 passed / 62 skipped; WR-01/WR-02/IN-02 parked to backlog; STRM-01/STRM-02 closed
+status: planning
+stopped_at: Phase 125 context gathered
+last_updated: "2026-10-27T12:21:45.000Z"
+last_activity: 2026-10-27
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 4
   total_plans: 40
   completed_plans: 40
-  percent: 67
+  percent: 57
 ---
 
 # Project State
@@ -168,8 +168,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-27T00:47:42.421Z
-Stopped at: Phase 124 context gathered
+Last session: 2026-10-27T12:21:45.146Z
+Stopped at: Phase 125 context gathered
 Next action: Phase 123 is now fully executed. 123-07 wrote the gap-round-2 restart evidence into 123-LIFE-EVIDENCE.md, restored the sandbox to `IMAGE_PIN_L0` (1.7.6) via `teardown.sh --final` (fresh-session verified, production byte-identical throughout), and wrote the Phase 123 verdict ("**Phase 123 live restart check: PASSED**"). Before approving, the owner ran an independent vibe-check deep review of PR #137 (5 reviewers: bugs/architecture on Opus, security, impact, language-python; 0 findings scored >=70; impact verdict "shippable as-is"), which surfaced two items -- `WebAppJob.cleanup()`'s missing per-step isolation and `ControllerJob.execute()`'s non-`AppError` failures bypassing RECOV-01 auto-restart -- and replied verbatim "approve, backlog both items"; both items are logged in `deferred-items.md`, not fixed in-phase. LIFE-01 and LIFE-02 are closed. Remaining step: phase verification/close-out (orchestrator-driven, not yet run) -- this session did not run phase verification or mark the phase complete in ROADMAP.md beyond updating the plan-progress row. Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
