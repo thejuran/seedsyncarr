@@ -71,6 +71,18 @@ class StreamQueue(Generic[T]):
         except Empty:
             return None
 
+    def clear(self) -> None:
+        """
+        Discard all currently queued events without affecting dropped_count.
+        Callers that need atomicity with producers must invoke it under the
+        producers' lock (see Controller.resync_model_files).
+        """
+        while True:
+            try:
+                self.__queue.get(block=False)
+            except Empty:
+                return
+
     def get_dropped_count(self) -> int:
         """
         Returns the total number of events that have been dropped due to

@@ -529,6 +529,23 @@ class Controller:
             model_files = self.__get_model_files()
         return model_files
 
+    def resync_model_files(self, discard_backlog: Callable[[], None]) -> List[ModelFile]:
+        """
+        Atomically discards a listener's queued backlog and returns a fresh
+        snapshot of the current model files (Phase 124 D-03). `discard_backlog`
+        runs while __model_lock is held, so no model mutation -- and therefore
+        no new listener event -- can happen between the discard and the
+        snapshot: events produced after the snapshot are delivered, events
+        already reflected in it are never re-delivered.
+
+        The caller must already be registered as a listener; this method does
+        not add or remove listeners. `discard_backlog` must not take
+        __model_lock itself (it would deadlock).
+        """
+        with self.__model_lock:
+            discard_backlog()
+            return self.__get_model_files()
+
     def queue_command(self, command: Command):
         self.__command_queue.put(command)
 
