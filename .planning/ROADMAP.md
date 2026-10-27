@@ -201,7 +201,20 @@ Plans:
   3. Otherwise, after overflow the slow client's model matches the server's current state (fresh snapshot or reconnect — the smallest mechanism), demonstrated by a test that fails before and passes after
   4. Buffering stays bounded under a stalled consumer; producer atomicity alone is not accepted as the recovery mechanism, and there is no event-bus redesign
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 124-01-PLAN.md — STRM-01: recorded overflow reproduction (stalled listener diverges: 500 missing + ghost), D-06 status evidence, wire-format client + stall-capable SSE harness, go/no-go verdict
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 124-02-PLAN.md — TDD: StreamQueue.clear() + atomic Controller.resync_model_files(discard_backlog) under __model_lock, bounded-stall test
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 124-03-PLAN.md — TDD: ModelStreamHandler resync gate (fresh model-init on same connection, coalesced, rate-limited warning); convergence RED then GREEN at unit and WSGI level
 
 ### Phase 125: LAN Connection Tests
 
