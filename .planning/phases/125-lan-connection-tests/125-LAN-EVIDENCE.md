@@ -276,3 +276,11 @@ In a second, independent `ssh nas` call, after the final restore:
 **Phase 125 live check: PASSED**
 
 The sandbox is restored to `IMAGE_PIN_L0` (`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`) and verified in a fresh, independent session. Production `seedsyncarr` was never touched beyond the single permitted read-only fingerprint and is byte-identical before, during and after this plan. PR #140 remains open and draft; nothing was merged.
+
+## Owner review (Task 3)
+
+Owner reply, verbatim, 2026-10-27: "approved"
+
+The owner reviewed, before replying: 1.7.6 failed Test Connection on `http://sonarr-v5:8989` (the old problem); the PR build succeeded against the identical URL and reported Sonarr `5.0.0.2800`; `http://169.254.169.254` was refused with the locked message; the sandbox was restored to 1.7.6 and its original Sonarr URL; production was untouched. The orchestrator independently re-verified in a separate `ssh nas` session: `seedsyncarr-test` and `seedsyncarr` both report `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`; production `StartedAt` `2026-10-23T07:04:18.591254939Z` unchanged.
+
+**Phase 125: owner-approved.**

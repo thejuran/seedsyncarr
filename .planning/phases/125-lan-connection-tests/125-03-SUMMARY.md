@@ -47,9 +47,9 @@ completed: 2026-10-27
 
 ## Performance
 
-- **Duration:** ~55 min (Task 1 script authoring + Task 2 two live NAS sessions, including one harness-bug retry cycle)
+- **Duration:** ~55 min (Task 1 script authoring + Task 2 two live NAS sessions, including one harness-bug retry cycle), plus Task 3 owner checkpoint
 - **Completed:** 2026-10-27
-- **Tasks:** 2 of 3 (Task 3 is the owner checkpoint, not run by this executor)
+- **Tasks:** 3 of 3 (Task 3 owner checkpoint closed this session)
 - **Files modified:** 1 (`125-LAN-EVIDENCE.md`); 3 created (`125-livecheck.sh`, `125-teardown.sh`, this summary)
 
 ## Accomplishments
@@ -60,14 +60,16 @@ completed: 2026-10-27
 - Production `seedsyncarr` fingerprinted three times (before, after, final fresh session) and found byte-identical every time, matching `123-LIFE-EVIDENCE.md`'s recorded `StartedAt` exactly -- zero drift
 - Found and fixed a harness bug (Rule 1) in `125-livecheck.sh`'s `tc()` helper during the first live attempt (see Deviations), then successfully reran the full check on a clean retry
 - Wrote the Phase 125 verdict mapping LAN-01, LAN-02, SC1-4 and D-01 through D-10 to their unit and live evidence, concluding **"Phase 125 live check: PASSED"**
+- Owner reviewed the verdict and the restore proof and replied verbatim "approved"; the orchestrator independently re-verified the restore in a separate `ssh nas` session before presenting it (see "Owner reply" below)
 
 ## Task Commits
 
 1. **Task 1: Write and commit the live-check and teardown scripts** - `9abc12a` (docs)
 2. **Task 1 (deviation fix, during Task 2's live run):** `d642a59` (fix) -- harness-only jq fallback bug, see Deviations
-3. **Task 2: Run the live check on DEV_PIN, final restore, fresh-session check, evidence and verdict** - committed together with this summary (hash recorded after this commit; see below)
+3. **Task 2: Run the live check on DEV_PIN, final restore, fresh-session check, evidence and verdict** - `7f2490a` (docs)
+4. **Task 3: Owner review of the Phase 125 verdict** - owner reply and verdict closure recorded in this commit (docs, committed after this summary)
 
-**Plan metadata:** this summary and the completed `125-LAN-EVIDENCE.md` are committed together as `docs(125-03): record LAN Test Connection live check, sandbox restore and Phase 125 verdict`.
+**Plan metadata:** Task 2's evidence and this summary's initial content were committed together as `docs(125-03): record LAN Test Connection live check, sandbox restore and Phase 125 verdict` (`7f2490a`). Task 3's owner-approval record is a separate follow-up commit.
 
 ## Files Created/Modified
 
@@ -106,10 +108,16 @@ completed: 2026-10-27
 
 None - no external service configuration required.
 
+## Owner reply
+
+> approved
+
+Owner typed "approved" on 2026-10-27 after reviewing: 1.7.6 failed Test Connection on `http://sonarr-v5:8989` (the old problem); the PR build succeeded against the identical URL and reported Sonarr version `5.0.0.2800`; `http://169.254.169.254` was refused with the locked message "URL points to a link-local or cloud-metadata address, which is not allowed"; the sandbox was restored to 1.7.6 and its original Sonarr URL; production was untouched. The orchestrator independently re-verified the restore in a separate `ssh nas` session before presenting the verdict: `seedsyncarr-test` and `seedsyncarr` both report `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`; production `StartedAt` `2026-10-23T07:04:18.591254939Z` unchanged, matching `123-LIFE-EVIDENCE.md`. Verbatim reply and review context also recorded in `125-LAN-EVIDENCE.md` under "## Owner review (Task 3)".
+
 ## Next Phase Readiness
 
 - D-09 is fully live-proven: LAN-01 and LAN-02 both pass on the exact PR CI staging image, the sandbox is back on `IMAGE_PIN_L0` and fresh-session verified, and production is confirmed byte-identical throughout.
-- Task 3 (owner checkpoint) is not run by this executor. The Phase 125 verdict in `125-LAN-EVIDENCE.md` is ready for owner review; this summary's "Owner reply" line will be added by whichever agent runs that checkpoint task.
+- Task 3 (owner checkpoint) is closed: the owner reviewed the Phase 125 verdict and replied "approved" (see "Owner reply" above). Phase 125 is owner-approved; PR #140 remains draft and unmerged, per the one-PR-per-phase convention -- merge is a separate owner decision, not part of this plan.
 - One pre-existing, non-blocking item carried from 125-02: `125-LAN-EVIDENCE.md` line 127 (Gate 5's own command text, `grep -cE "logger\.|api_key|X-Api-Key"`) still literally contains the substring `X-Api-Key` as part of describing the detection command itself, not an actual key value. This predates this plan (committed in 125-02) and is preserved under the evidence file's append-only rule; the narrower acceptance check (`grep -ciE "x-api-key|apikey"`) on the whole file therefore reads `1`, not `0`. No real key value appears anywhere in the file -- confirmed by direct inspection of every `*_SUCCESS`/`*_ERROR`/`*.json` value recorded in this plan's new content.
 
 ## Self-Check: PASSED
@@ -121,7 +129,9 @@ Verified on disk and in git history:
 - `FOUND: .planning/phases/125-lan-connection-tests/125-LAN-EVIDENCE.md`
 - `FOUND: 9abc12a` (docs, Task 1 scripts commit)
 - `FOUND: d642a59` (fix, harness jq-fallback bug)
+- `FOUND: 7f2490a` (docs, Task 2 evidence/verdict commit)
 - NAS state independently re-verified in a fresh `ssh nas` session: `.Config.Image` == `IMAGE_PIN_L0`, compose line == `IMAGE_PIN_L0`, `sonarr_url` == `http://sonarr-v5:8989`, `/server/status` == 200, production fingerprint diff empty against the pre-check baseline
+- Owner reply "approved" recorded verbatim in both this summary ("## Owner reply") and `125-LAN-EVIDENCE.md` ("## Owner review (Task 3)")
 
 ---
 *Phase: 125-lan-connection-tests*
