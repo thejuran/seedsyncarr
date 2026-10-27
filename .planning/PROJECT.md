@@ -306,7 +306,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Current State
 
-Milestone v1.8.0 Reliability active (started 2026-10-21). Phase 121 Credential Forwarding complete, verified and merged to main (PR #132; not yet released). Phase 122 Safety Acceptance and Logging Fixes complete, verified and merged to main (PR #134, 2026-10-25). Phase 123 Startup and Shutdown Lifecycle complete and verified (2026-10-27; LIFE-01/LIFE-02 validated; normal and mid-transfer `docker restart` now log neither the false scanner-death error nor the lftp "Could not terminate the child" error, live-verified on the sandbox) on draft PR #137, awaiting owner merge decision; Phase 124 next. NAS production runs `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` (v1.7.5 Safety Release, shipped 2026-10-15). v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release, no tag).
+Milestone v1.8.0 Reliability active (started 2026-10-21). Phase 121 Credential Forwarding complete, verified and merged to main (PR #132; not yet released). Phase 122 Safety Acceptance and Logging Fixes complete, verified and merged to main (PR #134, 2026-10-25). Phase 123 Startup and Shutdown Lifecycle complete and verified (2026-10-27; LIFE-01/LIFE-02 validated; normal and mid-transfer `docker restart` now log neither the false scanner-death error nor the lftp "Could not terminate the child" error, live-verified on the sandbox) and merged to main (PR #137). Phase 124 Model-Stream Overflow Recovery complete and verified (2026-10-27; STRM-01/STRM-02 validated; a stalled browser tab whose model-stream queue overflows now receives one fresh `model-init` snapshot on the same connection and converges to the server's file list, with buffering capped at one queue plus one snapshot; tests only, no sandbox session) on branch `gsd/phase-124-model-stream-overflow-recovery`, PR not yet opened; Phase 125 next. NAS production runs `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…` (v1.7.5 Safety Release, shipped 2026-10-15). v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release, no tag).
 
 ## Current Milestone: v1.8.0 Reliability
 
@@ -541,4 +541,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-27 after Phase 123 completion*
+*Last updated: 2026-10-27 after Phase 124 completion*
