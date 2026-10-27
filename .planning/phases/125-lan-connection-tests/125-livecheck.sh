@@ -64,7 +64,7 @@ IMAGE_PIN_L0="$(state_get IMAGE_PIN_L0)"
 DEV_PIN="$(state_get DEV_PIN)"
 
 get_sonarr_url() {
-  curl -s --max-time 15 "$SSY/server/config/get" | jq -r '.sonarr.sonarr_url // empty'
+  curl -s --max-time 15 "$SSY/server/config/get" | jq -r '.sonarr.sonarr_url // ""'
 }
 set_sonarr_url() {
   local value="$1" body
@@ -86,13 +86,15 @@ wait_status_200() {
   return 1
 }
 # One GET of test-connection; writes the full response to <capture-dir>/<label>.json and
-# prints exactly three lines (.success, .version // empty, .error // empty) -- nothing
-# else -- so callers can capture them by command substitution.
+# prints exactly three lines (.success, .version or "", .error or "") -- nothing else --
+# so callers can capture them by command substitution and read fixed line numbers. Using
+# jq's `empty` here would suppress an absent field instead of emitting a blank line,
+# shifting every field after it up by one line, so the fallback is an explicit "".
 tc() {
   local label="$1" resp
   resp="$(curl -s --max-time 15 "$SSY/server/config/sonarr/test-connection")"
   printf '%s' "$resp" > "$D/${label}.json"
-  echo "$resp" | jq -r '.success, (.version // empty), (.error // empty)'
+  echo "$resp" | jq -r '.success, (.version // ""), (.error // "")'
 }
 
 OK=0
