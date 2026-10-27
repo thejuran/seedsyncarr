@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: Completed 125-03-PLAN.md (LAN Test Connection live check PASS, sandbox restored, owner approved the Phase 125 verdict); Phase 125 ready for verification/close-out
-last_updated: "2026-10-27T21:39:37.339Z"
-last_activity: 2026-10-27 -- Phase 125 execution started
+stopped_at: Phase 125 plans 01-03 done (live check owner-approved); code review found a guard bypass (CR-01) — owner chose to fix in-phase via gap-closure plan 125-04 (D-11, D-12)
+last_updated: "2026-10-27T22:04:41.000Z"
+last_activity: 2026-10-27 -- Phase 125 code review: CR-01 bypass confirmed; gap-closure planning
 progress:
   total_phases: 7
   completed_phases: 5
