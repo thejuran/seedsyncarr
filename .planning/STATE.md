@@ -5,13 +5,13 @@ milestone_name: Reliability
 status: planning
 stopped_at: Phase 125 context gathered
 last_updated: "2026-10-27T12:21:45.000Z"
-last_activity: 2026-10-27
+last_activity: 2026-10-27 -- Phase 125 context gathered (loopback only on 8989/7878; link-local/metadata/reserved/multicast refused; specific refusal messages; tests + live sandbox check)
 progress:
-  total_phases: 7
+  total_phases: 6
   completed_phases: 4
   total_plans: 40
   completed_plans: 40
-  percent: 57
+  percent: 67
 ---
 
 # Project State
