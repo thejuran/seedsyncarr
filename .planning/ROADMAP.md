@@ -228,7 +228,20 @@ Plans:
   3. The new acceptance is limited to the configured Sonarr/Radarr test-connection path; no other outbound request path is relaxed
   4. The change is noted as the minor-version driver (behavior change) in the 1.8.0 release notes
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 125-01-PLAN.md — TDD: ordered LAN-aware classifier in `_validate_url` (LAN ranges, ULA, CGNAT, container names allowed; loopback only on 8989/7878; metadata/link-local, unspecified, multicast, reserved, site-local and embedded-loopback forms refused with specific messages), redirect and scope regression locks
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 125-02-PLAN.md — CHANGELOG 1.8.0 draft entry (minor-version driver), phase gates, single draft PR, CI green, staging digest (DEV_PIN)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 125-03-PLAN.md — NAS sandbox live check on DEV_PIN (`http://sonarr-v5:8989` succeeds, `http://169.254.169.254` refused), Sonarr URL and image-pin restore with fresh-session check, owner verdict review
 
 ### Phase 126: Release 1.8.0
 
