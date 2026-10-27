@@ -29,7 +29,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 - [x] **Phase 121: Credential Forwarding** - The app token is attached only to SeedSyncarr's own API requests, never to external destinations such as the GitHub update check (completed 2026-10-21)
 - [x] **Phase 122: Safety Acceptance and Logging Fixes** - Extraction/import/auto-delete checks pass on a running build, incident records are reconciled, and webhook/completion-gate log messages are accurate (completed 2026-10-25)
 - [x] **Phase 123: Startup and Shutdown Lifecycle** - Partial startup failures clean up started children; a failing component cleanup does not stop the remaining cleanups (completed 2026-10-27)
-- [ ] **Phase 124: Model-Stream Overflow Recovery** - A slow client converges to current server state after overflow, with bounded buffering (or a recorded existing guarantee)
+- [x] **Phase 124: Model-Stream Overflow Recovery** - A slow client converges to current server state after overflow, with bounded buffering (or a recorded existing guarantee) (completed 2026-10-27)
 - [ ] **Phase 125: LAN Connection Tests** - Test Connection accepts intended local Sonarr/Radarr addresses, including Docker container names, while unintended destinations stay rejected
 - [ ] **Phase 126: Release 1.8.0** - Dependabot review, publish to Docker/GitHub/PyPI, NAS digest smoke test, production deploy by digest confirmed by a successful scan
 
@@ -214,7 +214,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 124-03-PLAN.md — TDD: ModelStreamHandler resync gate (fresh model-init on same connection, coalesced, rate-limited warning); convergence RED then GREEN at unit and WSGI level
+- [x] 124-03-PLAN.md — TDD: ModelStreamHandler resync gate (fresh model-init on same connection, coalesced, rate-limited warning); convergence RED then GREEN at unit and WSGI level
 
 ### Phase 125: LAN Connection Tests
 
@@ -251,7 +251,7 @@ Plans:
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
-| 124. Model-Stream Overflow Recovery | 2/3 | In Progress|  |
+| 124. Model-Stream Overflow Recovery | 3/3 | Complete   | 2026-10-27 |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
 
