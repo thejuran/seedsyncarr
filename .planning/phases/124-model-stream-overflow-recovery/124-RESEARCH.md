@@ -435,7 +435,7 @@ sending full snapshots).
 **If this table is empty:** N/A — one assumption logged above, and it is explicitly non-blocking
 for test design because the recommended reproduction test (Pitfall 3) does not rely on it.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the integration-level "fails-before/passes-after" test (roadmap criterion 3) exercise the real WSGI generator, or is the `StreamQueue`/`ModelStreamHandler`-level reproduction sufficient?**
    - What we know: the `StreamQueue`-level reproduction (Pitfall 3, option a) is simpler,
@@ -452,6 +452,11 @@ for test design because the recommended reproduction test (Pitfall 3) does not r
      This is explicitly flagged as Claude's Discretion in CONTEXT.md ("Test placement and
      harness... whether a frontend spec is added"), so the plan should pick one primary location
      and treat the other as supporting evidence, not duplicate required coverage.
+   - RESOLVED: both. Unit-level convergence tests are the primary evidence (124-03 Task 1:
+     `TestModelStreamConvergence` with a real Controller, plus `TestModelStreamHandlerResync` with a
+     mocked Controller), and one integration-level WSGI stalled-consumer test
+     (`test_stalled_consumer_converges_after_overflow`, 124-03 Task 2) confirms the same convergence
+     through the real generator and SSE serialization. Both are committed RED before the fix.
 
 2. **Exact log-message cadence for D-08's "rate-limited like the existing `StreamQueue overflow` warning."**
    - What we know: the existing pattern is count-based modulo (`dropped_count % 100 == 1`), not
@@ -464,6 +469,9 @@ for test design because the recommended reproduction test (Pitfall 3) does not r
    - Recommendation: count resyncs, not drops — a resync is the user-visible event worth logging
      ("this tab's model was resynced"), and drops are already logged by `StreamQueue.put()` itself.
      Left as Claude's Discretion in CONTEXT.md ("Log message wording").
+   - RESOLVED: count resyncs. The D-08 warning is rate-limited by resync count in the existing
+     `% 100 == 1` style (`self._resync_count % 100 == 1`, so resyncs 1, 101, 201... log), counts only,
+     no file names (124-03 Task 3; asserted by `test_resync_warning_rate_limited_by_resync_count`).
 
 ## Environment Availability
 
