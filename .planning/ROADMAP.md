@@ -210,7 +210,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 124-02-PLAN.md — TDD: StreamQueue.clear() + atomic Controller.resync_model_files(discard_backlog) under __model_lock, bounded-stall test
+- [x] 124-02-PLAN.md — TDD: StreamQueue.clear() + atomic Controller.resync_model_files(discard_backlog) under __model_lock, bounded-stall test
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -251,7 +251,7 @@ Plans:
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
-| 124. Model-Stream Overflow Recovery | 1/3 | In Progress|  |
+| 124. Model-Stream Overflow Recovery | 2/3 | In Progress|  |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
 
