@@ -754,3 +754,14 @@ Clean check (separate call, after teardown): no `SSA123.`-prefixed name under se
 **Total deviations this section:** 1 auto-fixed (Rule 1/3: missing pre-launch growth gate in the first capture script, fixed before A2/A1r); 1 harness-miss retry consumed (A1 -> A1r, per the plan's own designed retry path, not a new deviation category).
 
 **Impact on plan:** None on the plan's truthfulness or scope. The flawed first A1 attempt is fully preserved and disclosed rather than silently discarded or silently counted as proof it is not; the corrected growth-gate loop produced genuine, defensible mid-transfer proof for both A2 and A1r, and A2 additionally delivered the single most important remaining live proof this phase needed: the D-state hypothesis confirmed during an actual active-transfer restart, reaped cleanly within the 123-13 bound.
+
+## Owner review (Phase 123 verdict)
+
+Before approving, the owner ran a vibe-check deep review of PR #137 (5 reviewers: bugs/architecture on Opus, security, impact, language-python; 0 findings scored >=70; 9 filtered as sub-threshold/duplicates; impact verdict "shippable as-is"). The review surfaced two items, which the owner chose to backlog rather than fix in-phase (recorded as items 7 and 8 in `deferred-items.md`):
+
+1. `WebAppJob.cleanup()` (`src/python/web/web_app_job.py`) lacks the per-step isolation this phase added elsewhere: if `self.__app.stop()` raises, `self.__server.stop()` and `self.__server_thread.join()` are skipped (and `MyWSGIRefServer.stop()` can raise `AttributeError` when its inner server is still `None`). Fix proposed: wrap each stop step in its own `try/except` + `logger.exception`, mirroring `ScanManager`/`FileOperationManager`/`Controller`.
+2. Only `ControllerJob.setup()` failures are wrapped into `ControllerError` for the RECOV-01 auto-restart; a non-`AppError` raised later from `Controller.process()` (`ControllerJob.execute()`) still reaches the main loop as a non-`AppError` and ends the process instead of auto-restarting. This is the deliberate setup-only scope per D-04/D-05; extending it is a future product decision.
+
+**Owner reply (verbatim):** "approve, backlog both items"
+
+LIFE-01 and LIFE-02 are reported complete on this reply. The Phase 123 live restart check stays **PASSED** (unchanged from "## Phase 123 verdict" above); no rerun was requested and no code change followed from the two backlogged items.

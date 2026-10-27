@@ -144,6 +144,72 @@ indefinitely if the child stays in uninterruptible I/O (state D), which this pha
 **Status:** Shipped as part of 123-13's fix, not deferred. Recorded here for backlog
 visibility only; no further action proposed.
 
+**Deep-review sub-note (informational, low confidence):** PR #137's vibe-check deep review
+(2026-10-26) also flagged, via 3 of its 5 reviewers at low confidence, a possible
+double-failure masking shape in `Lftp.exit()`: if the post-close reap fallback itself raises
+(e.g. the bounded wait above still times out and `LftpError` is raised) while an earlier
+exception from the same shutdown sequence is already in flight, the later exception could
+mask the earlier one at the call site, the same general shape D-06 guards against elsewhere
+in this phase. None of the findings in this sub-note scored >=70 and all were filtered as
+sub-threshold by the review's own scoring; it is recorded here for visibility alongside the
+bounded-wait note, not as a separate action item.
+
+## WebAppJob.cleanup() lacks per-step isolation (PR #137 deep review, owner-reviewed, backlogged)
+
+**Found during:** PR #137 vibe-check deep review (2026-10-26), bugs/architecture reviewer
+(Opus). Surfaced to the owner at the Phase 123 verdict checkpoint (123-07, Task 3); owner
+reply verbatim: "approve, backlog both items".
+
+**Observed:** `WebAppJob.cleanup()` (`src/python/web/web_app_job.py`) does not have the
+per-step isolation this phase added to `ScanManager`/`FileOperationManager`/`Controller`'s
+cleanup paths: if `self.__app.stop()` raises, `self.__server.stop()` and
+`self.__server_thread.join()` are skipped entirely rather than each being attempted and
+logged independently. Compounding this, `MyWSGIRefServer.stop()` can itself raise
+`AttributeError` when its inner server reference is still `None` (e.g. if `cleanup()` runs
+before the server ever finished starting).
+
+**Why out of scope here:** This phase's scope (per CONTEXT.md's "Specific Ideas") named
+`ScanManager`/`Controller`/`FileOperationManager` cleanup paths, not `WebAppJob`. No live
+restart cycle in this phase (17 total) observed `WebAppJob.cleanup()` raising or skipping a
+step; the finding is static-analysis-derived, not reproduced live.
+
+**Why it matters:** The fix mirrors a pattern this phase already applies everywhere else --
+wrap each stop step (`self.__app.stop()`, `self.__server.stop()`,
+`self.__server_thread.join()`) in its own `try/except Exception: self.logger.exception(...)`,
+and guard `MyWSGIRefServer.stop()` against a `None` inner server before calling it.
+
+**Status:** Not fixed in this phase (owner decision, 2026-10-26: "backlog both items"); no
+regression test added. Backlog candidate.
+
+## ControllerJob.execute() non-AppError failures bypass RECOV-01 auto-restart (PR #137 deep review, owner-reviewed, backlogged)
+
+**Found during:** PR #137 vibe-check deep review (2026-10-26), bugs/architecture reviewer
+(Opus). Surfaced to the owner at the Phase 123 verdict checkpoint (123-07, Task 3); owner
+reply verbatim: "approve, backlog both items".
+
+**Observed:** This phase's D-04/D-05 fix wraps non-`AppError` exceptions into `ControllerError`
+only in `ControllerJob.setup()`, routing them to the existing RECOV-01 `except AppError`
+main-loop auto-restart path. A non-`AppError` exception raised later, from
+`Controller.process()` via `ControllerJob.execute()`, is not wrapped the same way -- it still
+reaches the main loop as a plain (non-`AppError`) exception and ends the process instead of
+triggering RECOV-01's auto-restart.
+
+**Why out of scope here:** This is the deliberate, scoped behavior from D-04/D-05 (startup
+-failure handling), not a regression -- `ControllerJob.setup()` is exactly where LIFE-01/LIFE-02
+apply. Extending auto-restart coverage to `execute()`-time non-`AppError` failures is a
+broader behavior change (new error-routing surface outside this phase's declared scope) and
+is explicitly named in the plan's own `<done>` text as a future product decision, not a gap in
+this phase's fix.
+
+**Why it matters:** An unexpected non-`AppError` failure during normal operation (not
+startup) today still ends the process rather than auto-restarting, same as before this phase.
+Whether that should change is a product decision about how broadly RECOV-01 should apply, not
+a bug in the current fix.
+
+**Status:** Not fixed in this phase (owner decision, 2026-10-26: "backlog both items"); by
+design, not a code gap. Backlog candidate for a future phase if the owner wants RECOV-01's
+coverage extended beyond setup-time failures.
+
 ## One flaky `test_app_process.py` run during the gap-round-2 phase gate (123-15)
 
 **Found during:** 123-15, Task 1, Gate 1 (full unit-suite failure set vs. the 122-03
