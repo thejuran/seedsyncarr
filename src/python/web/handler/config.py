@@ -18,6 +18,84 @@ from ..rate_limit import rate_limit
 # the raw key (122-14, CR-01).
 _API_KEY_CHARS = re.compile(r"[\x21-\x7e]+")
 
+# Private ranges the Sonarr/Radarr Test Connection path allows, in addition
+# to already-public addresses: standard LAN ranges, Tailscale/CGNAT (allowed
+# before this change, must not regress), and IPv6 unique-local (LAN-01).
+_ALLOWED_PRIVATE_NETWORKS = (
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("100.64.0.0/10"),
+    ipaddress.ip_network("fc00::/7"),
+)
+
+# Deprecated/other reserved ranges that stay refused even though stdlib
+# reports is_global=True for them (D-03 "other reserved"; fec0::/10 is
+# deprecated IPv6 site-local).
+_REFUSED_NETWORKS = (
+    ipaddress.ip_network("fec0::/10"),
+)
+
+# Loopback is allowed only when the URL's explicit port is one of Sonarr's or
+# Radarr's own defaults (D-02); any other port, or no port, stays refused.
+_ALLOWED_LOOPBACK_PORTS = frozenset({8989, 7878})
+
+_MSG_LOOPBACK_PORT = "Loopback addresses are only allowed on port 8989 (Sonarr) or 7878 (Radarr)"
+_MSG_LINK_LOCAL = "URL points to a link-local or cloud-metadata address, which is not allowed"
+_MSG_UNSPECIFIED = "URL points to an unspecified address (0.0.0.0 or ::), which is not allowed"
+_MSG_MULTICAST = "URL points to a multicast address, which is not allowed"
+_MSG_RESERVED = "URL points to a reserved IP address, which is not allowed"
+_MSG_UNCHECKABLE = "URL resolves to an address that could not be checked, which is not allowed"
+
+
+def _classify_resolved_address(
+    addr: "ipaddress.IPv4Address | ipaddress.IPv6Address", port: int | None
+) -> str | None:
+    """Classify a single resolved address as allowed (None) or refused (an
+    error string). The check order below is load-bearing:
+
+    IPv6-mapped IPv4 forms (::ffff:a.b.c.d) are unmapped first -- every
+    ::ffff: address also reports is_reserved=True in stdlib, so checking
+    reserved-ness before unmapping would misclassify an allowed address like
+    ::ffff:10.0.0.1. Loopback is checked next, before any reserved check,
+    because ::1 and ::ffff:127.0.0.1 both report is_reserved=True too (a
+    reserved-first check would block loopback on its own allowed ports).
+    Named allow-listed ranges come before the public-address check so a
+    quiet LAN IP never has to pass is_global. The public branch requires
+    `is_global and not is_reserved` rather than bare is_global, because two
+    notations -- ::127.0.0.1 (IPv4-compatible) and 64:ff9b::7f00:1 (NAT64,
+    well-known prefix) -- both embed 127.0.0.1 yet report is_global=True;
+    both also report is_reserved=True, which is what the "not is_reserved"
+    clause closes (it is the only thing standing between those notations and
+    a loopback-port-gate bypass).
+    """
+    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
+        addr = addr.ipv4_mapped
+
+    if addr.is_unspecified:
+        return _MSG_UNSPECIFIED
+
+    if addr.is_loopback:
+        return None if port in _ALLOWED_LOOPBACK_PORTS else _MSG_LOOPBACK_PORT
+
+    if addr.is_link_local:
+        return _MSG_LINK_LOCAL
+
+    if addr.is_multicast:
+        return _MSG_MULTICAST
+
+    if any(addr in net for net in _REFUSED_NETWORKS):
+        return _MSG_RESERVED
+
+    if any(addr in net for net in _ALLOWED_PRIVATE_NETWORKS):
+        return None
+
+    if addr.is_global and not addr.is_reserved:
+        return None
+
+    return _MSG_RESERVED
+
+
 class ConfigHandler(IHandler):
     def __init__(self, config: Config, context: Context):
         self.logger = context.logger.getChild("ConfigHandler")
@@ -59,31 +137,52 @@ class ConfigHandler(IHandler):
     def _validate_url(url: str) -> str | None:
         """Validate URL for SSRF protection. Returns error string or None if valid.
 
+        Used only by the Sonarr/Radarr Test Connection path (_test_arr_connection):
+        LAN ranges, Tailscale/CGNAT, IPv6 unique-local, container/host names
+        resolving to any of those, and public addresses are allowed; loopback
+        is allowed only on Sonarr's or Radarr's own default port (8989/7878);
+        link-local/cloud-metadata, unspecified, multicast, other reserved
+        ranges, and loopback on any other port stay refused (LAN-01, LAN-02).
+
         Known limitation: DNS rebinding (TOCTOU) — getaddrinfo resolves at validation
         time while requests.get resolves again at request time. A DNS rebinding attack
         could bypass this check. Mitigating this requires socket-level interception
         (e.g., ssrfpy or pysafecurl), which is out of scope for a homelab tool.
         """
-        parsed = urlparse(url)
+        try:
+            parsed = urlparse(url)
+            hostname = parsed.hostname
+        except ValueError:
+            return "Invalid URL"
+
         if parsed.scheme not in {"http", "https"}:
             return "Only http and https URLs are allowed"
 
-        hostname = parsed.hostname
         if not hostname:
             return "Invalid URL: no hostname"
 
         try:
+            port = parsed.port
+        except ValueError:
+            return "Invalid URL: invalid port"
+
+        try:
             addr_infos = socket.getaddrinfo(hostname, None)
-            for addr_info in addr_infos:
-                ip_str = addr_info[4][0]
-                try:
-                    addr = ipaddress.ip_address(ip_str)
-                    if addr.is_private or addr.is_loopback or addr.is_reserved or addr.is_link_local:
-                        return "URL resolves to a private/reserved IP address"
-                except ValueError:
-                    pass
         except socket.gaierror:
             return "Cannot resolve hostname"
+
+        if not addr_infos:
+            return "Cannot resolve hostname"
+
+        for addr_info in addr_infos:
+            ip_str = addr_info[4][0]
+            try:
+                addr = ipaddress.ip_address(ip_str)
+            except ValueError:
+                return _MSG_UNCHECKABLE
+            error_msg = _classify_resolved_address(addr, port)
+            if error_msg is not None:
+                return error_msg
 
         return None
 
