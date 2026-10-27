@@ -66,9 +66,9 @@ completed: 2026-10-27
 
 1. **Task 1: CHANGELOG 1.8.0 draft entry for the LAN behaviour change (D-10)** - `3022056` (docs)
 2. **Task 2: Phase gates over 125-01** - no separate commit (evidence file left uncommitted per plan instruction; completed by Task 3's commit below)
-3. **Task 3: Push, open/reuse the single draft PR, wait for CI green, resolve DEV_PIN** - `3c2edc8` (docs) — see note below
+3. **Task 3: Push, open/reuse the single draft PR, wait for CI green, resolve DEV_PIN** - committed together with this summary (see **Plan metadata** below; the hash is necessarily self-referential since this file is part of that same commit)
 
-**Plan metadata:** this summary and its commit are part of the same local, unpushed `docs(125-02)` commit pair described above.
+**Plan metadata:** `6fac07f` (`docs(125-02): record phase gates, PR CI run and staging digest`) — this commit contains both `125-LAN-EVIDENCE.md`'s "Build under test" section and this summary.
 
 _Note: Task 2 produced `125-LAN-EVIDENCE.md` without committing it (per the plan's explicit "Do not commit yet; Task 3 completes the file" instruction); Task 3 appended the "Build under test" section and committed the completed file together with this summary in one local commit, which is intentionally not pushed so the PR head stays equal to the digest's build._
 
