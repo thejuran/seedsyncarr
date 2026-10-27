@@ -64,9 +64,9 @@ completed: 2026-10-27
 Each task was committed atomically:
 
 1. **Task 1: Wire-format client reducer and non-draining SSE stream opener** - `003a26b` (test)
-2. **Task 2: STRM-01 reproduction test, D-06 status evidence, and the recorded verdict** - see commit hash in final response (test)
+2. **Task 2: STRM-01 reproduction test, D-06 status evidence, and the recorded verdict** - `c7e33ae` (test)
 
-**Plan metadata:** SUMMARY.md committed together with Task 2 (test-only plan; no separate `docs` commit needed beyond the plan-metadata commit noted in the completion report)
+**Plan metadata:** SUMMARY.md committed together with Task 2's commit (`c7e33ae`); this self-check addendum committed separately
 
 ## Files Created/Modified
 - `src/python/tests/helpers/model_stream_client.py` - `ModelStreamClient`, `parse_sse_events`, `server_snapshot` (test-only wire-format reducer + comparison helper)
@@ -128,6 +128,18 @@ None - no external service configuration required.
 - 124-02 and 124-03 (the STRM-02 fix: `StreamQueue.clear()`, `Controller.resync_model_files()`, and the `ModelStreamHandler.get_value()` resync gate) are unblocked and should proceed as planned — this plan found no existing recovery guarantee that would close STRM-02 with no code change.
 - `ModelStreamClient`, `parse_sse_events`, `server_snapshot`, and `open_sse_stream` are all available in `src/python/tests/helpers/` for 124-02/124-03's convergence and integration tests.
 - No blockers.
+
+## Self-Check: PASSED
+
+All created/modified files confirmed present on disk:
+- `src/python/tests/helpers/model_stream_client.py` - FOUND
+- `src/python/tests/helpers/wsgi_stream.py` - FOUND
+- `src/python/tests/unittests/test_web/test_handler/test_stream_model_overflow.py` - FOUND
+- `.planning/phases/124-model-stream-overflow-recovery/124-01-SUMMARY.md` - FOUND
+
+Both task commits confirmed present in `git log`:
+- `003a26b` - test(124-01): add model-stream wire-format client and stall-capable SSE opener - FOUND
+- `c7e33ae` - test(124-01): reproduce model-stream overflow divergence (STRM-01) - FOUND
 
 ---
 *Phase: 124-model-stream-overflow-recovery*
