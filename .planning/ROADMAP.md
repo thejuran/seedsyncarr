@@ -228,7 +228,7 @@ Plans:
   3. The new acceptance is limited to the configured Sonarr/Radarr test-connection path; no other outbound request path is relaxed
   4. The change is noted as the minor-version driver (behavior change) in the 1.8.0 release notes
 
-**Plans**: 3 plans
+**Plans**: 6 plans (3 gap closure)
 
 Plans:
 **Wave 1**
@@ -242,6 +242,18 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 125-03-PLAN.md — NAS sandbox live check on DEV_PIN (`http://sonarr-v5:8989` succeeds, `http://169.254.169.254` refused), Sonarr URL and image-pin restore with fresh-session check, owner verdict review
+
+**Wave 4** *(gap closure, code review 125-REVIEW.md; D-11, D-12)*
+
+- [ ] 125-04-PLAN.md — TDD: refuse URLs the guard and requests/urllib3 parse differently (backslash, whitespace/control/non-ASCII, userinfo, `%` host, query/fragment, scheme/host/port disagreement), validate the exact requested URL, malformed host names as JSON errors, explicit IPv6 transition-network refusals, `fd00:ec2::254` and `100.100.100.200` refused, hardened scope test
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 125-05-PLAN.md — CHANGELOG accuracy (IN-03), phase gates, push to PR #140, CI green, staging digest (DEV_PIN_R2)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 125-06-PLAN.md — short NAS sandbox re-check on DEV_PIN_R2 (container name succeeds, `169.254.169.254` and the CR-01 backslash URL refused), restore and fresh-session check, owner verdict review
 
 ### Phase 126: Release 1.8.0
 

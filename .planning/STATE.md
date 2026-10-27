@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: Phase 125 plans 01-03 done (live check owner-approved); code review found a guard bypass (CR-01) — owner chose to fix in-phase via gap-closure plan 125-04 (D-11, D-12)
-last_updated: "2026-10-27T22:04:41.000Z"
-last_activity: 2026-10-27 -- Phase 125 code review: CR-01 bypass confirmed; gap-closure planning
+stopped_at: Phase 125 gap-closure plans 125-04..06 created (D-11, D-12: CR-01 parser-differential fix, metadata hosts, CHANGELOG, PR #140 CI, sandbox re-check); ready to execute with --gaps-only
+last_updated: "2026-10-27T22:13:40.000Z"
+last_activity: 2026-10-27 -- Phase 125 gap-closure plans 125-04..06 created
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 43
+  total_plans: 46
   completed_plans: 43
   percent: 71
 ---
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 125 (LAN Connection Tests) — EXECUTING
-Plan: 3 of 3
+Plan: 3 of 6 (gap-closure plans 125-04..06 planned, not started)
 Status: Executing Phase 125
-Last activity: 2026-10-27 -- Phase 125 execution started
+Last activity: 2026-10-27 -- Phase 125 gap-closure plans 125-04..06 created
 
 ## Accumulated Context
 
