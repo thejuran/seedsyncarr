@@ -42,6 +42,9 @@ Pre-discussion code reading:
 - **D-11:** Fix the parser-differential bypass (125-REVIEW.md CR-01) inside Phase 125, test-first: refuse URLs that the guard (`urllib.parse`) and the request library (`urllib3`/`requests`) would interpret differently (backslash, whitespace, control characters, embedded credentials/userinfo, or any host/port/scheme disagreement), and validate the exact string that is requested. Also fix WR-02 (malformed hostname → normal JSON error, not 500), WR-03 (explicit refuse ranges for IPv6 transition forms rather than relying on interpreter tables), IN-01 (trailing whitespace) and IN-03 (CHANGELOG wording accurate). IN-02 (scope-test brittleness) at Claude's discretion. PR #140 stays the single PR; re-run CI and a short sandbox re-check.
 - **D-12:** Refuse the two cloud-metadata addresses inside allowed ranges: `fd00:ec2::254` (AWS IPv6, inside `fc00::/7`) and `100.100.100.200` (Alibaba, inside `100.64.0.0/10`), with the existing link-local/cloud-metadata refusal message. The rest of the ULA and CGNAT/Tailscale ranges stay allowed (D-01 otherwise unchanged).
 
+- **D-13:** The 1.8.0 release notes include a brief, plain Security note that 1.7.6 and earlier could be tricked by a specially crafted URL into sending the Test Connection request elsewhere, and that upgrading fixes it (owner, 2026-10-27).
+- **D-14:** Test Connection refuses non-ASCII (internationalised) host names (users enter the `xn--` form) and URLs containing `?` or `#` (owner accepted, 2026-10-27).
+
 ### Claude's Discretion
 - How the allow/refuse classification is structured (helper function, constants), using `ipaddress` network checks in preference to relying solely on `is_private`, whose semantics changed across Python versions.
 - Exact error message strings within D-07's intent.
