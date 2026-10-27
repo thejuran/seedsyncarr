@@ -89,3 +89,53 @@ class TestStreamQueue(unittest.TestCase):
             queue.put(event)
         for expected in events:
             self.assertEqual(expected, queue.get_next_event())
+
+    def test_clear_discards_backlog(self):
+        queue = StreamQueue()
+        queue.put("event1")
+        queue.put("event2")
+        queue.put("event3")
+        self.assertEqual(3, queue.get_queue_size())
+
+        queue.clear()
+
+        self.assertEqual(0, queue.get_queue_size())
+        self.assertIsNone(queue.get_next_event())
+
+    def test_clear_does_not_affect_dropped_count(self):
+        queue = StreamQueue(maxsize=3)
+        queue.put("event1")
+        queue.put("event2")
+        queue.put("event3")
+        queue.put("event4")  # drops event1
+        queue.put("event5")  # drops event2
+        self.assertEqual(2, queue.get_dropped_count())
+
+        queue.clear()
+
+        self.assertEqual(2, queue.get_dropped_count())
+        self.assertEqual(0, queue.get_queue_size())
+
+    def test_clear_on_empty_queue(self):
+        queue = StreamQueue()
+        queue.clear()
+        self.assertEqual(0, queue.get_queue_size())
+        self.assertIsNone(queue.get_next_event())
+
+    def test_put_after_clear(self):
+        queue = StreamQueue()
+        queue.put("event1")
+        queue.clear()
+        queue.put("x")
+        self.assertEqual("x", queue.get_next_event())
+        self.assertIsNone(queue.get_next_event())
+
+    def test_queue_never_exceeds_maxsize_under_sustained_stall(self):
+        # D-05: a stalled consumer never grows the queue past maxsize, no
+        # matter how many events the producer puts without draining.
+        queue = StreamQueue(maxsize=1000)
+        for _ in range(5000):
+            queue.put("event")
+            self.assertLessEqual(queue.get_queue_size(), queue.get_maxsize())
+        self.assertEqual(1000, queue.get_queue_size())
+        self.assertEqual(4000, queue.get_dropped_count())
