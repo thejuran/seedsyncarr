@@ -4,6 +4,30 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+These are the draft notes for 1.8.0. The Test Connection change below changes
+behaviour, which is why the next release is a minor version (1.8.0) rather
+than a patch.
+
+### Changed
+
+- Test Connection for Sonarr and Radarr now accepts local network and Docker
+  container addresses (examples: `http://192.168.1.20:8989`,
+  `http://sonarr:8989`), including Tailscale addresses as before; `localhost`
+  and other loopback addresses are accepted only on port 8989 or 7878, so a
+  Sonarr or Radarr on a custom port should be entered by LAN address or
+  container name; cloud-metadata and link-local destinations such as
+  `169.254.169.254` stay blocked, as do unspecified, multicast and reserved
+  addresses, and redirects are still not followed. A refused address now gets
+  a specific reason instead of the old "private/reserved IP address" message.
+  (LAN-01, LAN-02)
+
+### Security
+
+- Test Connection now also refuses multicast addresses and deprecated IPv6
+  site-local addresses, which the previous check did not block. (LAN-02)
+
 ## [1.7.6] - 2026-10-15
 
 A security release. Every container start printed the whole settings file,
