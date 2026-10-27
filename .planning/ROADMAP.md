@@ -245,7 +245,7 @@ Plans:
 
 **Wave 4** *(gap closure, code review 125-REVIEW.md; D-11, D-12)*
 
-- [ ] 125-04-PLAN.md — TDD: refuse URLs the guard and requests/urllib3 parse differently (backslash, whitespace/control/non-ASCII, userinfo, `%` host, query/fragment, scheme/host/port disagreement), validate the exact requested URL, malformed host names as JSON errors, explicit IPv6 transition-network refusals, `fd00:ec2::254` and `100.100.100.200` refused, hardened scope test
+- [x] 125-04-PLAN.md — TDD: refuse URLs the guard and requests/urllib3 parse differently (backslash, whitespace/control/non-ASCII, userinfo, `%` host, query/fragment, scheme/host/port disagreement), validate the exact requested URL, malformed host names as JSON errors, explicit IPv6 transition-network refusals, `fd00:ec2::254` and `100.100.100.200` refused, hardened scope test
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -277,7 +277,7 @@ Plans:
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
 | 124. Model-Stream Overflow Recovery | 3/3 | Complete    | 2026-10-27 |
-| 125. LAN Connection Tests | 3/4 | In Progress |  |
+| 125. LAN Connection Tests | 4/6 | In Progress|  |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
 
 **Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks and is deployed to NAS production by digest. Record residual limitations explicitly. Conditional investigations in the Backlog are not completion gates unless evidence justifies explicitly promoting a bounded fix.

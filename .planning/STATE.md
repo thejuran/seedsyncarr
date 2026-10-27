@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: Phase 125 gap-closure plans 125-04..06 created (D-11, D-12: CR-01 parser-differential fix, metadata hosts, CHANGELOG, PR #140 CI, sandbox re-check); ready to execute with --gaps-only
-last_updated: "2026-10-27T22:13:40.000Z"
+stopped_at: Completed 125-04-PLAN.md (closed 125-REVIEW CR-01 parser-differential bypass, WR-01/02/03, IN-01/02, D-12/D-14; RED 730d3c7, GREEN b6d0902; 201 tests + 87 subtests pass, ruff clean); Phase 125 gap-closure continues at 125-05/06
+last_updated: "2026-10-27T23:51:52.409Z"
 last_activity: 2026-10-27 -- Phase 125 gap-closure plans 125-04..06 created
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 4
   total_plans: 46
-  completed_plans: 43
-  percent: 71
+  completed_plans: 44
+  percent: 57
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 125 (LAN Connection Tests) — EXECUTING
-Plan: 3 of 6 (gap-closure plans 125-04..06 planned, not started)
+Plan: 4 of 6 (gap-closure plans 125-04..06 planned, not started)
 Status: Executing Phase 125
 Last activity: 2026-10-27 -- Phase 125 gap-closure plans 125-04..06 created
 
@@ -113,6 +113,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 125]: 125-01: ordered ipaddress classifier replaces the single is_private/is_loopback/is_reserved/is_link_local check in ConfigHandler._validate_url; RED (test(125-01), 8a69fdf) landed before GREEN (fix(125-01), f82e256); 158 tests + 74 subtests pass in the targeted suite, whole-tree ruff clean; fixes the Phase 120 D-02 Docker container-name Test Connection failure (LAN-01) and refuses link-local/metadata/unspecified/multicast/other-reserved/off-port-loopback with specific messages (LAN-02)
 - [Phase 125]: 125-02: recorded 1.8.0 draft CHANGELOG entry (D-10); gated 125-01 (5/5 gates, suite matches fixed 24-line baseline, whole-tree ruff clean, RED-before-GREEN, exact 3-file scope, zero new log/secret lines); pushed to new draft PR #140, CI run 415 green on all 13 non-publish checks; DEV_PIN sha256:162d4532... resolved by two independent methods, recorded in 125-LAN-EVIDENCE.md for 125-03's live sandbox check
 - [Phase 125]: 125-03: owner reviewed the Phase 125 verdict and replied verbatim "approved" after the live D-09 check (LAN-01/LAN-02 PASS on DEV_PIN, sandbox restored to IMAGE_PIN_L0 and fresh-session verified, production byte-identical); PR #140 remains draft, merge is a separate owner decision
+- [Phase 125]: 125-04: closed 125-REVIEW CR-01 (backslash-userinfo parser-differential SSRF bypass between urlparse and urllib3/requests), WR-01/WR-02/WR-03 and IN-01/IN-02, plus D-12/D-14; RED (test(125-04), 730d3c7) before GREEN (fix(125-04), b6d0902); 201 tests + 87 subtests pass in the targeted suite, whole-tree ruff clean; LAN-01/LAN-02 not marked complete in REQUIREMENTS.md pending remaining gap-closure plans
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -171,8 +172,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-27T21:39:37.334Z
-Stopped at: Completed 125-03-PLAN.md (LAN Test Connection live check PASS, sandbox restored, owner approved the Phase 125 verdict); Phase 125 ready for verification/close-out
+Last session: 2026-10-27T23:51:52.404Z
+Stopped at: Completed 125-04-PLAN.md (closed 125-REVIEW CR-01 parser-differential bypass, WR-01/02/03, IN-01/02, D-12/D-14; RED 730d3c7, GREEN b6d0902; 201 tests + 87 subtests pass, ruff clean); Phase 125 gap-closure continues at 125-05/06
 Next action: Phase 123 is now fully executed. 123-07 wrote the gap-round-2 restart evidence into 123-LIFE-EVIDENCE.md, restored the sandbox to `IMAGE_PIN_L0` (1.7.6) via `teardown.sh --final` (fresh-session verified, production byte-identical throughout), and wrote the Phase 123 verdict ("**Phase 123 live restart check: PASSED**"). Before approving, the owner ran an independent vibe-check deep review of PR #137 (5 reviewers: bugs/architecture on Opus, security, impact, language-python; 0 findings scored >=70; impact verdict "shippable as-is"), which surfaced two items -- `WebAppJob.cleanup()`'s missing per-step isolation and `ControllerJob.execute()`'s non-`AppError` failures bypassing RECOV-01 auto-restart -- and replied verbatim "approve, backlog both items"; both items are logged in `deferred-items.md`, not fixed in-phase. LIFE-01 and LIFE-02 are closed. Remaining step: phase verification/close-out (orchestrator-driven, not yet run) -- this session did not run phase verification or mark the phase complete in ROADMAP.md beyond updating the plan-progress row. Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
