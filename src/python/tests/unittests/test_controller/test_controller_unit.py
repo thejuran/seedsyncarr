@@ -1,6 +1,6 @@
 import threading
 import time
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from controller import Controller
 from controller.arr_queue import ArrTarget, QueueRecord
@@ -1937,3 +1937,93 @@ class TestQueueCompletionGate(BaseControllerTestCase):
         cb.on_success.assert_called_once()
         self.assertLess(elapsed, 0.1)
         self.assertEqual(2, self.mock_lftp_manager.queue.call_count)
+
+
+class TestResyncModelFiles(BaseControllerTestCase):
+    """Controller.resync_model_files(discard_backlog) runs discard_backlog and
+    takes the model snapshot inside one __model_lock acquisition (D-03)."""
+
+    def test_resync_calls_discard_and_returns_current_files(self):
+        self._add_file_to_model("a.txt")
+        self._add_file_to_model("b.txt")
+        discard = MagicMock()
+
+        files = self.controller.resync_model_files(discard)
+
+        discard.assert_called_once_with()
+        self.assertEqual({"a.txt", "b.txt"}, {f.name for f in files})
+
+    def test_discard_runs_while_model_lock_held(self):
+        lock = self.controller._Controller__model_lock
+        observed = {}
+
+        def discard():
+            observed["locked"] = lock.locked()
+
+        self.controller.resync_model_files(discard)
+
+        self.assertTrue(observed["locked"], "discard_backlog did not run while __model_lock was held")
+
+    def test_resync_blocks_until_model_lock_released(self):
+        lock = self.controller._Controller__model_lock
+        result = {}
+
+        with lock:
+            self._add_file_to_model("under_lock.txt")
+            worker = threading.Thread(
+                target=lambda: result.update(files=self.controller.resync_model_files(lambda: None)),
+                daemon=True,
+            )
+            worker.start()
+            worker.join(timeout=0.3)
+            self.assertTrue(worker.is_alive(), "resync_model_files did not block on the held lock")
+
+        worker.join(timeout=2)
+        self.assertFalse(worker.is_alive(), "resync_model_files did not finish after the lock was released")
+        names = {f.name for f in result["files"]}
+        self.assertIn("under_lock.txt", names)
+
+    def test_resync_with_real_listener_discards_backlog_and_keeps_later_events(self):
+        from web.handler.stream_model import WebResponseModelListener
+
+        listener = WebResponseModelListener()
+        self.controller.get_model_files_and_add_listener(listener)
+        try:
+            self._add_file_to_model("one.txt")
+            self._add_file_to_model("two.txt")
+            self._add_file_to_model("three.txt")
+            self.assertEqual(3, listener.get_queue_size())
+
+            files = self.controller.resync_model_files(listener.clear)
+
+            self.assertEqual(0, listener.get_queue_size())
+            self.assertEqual({"one.txt", "two.txt", "three.txt"}, {f.name for f in files})
+
+            with self.controller._Controller__model_lock:
+                self._add_file_to_model("late.txt")
+
+            self.assertEqual(1, listener.get_queue_size())
+            event = listener.get_next_event()
+            self.assertEqual("late.txt", event.new_file.name)
+        finally:
+            self.controller.remove_model_listener(listener)
+
+    def test_resync_does_not_change_listeners(self):
+        model = self.controller._Controller__model
+        with patch.object(model, "add_listener", wraps=model.add_listener) as add_spy, \
+                patch.object(model, "remove_listener", wraps=model.remove_listener) as remove_spy:
+            self.controller.resync_model_files(lambda: None)
+
+            add_spy.assert_not_called()
+            remove_spy.assert_not_called()
+
+    def test_discard_exception_propagates_and_releases_lock(self):
+        lock = self.controller._Controller__model_lock
+
+        def discard():
+            raise RuntimeError("boom")
+
+        with self.assertRaises(RuntimeError):
+            self.controller.resync_model_files(discard)
+
+        self.assertFalse(lock.locked())

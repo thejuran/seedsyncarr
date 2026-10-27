@@ -29,7 +29,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 - [x] **Phase 121: Credential Forwarding** - The app token is attached only to SeedSyncarr's own API requests, never to external destinations such as the GitHub update check (completed 2026-10-21)
 - [x] **Phase 122: Safety Acceptance and Logging Fixes** - Extraction/import/auto-delete checks pass on a running build, incident records are reconciled, and webhook/completion-gate log messages are accurate (completed 2026-10-25)
 - [x] **Phase 123: Startup and Shutdown Lifecycle** - Partial startup failures clean up started children; a failing component cleanup does not stop the remaining cleanups (completed 2026-10-27)
-- [ ] **Phase 124: Model-Stream Overflow Recovery** - A slow client converges to current server state after overflow, with bounded buffering (or a recorded existing guarantee)
+- [x] **Phase 124: Model-Stream Overflow Recovery** - A slow client converges to current server state after overflow, with bounded buffering (or a recorded existing guarantee) (completed 2026-10-27)
 - [ ] **Phase 125: LAN Connection Tests** - Test Connection accepts intended local Sonarr/Radarr addresses, including Docker container names, while unintended destinations stay rejected
 - [ ] **Phase 126: Release 1.8.0** - Dependabot review, publish to Docker/GitHub/PyPI, NAS digest smoke test, production deploy by digest confirmed by a successful scan
 
@@ -201,7 +201,20 @@ Plans:
   3. Otherwise, after overflow the slow client's model matches the server's current state (fresh snapshot or reconnect — the smallest mechanism), demonstrated by a test that fails before and passes after
   4. Buffering stays bounded under a stalled consumer; producer atomicity alone is not accepted as the recovery mechanism, and there is no event-bus redesign
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+
+- [x] 124-01-PLAN.md — STRM-01: recorded overflow reproduction (stalled listener diverges: 500 missing + ghost), D-06 status evidence, wire-format client + stall-capable SSE harness, go/no-go verdict
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 124-02-PLAN.md — TDD: StreamQueue.clear() + atomic Controller.resync_model_files(discard_backlog) under __model_lock, bounded-stall test
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 124-03-PLAN.md — TDD: ModelStreamHandler resync gate (fresh model-init on same connection, coalesced, rate-limited warning); convergence RED then GREEN at unit and WSGI level
 
 ### Phase 125: LAN Connection Tests
 
@@ -238,7 +251,7 @@ Plans:
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
-| 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
+| 124. Model-Stream Overflow Recovery | 3/3 | Complete    | 2026-10-27 |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
 
@@ -315,6 +328,30 @@ Only `ControllerJob.setup()` failures are wrapped into `ControllerError` for the
 ### Deferred: SIGINT-killed scanners outside the shutdown grace (Phase 123 review WR-01)
 
 The D-01 shutdown-grace window in `ScanManager._check_process_health()` (`src/python/controller/scan_manager.py` ~line 312) recognizes only `-signal.SIGTERM` scanner deaths, although `seedsyncarr.py` handles SIGINT identically. A Ctrl-C on a foreground run or `docker run -it` can still log the false "Scanner process(es) died unexpectedly" ERROR and trigger an auto-restart. Not on this project's docker stop/restart path (always SIGTERM; clean across 17 live cycles). Fix: accept `{-SIGTERM, -SIGINT}` plus a matching test. Verifier classified minor/non-blocking and auto-parked 2026-10-27. Source: `123-REVIEW.md` WR-01, `123-VERIFICATION.md`.
+
+### Deferred: Model-stream resync comment accuracy and test tightening (Phase 124 review WR-01/WR-02)
+
+In `ModelStreamHandler.get_value()` (`src/python/web/handler/stream_model.py` ~lines 81-107), the dropped-count check and `get_next_event()` are two separate unlocked reads. An overflow landing between them can let one post-gap incremental event through before the *next* call resyncs. Convergence still holds, but the comment's "the first value after a drop is never a stale backlog event" overstates it. Fix: either re-check the dropped count after dequeuing and resync instead of emitting, or correct the comment (WR-01). Also: `test_resync_pending_state_is_bounded` asserts `initial_model_files` rather than resync state (WR-02, real property covered by `test_multiple_drops_coalesce_into_one_resync`), and the `_drain` loops in `test_stream_model_overflow.py` have no iteration cap, so a resync-forever regression would hang instead of fail (IN-02). Verifier classified minor/non-blocking and auto-parked 2026-10-27. Source: `124-REVIEW.md`, `124-VERIFICATION.md`.
+
+### Phase 999.6: README documentation discoverability and accurate security defaults (BACKLOG)
+
+**Captured:** 2026-10-26. Owner requested backlog only; do not implement yet.
+**Goal:** Make existing guides easy to find and make README security and cleanup claims match actual defaults and limitations.
+**Scope:** README.md only; no application behavior changes. This is a concrete candidate for the following Performance and Usability milestone's setup/configuration documentation work, not an active Reliability gate.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Acceptance criteria:
+- Add a prominent Documentation section linking directly to `docs/GETTING-STARTED.md`, `docs/CONFIGURATION.md`, `SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `docs/TESTING.md`. Replace the installation section's website-only documentation link with repository guide links.
+- Replace "Security by default" with accurate security-control wording. State that API authentication is off when `api_token` is empty, webhook verification is off when `webhook_secret` is empty, `webhook_require_secret` defaults to `False`, and encryption at rest defaults to off (stored secrets are plaintext).
+- Qualify HMAC verification claims throughout the README. Replace absolute "never deletes" promises with an explanation of import confirmation, optional pruning, and the safety delay; note that pruning defaults to off.
+- Explain near Quick Start that the Docker examples publish port 8800 on all host interfaces and that untrusted access needs an authenticating reverse proxy and restricted network access. Clarify that the API token does not protect the UI, which includes that token.
+- Verify relative links, recheck defaults against current code and SECURITY.md at implementation time, and review the entire README for remaining unconditional claims. Documentation review only; no new application tests needed for this prose change.
+
+**Context:** A community comment described SeedSyncArr as having "no documentation" and raised concerns after Huntarr. Existing guides are present, but discoverability and inconsistent security messaging warrant this bounded correction. The comment is motivation, not evidence of equivalent vulnerabilities.
+
+Plans:
+- [ ] TBD (promote with $gsd-review-backlog when ready)
 
 ## Following milestone: Performance and Usability (conditional)
 

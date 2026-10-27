@@ -48,3 +48,38 @@ def collect_sse_chunks(web_app, path: str = "/server/stream", stop_after_s: floa
 
     chunks = list(web_app(environ, start_response))
     return response_started, chunks
+
+
+def open_sse_stream(web_app, path: str = "/server/stream"):
+    """
+    Open an SSE stream WITHOUT draining it, so a test can simulate a stalled
+    consumer: pull one chunk, stall while events are produced server-side,
+    then resume pulling later.
+
+    Bottle primes the generator to its first yield when the app is called, so
+    by the time this function returns, handler setup() has already run (the
+    initial `model-init`/first status/etc. is queued up at the generator's
+    first yield point). The generator stays suspended there -- a literal
+    stalled consumer -- until the caller calls next() on it.
+
+    The caller owns cleanup and MUST call web_app.stop() and body.close() (if
+    body has a close() method) in a finally block, so the stream's cleanup
+    (e.g. remove_model_listener) runs on every path, including early returns
+    and exceptions.
+
+    Returns:
+        (response_started, body) where response_started is a list of
+        (status, headers_dict) tuples (populated once the generator is first
+        advanced far enough to call start_response) and body is the raw,
+        un-iterated WSGI generator/iterable returned by web_app(environ,
+        start_response).
+    """
+    environ = make_wsgi_environ(path=path)
+
+    response_started = []
+
+    def start_response(status, headers, exc_info=None):
+        response_started.append((status, dict(headers)))
+
+    body = web_app(environ, start_response)
+    return response_started, body
