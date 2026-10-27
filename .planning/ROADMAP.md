@@ -316,6 +316,26 @@ Only `ControllerJob.setup()` failures are wrapped into `ControllerError` for the
 
 The D-01 shutdown-grace window in `ScanManager._check_process_health()` (`src/python/controller/scan_manager.py` ~line 312) recognizes only `-signal.SIGTERM` scanner deaths, although `seedsyncarr.py` handles SIGINT identically. A Ctrl-C on a foreground run or `docker run -it` can still log the false "Scanner process(es) died unexpectedly" ERROR and trigger an auto-restart. Not on this project's docker stop/restart path (always SIGTERM; clean across 17 live cycles). Fix: accept `{-SIGTERM, -SIGINT}` plus a matching test. Verifier classified minor/non-blocking and auto-parked 2026-10-27. Source: `123-REVIEW.md` WR-01, `123-VERIFICATION.md`.
 
+### Phase 999.6: README documentation discoverability and accurate security defaults (BACKLOG)
+
+**Captured:** 2026-10-26. Owner requested backlog only; do not implement yet.
+**Goal:** Make existing guides easy to find and make README security and cleanup claims match actual defaults and limitations.
+**Scope:** README.md only; no application behavior changes. This is a concrete candidate for the following Performance and Usability milestone's setup/configuration documentation work, not an active Reliability gate.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Acceptance criteria:
+- Add a prominent Documentation section linking directly to `docs/GETTING-STARTED.md`, `docs/CONFIGURATION.md`, `SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `docs/TESTING.md`. Replace the installation section's website-only documentation link with repository guide links.
+- Replace "Security by default" with accurate security-control wording. State that API authentication is off when `api_token` is empty, webhook verification is off when `webhook_secret` is empty, `webhook_require_secret` defaults to `False`, and encryption at rest defaults to off (stored secrets are plaintext).
+- Qualify HMAC verification claims throughout the README. Replace absolute "never deletes" promises with an explanation of import confirmation, optional pruning, and the safety delay; note that pruning defaults to off.
+- Explain near Quick Start that the Docker examples publish port 8800 on all host interfaces and that untrusted access needs an authenticating reverse proxy and restricted network access. Clarify that the API token does not protect the UI, which includes that token.
+- Verify relative links, recheck defaults against current code and SECURITY.md at implementation time, and review the entire README for remaining unconditional claims. Documentation review only; no new application tests needed for this prose change.
+
+**Context:** A community comment described SeedSyncArr as having "no documentation" and raised concerns after Huntarr. Existing guides are present, but discoverability and inconsistent security messaging warrant this bounded correction. The comment is motivation, not evidence of equivalent vulnerabilities.
+
+Plans:
+- [ ] TBD (promote with $gsd-review-backlog when ready)
+
 ## Following milestone: Performance and Usability (conditional)
 
 **Activation:** v1.8.0 Reliability is complete and measurements or recurring user friction justify a bounded follow-up. If no material opportunity is demonstrated, defer this milestone.
