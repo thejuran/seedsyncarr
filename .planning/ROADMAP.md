@@ -233,7 +233,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 125-01-PLAN.md — TDD: ordered LAN-aware classifier in `_validate_url` (LAN ranges, ULA, CGNAT, container names allowed; loopback only on 8989/7878; metadata/link-local, unspecified, multicast, reserved, site-local and embedded-loopback forms refused with specific messages), redirect and scope regression locks
+- [x] 125-01-PLAN.md — TDD: ordered LAN-aware classifier in `_validate_url` (LAN ranges, ULA, CGNAT, container names allowed; loopback only on 8989/7878; metadata/link-local, unspecified, multicast, reserved, site-local and embedded-loopback forms refused with specific messages), redirect and scope regression locks
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -265,7 +265,7 @@ Plans:
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
 | 124. Model-Stream Overflow Recovery | 3/3 | Complete    | 2026-10-27 |
-| 125. LAN Connection Tests | 0/TBD | Not started | - |
+| 125. LAN Connection Tests | 1/3 | In Progress|  |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
 
 **Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks and is deployed to NAS production by digest. Record residual limitations explicitly. Conditional investigations in the Backlog are not completion gates unless evidence justifies explicitly promoting a bounded fix.
