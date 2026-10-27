@@ -181,3 +181,98 @@ Expected sandbox restore pin for 125-03 teardown (unchanged from Phase 123/124, 
 ```
 IMAGE_PIN_L0=ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e
 ```
+
+## Live check (D-09)
+
+### Attempt 1 (harness bug, retried)
+
+Capture dir `/volume1/docker/v5test/results/lan01-125-20261027T195659Z`. Preflight passed (`.Config.Image` and the compose line both equal `IMAGE_PIN_L0`). The script deployed `DEV_PIN` cleanly (inode-preserved compose edit, fresh `Starting SeedSyncarr` line, `/server/status` 200, `.Config.Image` == `DEV_PIN`) and `POSITIVE` genuinely passed (`success=true version=5.0.0.2800`), but `NEGATIVE` was reported `FAIL` with an **empty** captured error even though the raw response written to `negative.json` was already exactly correct:
+
+```
+{"success": false, "error": "URL points to a link-local or cloud-metadata address, which is not allowed"}
+```
+
+Root cause: `tc()`'s field extraction used `jq -r '.success, (.version // empty), (.error // empty)'`. jq's `empty` filter produces **zero output values** for a missing field, rather than a blank line, so on a response with no `version` field the `.error` value silently shifted from line 3 up to line 2 -- exactly where the script's fixed-line-number read (`sed -n '3p'`) expected nothing. The same shift affected the `BEFORE` check (`before.json` also had no `version` field), which is why that attempt printed `old_msg=0` for a response that does contain "private/reserved". `POSITIVE` was unaffected only because its read uses line 2, which is where `version` already was.
+
+Because `NEGATIVE`'s own `sonarr_url` restore step ran and succeeded before this miscount was evaluated, `OK=1` fired and the EXIT trap correctly did **not** run `teardown.sh --final` -- the sandbox was left mid-session on `DEV_PIN` with `sonarr_url` already back at `http://sonarr-v5:8989`, confirmed by a direct read-back immediately afterward. No product code was touched. Fixed in `125-livecheck.sh` (`fix(125-03)`, commit `d642a59`): both fallbacks changed to `// ""`, which always emits an empty string in place of a missing field, verified locally against both response shapes before reuse. `teardown.sh --final` was then run against this same capture dir to restore the sandbox to `IMAGE_PIN_L0` as a clean baseline for the retry (`SANDBOX_RESTORED ok`).
+
+### Attempt 2 (DEV_PIN, PASS)
+
+Capture dir `/volume1/docker/v5test/results/lan01-125-20261027T200205Z-retry`. Same `state.env` (`IMAGE_PIN_L0`, `DEV_PIN` as above). Both scripts copied via `ssh nas 'cat > ...'` (not `scp`, which the session's SSH config refused) and checksum-verified byte-identical to the committed files before running.
+
+- **Preflight:** `PREFLIGHT ok` -- compose line and `.Config.Image` both equal `IMAGE_PIN_L0` before any change.
+- **Compose inode (DEV_PIN edit):** `INODE before=101505523 after=101505523` -- same inode, in-place rewrite confirmed.
+- **Readiness transcript:** `seedsyncarr-test Pulling` -> `Pulled` -> `Container seedsyncarr-test Recreate` -> `Recreated` -> `Starting` -> `Started` -> `DEPLOY starting-line ok` (fresh `Starting SeedSyncarr` line after the pre-deploy marker) -> `WAIT server/status ok` -> 8s settle.
+- **Deployed image:** `DEPLOY image=ghcr.io/thejuran/seedsyncarr@sha256:162d453217fbada459504d084b8ea2915aca6bd9b2285239f972a487888a75d3 id=sha256:1edee4fbe186b13f93c46adaa778e30355f49b09497125b9d836fa51dc5e8fcf` -- `.Config.Image` matched `DEV_PIN` exactly.
+- **BEFORE (informational, still on `IMAGE_PIN_L0`):** `BEFORE success=false old_msg=1` -- `before.json`: `{"success": false, "error": "URL resolves to a private/reserved IP address"}`. On the shipping 1.7.6 image, Test Connection to the Docker container name `http://sonarr-v5:8989` fails with the old message, reproducing the Phase 120 D-02 problem being fixed.
+- **POSITIVE (LAN-01):** `POSITIVE PASS success=true version=5.0.0.2800` -- `positive.json`: `{"success": true, "version": "5.0.0.2800"}`. On `DEV_PIN`, the same container-name URL now succeeds and reports the live Sonarr 5 version.
+- **NEGATIVE (LAN-02):** `NEGATIVE PASS success=false error=URL points to a link-local or cloud-metadata address, which is not allowed` -- `negative.json`: `{"success": false, "error": "URL points to a link-local or cloud-metadata address, which is not allowed"}`, an exact match to the locked refusal string against `http://169.254.169.254`.
+- **sonarr_url restore:** `RESTORED sonarr_url ok` -- read back equal to `SONARR_URL_L0` (`http://sonarr-v5:8989`) immediately after the negative check.
+- **Informational log counts (window after the pre-deploy marker):** `LOGCOUNT error=2 unexpected_error_testing=0`. The 2 ` - ERROR - ` lines are the pre-existing "Scanner process(es) died unexpectedly: LocalScanner" / "Caught exception in job ControllerJob" pair logged during the container recreate (app-log `2026-10-27 16:02:28`, NAS host clock 20:02:28 UTC) -- the known Phase 123 D-01-scanner-half restart pattern, unrelated to LAN-01/LAN-02 and not part of this phase's scope. Zero `Unexpected error testing` lines.
+- **Production fingerprint during the check:** `prod-before.txt` and `prod-after.txt` are byte-identical (`diff` empty): `2feb4073db71... sha256:5b801f83... ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0... running 2026-10-23T07:04:18.591254939Z`.
+- **CHECK_STATUS:** `PASS` (`state.env`: `POSITIVE=PASS`, `NEGATIVE=PASS`, `SONARR_URL_SET=0`, `CHECK_STATUS=PASS`). Last line: `LIVECHECK PASS`, exit 0.
+
+### Final restore (`teardown.sh --final`)
+
+Run against the Attempt 2 capture dir immediately after `LIVECHECK PASS`:
+
+```
+INODE before=101505523 after=101505523
+ seedsyncarr-test Pulling
+ seedsyncarr-test Pulled
+ Container seedsyncarr-test  Recreate
+ Container seedsyncarr-test  Recreated
+ Container seedsyncarr-test  Starting
+ Container seedsyncarr-test  Started
+WAIT server/status ok
+RESTORED sonarr_url ok (not set this session)
+CHECK image=restored ok
+SANDBOX_RESTORED ok
+```
+
+Last line `SANDBOX_RESTORED ok`.
+
+### Fresh-session restore check
+
+In a second, independent `ssh nas` call, after the final restore:
+
+| Check | Result |
+|---|---|
+| `.Config.Image` | `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e` -- equals `IMAGE_PIN_L0` exactly |
+| Compose `seedsyncarr-test` image line | `image: ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e` -- equals `IMAGE_PIN_L0` |
+| `.sonarr.sonarr_url` | `http://sonarr-v5:8989` -- equals `SONARR_URL_L0` |
+| `GET /server/status` | `200` |
+| Production fingerprint (`prod-final.txt`) vs `prod-before.txt` | byte-identical, `diff` empty |
+
+### Production unchanged
+
+`prod-before.txt`, `prod-after.txt` (during the check) and `prod-final.txt` (fresh session, after the final restore) are all byte-identical:
+
+```
+2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 sha256:5b801f8397d68bf9bb35eed0d4f882cae2ab24100e4d28be4006f8f028e0ef62 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e running 2026-10-23T07:04:18.591254939Z
+```
+
+`StartedAt` (`2026-10-23T07:04:18.591254939Z`) matches the value recorded in `123-LIFE-EVIDENCE.md` "### Production unchanged" exactly -- no drift. Production `seedsyncarr` was never started, stopped, recreated or reconfigured anywhere in this plan; the only command ever run against it was the single read-only `docker inspect` fingerprint, confirmed by the acceptance grep on `125-livecheck.sh` (`PROD_NAME` appears only in its own definition and one `inspect "$PROD_NAME" --format` line).
+
+## Phase 125 verdict
+
+| Item | Decision / criterion | Evidence | Verdict |
+|------|----------------------|----------|---------|
+| LAN-01 (SC1) | Test Connection succeeds for private-range IPs and a Docker container/host name resolving to a private address; the Phase 120 D-02 container-name failure is fixed | Unit: 125-01 `test_accepts_ipv4_private_10`, `test_accepts_container_name_resolving_to_docker_bridge` + other representative-range tests (`8a69fdf`→`f82e256`), 158 passed/74 subtests. Live: this plan's Attempt 2 `BEFORE` on `IMAGE_PIN_L0` (1.7.6) reproduces the old failure (`success=false`, "private/reserved" message) against `http://sonarr-v5:8989`; `POSITIVE` on `DEV_PIN` succeeds (`success=true version=5.0.0.2800`) against the identical URL | PASS |
+| LAN-02 (SC2) | Cloud-metadata/link-local addresses, loopback-to-unexpected-port probes and redirects stay rejected with the same user-visible outcome | Unit: 125-01 `test_rejects_cloud_metadata`, `test_rejects_ipv4_multicast`, loopback-port and redirect-not-followed tests (`TestConfigHandlerTestSonarrConnection::test_sonarr_redirect_to_metadata_is_not_followed`, `TestConfigHandlerTestRadarrConnection::test_radarr_redirect_is_not_followed`). Live: this plan's `NEGATIVE` on `DEV_PIN` against `http://169.254.169.254` returns `success=false` with the exact locked string "URL points to a link-local or cloud-metadata address, which is not allowed" | PASS |
+| SC3 (scope: only the Sonarr/Radarr test-connection path changes) | No other outbound request path is relaxed | 125-02 Gate 4: `_validate_url` has exactly one definition and one call site, both in `web/handler/config.py`; `TestLanRelaxationScope` suite (`test_outbound_http_modules_are_known`, `test_validate_url_not_referenced_outside_config_handler`, `test_validate_url_only_called_from_test_arr_connection`) passed at RED and GREEN | PASS |
+| SC4 (release notes note the behaviour change) | The change is recorded as the 1.8.0 minor-version driver | 125-02 Task 1: `CHANGELOG.md` `## [Unreleased]` section with `### Changed`/`### Security` bullets for the LAN Test Connection behaviour change, above `## [1.7.6]` | PASS |
+| D-01 (allowed destinations) | Private LAN ranges, IPv6 ULA, Tailscale/CGNAT and public addresses allowed; container/host names pass when every resolved address is allowed | 125-01-SUMMARY.md RED/GREEN test list (`test_accepts_ipv4_private_10`, `172.16-31` range, IPv6 ULA, `test_cgnat_address_passes_url_validation` unchanged); live `POSITIVE` confirms the container-name case | PASS |
+| D-02 (loopback only on 8989/7878) | Loopback allowed only on Sonarr/Radarr default ports; other ports or no explicit port refused | 125-01 loopback-port test class (full-path coverage, both allowed ports and both disallowed cases) | PASS (unit-proven; not separately exercised live in this plan) |
+| D-03 (still refused) | Link-local/cloud-metadata, IPv6 link-local, unspecified, other reserved, multicast, mapped-form bypasses stay refused | 125-01 `test_rejects_cloud_metadata`, `test_rejects_ipv4_multicast`, unspecified/`fe80::`/mapped-form tests; live `NEGATIVE` reproduces the cloud-metadata case end to end | PASS |
+| D-04 (mixed resolution fail-closed) | A hostname resolving to several addresses is refused if any is refused | 125-01 mixed-resolution regression test (stubbed `getaddrinfo`) | PASS (unit-proven only) |
+| D-05 (redirects unchanged) | 3xx responses are never followed; existing redirect message unchanged | 125-01 `test_sonarr_redirect_to_metadata_is_not_followed`, `test_radarr_redirect_is_not_followed` | PASS |
+| D-06 (scope) | Only `_validate_url`/`_test_arr_connection` changes; no other outbound path relaxed | Same as SC3 row above (125-02 Gate 4) | PASS |
+| D-07 (wording) | Specific refusal reasons; old "private/reserved IP address" message no longer appears for allowed addresses; the Sonarr key is never echoed | 125-01 `test_refusal_messages_never_mention_private_or_echo_host`; live `BEFORE` shows the old message only on 1.7.6 (pre-fix), `POSITIVE`/`NEGATIVE` on `DEV_PIN` show the new messages; a case-insensitive key-marker scan of both scripts and the new evidence added in this plan found no matches | PASS |
+| D-08 (test-first proof) | RED-before-GREEN regression coverage for every representative case; full suite + whole-tree ruff pass | 125-02 Gates 1-5: suite matches the fixed 24-line environmental baseline exactly, whole-tree `ruff check src/python/` clean, `test(125-01)` (`8a69fdf`) precedes `fix(125-01)` (`f82e256`), exact 3-file scope, 0 new logger/secret lines | PASS |
+| D-09 (live check) | Container-name Test Connection works live on the PR image; metadata destination refused with the new message; sandbox restored and verified; production read-only | This plan: Attempt 2 `CHECK_STATUS=PASS`; `teardown.sh --final` ends `SANDBOX_RESTORED ok`; fresh-session check confirms `IMAGE_PIN_L0`, compose line, `sonarr_url`, `/server/status` 200; production fingerprint byte-identical across before/after/final with zero drift vs `123-LIFE-EVIDENCE.md` | PASS |
+| D-10 (release notes) | 1.8.0 draft CHANGELOG entry records the behaviour change | 125-02 Task 1 commit `3022056` | PASS |
+
+**Phase 125 live check: PASSED**
+
+The sandbox is restored to `IMAGE_PIN_L0` (`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`) and verified in a fresh, independent session. Production `seedsyncarr` was never touched beyond the single permitted read-only fingerprint and is byte-identical before, during and after this plan. PR #140 remains open and draft; nothing was merged.
