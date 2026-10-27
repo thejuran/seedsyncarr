@@ -53,6 +53,11 @@ class Seedsyncarr:
         # the same persist concurrently.
         self.__persist_lock = threading.Lock()
 
+        # D-01: set once run() builds the controller; read by signal() to
+        # mark shutdown requested on it before raising ServiceExit. None
+        # until then (e.g. a signal caught before run() reaches that line).
+        self.__controller = None
+
         # Parse the args
         args, legacy_fallback_warning = self._parse_args(sys.argv[1:])
 
@@ -154,6 +159,7 @@ class Seedsyncarr:
         # credit and the next periodic save.
         controller = Controller(self.context, self.controller_persist, webhook_manager,
                                 persist_callback=self._persist_controller_now)
+        self.__controller = controller
 
         # Create auto queue
         auto_queue = AutoQueue(self.context, self.auto_queue_persist, controller)
@@ -283,6 +289,17 @@ class Seedsyncarr:
     def signal(self, signum: int, _):
         # Signals is a generated enum
         self.context.logger.info("Caught signal {}".format(signal.Signals(signum).name))
+        # D-01: mark shutdown requested on the live controller (if one
+        # exists yet) before raising ServiceExit, so a scanner killed
+        # directly by the container's process-group SIGTERM is reported as
+        # an expected stop rather than an unexpected death. A failure here
+        # is logged, never allowed to block shutdown.
+        controller = self.__controller
+        if controller is not None:
+            try:
+                controller.note_shutdown_requested()
+            except Exception:
+                self.context.logger.exception("Error marking shutdown requested on the controller")
         raise ServiceExit()
 
     @staticmethod

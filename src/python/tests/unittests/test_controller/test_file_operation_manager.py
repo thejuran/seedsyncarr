@@ -484,6 +484,40 @@ class TestFileOperationManager(unittest.TestCase):
 
     @patch('controller.file_operation_manager.DeleteLocalProcess')
     @patch('controller.file_operation_manager.ExtractProcess')
+    def test_stop_cleanup_isolation_release_error_continues(self, mock_extract_class, mock_delete_class):
+        """LIFE-02: one wrapper's reservation.release() raising does not
+        skip releasing the remaining reservations or stopping the extract
+        process."""
+        mock_extract = MagicMock()
+        mock_extract_class.return_value = mock_extract
+        mock_delete = MagicMock()
+        mock_delete.is_alive.return_value = True
+        mock_delete_class.return_value = mock_delete
+
+        bad_reservation = MagicMock()
+        bad_reservation.name = "f"
+        bad_reservation.release.side_effect = RuntimeError("boom")
+
+        reservations = RootReservations()
+        good_token = reservations.acquire("g", "delete")
+        try:
+            manager = self._make_manager()
+            manager.start()
+            manager.delete_local(self._named_file("f"), reservation=bad_reservation)
+            manager.delete_local(self._named_file("g"), reservation=good_token)
+            self.assertEqual("delete", reservations.holder_of("g"))
+
+            manager.stop()  # must not raise
+
+            self.assertIsNone(reservations.holder_of("g"))
+            mock_extract.terminate.assert_called_once()
+            mock_extract.join.assert_called_once()
+            manager.logger.exception.assert_called_once()
+        finally:
+            good_token.release()
+
+    @patch('controller.file_operation_manager.DeleteLocalProcess')
+    @patch('controller.file_operation_manager.ExtractProcess')
     def test_delete_local_without_reservation_keeps_legacy_behavior(self, mock_extract_class, mock_delete_class):
         mock_delete = MagicMock()
         mock_delete.is_alive.return_value = False

@@ -30,8 +30,13 @@ class Job(threading.Thread, ABC):
 
         # ... Setup code here ...
         self.logger.debug("Calling setup for {}".format(self.name))
-        self.setup()
-        self.logger.debug("Finished setup for {}".format(self.name))
+        try:
+            self.setup()
+            self.logger.debug("Finished setup for {}".format(self.name))
+        except Exception:
+            self.exc_info = sys.exc_info()
+            self.logger.exception("Caught exception in setup for {}".format(self.name))
+            self.shutdown_flag.set()
 
         while not self.shutdown_flag.is_set():
             # ... Job code here ...
@@ -48,8 +53,15 @@ class Job(threading.Thread, ABC):
 
         # ... Clean shutdown code here ...
         self.logger.debug("Calling cleanup for {}".format(self.name))
-        self.cleanup()
-        self.logger.debug("Finished cleanup for {}".format(self.name))
+        try:
+            self.cleanup()
+            self.logger.debug("Finished cleanup for {}".format(self.name))
+        except Exception:
+            self.logger.exception("Caught exception in cleanup for {}".format(self.name))
+            # Do not replace an earlier setup/execute failure (D-06); only
+            # surface a cleanup failure when the run was otherwise clean.
+            if self.exc_info is None:
+                self.exc_info = sys.exc_info()
 
         self.logger.debug("Thread {} stopped".format(self.name))
 
@@ -71,7 +83,11 @@ class Job(threading.Thread, ABC):
 
     @abstractmethod
     def setup(self):
-        """Run once when the job starts. Implementations should raise on unrecoverable errors."""
+        """
+        Run once when the job starts. Implementations should raise on unrecoverable errors.
+        A raised exception is captured, cleanup() still runs, and the exception is
+        re-raised by propagate_exception().
+        """
         pass
 
     @abstractmethod

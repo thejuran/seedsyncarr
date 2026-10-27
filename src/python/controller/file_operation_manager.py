@@ -127,10 +127,15 @@ class FileOperationManager:
             wrappers = list(self.__active_command_processes)
         for wrapper in wrappers:
             if wrapper.reservation is not None:
-                wrapper.reservation.release()
-                self.logger.debug("Released root reservation for '{}' on stop".format(
-                    sanitize_log_value(wrapper.reservation.name)
-                ))
+                try:
+                    wrapper.reservation.release()
+                    self.logger.debug("Released root reservation for '{}' on stop".format(
+                        sanitize_log_value(wrapper.reservation.name)
+                    ))
+                except Exception:
+                    self.logger.exception("Error releasing root reservation for '{}' on stop".format(
+                        sanitize_log_value(wrapper.reservation.name)
+                    ))
 
         if not self.__started:
             return

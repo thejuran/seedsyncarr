@@ -1,232 +1,133 @@
 ---
 phase: 122-safety-acceptance-and-logging-fixes
-verified: 2026-10-23T22:15:09Z
-status: gaps_found
-score: 3/5 must-haves verified
-has_blocking_gaps: true
+verified: 2026-10-25T16:10:00Z
+status: passed
+score: 5/5 must-haves verified
+has_blocking_gaps: false
 overrides_applied: 0
-gaps:
-  - truth: "No newly visible log line (introduced by attaching web handler loggers to the app logger tree) ever exposes a secret, token or auth header (122-02-PLAN.md D-14 must-have; ROADMAP Phase 122 goal 'log messages stop misleading operators' implies they must not also leak secrets)"
-    status: failed
-    severity: blocking
-    reason: >
-      CR-01 (code review, independently reproduced here). ConfigHandler._test_arr_connection's
-      bare `except Exception: self.logger.exception(...)` (config.py:195-196) is now attached to
-      the app logger tree by LOG-01 (context.logger.getChild("ConfigHandler")), so its traceback
-      reaches both the persisted RotatingFileHandler log file and the SSE UI log stream. When
-      `requests` raises `InvalidHeader` for an Arr API key containing whitespace or a newline
-      (confirmed with a real `requests.get` call: `_validate_header_part` embeds the raw header
-      value in the exception message), `logger.exception` logs the full traceback including that
-      literal key. Independently reproduced end-to-end through the real `ConfigHandler` method
-      and the same plain `logging.Formatter` the app's RotatingFileHandler uses: the key appeared
-      verbatim in the formatted record. Neither the RotatingFileHandler formatter nor
-      `SerializeLogRecord._redact_sensitive` (web/serialize/serialize_log_record.py) redacts
-      `X-Api-Key` values — its four patterns only cover lftp `-u`, `password=`, and SSH
-      `user@host` text. This violates the project's absolute rule "never log sensitive data
-      (... tokens ..., auth headers)". The existing regression test
-      (`test_config_unexpected_error_logged_without_api_key` in
-      test_web_app_builder_logging.py) only forces `RuntimeError("boom")`, which never contains
-      a key, so it passes without ever exercising the real leak path — confirmed by reading the
-      test and the 122-02-SUMMARY.md D-14 review table, which reviewed format-string
-      interpolations per call site but did not consider that `logger.exception`'s traceback can
-      itself carry a caller-controlled value from a downstream library exception.
-    artifacts:
-      - path: "src/python/web/handler/config.py"
-        issue: "Lines 155-196: _test_arr_connection sends the raw API key via a header with no stripping/character validation before the request, then logs the exception traceback (not just the type) on any unexpected error, now routed to the persisted app log and UI stream"
-      - path: "src/python/tests/unittests/test_web/test_web_app_builder_logging.py"
-        issue: "test_config_unexpected_error_logged_without_api_key uses RuntimeError('boom') as the injected failure, which can never contain the key, so it gives false confidence against the actual InvalidHeader leak path"
-    missing:
-      - "Stop logging the exception message/traceback from this boundary (log only type(e).__name__), and/or validate and strip the key's character shape before building the request so InvalidHeader can never be raised from a stored key"
-      - "Add a regression test that triggers a real requests.exceptions.InvalidHeader (or an exception whose str() embeds a known key) and asserts the key is absent from both the formatted record and the SSE-serialized record"
-      - "Audit other logger.exception sites now reachable under the app logger for outbound Sonarr/Radarr requests (sonarr5/arr_queue clients) for the same pattern"
-
-  - truth: "A kept pending import notice is bounded to the 'transfer ended, awaiting commit' window, not any non-transferring state with a remote copy (122-10-PLAN.md D-06c must-have: 'discarded on expiry, ambiguity, path change, generation change, root removal or a root that has lost its remote copy')"
-    status: failed
-    severity: blocking
-    reason: >
-      WR-02 (code review, confirmed by direct code read). controller.py's `post_transfer_pending`
-      (~line 806-816) requires only that the (root, matched) key is already in
-      `__pending_child_notices` and `root_file.remote_size is not None` — it does not check the
-      root's current state or how long ago it left DOWNLOADING/QUEUED. Confirmed by reading
-      `_revalidate_pending_notice` (~line 1000-1040): discard triggers are limited to lifecycle
-      generation change, an ambiguous match, the resolved path changing, and 6-hour TTL expiry
-      (`_PENDING_NOTICE_TTL_SECS = 6 * 3600`); there is no `last_transferring_at` tracking anywhere
-      in the file (grepped, none found). So a pending notice now survives — and can be credited —
-      for up to 6 hours when the user stops the transfer (root goes DEFAULT with a partial local
-      copy) or deletes the local copy while the remote remains (does not bump the lifecycle
-      generation), not only in the intended "lftp job ended, local scan lagging" window the
-      docstrings (lines 683-685, 786-804) describe. The new tests added by 122-10 only cover the
-      DEFAULT-with-scan-lag and remote-loss shapes, not stopped-root or local-deleted-root. The
-      current 122-SAFE01-EVIDENCE.md D-06(c) PASS verdict (both the original run and the "Plan 12"
-      rerun) exercised only the intended race window and does not exercise this wider gap.
-    artifacts:
-      - path: "src/python/controller/controller.py"
-        issue: "post_transfer_pending (~line 806) has no bound on root state or elapsed time since last-transferring; only remote_size is checked"
-    missing:
-      - "Track when a root was last seen transferring (e.g. a per-root last_transferring_at set while DOWNLOADING/QUEUED) and only allow post_transfer_pending within a short grace period after that, not the full 6h TTL"
-      - "Discard pending notices on delete-local and on user-stop; add regression tests for stopped-root and local-deleted-root shapes"
-      - "Per owner decision (2026-10-23): a narrowed fix, plus a D-06(c) sandbox rerun on the new build, before the current PASS verdict can be relied on"
-
-  - truth: "Log wording for the import-credit path names what actually happened (phase goal: log messages stop misleading operators), consistent with the pattern already used for __keep_pending_notice's reason parameter"
-    status: failed
-    severity: minor
-    reason: >
-      WR-03 (code review, confirmed by direct code read). `__credit_early_child` (~line 958-977)
-      always logs the static string "Credited early import of '{}' in '{}' (root still
-      transferring)" regardless of why it was called. Since 122-10, it is also reached via the
-      post_transfer_only path, where the root is explicitly NOT transferring — the caller already
-      computes a correct, differentiated reason string for the sibling call to
-      `__keep_pending_notice` (`reason="transfer finished, awaiting commit" if post_transfer_only
-      else "root still transferring"`) but does not pass an equivalent reason into
-      `__credit_early_child`. These lines are used directly in NAS log forensics and Phase 120/122
-      evidence greps, so the false "(root still transferring)" text is operator-misleading in
-      exactly the way this phase's goal targets. In scope per owner decision alongside CR-01/WR-01/WR-02.
-    artifacts:
-      - path: "src/python/controller/controller.py"
-        issue: "__credit_early_child (~line 958) hardcodes '(root still transferring)' with no reason parameter, unlike the parallel __keep_pending_notice which already takes one"
-    missing:
-      - "Add a reason parameter to __credit_early_child (default 'root still transferring' to keep existing greps matching) and pass reason='transfer finished, awaiting commit' when post_transfer_only"
-
-  - truth: "LOG-01 migrates every in-scope web-handler rate-limit warning to the app logger; no live endpoint still falls back to a detached logger for the exact class of loss LOG-01 was meant to fix"
-    status: failed
-    severity: minor
-    reason: >
-      WR-01 (code review, confirmed by direct code read). `StatusHandler.__init__` takes only
-      `status` (web_app_builder.py: `StatusHandler(context.status)`), has no `self.logger`, and
-      `status.py:16`'s `rate_limit(max_requests=60, window_seconds=60.0)` call omits `logger=`.
-      `rate_limit()`'s `logger` parameter defaults to `None` and falls back to
-      `globals()["logger"]` (`logging.getLogger("web.rate_limit")`, module-level, detached from
-      the `seedsyncarr` app logger tree) — confirmed in rate_limit.py. So `/server/status`'s "Rate
-      limit exceeded" warning still does not reach the persisted app log or the UI log stream.
-      122-02-PLAN.md explicitly scoped status.py out of D-13 (confirmed by 122-02-SUMMARY.md: "`git
-      diff HEAD~1 -- web/handler/status.py` → empty (untouched, as required...)"), so this is not
-      a regression against that plan's own declared scope, but the owner's 2026-10-23 decision
-      brings it into scope for this phase because any future bare `rate_limit(...)` call silently
-      repeats the same detached-logger mistake LOG-01 exists to fix.
-    artifacts:
-      - path: "src/python/web/handler/status.py"
-        issue: "StatusHandler constructed with only status, no context/logger; its rate_limit call has no logger= kwarg"
-      - path: "src/python/web/rate_limit.py"
-        issue: "logger parameter stays optional with a silent detached-logger fallback, so a future caller can repeat this mistake without any error"
-    missing:
-      - "Give StatusHandler the context logger and pass logger=self.logger at its rate_limit call site"
-      - "Consider making logger a required keyword argument of rate_limit to prevent recurrence (review Info item IN-02 in 122-REVIEW.md as a related cleanup)"
+re_verification:
+  previous_status: gaps_found
+  previous_score: 3/5
+  gaps_closed:
+    - "CR-01: Arr API key no longer leaks into a logged traceback from ConfigHandler._test_arr_connection"
+    - "WR-02: post-transfer pending-notice keep/credit exception is bounded to a 120 s grace window with a local-copy requirement, and discarded at once on STOP/DELETE_LOCAL"
+    - "WR-03: the import-credit log line names the real reason ('transfer finished, awaiting commit') on the post-transfer path instead of always claiming '(root still transferring)'"
+    - "WR-01: StatusHandler's rate-limit warning now reaches the app logger; rate_limit()'s logger parameter is required and keyword-only, closing the LOG-01-class gap on /server/status"
+  gaps_remaining: []
+  regressions: []
 human_verification: []
 ---
 
-# Phase 122: Safety Acceptance and Logging Fixes Verification Report
+# Phase 122: Safety Acceptance and Logging Fixes Verification Report (Re-verification, Gap Cycle 2)
 
 **Phase Goal:** The Phase 119 safety behaviors are proven on a running build, the two open incident records say truthfully what is fixed and what is not, and the two log messages found in Phase 120 stop misleading operators
-**Verified:** 2026-10-23T22:15:09Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-10-25T16:10:00Z
+**Status:** passed
+**Re-verification:** Yes — after gap-closure cycle 2 (plans 122-13..17), following an initial verification (2026-10-23) that found gaps_found (3/5, CR-01/WR-01/WR-02/WR-03)
+
+## Previous Gaps and Closure Evidence
+
+| ID | Severity (prior) | Prior finding | Closure evidence (independently re-confirmed in this pass) |
+|---|---|---|---|
+| CR-01 | Blocking | `ConfigHandler._test_arr_connection`'s `except Exception: self.logger.exception(...)` leaked the raw Arr API key into the persisted app log and UI stream when `requests` raised `InvalidHeader` for a key containing whitespace/newline | `src/python/web/handler/config.py:150` strips the key and rejects it with `"{Service} API key contains invalid characters"` via `_API_KEY_CHARS = re.compile(r"[\x21-\x7e]+")` fullmatch *before* any outbound request, so `requests` can no longer raise `InvalidHeader` for a stored key. The `except Exception` branch (`config.py:208-216`) now logs `type(e).__name__` only, `exc_info` is never set. Read directly; confirmed on disk. Regression test `test_config_unexpected_error_with_real_invalid_header_logs_type_only` constructs a **real** `requests.exceptions.InvalidHeader` with the key embedded in its message (not a synthetic `RuntimeError`) and asserts the key is absent from both the plain-`Formatter` output and the SSE-serialized record; `test_config_key_with_newline_never_reaches_requests_or_log` does the same end-to-end through the real handler method. Both read and both pass (`pytest … -q` → 11/11 and 143/143 passed, run directly by this verifier). |
+| WR-02 | Blocking | `post_transfer_pending` had no bound on root state or elapsed time beyond the pre-existing 6 h `_PENDING_NOTICE_TTL_SECS`, so a stopped transfer or a user-deleted local copy could still be credited for up to 6 hours | `controller.py:65` adds `_POST_TRANSFER_GRACE_SECS = 120`; `controller.py:832-840`'s `post_transfer_pending` now additionally requires `root_name in __last_transferring_at` and `now - __last_transferring_at[root_name] < 120`, a local copy (`local_size is not None`), and a remote copy. `controller.py:859-876` discards and warns once the window expires or the local copy is gone (never crediting). `controller.py:1505-1508` wires a successful STOP or DELETE_LOCAL to `_discard_pending_notices` at once. Read directly; confirmed on disk. Live sandbox rerun (122-16, independently re-read in `122-SAFE01-EVIDENCE.md` lines 1640-1814): India E04 (61.8 s) and Juliet E03 (73.4 s) both accepted inside the new 120 s window; Hotel's pending notice discarded 0.1 s after a user STOP, zero credit/record/schedule lines for it. Unit tests `test_post_transfer_notice_discarded_after_grace_window`, `test_post_transfer_notice_discarded_when_local_copy_gone`, `test_user_stop_discards_pending_notice`, `test_user_delete_local_discards_pending_notice` all read directly — substantive (construct real pending-notice state at specific `time.monotonic()` values, assert exact discard wording and absence of credit) — and run green (29/29 in `test_import_credit.py`, run directly by this verifier). |
+| WR-03 | Minor | `__credit_early_child`'s log line always said `"(root still transferring)"`, false on the new post-transfer path | `controller.py:992-993` adds a `reason: str = "root still transferring"` parameter; `controller.py:895-896` passes `credit_reason = "transfer finished, awaiting commit" if post_transfer_only else "root still transferring"`. Read directly; confirmed on disk. Unit test `test_post_transfer_credit_line_says_transfer_finished` asserts both wordings on their respective paths — read directly, substantive, passes. Honest caveat (self-reported in `122-SAFE01-EVIDENCE.md` line ~57 of the Plan-17 summary): the two late-arriving children in the gap-cycle-2 live rerun both landed via the commit-time path, not the post-transfer-credit path, so the new wording was exercised live zero times — it is covered only by its own unit regression. This does not weaken the fix (the code and the unit test are both substantive and directly verified) but means the new wording's live behavior rests on unit evidence, not a live log line. |
+| WR-01 | Minor | `StatusHandler` had no logger; its `rate_limit()` call omitted `logger=`, so the warning fell back to a detached `web.rate_limit` module logger | `rate_limit()` (`web/rate_limit.py:17-30`) now takes `logger: logging.Logger` as a required keyword-only argument (no default); a missing/`None` logger raises `TypeError`. `status.py:11` sets `self.logger = context.logger.getChild("StatusHandler")` and `status.py:16` passes `logger=self.logger`. `web_app_builder.py:35` constructs `StatusHandler(context.status, context)`. Read directly; confirmed on disk. Live sandbox recheck (122-16): a 61-request burst produced `200=60, 429=1` and the app log gained `seedsyncarr.StatusHandler … Rate limit exceeded`. Unit test `TestRateLimitRequiresLogger` and `test_status_rate_limit_warning_under_app_logger` read directly and pass. |
+
+All four prior gaps are resolved in source, covered by substantive (non-vacuous) regression tests this verifier read and ran directly, and — for WR-02/WR-01/LOG-01 — reconfirmed live on the gap-cycle-2 sandbox build per `122-SAFE01-EVIDENCE.md`.
 
 ## Goal Achievement
 
-### Observable Truths
+### Observable Truths (ROADMAP Success Criteria)
 
-| # | Truth (ROADMAP Success Criterion) | Status | Evidence |
+| # | Truth | Status | Evidence |
 |---|---|---|---|
-| 1 | SAFE-01: extraction, import and auto-delete checks each pass on a running build with recorded evidence | ✗ FAILED (evidence rests on an incomplete fix) | `.planning/phases/122-safety-acceptance-and-logging-fixes/122-SAFE01-EVIDENCE.md` records D-06(a)-(e)/D-07 all PASS on `DEV_PIN sha256:e3941f976b5bf...`, confirmed substantive (not a stub: specific timestamps, log lines, byte sizes, persist-file contents throughout). However, WR-02 and WR-03 (confirmed in code, see Gaps) show the D-06(c) fix underlying that PASS verdict is narrower in scope than it should be and has an inaccurate log line; owner decision (2026-10-23) requires a narrowed fix plus a sandbox rerun before this verdict can be relied on for the shipping build |
-| 2 | SAFE-02: both incident records distinguish verified-fixed from remaining operator cleanup; neither closed solely because code shipped | ✓ VERIFIED | `.planning/debug/resolved/done-group-no-auto-delete.md` and `.planning/debug/resolved/extract-staging-autodel-rearm.md` both read directly: per-finding "Reconciliation (Phase 122)" tables with "verified fixed (evidence)" rows linking to 122-SAFE01-EVIDENCE.md sections and commit hashes, deferred items C-G explicitly marked "deferred — carried to ROADMAP.md Backlog" (confirmed present under `## Backlog` in ROADMAP.md with matching item names), owner's verbatim "All confirmed" recorded, both files have `status: resolved` and live in `.planning/debug/resolved/` |
-| 3 | LOG-01: a webhook Test event produces a `<source> webhook test event received` INFO line under the app logger, regression test fails-before/passes-after | ✗ FAILED (mechanism works, but the change regressed security and left a gap) | Core mechanism confirmed in code: `webhook.py:140` `self.logger.info("{} webhook test event received"...)` on `self.logger = context.logger.getChild("WebhookHandler")`; targeted test run (262 tests across the 7 phase-touched files) all pass. But CR-01 (confirmed, reproduced independently) shows the same "attach handler loggers to the app logger" change leaks the Arr API key through `ConfigHandler`'s exception path, and WR-01 (confirmed) shows `StatusHandler`'s rate-limit warning was never migrated |
-| 4 | LOG-02: completion gate logs "dropped (reason)" for prune/no-arr removals, "cleared" only for proof-based release | ✓ VERIFIED | `completion_gate.py:427-446` `_clear_hold(name, drop_reason=None)`: `drop_reason is None` → `"Completion hold cleared for '%s'"` (proof-based release only, byte-identical to old wording per docstring); else → `"Completion hold dropped for '%s' (%s)"`. Called with `drop_reason=` only from the prune loop (line 236) and the no-arr-enabled loop (line 208); called with no `drop_reason` only from `_record`'s proof-based release (line 416). Root names pass through `sanitize_log_value`. `test_completion_gate.py` tests run and pass |
-| 5 | Phase 119 import safeguards (early credit, pending-notice revalidation, arm-on-commit, Waiting holds, one-shot manual release) are exercised, not rebuilt | ✓ VERIFIED | 122-SAFE01-EVIDENCE.md's "Plan 12: D-06 rerun on the fixed build" and "Plan 06" sections show each safeguard exercised live with log-line/persist-file evidence (Waiting hold + one-shot release D-06(e), early credit D-06(a), restart persistence D-06(d)); the Phase 119 code paths themselves (`__credit_early_child`, `__keep_pending_notice`, arm-on-commit loop) are modified only by the in-scope 122-10 D-06(c) gap-closure addition, not rebuilt |
+| 1 | SAFE-01: On a running build, extraction, import and auto-delete checks each pass with recorded evidence | ✓ VERIFIED | `122-SAFE01-EVIDENCE.md` "#### Gap cycle 2 (122-13..17)" addendum (lines 1273-1355, read directly): 9-row scenario table, all PASS, on `DEV_PIN sha256:f8204207...` (the build containing the CR-01/WR-01/WR-02/WR-03 fixes) plus two rows explicitly *kept* from the earlier `e3941f97` build (D-06(d) restart persistence, D-07 extraction staging) with a `git diff 81df6b7..a56a1f8 --stat -- src/python` scope proof showing `controller_persist.py`, `model_pipeline.py` and `extract/` have zero diff lines, and every changed hunk in `controller.py` falls inside the documented function set. Owner reviewed this exact addendum and replied verbatim "approve" (122-17, Task 3). Sandbox restored to `IMAGE_PIN_L0` (1.7.6), fresh-session verified; production confirmed byte-identical throughout (independently re-readable in the same file). |
+| 2 | SAFE-02: Both incident records distinguish verified-fixed from remaining operator cleanup; neither closed solely because code shipped | ✓ VERIFIED (regression-checked, unchanged) | `.planning/debug/resolved/done-group-no-auto-delete.md` and `extract-staging-autodel-rearm.md` both still read `status: resolved` on disk; unchanged by gap cycle 2. Re-confirmed directly in this pass. |
+| 3 | LOG-01: A webhook Test event produces a `<source> webhook test event received` INFO line under the app logger, with a regression test that fails before and passes after | ✓ VERIFIED | `webhook.py:140` unchanged (`self.logger.info("{} webhook test event received"...)` on `context.logger.getChild("WebhookHandler")`), re-confirmed directly. The gap-cycle-1 regression (CR-01) that undermined this truth — the same logger-attachment change also surfacing a secret via `ConfigHandler` — is now closed (see Previous Gaps table above); `rate_limit.py`'s detached-logger fallback (WR-01, the other gap in this truth's scope) is also closed. Live-rechecked on the gap-cycle-2 build: `seedsyncarr.WebhookHandler … Sonarr webhook test event received` observed (122-16, `122-SAFE01-EVIDENCE.md` "Sandbox re-pin, LOG-01 and WR-01 live recheck"). |
+| 4 | LOG-02: The completion gate logs "dropped (reason)" for prune/no-arr removals, "cleared" only for proof-based release | ✓ VERIFIED (regression-checked, unchanged) | `completion_gate.py:427-446` unchanged since the first verification pass; `_clear_hold(name, drop_reason=None)` branches confirmed by direct read: prune loop and no-arr loop pass `drop_reason=`, proof-based release in `_record` does not. |
+| 5 | Phase 119 import safeguards (early credit, pending-notice revalidation, arm-on-commit, Waiting holds, one-shot manual release) are exercised, not rebuilt | ✓ VERIFIED | The `git diff 81df6b7..a56a1f8` scope proof (see Truth 1) shows the gap-cycle-2 fixes are confined to `controller.py`'s constants block, `__init__`, `__check_webhook_imports`, `__credit_early_child`, `_discard_pending_notices` and `__process_commands` — narrowing/hardening the existing evidence gate, not rebuilding the arm-on-commit, Waiting-hold or one-shot-release machinery (all read directly, unchanged function bodies outside the listed set). |
 
-**Score:** 3/5 truths verified
+**Score:** 5/5 truths verified
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |---|---|---|---|
-| `src/python/controller/completion_gate.py` | `_clear_hold` cleared/dropped wording split (LOG-02) | ✓ VERIFIED | Exists, substantive, wired into `_run` prune/no-arr loops and `_record`'s proof-based release; tests pass |
-| `src/python/web/handler/webhook.py` | WebhookHandler logs under app logger (LOG-01) | ✓ VERIFIED | `context.logger.getChild("WebhookHandler")`; "webhook test event received" INFO line present and tested |
-| `src/python/web/handler/config.py` | ConfigHandler logs under app logger (LOG-01) | ⚠️ VERIFIED-WITH-REGRESSION | Logger attachment is wired, but `_test_arr_connection`'s `except Exception: self.logger.exception(...)` now leaks the Arr API key into the persisted log/UI stream on an InvalidHeader (CR-01, confirmed) |
-| `src/python/web/handler/status.py` | Rate-limit warning reaches app logger | ✗ NOT WIRED | `StatusHandler` has no logger; `rate_limit()` call at line 16 has no `logger=` kwarg; falls back to the detached module logger (WR-01, confirmed) |
-| `src/python/web/rate_limit.py` | `rate_limit(max_requests, window_seconds, logger=None)` | ✓ VERIFIED (exists, substantive) | Confirmed present with the fallback-to-module-logger behavior that produces WR-01 when `logger` is omitted |
-| `src/python/controller/controller.py` | D-06(c) post-transfer pending-notice window (122-10 gap closure) | ⚠️ STUB-LIKE GAP | `post_transfer_pending` and `_revalidate_pending_notice` exist and are wired into `__check_webhook_imports`, and work for the intended scan-lag/remote-loss cases (tested), but the retention window is wider than the must-have requires (WR-02, confirmed) |
-| `.planning/phases/122-safety-acceptance-and-logging-fixes/122-SAFE01-EVIDENCE.md` | Live sandbox evidence sections for all SAFE-01 scenarios | ✓ VERIFIED | 1267+ lines, section-by-section PASS verdicts with timestamps/log excerpts/persist contents; overall SAFE-01 verdict table present. Evidence is real and substantive; verdict will need a superseding entry once WR-02/WR-03 are fixed and rerun |
-| `.planning/debug/resolved/done-group-no-auto-delete.md` | Per-finding reconciliation, Case A/Case B | ✓ VERIFIED | Reconciliation table present with evidence links; `status: resolved` |
-| `.planning/debug/resolved/extract-staging-autodel-rearm.md` | Per-finding reconciliation, Bug 1/Bug 2/A/B/H + deferred C-G | ✓ VERIFIED | Reconciliation table present; deferred items C-G explicitly carried to ROADMAP Backlog (confirmed present there by name) |
-| `.planning/phases/122-safety-acceptance-and-logging-fixes/122-REVIEW.md` | Code review of phase diff | ✓ VERIFIED | `status: issues_found`, CR-01/WR-01/WR-02/WR-03/IN-01/IN-02/IN-03/CV-01 all present; CR-01/WR-01/WR-02/WR-03 independently re-confirmed in this verification |
+| `src/python/web/handler/config.py` | Strip/validate Arr key before request; log type only on unexpected error (CR-01) | ✓ VERIFIED | Read directly: `_API_KEY_CHARS` fullmatch gate at line 150, `logger.error(..., type(e).__name__)` with no `exc_info` at lines 208-216. Substantive regression test exercises a real `InvalidHeader`. |
+| `src/python/web/rate_limit.py` | `logger` required keyword-only, no fallback (WR-01) | ✓ VERIFIED | `*, logger: logging.Logger` with `TypeError` on `None`; `globals()`/module-level fallback removed (grep confirms 0 matches for `globals()`/`getLogger` in the file). |
+| `src/python/web/handler/status.py` | `StatusHandler` wired to app logger, passes `logger=` to `rate_limit` (WR-01) | ✓ VERIFIED | `self.logger = context.logger.getChild("StatusHandler")`; `rate_limit(..., logger=self.logger)`. |
+| `src/python/web/web_app_builder.py` | `StatusHandler(context.status, context)` | ✓ VERIFIED | Confirmed at line 35. |
+| `src/python/controller/controller.py` | Bounded post-transfer window, STOP/DELETE_LOCAL discard, differentiated credit reason (WR-02, WR-03) | ✓ VERIFIED | `_POST_TRANSFER_GRACE_SECS = 120`, `__last_transferring_at` tracked/pruned/popped, `_discard_pending_notices` wired from `__process_commands` on STOP and DELETE_LOCAL, `__credit_early_child(reason=...)`. All read directly at the cited line numbers. |
+| `src/python/tests/unittests/test_controller/test_import_credit.py` | `TestPostTransferWindowBounds` (6 tests) | ✓ VERIFIED | Read directly — substantive (constructs specific `time.monotonic()` sequences, asserts exact discard reasons and absence of credit, not placeholder assertions). Run directly by this verifier: 29/29 pass. |
+| `src/python/tests/unittests/test_web/test_web_app_builder_logging.py` | Real-`InvalidHeader` CR-01 regression, WR-01 regression | ✓ VERIFIED | Read directly — `test_config_key_with_newline_never_reaches_requests_or_log` and `test_config_unexpected_error_with_real_invalid_header_logs_type_only` build a real `requests.exceptions.InvalidHeader` carrying the key and assert its absence in both the plain-formatted and SSE-serialized record. Not vacuous (unlike the pre-fix `RuntimeError`-based test the first verification pass flagged). |
+| `.planning/phases/122-safety-acceptance-and-logging-fixes/122-SAFE01-EVIDENCE.md` | Gap-cycle-2 live rerun evidence + superseding SAFE-01 verdict | ✓ VERIFIED | 1900+ lines; "Plan 16: D-06 rerun on the narrowed build" and "#### Gap cycle 2 (122-13..17)" sections read directly — section-by-section PASS verdicts with timestamps, verbatim log lines (both clocks), persist-file reads, and the `git diff` scope proof for the two kept rows. Substantive, not a documentation-only claim. |
+| `.planning/phases/122-safety-acceptance-and-logging-fixes/122-REVIEW.md` | Re-review of the gap-cycle-2 diff | ✓ VERIFIED | `status: issues_found` (0 critical, 1 warning, 2 info); CR-01/WR-01/WR-02/WR-03 all marked Resolved with file:line evidence; new WR-04/IN-04/IN-05 findings assessed below under Follow-ups. |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |---|---|---|---|---|
-| `WebhookHandler.__init__` | `seedsyncarr` app logger | `context.logger.getChild("WebhookHandler")` | ✓ WIRED | Confirmed; INFO line reaches `assertLogs("seedsyncarr", ...)` in tests |
-| `ControllerHandler.__init__` | `seedsyncarr` app logger | `context.logger.getChild("ControllerHandler")` | ✓ WIRED | Confirmed by 122-02-SUMMARY.md grep evidence and test run |
-| `ConfigHandler.__init__` | `seedsyncarr` app logger | `context.logger.getChild("ConfigHandler")` | ⚠️ WIRED-BUT-LEAKING | Wiring correct; the same wiring is the mechanism by which CR-01 now surfaces a secret that previously went only to a detached logger |
-| `StatusHandler` rate-limit warning | `seedsyncarr` app logger | (expected: `logger=self.logger` at the `rate_limit(...)` call) | ✗ NOT WIRED | No such kwarg exists; confirmed falls back to `logging.getLogger("web.rate_limit")` (WR-01) |
-| `CompletionGate._run` prune/no-arr loops | `_clear_hold(name, drop_reason=...)` | keyword argument | ✓ WIRED | Confirmed at lines 208, 236 |
-| `CompletionGate._record` proof-based release | `_clear_hold(name)` | call with no `drop_reason` | ✓ WIRED | Confirmed at line 416 |
-| `Controller.__check_webhook_imports` | `post_transfer_pending` branch | membership of `__pending_child_notices` + `remote_size is not None` | ⚠️ WIRED-BUT-OVERBROAD | Wired and functional for the intended case, but not bounded to the intended window (WR-02) |
-| `post_transfer_only` branch | `__credit_early_child` reason text | (expected: a passed `reason` parameter) | ✗ NOT WIRED | No such parameter exists; the credited log line is a hardcoded string regardless of path (WR-03) |
+| `ConfigHandler._test_arr_connection` | outbound `requests.get` | `_API_KEY_CHARS.fullmatch(api_key.strip())` gate | ✓ WIRED | A key that would trigger `InvalidHeader` is now rejected with a JSON error before `requests` is ever called. |
+| `ConfigHandler._test_arr_connection`'s `except Exception` | `self.logger.error(...)` | `type(e).__name__` only, no `exc_info` | ✓ WIRED | Confirmed; cannot carry the exception message or traceback. |
+| `StatusHandler.__handle_get_status` | `seedsyncarr` app logger | `rate_limit(..., logger=self.logger)` | ✓ WIRED | No detached-logger fallback path remains reachable for this call site. |
+| `rate_limit()` call sites (web handlers) | required `logger=` kwarg | keyword-only parameter, no default | ✓ WIRED | A future call site that omits `logger=` now fails at call time with `TypeError`, not silently. |
+| `Controller.__check_webhook_imports` | `post_transfer_pending` | `__last_transferring_at` + `_POST_TRANSFER_GRACE_SECS` bound | ✓ WIRED | Confirmed bounded, not the prior unbounded 6 h TTL path. |
+| `Controller.__process_commands` (STOP / DELETE_LOCAL) | `_discard_pending_notices` | direct call before `__check_webhook_imports` runs in the same `process()` | ✓ WIRED | Confirmed at `controller.py:1505-1508`; live-verified (Hotel, 0.1 s). |
+| `post_transfer_only` branch | `__credit_early_child` reason text | passed `reason="transfer finished, awaiting commit"` parameter | ✓ WIRED | Confirmed; covered by unit test, not yet exercised live (see WR-03 caveat above). |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |---|---|---|---|
-| Targeted phase-touched unit tests (LOG-01, LOG-02, D-06c, status quo regressions) | `pytest tests/unittests/test_web/test_web_app_builder_logging.py tests/unittests/test_web/test_rate_limit.py tests/unittests/test_web/test_webhook_handler.py tests/unittests/test_web/test_handler/test_config_handler.py tests/unittests/test_web/test_handler/test_controller_handler.py tests/unittests/test_controller/test_completion_gate.py tests/unittests/test_controller/test_import_credit.py tests/unittests/test_sonarr5/test_sonarr5_system_status.py -q` | `262 passed, 15 subtests passed` | ✓ PASS |
-| Whole-tree lint | `ruff check src/python/` (ruff 0.15.22, matching CI pin) | `All checks passed!` | ✓ PASS |
-| Full unit suite (run once; baseline comparison) | `pytest tests/unittests -q` | `21 failed, 1787 passed, 3 errors` — all failures in `test_sshcp.py` (missing `testgroup` system group), `test_scanner.py::test_scan_file_with_latin_chars`, `test_scanner_process.py`, `test_extract_process.py` | ✓ PASS (matches orchestrator-reported baseline exactly; none touched by this phase) |
-| CR-01 reproduction: does `requests` embed the key in `InvalidHeader`? | `requests.get(url, headers={"X-Api-Key": " SECRETKEY123\n"})` | Raises `InvalidHeader("Invalid leading whitespace, ... header value: ' SECRETKEY123\n'")` | ✓ CONFIRMS LEAK SOURCE |
-| CR-01 reproduction: does the leak reach the real `ConfigHandler` + app-logger formatter path? | Direct call to `ConfigHandler._test_arr_connection` with a logger attached the same way `context.logger.getChild("ConfigHandler")` would, formatted with the same plain `Formatter` the RotatingFileHandler uses | Formatted record contains `SECRETKEY123` verbatim | ✓ CONFIRMS CR-01 END-TO-END |
-| D-14 test's blind spot: does the existing regression actually exercise a key-bearing exception? | Read `test_config_unexpected_error_logged_without_api_key`: injected failure is `RuntimeError("boom")` | Never contains the key; assertion passes vacuously | ✓ CONFIRMS TEST GAP |
-| `_redact_sensitive` coverage for API-key-shaped values | Read `serialize_log_record.py::_redact_sensitive` | Only 4 patterns: lftp `-u`, `password=`, `sftp://user@host`, bare `user@host` — none for `X-Api-Key` | ✓ CONFIRMS NO MITIGATION |
-| WR-01: is `StatusHandler` given a logger anywhere? | Read `web_app_builder.py` (`StatusHandler(context.status)`) and `status.py` (`rate_limit(max_requests=60, window_seconds=60.0)`) | No `logger` attribute, no `logger=` kwarg | ✓ CONFIRMS WR-01 |
-| WR-02: is there any time/state bound on `post_transfer_pending`? | Read `controller.py` `post_transfer_pending` definition and `grep -n "_PENDING_NOTICE_TTL_SECS\|last_transferring_at"` | Only the 6h TTL; no `last_transferring_at` tracking exists anywhere in the file | ✓ CONFIRMS WR-02 |
-| WR-03: does `__credit_early_child`'s log line vary by path? | Read `__credit_early_child` | Hardcoded `"(root still transferring)"` string, no `reason` parameter | ✓ CONFIRMS WR-03 |
+| CR-01/WR-01 regression tests | `pytest tests/unittests/test_web/test_web_app_builder_logging.py tests/unittests/test_web/test_rate_limit.py tests/unittests/test_web/test_handler/test_config_handler.py tests/unittests/test_web/test_handler/test_status_handler.py tests/unittests/test_web/test_handler/test_controller_handler.py -q` (run directly by this verifier) | `143 passed` | ✓ PASS |
+| WR-02/WR-03 regression tests | `pytest tests/unittests/test_controller/test_import_credit.py -k "TestPostTransferWindowBounds or TestPostTransferWindow" -q` (run directly) | `11 passed` | ✓ PASS |
+| Whole-tree lint | `ruff check src/python/` (run directly) | `All checks passed!` | ✓ PASS |
+| Full unit suite (run once; baseline comparison) | `pytest tests/unittests -p no:cacheprovider -q` (run directly, once, per the single-full-run constraint) | `21 failed, 1798 passed, 2 warnings, 3 errors, 77 subtests passed` | ✓ PASS — failure set is byte-identical by file/test identity to the documented macOS-local baseline (`test_sshcp.py` x11, `test_scanner_process.py` x3 FAILED + 3 ERROR, `test_extract_process.py` x6, `test_scanner.py::test_scan_file_with_latin_chars` x1); none touched by this phase |
+| PR #134 CI status | `gh pr checks 134`, `gh pr view 134 --json headRefOid,state,isDraft,mergeable` (run directly) | All required checks `pass`; publish jobs correctly `skipping` (not a tag event); `state=OPEN`, `isDraft=true`, `mergeable=MERGEABLE`, head at the documented `NEW_HEAD_SHA` | ✓ PASS |
+| WR-04 claim: is the stored Arr key normalized anywhere outside Test Connection? | Read `common/config.py` PROP definitions (`Checkers.null`/`Converters.null`) and `controller/arr_queue.py`'s `ArrTarget` construction (`config.sonarr.sonarr_api_key or ""`, raw) | No stripping anywhere outside `_test_arr_connection` | ✓ CONFIRMS WR-04 (see Follow-ups) |
+| IN-04/IN-05 claim: do the described edge cases exist in the current code? | Read `controller.py` `process()` ordering (`__process_commands` → `__update_model` → `__check_webhook_imports`) and the `local_size is None` discard branch (lines 859-876) | Both described conditions present as read | ✓ CONFIRMS IN-04/IN-05 (see Follow-ups) |
 
 ### Probe Execution
 
-Not applicable — this phase has no `scripts/*/tests/probe-*.sh` style probes; SAFE-01 acceptance evidence was gathered through manual NAS-sandbox session scripts (`122-teardown.sh`, `122-webhook-post.sh`) documented and read directly in `122-SAFE01-EVIDENCE.md`, not through a repo-committed automated probe this verifier can re-run. Step 7b's unit/lint spot-checks above substitute for an automated probe on the parts of the phase that are code.
+Not applicable — this phase has no `scripts/*/tests/probe-*.sh` style probes. SAFE-01/WR-02/LOG-01/WR-01 live acceptance evidence was gathered through manual NAS-sandbox session scripts documented and read directly in `122-SAFE01-EVIDENCE.md`. This verifier independently re-ran the unit/lint spot-checks above in its own process rather than trusting the summaries' quoted output.
 
 ### Requirements Coverage
 
 | Requirement | Source Plan(s) | Description | Status | Evidence |
 |---|---|---|---|---|
-| SAFE-01 | 122-04, 05, 06, 07, 08, 10, 11, 12 | Extraction, import and auto-delete checks pass on a running build, with recorded evidence | ✗ BLOCKED | Live evidence in 122-SAFE01-EVIDENCE.md is real and substantive, but rests on a D-06(c) fix with a confirmed scope gap (WR-02) and an inaccurate log line (WR-03); REQUIREMENTS.md/ROADMAP.md mark this `[x] Complete`, which this verification does not confirm until the narrowing fix lands and D-06(c) is rerun per the owner's 2026-10-23 decision |
-| SAFE-02 | 122-09 | Both incident records distinguish verified-fixed from remaining operator cleanup | ✓ SATISFIED | Confirmed directly in `.planning/debug/resolved/*.md` — see Observable Truth 2 |
-| LOG-01 | 122-02, 04, 11 | Webhook handler INFO messages appear in the app log | ✗ BLOCKED | Core mechanism satisfied, but the same change introduced CR-01 (critical secret leak) and left WR-01 (incomplete coverage); REQUIREMENTS.md marks this `[x] Complete`, which this verification does not confirm |
-| LOG-02 | 122-01, 03 | Completion gate logs distinct "dropped" vs "cleared" | ✓ SATISFIED | Confirmed directly in `completion_gate.py` and passing tests — see Observable Truth 4 |
+| SAFE-01 | 122-04,05,06,07,08,10,11,12,13,14,15,16,17 | Extraction, import and auto-delete checks pass on a running build, with recorded evidence | ✓ SATISFIED | Gap-cycle-2 verdict addendum, owner-approved; see Truth 1 |
+| SAFE-02 | 122-09 | Both incident records distinguish verified-fixed from remaining operator cleanup | ✓ SATISFIED | Unchanged since first pass; see Truth 2 |
+| LOG-01 | 122-02,04,11,14,16,17 | Webhook handler INFO messages appear in the app log | ✓ SATISFIED | Core mechanism plus the CR-01/WR-01 regressions that threatened it are both closed; see Truth 3 |
+| LOG-02 | 122-01,03 | Completion gate logs distinct "dropped" vs "cleared" | ✓ SATISFIED | Unchanged since first pass; see Truth 4 |
 
-No orphaned requirement IDs: all four phase requirement IDs (SAFE-01, SAFE-02, LOG-01, LOG-02) from `.planning/REQUIREMENTS.md`'s Phase 122 row are claimed by at least one plan's `requirements:` frontmatter, and every plan's `requirements:` entries are one of these four. Cross-referenced against `.planning/REQUIREMENTS.md` lines 17-18 and 37-38.
+No orphaned requirement IDs: all four phase requirement IDs (SAFE-01, SAFE-02, LOG-01, LOG-02) from `.planning/REQUIREMENTS.md`'s Phase 122 row are claimed by at least one plan's `requirements:` frontmatter (confirmed by direct grep across all 17 plan files), and every plan's `requirements:` entries are one of these four.
 
 ### Anti-Patterns Found
 
-| File | Line | Pattern | Severity | Impact |
-|---|---|---|---|---|
-| `src/python/web/handler/config.py` | 195-196 | `except Exception: self.logger.exception(...)` logging a traceback that can carry an upstream library's embedded secret | 🛑 Blocker | CR-01 — confirmed secret leak into persisted log + UI stream |
-| `src/python/controller/controller.py` | ~806-816 | Permissive boolean condition (`post_transfer_pending`) with no state/time bound beyond a 6h TTL | 🛑 Blocker | WR-02 — widens an import-safety window beyond its documented and intended scope |
-| `src/python/controller/controller.py` | ~958-963 | Hardcoded log string reused across two semantically different call paths | ⚠️ Warning | WR-03 — misleading operator-facing log line on the new path |
-| `src/python/web/handler/status.py` / `src/python/web/rate_limit.py` | 16 / 22,29 | Optional parameter with a silent fallback to a detached logger | ⚠️ Warning | WR-01 — incomplete migration, risk of silent recurrence for future callers |
+None blocking. `grep -n "TBD\|FIXME\|XXX"` across every file touched by gap cycle 2 (`controller.py`, `config.py`, `status.py`, `rate_limit.py`, `web_app_builder.py`, `arr_queue.py`) returns zero matches. The two 🛑 Blocker findings from the first verification pass (CR-01's `logger.exception`, WR-02's unbounded `post_transfer_pending`) are both fixed in code, independently confirmed above. No new blocking anti-pattern was introduced by the gap-closure plans.
 
-No `TBD`/`FIXME`/`XXX` debt markers found in the phase-touched files (grepped `completion_gate.py`, `controller.py`, `config.py`, `webhook.py`, `status.py`, `rate_limit.py`, `web_app_builder.py`). No placeholder/"coming soon" text found.
+### Follow-ups (non-blocking; do not invalidate any phase must-have or ROADMAP success criterion)
+
+These three findings are new in `122-REVIEW.md`'s re-review (2026-10-25) and were not present in the original code-review or verification pass. Each was independently confirmed in code by this verifier. None of them touch SAFE-01, SAFE-02, LOG-01 or LOG-02 as stated in ROADMAP.md, and none weaken D-14 ("credit alone never arms deletion") — all fail closed.
+
+1. **WR-04 — Test Connection strips the key; the runtime queue check does not.** Confirmed: `config.py:150` strips+validates only inside `_test_arr_connection`; the stored property uses `Checkers.null`/`Converters.null` (no normalization); `arr_queue.py`'s `ArrTarget` construction uses the raw `config.sonarr.sonarr_api_key or ""`. Effect: a key stored with stray whitespace passes Test Connection (false all-clear) but fails every runtime queue check (`InvalidHeader` or HTTP 401), which `completion_gate.py` maps to `Verdict.hold(code + "_unavailable")` — confirmed by direct read — i.e. completions are held, nothing is deleted wrongly. This is a usability/diagnosability regression in Test Connection, not a safety regression, and not a "log message that misleads an operator" in the sense LOG-01/LOG-02 target (it's a UI test-result, not a log line). **Recommendation:** fix in a maintenance follow-up (normalize the stored key on save, or reject-not-strip in Test Connection), not a phase 122 gap.
+2. **IN-04 — a fresh webhook notice landing in the gap between STOP processing and the next model update can restart the 120 s grace window.** Confirmed: `process()` runs `__process_commands()` (which calls `_discard_pending_notices` on STOP) before `__update_model()` and `__check_webhook_imports()` in the same call, and the model can still show the root as DOWNLOADING for one more cycle. A notice arriving in that narrow window is tracked under a bumped lifecycle generation and can be credited for up to another 120 s on a root the user just stopped. Credit still requires the child to be complete on disk and never arms deletion. **Recommendation:** track a short "stopped/deleted at" fence, per the review's suggested fix; backlog candidate, not a phase 122 gap.
+3. **IN-05 — `local_size is None` is labeled "local copy gone" even when it really means "not scanned yet"; the 120 s window is a hard cliff for slow local scans.** Confirmed at `controller.py:863-868`. Both cases fail closed (discard + WARNING, no credit); the 120 s value's residual risk for large libraries was already explicitly documented as an accepted, unresolved risk in `122-13-SUMMARY.md`'s own "Grace Window Choice" section before this re-review. **Recommendation:** reword the discard reason and/or measure the grace period from the first post-transfer local scan rather than a fixed wall-clock value; maintenance follow-up, not a phase 122 gap.
 
 ### Human Verification Required
 
-None. All four gaps (CR-01, WR-01, WR-02, WR-03) are directly observable and independently confirmed in the codebase (not matters of visual judgment, real-time behavior, or external-service integration), and the owner has already made the relevant product decision (2026-10-23: fix all four in this phase, same PR #134, with a D-06(c) sandbox rerun on the new build). What remains is code-level gap closure, not a human-verification checkpoint.
+None. Every truth and every closed gap in this pass was independently confirmed either by direct code read, by running a substantive (non-vacuous) regression test in this verifier's own process, or by reading live-sandbox evidence (verbatim log lines, persist-file contents, both clocks) that this verifier cross-checked against the code paths it claims to exercise. The owner has already reviewed and approved the gap-cycle-2 SAFE-01 verdict (verbatim "approve", 122-17 Task 3). WR-04/IN-04/IN-05 are informational follow-ups requiring a scheduling decision (fix now vs. backlog), not a verification checkpoint — none of them is a visual, real-time, or external-integration judgment call this verifier cannot make from the code.
+
+### Process Note (non-blocking)
+
+`ROADMAP.md` (line 30), `.planning/REQUIREMENTS.md` (SAFE-01/SAFE-02/LOG-01/LOG-02 rows), and `STATE.md` were all updated to mark Phase 122 complete by the 122-17 executor commit (`e403f0e`) *before* this re-verification ran. This verification independently confirms that tick is substantively correct (5/5 truths verified, all four prior gaps closed with direct evidence) — so no correction is needed to those files — but flagging the ordering: per the gates taxonomy, verification is a revision/escalation gate that should run before a phase is marked complete, not after. No action required this cycle since the outcome matches; noted so the next phase's executor does not treat a pre-verification tick as a precedent.
 
 ### Gaps Summary
 
-Phase 122 delivered substantial, well-evidenced work: SAFE-02's incident-record reconciliation is complete and directly verifiable in the resolved debug files, LOG-02's completion-gate wording split is correctly implemented and tested, and the SAFE-01 live sandbox acceptance run (122-SAFE01-EVIDENCE.md) is genuine, substantive evidence — not a documentation-only claim. Phase 119's safeguards were exercised, not rebuilt.
-
-However, the phase's own code review (122-REVIEW.md, 2026-10-23) found a critical security regression and three correctness/completeness gaps, all independently reproduced in this verification:
-
-1. **CR-01 (blocking):** Implementing LOG-01 (attaching previously-detached web handler loggers to the app logger tree) had a side effect the plan did not anticipate: `ConfigHandler`'s existing `logger.exception(...)` call on the Arr-connection-test failure path now writes a full traceback to the persisted app log and the UI log stream. Reproduced here end-to-end: a key containing whitespace/newline causes `requests` to raise `InvalidHeader` with the raw key embedded in its message, and nothing in the logging pipeline (RotatingFileHandler's plain formatter, or `SerializeLogRecord._redact_sensitive`'s narrow lftp/password/ssh patterns) redacts it. This directly violates the project's absolute "never log sensitive data" rule. The regression test that was supposed to guard this (`test_config_unexpected_error_logged_without_api_key`) only injects a `RuntimeError`, so it provides no real protection.
-
-2. **WR-02 (blocking):** The D-06(c) gap-closure fix (122-10), which exists specifically to keep a pending import notice bounded to the window between "transfer ends" and "commits," is implemented more broadly than its own must-haves require: it has no bound on root state or elapsed time beyond the pre-existing 6-hour TTL, so a stopped transfer or a user-deleted local copy can also be covered by the same "keep or credit" logic for up to 6 hours. The 122-SAFE01-EVIDENCE.md D-06(c) PASS verdict (both the original run and the Plan 12 rerun) only exercised the intended scan-lag race, not this wider case.
-
-3. **WR-03 (minor, in scope per owner):** The import-credit log line that is reused on the new post-transfer path still unconditionally claims "(root still transferring)," which is false on that path — a new instance of exactly the kind of misleading operator-facing log message this phase exists to eliminate.
-
-4. **WR-01 (minor, in scope per owner):** `StatusHandler`'s rate-limit warning was never migrated to the app logger (the plan explicitly scoped this out of D-13, but the owner has decided it should be fixed alongside the other three issues in this same phase/PR).
-
-Per the owner's 2026-10-23 decision ("Key leak + log fixes + narrow D-06(c) (Recommended)"), all four items are to be fixed in this same phase and PR #134, with a D-06(c) sandbox rerun on the resulting build before SAFE-01's verdict can be considered final. Until that gap-closure work lands, SAFE-01 and LOG-01 cannot be marked satisfied, even though REQUIREMENTS.md and ROADMAP.md currently show both as `[x] Complete`.
-
-Items explicitly out of scope for this verification (per the orchestrator's instructions): IN-01 (duplicate DEBUG lines), IN-02 (`globals()["logger"]` workaround), IN-03 (redundant `config`/`context` constructor arguments), and CV-01 (import-relativity false positive) — these are informational/convention findings in 122-REVIEW.md that the owner did not select for in-phase fixing; they remain available as optional follow-up cleanup, not phase gaps.
+No gaps. Gap-closure cycle 2 (plans 122-13 through 122-17) resolved all four findings from the previous verification pass (CR-01 blocking, WR-02 blocking, WR-03 minor, WR-01 minor), each independently re-confirmed in this pass against the actual code (not the summaries' claims): the Arr API key can no longer leak into a log via `ConfigHandler`'s exception path, the post-transfer pending-notice exception is bounded to a 120 s grace window with a local-copy requirement and an immediate STOP/DELETE_LOCAL discard, the import-credit log line names the real reason instead of a hardcoded false one, and `StatusHandler`'s rate-limit warning reaches the app logger with `rate_limit()` now structurally unable to silently fall back to a detached logger. All five ROADMAP success criteria for Phase 122 are verified. The re-review conducted alongside this gap-closure cycle surfaced three new non-blocking findings (WR-04, IN-04, IN-05); none of them invalidate a phase must-have or ROADMAP success criterion, all fail closed (no safety regression), and they are recorded above as Follow-ups for a backlog/maintenance decision rather than as phase gaps.
 
 ---
 
-_Verified: 2026-10-23T22:15:09Z_
+_Verified: 2026-10-25T16:10:00Z_
 _Verifier: Claude (bm-verifier)_

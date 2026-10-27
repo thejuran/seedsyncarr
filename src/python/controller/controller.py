@@ -343,10 +343,50 @@ class Controller:
         Must be called after ctor and before process()
         """
         self.logger.debug("Starting controller")
-        self.__scan_manager.start()
-        self.__file_op_manager.start()
-        self.__mp_logger.start()
+        # Mirrors exit()'s per-component isolation below: track which
+        # components actually started and, on a later failure, stop lftp
+        # plus every already-started component independently before
+        # re-raising. lftp is included even though it is not in this
+        # tuple because its pty process is spawned eagerly in __init__,
+        # before start() ever runs, and would otherwise leak. The
+        # original failure then surfaces unchanged to the caller
+        # (ControllerJob's bounded auto-restart).
+        started = []
+        for component, start, stop in (
+                ("scanner", self.__scan_manager.start, self.__scan_manager.stop),
+                ("file operations", self.__file_op_manager.start, self.__file_op_manager.stop),
+                ("multiprocessing logger", self.__mp_logger.start, self.__mp_logger.stop)):
+            try:
+                start()
+            except Exception:
+                self.logger.error(
+                    "Controller start failed at {}; stopping lftp and {} already-started "
+                    "component(s)".format(component, len(started))
+                )
+                for name, component_stop in [("lftp", self.__lftp_manager.exit)] + started:
+                    try:
+                        component_stop()
+                    except Exception:
+                        self.logger.exception(
+                            "Error stopping {} after a failed controller start".format(name)
+                        )
+                raise
+            started.append((component, stop))
         self.__started = True
+
+    def note_shutdown_requested(self):
+        """
+        Record that the main thread's SIGTERM/SIGINT handler has run.
+
+        Called from the signal handler (Seedsyncarr.signal()) before it
+        raises ServiceExit. Marks shutdown on the scan manager so scanners
+        killed directly by the container's process-group SIGTERM are
+        reported as an expected stop instead of an unexpected death (D-01).
+        Takes no lock and does not touch __shutdown_event -- the auto-delete
+        shutdown guard and its lock ordering are unchanged (success
+        criterion 3).
+        """
+        self.__scan_manager.note_shutdown_requested()
 
     def process(self):
         """

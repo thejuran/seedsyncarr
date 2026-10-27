@@ -9,6 +9,7 @@ from datetime import datetime
 from common import Status
 from controller.controller import Controller
 from controller.scan import ScannerResult
+from tests.unittests.test_controller.base import BaseControllerTestCase
 
 
 class TestShouldUpdateCapacity(unittest.TestCase):
@@ -544,6 +545,140 @@ class TestUpdateControllerStatusSuccessClocks(unittest.TestCase):
         status = c._Controller__context.status.controller
         self.assertIsNone(status.latest_successful_remote_scan_time)
         self.assertIsNone(status.latest_successful_local_scan_time)
+
+
+class TestControllerStartPartialFailure(BaseControllerTestCase):
+    """Controller.start() partial-failure cleanup (LIFE-01, D-04, D-05, D-06)."""
+
+    def test_partial_start_file_ops_fails_stops_started(self):
+        err = RuntimeError("file operations failed to start")
+        self.mock_file_op_manager.start.side_effect = err
+
+        with self.assertRaises(RuntimeError) as ctx:
+            self.controller.start()
+
+        self.assertIs(err, ctx.exception)
+        self.mock_scan_manager.stop.assert_called_once()
+        self.mock_lftp_manager.exit.assert_called_once()
+        self.mock_mp_logger.start.assert_not_called()
+        self.mock_mp_logger.stop.assert_not_called()
+        self.mock_file_op_manager.stop.assert_not_called()
+        self.assertFalse(self.controller._Controller__started)
+
+    def test_partial_start_mp_logger_fails_stops_started(self):
+        err = RuntimeError("mp logger failed to start")
+        self.mock_mp_logger.start.side_effect = err
+
+        with self.assertRaises(RuntimeError) as ctx:
+            self.controller.start()
+
+        self.assertIs(err, ctx.exception)
+        self.mock_scan_manager.stop.assert_called_once()
+        self.mock_file_op_manager.stop.assert_called_once()
+        self.mock_lftp_manager.exit.assert_called_once()
+        self.mock_mp_logger.stop.assert_not_called()
+        self.assertFalse(self.controller._Controller__started)
+
+    def test_partial_start_scanner_fails_exits_lftp_only(self):
+        err = RuntimeError("scanner failed to start")
+        self.mock_scan_manager.start.side_effect = err
+
+        with self.assertRaises(RuntimeError) as ctx:
+            self.controller.start()
+
+        self.assertIs(err, ctx.exception)
+        self.mock_file_op_manager.start.assert_not_called()
+        self.mock_lftp_manager.exit.assert_called_once()
+        self.mock_scan_manager.stop.assert_not_called()
+        self.assertFalse(self.controller._Controller__started)
+
+    def test_partial_start_cleanup_error_does_not_mask_original(self):
+        original_error = RuntimeError("E1 - original start failure")
+        cleanup_error = RuntimeError("E2 - cleanup failure")
+        self.mock_file_op_manager.start.side_effect = original_error
+        self.mock_scan_manager.stop.side_effect = cleanup_error
+
+        with self.assertRaises(RuntimeError) as ctx:
+            self.controller.start()
+
+        self.assertIs(original_error, ctx.exception)
+        self.mock_lftp_manager.exit.assert_called_once()
+        exception_messages = [
+            str(call_args[0][0])
+            for call_args in self.controller.logger.exception.call_args_list
+            if call_args[0]
+        ]
+        self.assertTrue(
+            any("after a failed controller start" in msg for msg in exception_messages),
+            "Expected a logger.exception call mentioning 'after a failed controller start'"
+        )
+
+    def test_exit_after_failed_start_is_noop(self):
+        self.mock_file_op_manager.start.side_effect = RuntimeError("boom")
+
+        with self.assertRaises(RuntimeError):
+            self.controller.start()
+
+        self.mock_lftp_manager.exit.reset_mock()
+        self.mock_scan_manager.stop.reset_mock()
+        self.mock_file_op_manager.stop.reset_mock()
+        self.mock_mp_logger.stop.reset_mock()
+
+        self.controller.exit()
+
+        self.mock_lftp_manager.exit.assert_not_called()
+        self.mock_scan_manager.stop.assert_not_called()
+        self.mock_file_op_manager.stop.assert_not_called()
+        self.mock_mp_logger.stop.assert_not_called()
+
+
+class TestControllerExitIsolation(BaseControllerTestCase):
+    """Characterization of today's Controller.exit() per-component isolation (LIFE-02).
+
+    These tests pass before and after the start()-partial-failure fix: exit()
+    itself is unchanged by this plan.
+    """
+
+    def test_exit_stops_every_component_once_after_clean_start(self):
+        self.controller.start()
+        self.controller.exit()
+
+        self.mock_lftp_manager.exit.assert_called_once()
+        self.mock_scan_manager.stop.assert_called_once()
+        self.mock_file_op_manager.stop.assert_called_once()
+        self.mock_mp_logger.stop.assert_called_once()
+
+    def test_exit_continues_after_lftp_exit_error(self):
+        self.controller.start()
+        self.mock_lftp_manager.exit.side_effect = RuntimeError("lftp exit failed")
+
+        self.controller.exit()
+
+        self.mock_scan_manager.stop.assert_called_once()
+        self.mock_file_op_manager.stop.assert_called_once()
+        self.mock_mp_logger.stop.assert_called_once()
+        exception_messages = [
+            str(call_args[0][0])
+            for call_args in self.controller.logger.exception.call_args_list
+            if call_args[0]
+        ]
+        self.assertTrue(
+            any("Error stopping lftp during controller exit" in msg for msg in exception_messages),
+            "Expected a logger.exception call mentioning 'Error stopping lftp during controller exit'"
+        )
+
+
+class TestControllerShutdownRequest(BaseControllerTestCase):
+    """Controller.note_shutdown_requested() delegates to ScanManager without
+    touching the auto-delete shutdown guard (D-01, success criterion 3)."""
+
+    def test_note_shutdown_requested_delegates_to_scan_manager(self):
+        self.controller.note_shutdown_requested()
+        self.mock_scan_manager.note_shutdown_requested.assert_called_once()
+
+    def test_note_shutdown_requested_does_not_touch_auto_delete_guard(self):
+        self.controller.note_shutdown_requested()
+        self.assertFalse(self.controller._Controller__shutdown_event.is_set())
 
 
 if __name__ == "__main__":

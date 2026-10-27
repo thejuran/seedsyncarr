@@ -27,8 +27,8 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 **CI gate (every phase):** full Python suite green AND whole-tree `ruff check src/python/` clean (CI runs ruff as a separate gate from pytest, so build-verify must run it on the whole tree, not just touched files); Python `fail_under` ≥ 88 holds; Angular unit tests and Karma `check.global` thresholds green where Angular code is touched (Phase 121); every targeted regression shown to fail before its fix and pass after.
 
 - [x] **Phase 121: Credential Forwarding** - The app token is attached only to SeedSyncarr's own API requests, never to external destinations such as the GitHub update check (completed 2026-10-21)
-- [ ] **Phase 122: Safety Acceptance and Logging Fixes** - Extraction/import/auto-delete checks pass on a running build, incident records are reconciled, and webhook/completion-gate log messages are accurate
-- [ ] **Phase 123: Startup and Shutdown Lifecycle** - Partial startup failures clean up started children; a failing component cleanup does not stop the remaining cleanups
+- [x] **Phase 122: Safety Acceptance and Logging Fixes** - Extraction/import/auto-delete checks pass on a running build, incident records are reconciled, and webhook/completion-gate log messages are accurate (completed 2026-10-25)
+- [x] **Phase 123: Startup and Shutdown Lifecycle** - Partial startup failures clean up started children; a failing component cleanup does not stop the remaining cleanups (completed 2026-10-27)
 - [ ] **Phase 124: Model-Stream Overflow Recovery** - A slow client converges to current server state after overflow, with bounded buffering (or a recorded existing guarantee)
 - [ ] **Phase 125: LAN Connection Tests** - Test Connection accepts intended local Sonarr/Radarr addresses, including Docker container names, while unintended destinations stay rejected
 - [ ] **Phase 126: Release 1.8.0** - Dependabot review, publish to Docker/GitHub/PyPI, NAS digest smoke test, production deploy by digest confirmed by a successful scan
@@ -114,9 +114,9 @@ Plans:
 
 - [x] 122-13-PLAN.md — TDD: bound post-transfer pending-notice window to 120 s with a local copy, discard on stop/delete-local, accurate credit reason (WR-02, WR-03)
 - [x] 122-14-PLAN.md — TDD: never log the Arr API key from Test Connection; status rate-limit warning on the app logger, rate_limit logger required (CR-01, WR-01)
-- [ ] 122-15-PLAN.md — Phase gates, push to PR #134, CI green, new staging digest as DEV_PIN
-- [ ] 122-16-PLAN.md — Re-pin sandbox; LOG-01/WR-01 live; D-06(c) rerun with (e)/(a)/(b) regression and live WR-02 stop check (D-03 checkpoint)
-- [ ] 122-17-PLAN.md — Rerun evidence, restore sandbox to 1.7.6 pin, SAFE-01 gap-cycle-2 verdict (owner review)
+- [x] 122-15-PLAN.md — Phase gates, push to PR #134, CI green, new staging digest as DEV_PIN
+- [x] 122-16-PLAN.md — Re-pin sandbox; LOG-01/WR-01 live; D-06(c) rerun with (e)/(a)/(b) regression and live WR-02 stop check (D-03 checkpoint)
+- [x] 122-17-PLAN.md — Rerun evidence, restore sandbox to 1.7.6 pin, SAFE-01 gap-cycle-2 verdict (owner review)
 
 ### Phase 123: Startup and Shutdown Lifecycle
 
@@ -130,7 +130,64 @@ Plans:
   3. The existing per-component controller cleanup, the auto-delete shutdown guards (`threading.Event` in-flight guard under `__auto_delete_lock`) and the established lock ordering are unchanged, and their existing tests stay green
   4. A clean startup and a clean shutdown behave exactly as before (no new sleeps, no lifecycle-framework rewrite)
 
-**Plans**: TBD
+**Plans**: 17 plans (7 + 10 gap-closure)
+
+Plans:
+**Wave 1**
+
+- [x] 123-01-PLAN.md — TDD: Job.run surfaces setup() failures and guards cleanup(); ControllerJob routes start failures to RECOV-01 as ControllerError; WebAppJob cleanup None-guard (LIFE-01)
+- [x] 123-02-PLAN.md — TDD: ScanManager partial-start cleanup and per-process terminate/join isolation; FileOperationManager.stop per-reservation isolation (LIFE-01, LIFE-02)
+- [x] 123-03-PLAN.md — TDD: Controller.start partial-start cleanup (exit()-style loop, lftp included), exit() pinned unchanged; MultiprocessingLogger.stop never-started guard (LIFE-01, LIFE-02)
+
+**Wave 2** *(blocked on 123-02 and 123-03)*
+
+- [x] 123-04-PLAN.md — TDD: D-01 shutdown-aware scanner health check wired from the SIGTERM handler; D-03 sleep kept (recorded)
+
+**Wave 3**
+
+- [x] 123-05-PLAN.md — Phase gates (baseline suite, ruff, RED-before-GREEN, scope, criteria 3/4), push to one draft PR, CI green, DEV_PIN digest
+
+**Wave 4**
+
+- [x] 123-06-PLAN.md — Sandbox re-pin and live restart cycles (2 idle, 2 active-transfer, 1 idle) with production bracketing; failure gate to owner
+
+**Wave 5** *(gap closure, GAP-1: live check failed in 123-06; owner chose fix-in-phase)*
+
+- [x] 123-08-PLAN.md — TDD: time-bounded (10 s, monotonic clock) SIGTERM grace in ScanManager health check, independent of main-thread signal latency
+- [x] 123-09-PLAN.md — Restart-cycle harness: STARTED/INCOMPLETE outcome markers, detached-run progress, `Exited successfully` recorded-only (pre-existing on 1.7.6)
+
+**Wave 6**
+
+- [x] 123-10-PLAN.md — Gap-round phase gates, push to draft PR #137, CI green, DEV_PIN_GAP digest
+
+**Wave 7**
+
+- [x] 123-11-PLAN.md — Outstanding 123-06 SSA123 teardown (seedbox verified clean), re-pin sandbox to DEV_PIN_GAP, idle cycles I1/I2
+
+**Wave 8**
+
+- [x] 123-12-PLAN.md — Active-transfer cycles A1/A2, idle I3, CHECK_STATUS, session teardown; failure gate to owner
+
+**Wave 9** *(gap closure, GAP-2: lftp `Could not terminate the child` on active-transfer restarts in 123-12; owner chose fix-in-phase)*
+
+- [x] 123-13-PLAN.md — TDD: Lftp.exit() reaps an lftp child that outlives pexpect's force close (process-group SIGKILL, bounded 2 s on an injected clock, WARNING not ERROR, still raises if it never dies); `exit kill`; idle path unchanged
+- [x] 123-14-PLAN.md — Restart-cycle harness: process sampler proving lftp and its children are reaped before the old container stops (`procs_*` fail rule), lftp fallback counts recorded
+
+**Wave 10**
+
+- [x] 123-15-PLAN.md — Gap-round-2 phase gates (incl. Gate 5b: the one owner-flagged bounded wait), push to draft PR #137, CI green, DEV_PIN_GAP2 digest
+
+**Wave 11**
+
+- [x] 123-16-PLAN.md — New capture dir, preflight, sampler probe, re-pin sandbox DEV_PIN_GAP -> DEV_PIN_GAP2, idle cycles I1/I2
+
+**Wave 12**
+
+- [x] 123-17-PLAN.md — Active-transfer cycles A1 (Foxtrot) / A2 (Golf), idle I3, live lftp root cause, CHECK_STATUS, session teardown; failure gate to owner
+
+**Wave 13**
+
+- [x] 123-07-PLAN.md — Restart evidence (gap round 2), deferred findings, `--final` sandbox restore with fresh-session check, Phase 123 verdict, owner review
 
 ### Phase 124: Model-Stream Overflow Recovery
 
@@ -179,8 +236,8 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
-| 122. Safety Acceptance and Logging Fixes | 14/17 | In Progress|  |
-| 123. Startup and Shutdown Lifecycle | 0/TBD | Not started | - |
+| 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
+| 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
 | 124. Model-Stream Overflow Recovery | 0/TBD | Not started | - |
 | 125. LAN Connection Tests | 0/TBD | Not started | - |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
@@ -231,9 +288,33 @@ Apply `sanitize_log_value` to archive-derived paths in the new dispatch log line
 
 Add tests for the three cleanup OSError handlers, a lock-order recorder across a re-arm cycle, and the dispatch loop stop path. Source: `.planning/debug/extract-staging-autodel-rearm.md` item G.
 
+### Deferred: Arr API key normalization (Phase 122 review WR-04)
+
+Test Connection strips and validates the Arr API key before testing (122-14), but the saved key is never normalized and `controller/arr_queue.py` sends it as stored. A key pasted with a stray space or newline passes Test Connection while every real queue check fails, so completions stay held as "Sonarr unavailable" (fail-safe; no wrong deletes, but a false all-clear from the diagnostic). Fix: normalize on save and in `arr_queue.py` so already-saved keys keep working. Owner chose backlog 2026-10-25. Source: `.planning/phases/122-safety-acceptance-and-logging-fixes/122-REVIEW.md` WR-04.
+
+### Deferred: Post-transfer notice window edge cases (Phase 122 review IN-04, IN-05)
+
+Fail-safe edge cases of the 120 s post-transfer grace window (122-13): a STOP handled in the same cycle that records "last seen transferring" can let a brand-new notice be credited for up to 120 s (credit only, never deletes by itself) (IN-04); a root the local scanner hasn't seen yet is logged as "local copy gone", and a local scan slower than 120 s loses the notice even when the transfer finished normally (no credit, no deletion; brings back the missed-import symptom 122-10 fixed) (IN-05). Owner chose backlog 2026-10-25. Source: `.planning/phases/122-safety-acceptance-and-logging-fixes/122-REVIEW.md` IN-04, IN-05.
+
+### Deferred: Modern RAR volume coalescing (found in Phase 122-07)
+
+`ExtractDispatch.__coalesce_extractions` (`src/python/controller/extract/dispatch.py`) only filters legacy `.rNN` continuation volumes, so a RAR 5+ archive named `.partN.rar` runs one redundant extraction-and-publish pass per volume. Output is still complete and correct (staging-then-publish holds), so this is efficiency, not safety. Source: `.planning/phases/122-safety-acceptance-and-logging-fixes/deferred-items.md` second section. Kept out of Phase 123 (not a lifecycle issue).
+
 ### 999.5: Move Sonarr integration to API v5
 
 **Scope:** Sonarr 5 lists the v3 API as deprecated (still served as of 5.0.0.2701). Move SeedSyncarr's two Sonarr API calls (`system/status` connection test, `queue/details` completion evidence; the webhook payload is version-independent) to `/api/v5` when Sonarr 4 support can be dropped, or with version detection that keeps v3 for Sonarr 4. Note the v5 queue model differences: one tracked item can cover multiple episodes (`episodeIds`/`episodes` lists), `timeLeft` casing, and `includeSubresources`. Activate when Sonarr announces v3 removal, Sonarr 5 goes stable and prod upgrades, or v1.7.7 finds a v3 gap. Radarr unaffected. Not a Reliability gate.
+
+### Deferred: WebAppJob cleanup per-step isolation (Phase 123 PR #137 review)
+
+`WebAppJob.cleanup()` (`src/python/web/web_app_job.py`) does not get the per-step stop isolation Phase 123 added elsewhere: if `self.__app.stop()` raises, `self.__server.stop()` and `self.__server_thread.join()` are skipped, and `MyWSGIRefServer.stop()` can raise AttributeError while its inner server is still None (123-REVIEW IN-01 is the related thread-never-started guard). Fix: wrap each stop step in its own try/except + `logger.exception`, mirroring ScanManager/FileOperationManager/Controller. Owner chose backlog 2026-10-26. Source: `.planning/phases/123-startup-and-shutdown-lifecycle/deferred-items.md` item 7.
+
+### Deferred: Controller runtime failures and RECOV-01 auto-restart (Phase 123 PR #137 review)
+
+Only `ControllerJob.setup()` failures are wrapped into `ControllerError` for the RECOV-01 bounded auto-restart; a non-AppError raised later from `Controller.process()` (`ControllerJob.execute()`) still reaches the main loop as a non-AppError and ends the process. Deliberate setup-only scope (Phase 123 D-04/D-05); extending it is a product decision. Owner chose backlog 2026-10-26. Source: `deferred-items.md` item 8.
+
+### Deferred: SIGINT-killed scanners outside the shutdown grace (Phase 123 review WR-01)
+
+The D-01 shutdown-grace window in `ScanManager._check_process_health()` (`src/python/controller/scan_manager.py` ~line 312) recognizes only `-signal.SIGTERM` scanner deaths, although `seedsyncarr.py` handles SIGINT identically. A Ctrl-C on a foreground run or `docker run -it` can still log the false "Scanner process(es) died unexpectedly" ERROR and trigger an auto-restart. Not on this project's docker stop/restart path (always SIGTERM; clean across 17 live cycles). Fix: accept `{-SIGTERM, -SIGINT}` plus a matching test. Verifier classified minor/non-blocking and auto-parked 2026-10-27. Source: `123-REVIEW.md` WR-01, `123-VERIFICATION.md`.
 
 ## Following milestone: Performance and Usability (conditional)
 

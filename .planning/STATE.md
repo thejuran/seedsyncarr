@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: executing
-stopped_at: "Completed 122-13-PLAN.md (gap closure: WR-02/WR-03 D-06(c) grace-window narrowing + credit-reason fix, RED-GREEN). Nothing pushed; 122-15 gates both 122-13 and 122-14, then pushes to PR #134; 122-16/17 follow."
-last_updated: "2026-10-23T23:20:01.070Z"
-last_activity: 2026-10-23 -- 122-14 executed (ConfigHandler._test_arr_connection strips/validates the Arr API key before any request, logs only the exception type on failure -- closes CR-01; rate_limit()'s logger is now required and keyword-only, StatusHandler logs under seedsyncarr.StatusHandler -- closes WR-01; D-14 re-audit recorded 0 logger.exception/exc_info sites in scope; nothing pushed, 122-15 pushes)
+status: ready_to_plan
+stopped_at: Phase 123 complete (17/17, verified; 1 minor gap parked to backlog) — ready to discuss Phase 124
+last_updated: "2026-10-27T00:45:00.000Z"
+last_activity: 2026-10-26 -- Phase 123 plan 07 wrote the gap-round-2 restart evidence and Phase 123 verdict (PASSED), restored the sandbox to IMAGE_PIN_L0 (1.7.6) via teardown.sh --final (fresh-session verified, production byte-identical), and closed the plan on the owner's verbatim "approve, backlog both items" after an independent PR #137 deep review (5 reviewers, 0 findings scored >=70); two findings logged to deferred-items.md as backlog items; LIFE-01/LIFE-02 closed; Phase 123 all 17 plans complete, ready for verification/close-out
 progress:
   total_phases: 6
-  completed_phases: 1
-  total_plans: 20
-  completed_plans: 17
-  percent: 17
+  completed_phases: 3
+  total_plans: 37
+  completed_plans: 37
+  percent: 50
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-21)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 122 — safety-acceptance-and-logging-fixes
+**Current focus:** Phase 124 — model stream overflow recovery
 
 ## Current Position
 
-Phase: 122 (safety-acceptance-and-logging-fixes) — EXECUTING (gap-closure cycle 2: 122-13..17)
-Plan: 122-13 of 12 complete (01-04 complete; 05 gaps_found, superseded by 10-12's fix, intentionally not counted toward completion; 06 D-06(d) restart persistence PASS, complete; 07 D-07 extraction staging/auto-delete re-arm PASS, complete; 08 sandbox restore + owner-approved SAFE-01 verdict, complete; 09 SAFE-02 reconciliation, owner-confirmed closed, complete; 10 gap-closure fix complete; 11 pushed fix to PR #134 and re-pinned sandbox, complete; 12 reran 122-05's D-06 scenarios on the fixed build -- all PASS, gap closed; code review + verification afterward found CR-01/WR-01/WR-02/WR-03 and owner decided to fix all four in-phase on PR #134, producing gap-closure plans 13-17; 14 (CR-01 API-key leak + WR-01 status rate-limit logger) fixed, RED-GREEN-GREEN, complete; 13 (WR-02/WR-03 narrow D-06(c) grace window + credit log wording) fixed, RED-GREEN, complete)
-Status: Gap-closure cycle 2 in progress (122-13..17). 122-13 and 122-14 are both complete; remaining: 122-15 (gate both fix plans and push to PR #134), 122-16 (live LOG-01/D-06(c) rerun), 122-17 (close SAFE-01/LOG-01)
-Last activity: 2026-10-23 -- 122-13 executed (narrowed the 122-10 D-06(c) post-transfer pending-notice exception to a 120 s grace window requiring a local copy; added per-root __last_transferring_at tracking pruned to the model every cycle; a successful STOP or DELETE_LOCAL now discards the root's pending notices at once; __credit_early_child's INFO line now says "(transfer finished, awaiting commit)" instead of the always-false "(root still transferring)" -- closes WR-02/WR-03; RED-GREEN, 285 targeted tests pass, whole test_controller dir shows only the known environment baseline, ruff clean; a hand-rolled test double in test_controller.py needed a one-line fix to seed the new attribute; nothing pushed, 122-15 gates both 122-13/14 and pushes)
+Phase: 124
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-27
 
 ## Accumulated Context
 
@@ -58,6 +58,8 @@ Last activity: 2026-10-23 -- 122-13 executed (narrowed the 122-10 D-06(c) post-t
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
+
+**Phase 123 GAP-2 (2026-10-26): owner approved one exception to success criterion 4 ("no new sleeps").** The bounded reap wait in `Lftp.exit()` (≤2.0 s, 0.05 s polls, injectable) runs only when pexpect's forced close fails, never on a normal shutdown. Gate 5b in 123-15 must list exactly that one line.
 
 **Roadmap shape (v1.7.4): three phases, owner-approved split from the design spec (`docs/superpowers/specs/2026-10-08-safety-patch-design.md`), ordered by risk — deletion safety first.** Numbering continues from v1.4.1's last phase (115). All three are Python-only, behavior-narrowing fixes with no on-disk format change and no UI work. Sequenced 116→117→118 but they touch disjoint code paths; per the spec, Phase 116 may ship alone as 1.7.4 if 117/118 slip, otherwise all three ship as one patch.
 
@@ -97,6 +99,17 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 122]: Owner 2026-10-23: fix code-review CR-01 (API key leak via config handler traceback), WR-01, WR-02 (narrow D-06(c) pending-notice retention to a short post-transfer grace window) and WR-03 in-phase on PR #134, with D-06(c) sandbox rerun on the new build
 - [Phase 122]: 122-14: closed CR-01 (ConfigHandler._test_arr_connection now strips the stored Arr API key and rejects it with a fixed "contains invalid characters" message if it is not printable-ASCII-without-space, before any outbound request; the unexpected-error path now logs only type(e).__name__, never the message or exc_info) and WR-01 (rate_limit()'s logger parameter is now required and keyword-only with no module-level fallback; StatusHandler logs under seedsyncarr.StatusHandler); RED-GREEN-GREEN, 404 tests passed, ruff clean; D-14 re-audit re-run, 0 logger.exception/exc_info sites remain in scope; no live NAS check (would require reading the real sandbox key); nothing pushed, 122-15 pushes
 - [Phase 122]: 122-13: narrowed 122-10's D-06(c) post-transfer pending-notice exception to a 120 s grace window (_POST_TRANSFER_GRACE_SECS) requiring a local copy, added STOP/DELETE_LOCAL discard, and gave __credit_early_child a reason parameter so its INFO line says '(transfer finished, awaiting commit)' instead of the always-false '(root still transferring)' -- closes WR-02/WR-03; RED-GREEN, 285 targeted tests pass, whole test_controller dir shows only the known environment baseline, ruff clean; nothing pushed, 122-15 gates both 122-13/14 and pushes
+- [Phase 122]: 122-15: gated 122-13/14 together (suite subset of 122-03 baseline, whole-tree ruff clean, RED-before-GREEN, scope, D-14 grep); pushed to PR #134, CI run 404 green on all checks; new DEV_PIN sha256:f8204207... resolved by two independent methods, superseding sha256:e3941f97...; nothing merged, 122-16 reruns LOG-01/D-06(c) live on this new build
+- [Phase 122]: 122-16: re-pinned sandbox to gap-cycle-2 DEV_PIN (sha256:f8204207...); LOG-01/WR-01 reconfirmed live after fixing a harness-only re-pin-readiness race (Rule 3, rerun once, no product code touched); D-06(c) rerun PASS on the narrowed 120s grace window (122-13) on SSA122.India.S01 (with held decoy) and SSA122.Juliet.S01 -- late child webhooks accepted via Recorded webhook import 62-73s after posting, never dropped; live WR-02 check PASS on SSA122.Hotel.S01 -- a pending notice is discarded within 0.1s of a user STOP, never credited; CHECK_STATUS=PASS, D-03 not triggered; sandbox stays on DEV_PIN for 122-17's --final restore
+- [Phase 122]: 122-17: wrote the full Plan 16 D-06/WR-02 rerun narrative (gap cycle 2) into 122-SAFE01-EVIDENCE.md, restored seedsyncarr-test to IMAGE_PIN_L0 (1.7.6) via teardown.sh --final (fresh-session verified, production byte-identical), and appended the 'Gap cycle 2 (122-13..17)' SAFE-01 verdict addendum (PASSED); owner reviewed and replied verbatim 'approve', accepting the kept D-06(d)/D-07 results from the earlier e3941f97 build with no rerun requested; SAFE-01 and LOG-01 closed
+- [Phase 122]: Owner 2026-10-25: Phase 122 re-verification passed 5/5; re-review follow-ups WR-04 (Arr key normalization), IN-04, IN-05 sent to ROADMAP Backlog, not fixed in-phase; PR #134 merge is a separate owner decision
+- [Phase 123]: 123-05: gated 123-01..04 together (suite subset of 122-03 baseline, whole-tree ruff clean, RED-before-GREEN, 16-file scope exact match, no new sleeps, Controller.exit()/auto-delete/lock-ordering unchanged, log hygiene clean); pushed to new draft PR #137, CI run 407 green on all checks; DEV_PIN sha256:b7b894fa... resolved by two independent methods, recorded in 123-LIFE-EVIDENCE.md for 123-06's live restart check; nothing merged
+- [Phase 123]: 123-10: gated 123-01..04 + 123-08 together (9 gates incl. gap-delta scope and untouched-wiring); pushed to existing draft PR #137 (reused), CI run 409 green; DEV_PIN_GAP sha256:991e4e1f... resolved by two independent methods, superseding sha256:b7b894fa...; appended Gap round (GAP-1) section to 123-LIFE-EVIDENCE.md; nothing merged, 123-11 reruns the live restart check on this build
+- [Phase 123]: 123-11: closed 123-06's outstanding SSA123 teardown (SANDBOX_RESTORED ok); re-pinned seedsyncarr-test to DEV_PIN_GAP (sha256:991e4e1f...); idle cycles I1/I2 on DEV_PIN_GAP all PASS with zero scanner/lftp shutdown-error strings, live-confirming the GAP-1 fix
+- [Phase 123]: 123-15: gated 123-01..04 + 123-08 + 123-13 together (9 gates incl. new Gate 5b for the one owner-approved bounded wait); pushed to existing draft PR #137 (reused), CI run 410 green; DEV_PIN_GAP2 sha256:7f354c149f... resolved by two independent methods, superseding sha256:991e4e1f...; appended Gap round 2 (GAP-2) section to 123-LIFE-EVIDENCE.md; nothing merged, 123-16 reruns the live active-transfer restart check on this build
+- [Phase 123-16]: Re-pinned sandbox to DEV_PIN_GAP2, idle cycles I1/I2 both PASS with PROCS_RESULT=ok, confirming the 123-13 lftp reap fix and D-state hypothesis live
+- [Phase 123-17]: Active-transfer cycles A2 (Golf) and A1r (Hotel rerun) plus final idle cycle I3 all PASS on DEV_PIN_GAP2; A2 genuinely triggered the 123-13 fallback (lftp caught state=D with four live pget children, reaped in 0.35s, PROCS_RESULT=ok) -- the first live D-state confirmation during an actual active-transfer restart, not just idle; A1's first attempt (Foxtrot) had an invalid flat mid-transfer snapshot and was excluded from the proof, retried once as A1r per the plan's harness-miss rule; CHECK_STATUS_GAP2=PASS recorded, closing GAP-2 live; session teardown SANDBOX_RESTORED ok; production untouched; 123-07 (final verdict, --final sandbox restore to 1.7.6) is the remaining phase 123 work
+- [Phase 123]: 123-07: Owner reviewed the Phase 123 verdict after an independent PR #137 deep review (5 reviewers, 0 findings scored >=70, impact 'shippable as-is'); verbatim reply 'approve, backlog both items' naming WebAppJob.cleanup() isolation gap and ControllerJob.execute() non-AppError bypass of RECOV-01 as backlog items (not fixed in-phase); LIFE-01/LIFE-02 closed
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -111,6 +124,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 ### Blockers/Concerns
 
 - None at v1.8.0 roadmap creation. Watch-out for Phase 126's deploy gate: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — deploy the CI-published multi-arch `:1.8.0` image pinned by digest, never a local build and never `:dev`.
+- Phase 123 D-01 live check: GAP-1 (scanner false ERROR) CLOSED live on DEV_PIN_GAP (123-11/12, 2026-10-26, 0 occurrences in 6 restarts). GAP-2 (lftp `Error stopping lftp during controller exit` / `Could not terminate the child`) also now CLOSED live on DEV_PIN_GAP2 (123-16/123-17, 2026-10-26): zero occurrences of the old detector strings across 5 restarts (I1, I2, A1, A2, I3) plus the A1r rerun; A2 independently confirmed the 123-13 fallback genuinely reaping lftp out of a live `state=D` condition during an actual active-transfer restart (0.35s, well inside the 2.0s bound). `CHECK_STATUS_GAP2=PASS` recorded in 123-LIFE-EVIDENCE.md. 123-07 wrote the Phase 123 final verdict (PASSED) and restored the sandbox to 1.7.6 (`IMAGE_PIN_L0`) via `teardown.sh --final`, fresh-session verified; the owner reviewed an independent PR #137 deep review and replied verbatim "approve, backlog both items", closing LIFE-01/LIFE-02. Phase 123 closed 2026-10-27: verified (7/7 must-haves; `gaps_found` with one minor, non-blocking gap — 123-REVIEW WR-01 SIGINT grace — auto-parked to the ROADMAP backlog together with the two owner-backlogged PR #137 items). PR #137 remains a draft awaiting the owner's merge decision; local docs commits after its head (4074b0c) are unpushed.
 
 ### Quick Tasks Completed
 
@@ -154,9 +168,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-23T23:20:01.064Z
-Stopped at: Completed 122-13-PLAN.md (gap closure: WR-02/WR-03 D-06(c) grace-window narrowing + credit-reason fix, RED-GREEN). Nothing pushed; 122-15 gates both 122-13 and 122-14, then pushes to PR #134; 122-16/17 follow.
-Next action: Both gap-closure fix plans (122-13, 122-14) are complete. 122-15 gates both together (full suite + ruff) and pushes to PR #134; 122-16 reruns LOG-01/D-06(c) live on the sandbox against the new build; 122-17 closes the second gap cycle (restores the sandbox to its 1.7.6 pin and records SAFE-01/LOG-01 as closed). Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-27T00:09:43.471Z
+Stopped at: Completed 123-07-PLAN.md (Phase 123 verdict owner-approved: verbatim 'approve, backlog both items'; LIFE-01/LIFE-02 closed); Phase 123 complete, all 17 plans done, awaiting phase verification
+Next action: Phase 123 is now fully executed. 123-07 wrote the gap-round-2 restart evidence into 123-LIFE-EVIDENCE.md, restored the sandbox to `IMAGE_PIN_L0` (1.7.6) via `teardown.sh --final` (fresh-session verified, production byte-identical throughout), and wrote the Phase 123 verdict ("**Phase 123 live restart check: PASSED**"). Before approving, the owner ran an independent vibe-check deep review of PR #137 (5 reviewers: bugs/architecture on Opus, security, impact, language-python; 0 findings scored >=70; impact verdict "shippable as-is"), which surfaced two items -- `WebAppJob.cleanup()`'s missing per-step isolation and `ControllerJob.execute()`'s non-`AppError` failures bypassing RECOV-01 auto-restart -- and replied verbatim "approve, backlog both items"; both items are logged in `deferred-items.md`, not fixed in-phase. LIFE-01 and LIFE-02 are closed. Remaining step: phase verification/close-out (orchestrator-driven, not yet run) -- this session did not run phase verification or mark the phase complete in ROADMAP.md beyond updating the plan-progress row. Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
