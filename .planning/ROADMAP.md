@@ -270,11 +270,28 @@ Plans:
 **Plans:** 6 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 126-01-PLAN.md — Roll every open Dependabot PR into release/1.8.0 by lockfile regeneration (per-group tests, @types/jasmine isolated), npm audit, 999.4 recheck
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 126-02-PLAN.md — Sandbox smoke harness: teardown with radarr/key restore, Test-event webhook poster, count-only extractor, browser token probe with 1.7.6 positive control
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 126-03-PLAN.md — Version bump, CHANGELOG [1.8.0], release notes with rollback runbook, SECURITY.md guard fix, release PR with CI + CodeQL green
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 126-04-PLAN.md — Owner pre-tag approval, wud pause, merge, Dependabot close-out, tag v1.8.0, verify GHCR/GitHub/PyPI and capture RELEASE_DIGEST
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 126-05-PLAN.md — Smoke the exact digest on seedsyncarr-test (sonarr-v4 + Radarr + D-12a spot checks), restore wiring, owner pre-prod go-ahead
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 126-06-PLAN.md — Production deploy by digest with backups/loader checks, recovery verification, rollback rule, wud last, owner confirmation, STATE close-out
 
 #### Progress
@@ -375,6 +392,7 @@ In `ModelStreamHandler.get_value()` (`src/python/web/handler/stream_model.py` ~l
 **Plans:** 0 plans
 
 Acceptance criteria:
+
 - Add a prominent Documentation section linking directly to `docs/GETTING-STARTED.md`, `docs/CONFIGURATION.md`, `SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `docs/TESTING.md`. Replace the installation section's website-only documentation link with repository guide links.
 - Replace "Security by default" with accurate security-control wording. State that API authentication is off when `api_token` is empty, webhook verification is off when `webhook_secret` is empty, `webhook_require_secret` defaults to `False`, and encryption at rest defaults to off (stored secrets are plaintext).
 - Qualify HMAC verification claims throughout the README. Replace absolute "never deletes" promises with an explanation of import confirmation, optional pruning, and the safety delay; note that pruning defaults to off.
@@ -384,6 +402,7 @@ Acceptance criteria:
 **Context:** A community comment described SeedSyncArr as having "no documentation" and raised concerns after Huntarr. Existing guides are present, but discoverability and inconsistent security messaging warrant this bounded correction. The comment is motivation, not evidence of equivalent vulnerabilities.
 
 Plans:
+
 - [ ] TBD (promote with $gsd-review-backlog when ready)
 
 ### 999.7: Speed up the CI Docker image build
