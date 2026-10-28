@@ -30,7 +30,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 - [x] **Phase 122: Safety Acceptance and Logging Fixes** - Extraction/import/auto-delete checks pass on a running build, incident records are reconciled, and webhook/completion-gate log messages are accurate (completed 2026-10-25)
 - [x] **Phase 123: Startup and Shutdown Lifecycle** - Partial startup failures clean up started children; a failing component cleanup does not stop the remaining cleanups (completed 2026-10-27)
 - [x] **Phase 124: Model-Stream Overflow Recovery** - A slow client converges to current server state after overflow, with bounded buffering (or a recorded existing guarantee) (completed 2026-10-27)
-- [ ] **Phase 125: LAN Connection Tests** - Test Connection accepts intended local Sonarr/Radarr addresses, including Docker container names, while unintended destinations stay rejected
+- [x] **Phase 125: LAN Connection Tests** - Test Connection accepts intended local Sonarr/Radarr addresses, including Docker container names, while unintended destinations stay rejected (completed 2026-10-28)
 - [ ] **Phase 126: Release 1.8.0** - Dependabot review, publish to Docker/GitHub/PyPI, NAS digest smoke test, production deploy by digest confirmed by a successful scan
 
 #### Phase Details
@@ -228,7 +228,32 @@ Plans:
   3. The new acceptance is limited to the configured Sonarr/Radarr test-connection path; no other outbound request path is relaxed
   4. The change is noted as the minor-version driver (behavior change) in the 1.8.0 release notes
 
-**Plans**: TBD
+**Plans**: 6 plans (3 gap closure)
+
+Plans:
+**Wave 1**
+
+- [x] 125-01-PLAN.md — TDD: ordered LAN-aware classifier in `_validate_url` (LAN ranges, ULA, CGNAT, container names allowed; loopback only on 8989/7878; metadata/link-local, unspecified, multicast, reserved, site-local and embedded-loopback forms refused with specific messages), redirect and scope regression locks
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 125-02-PLAN.md — CHANGELOG 1.8.0 draft entry (minor-version driver), phase gates, single draft PR, CI green, staging digest (DEV_PIN)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 125-03-PLAN.md — NAS sandbox live check on DEV_PIN (`http://sonarr-v5:8989` succeeds, `http://169.254.169.254` refused), Sonarr URL and image-pin restore with fresh-session check, owner verdict review
+
+**Wave 4** *(gap closure, code review 125-REVIEW.md; D-11, D-12)*
+
+- [x] 125-04-PLAN.md — TDD: refuse URLs the guard and requests/urllib3 parse differently (backslash, whitespace/control/non-ASCII, userinfo, `%` host, query/fragment, scheme/host/port disagreement), validate the exact requested URL, malformed host names as JSON errors, explicit IPv6 transition-network refusals, `fd00:ec2::254` and `100.100.100.200` refused, hardened scope test
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 125-05-PLAN.md — CHANGELOG accuracy (IN-03), phase gates, push to PR #140, CI green, staging digest (DEV_PIN_R2)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [x] 125-06-PLAN.md — short NAS sandbox re-check on DEV_PIN_R2 (container name succeeds, `169.254.169.254` and the CR-01 backslash URL refused), restore and fresh-session check, owner verdict review
 
 ### Phase 126: Release 1.8.0
 
@@ -252,7 +277,7 @@ Plans:
 | 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
 | 124. Model-Stream Overflow Recovery | 3/3 | Complete    | 2026-10-27 |
-| 125. LAN Connection Tests | 0/TBD | Not started | - |
+| 125. LAN Connection Tests | 6/6 | Complete    | 2026-10-28 |
 | 126. Release 1.8.0 | 0/TBD | Not started | - |
 
 **Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks and is deployed to NAS production by digest. Record residual limitations explicitly. Conditional investigations in the Backlog are not completion gates unless evidence justifies explicitly promoting a bounded fix.
@@ -352,6 +377,10 @@ Acceptance criteria:
 
 Plans:
 - [ ] TBD (promote with $gsd-review-backlog when ready)
+
+### 999.7: Speed up the CI Docker image build
+
+**Scope:** Two small changes first: (1) build the Angular stage once on the build platform (`FROM --platform=$BUILDPLATFORM node:22-slim AS seedsyncarr_build_angular_env` in `src/docker/build/docker-image/Dockerfile`) instead of running `npm install` + the Angular build under QEMU for arm64 (its output is architecture-independent JS); (2) let the `build-docker-image` job in `.github/workflows/ci.yml` start in parallel with the unit-test/lint jobs instead of `needs:`-ing all seven, keeping the end-to-end and publish jobs gated on tests passing. Evidence (last 30 CI runs, 2026-10-27): build job 0–5 min when the registry cache hits, outliers 16/23/27 min on cache misses; Python unit tests (~5–6 min) sit on the critical path before the build starts. Further options only if needed: amd64-only PR images (NAS is x86_64; arm64 E2E already skipped on PRs; main/tags still build both), or native arm64 builds on `ubuntu-24.04-arm` plus a manifest merge. Not a Reliability gate.
 
 ## Following milestone: Performance and Usability (conditional)
 
