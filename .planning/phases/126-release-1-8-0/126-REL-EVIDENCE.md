@@ -667,3 +667,188 @@ to tagging is the owner's decision on alerts #106 (qs) and #107 (setuptools), ab
   a release-notes-free known issue, given setuptools' low severity and the Windows-only/no-runtime-
   wheel-install reachability gap, with `qs` already following the existing dev-only-residual
   pattern) and proceed straight to tagging, or (c) hold entirely.
+
+## Owner decision on #106/#107 (D-04 follow-up, 2026-10-28)
+
+Verbatim: **"1"** — interpretation: option (a), "Fix both, then tag". Authorizes a small follow-up
+PR that bumps `setuptools` to >=84.1.0 and `qs` to >=6.16.1 on a new branch off `origin/main`,
+merged before the tag is pushed.
+
+## Follow-up dependency fix: setuptools + qs (D-04, pre-tag)
+
+**Branch:** `release/1.8.0-deps`, created from `origin/main` at the PR #142 merge commit
+(`0583fc2024bea0d9fccf1919a8d77064b81bee28`).
+
+**setuptools (#107):** `cd src/python && poetry update setuptools` -> `83.0.0` -> `84.2.1`
+(exceeds the `84.1.0` fix target). `git diff --stat` shows only `src/python/poetry.lock` (1 file,
+5 insertions, 5 deletions). `setuptools` confirmed NOT added to `pyproject.toml` as a direct
+dependency (`grep -n setuptools src/python/pyproject.toml` empty) — it remains transitive via
+`paste`.
+
+**qs (#106):** `cd src/angular && npm update qs` -> `6.16.0` -> `6.16.2` (exceeds the `6.16.1` fix
+target). `npm ls qs`: `karma@6.4.4 -> body-parser@1.20.8 -> qs@6.16.2` (only instance). `git diff
+--stat` shows only `src/angular/package-lock.json` (1 file, 3 insertions, 3 deletions).
+
+### Targeted checks (both bumps, before commit)
+
+```
+$ cd src/python && poetry run pytest tests/unittests -q -p no:cacheprovider \
+    --ignore=tests/unittests/test_ssh/test_sshcp.py \
+    --ignore=tests/unittests/test_controller/test_scan/test_scanner_process.py \
+    --ignore=tests/unittests/test_system/test_scanner.py \
+    --ignore=tests/unittests/test_controller/test_extract/test_extract_process.py
+1945 passed, 2 warnings, 106 subtests passed in 47.05s
+```
+Matches the 126-01/126-03 baseline exactly (same pre-existing 2 warnings).
+
+```
+$ <scratch>/ruff/bin/ruff --version
+ruff 0.15.22
+$ <scratch>/ruff/bin/ruff check src/python/
+All checks passed!
+```
+
+```
+$ cd src/python && poetry check
+Warning: [project.name] and [tool.poetry.name] are both set. The latter will be ignored.
+Warning: [project.version] and [tool.poetry.version] are both set. The latter will be ignored.
+Warning: [project.description] and [tool.poetry.description] are both set. The latter will be ignored.
+Warning: [project.authors] and [tool.poetry.authors] are both set. The latter will be ignored.
+EXIT=0
+```
+Same pre-existing dual `[project]`/`[tool.poetry]` metadata warnings as every prior release check
+(not introduced by this change); exit 0.
+
+```
+$ cd src/python && rm -rf dist && <scratch>/pkg/bin/python -m build -q
+Successfully built seedsyncarr-1.8.0.tar.gz and seedsyncarr-1.8.0-py3-none-any.whl
+$ <scratch>/pkg/bin/twine check dist/*
+Checking dist/seedsyncarr-1.8.0-py3-none-any.whl: PASSED with warnings
+  WARNING long_description_content_type missing. defaulting to text/x-rst.
+  WARNING long_description missing.
+Checking dist/seedsyncarr-1.8.0.tar.gz: PASSED with warnings
+  (same two warnings)
+```
+Same two pre-existing, non-blocking warnings recorded in every prior release's evidence.
+
+```
+$ cd src/angular && npx tsc --noEmit -p src/tsconfig.spec.json
+(0 errors, no output)
+$ npm run lint
+> eslint "src/**/*.ts" --max-warnings 0
+(0 warnings)
+$ make run-tests-angular   (dockerized ChromeHeadlessCI)
+Chrome Headless 156.0.0.0 (Linux 0.0.0): Executed 657 of 657 SUCCESS (2.355 secs / 2.078 secs)
+TOTAL: 657 SUCCESS
+Statements   : 84.62% ( 1805/2133 )
+Branches     : 70.49% ( 509/722 )
+Functions    : 81.56% ( 447/548 )
+Lines        : 85.44% ( 1738/2034 )
+```
+Identical pass count and coverage to the 126-01 baseline; container exited 0; all four metrics
+above the enforced floors (83/68/79/83).
+
+```
+$ npx ng build
+Application bundle generation complete. [3.817 seconds]
+Initial total: 1.15 MB raw / 213.89 kB estimated transfer
+```
+Matches the 126-01 baseline bundle size (213.88 kB then, 213.89 kB now — rounding only).
+
+No break on either bump; D-02 stop not triggered.
+
+**Commit:** `eaaca5e5` — `chore(deps): setuptools 84.1.0, qs 6.16.1 for 1.8.0` (2 files: `src/python/poetry.lock`, `src/angular/package-lock.json`, no source files touched).
+
+### PR #143 and CI
+
+`git push -u origin release/1.8.0-deps`; opened
+[PR #143](https://github.com/thejuran/seedsyncarr/pull/143) into `main`, title "chore(deps):
+setuptools 84.1.0, qs 6.16.1 for 1.8.0", body ending in the Claude Code attribution line.
+
+**CI run:** https://github.com/thejuran/seedsyncarr/actions/runs/40773098908 — conclusion
+`success`. **CodeQL run:** https://github.com/thejuran/seedsyncarr/actions/runs/40773095375 —
+conclusion `success` (`Analyze (actions)`, `Analyze (javascript-typescript)`, `Analyze (python)`
+all `pass`).
+
+Per-job conclusions:
+
+| Job | Conclusion |
+|-----|------------|
+| Lint (Python) | success |
+| Lint (Angular) | success |
+| Release metadata verifier tests | success |
+| Verify release metadata | success |
+| Verify Python package | success |
+| Angular unit tests | success |
+| Python unit tests | success |
+| Build Docker Image | success |
+| End-to-end tests on Docker Image (amd64) | success |
+| CodeQL (actions / javascript-typescript / python) | success |
+| Publish Docker Image / Publish to PyPI / Publish Docker Image (:dev) / Publish Documentation / Publish GitHub Release | skipping (PR, not a tag push — expected) |
+
+`gh pr view 143 --json state,mergeable,mergeStateStatus`: `OPEN`, `MERGEABLE`, `CLEAN`. Merged with
+history kept: `gh pr merge 143 --merge --subject "Merge dependency fixes for 1.8.0 (#143)"`.
+
+```
+$ gh pr view 143 --json state,mergeCommit,mergedAt
+{"mergeCommit":{"oid":"098ed81bbe34106646fee2b260c872c48b95ce00"},"mergedAt":"2026-10-28T21:51:24Z","state":"MERGED"}
+$ git log -1 --format=%P 098ed81bbe34106646fee2b260c872c48b95ce00
+0583fc2024bea0d9fccf1919a8d77064b81bee28 eaaca5e5bae39a2285f59db92b7b66d646e39ed8
+```
+Two parents (previous `origin/main` `0583fc20`, the `release/1.8.0-deps` head `eaaca5e5`) — merge
+commit, history kept.
+
+### Local main rebase
+
+The local-only `126-03`/`126-04` docs commits (`d79be69c`, `c8723ec0`) were rebased from the old
+`origin/main` (`0583fc20`) onto the new `origin/main` (`098ed81b`) — clean, no conflicts (they
+touch only `.planning/`):
+
+```
+$ git checkout main && git rebase origin/main
+Successfully rebased and updated refs/heads/main.
+$ git log --oneline -3
+3e798401 docs(126-04): record owner approval, merge, Dependabot close-out; STOP before tag (D-04)
+539822c4 docs(126-03): complete release 1.8.0 gate plan
+098ed81b Merge dependency fixes for 1.8.0 (#143)
+$ git diff --stat origin/main main
+ .planning/ROADMAP.md                               |   6 +-
+ .planning/STATE.md                                 |  13 +-
+ .../phases/126-release-1-8-0/126-03-SUMMARY.md     | 156 ++++++++++++++++
+ .../phases/126-release-1-8-0/126-REL-EVIDENCE.md   | 205 +++++++++++++++++++++
+ 4 files changed, 371 insertions(+), 9 deletions(-)
+```
+Only `.planning/` files; local `main` not pushed (`ahead 2` of `origin/main`), per the plan's
+instruction that these docs commits ride the owner's next planning push, not this release.
+
+## Dependabot close-out (D-01) — resumed, 0 reached
+
+Poll after the #143 merge (GitHub's re-scan of `main`):
+
+```
+poll 1 at 2026-10-28T21:52:10Z: open=2
+poll 2 at 2026-10-28T21:54:10Z: open=0
+```
+Confirmed stable (not a mid-scan transient) with two further direct checks 15s apart, both `open=0`.
+**Open Dependabot alerts: 0.** D-01 satisfied.
+
+`node scripts/verify-release-metadata.mjs 1.8.0` re-run on the rebased local `main` (content
+identical to `098ed81b` for all non-`.planning` files, confirmed by the rebase diff-stat above):
+passes, all 6 checks.
+
+## Tag (D-14)
+
+Pre-tag re-check: production fingerprint unchanged (`2feb4073…` on `:1.7.6@sha256:da6196e0…`,
+`running`); wud `exited`.
+
+```
+$ git tag -a v1.8.0 -m "SeedSyncarr 1.8.0 — reliability release" 098ed81bbe34106646fee2b260c872c48b95ce00
+$ git cat-file -t v1.8.0
+tag
+$ git rev-parse v1.8.0^{commit}
+098ed81bbe34106646fee2b260c872c48b95ce00
+$ git push origin v1.8.0
+ * [new tag]           v1.8.0 -> v1.8.0
+```
+Annotated tag on the merge commit of PR #143 (which itself sits on the merge commit of PR #142).
+
