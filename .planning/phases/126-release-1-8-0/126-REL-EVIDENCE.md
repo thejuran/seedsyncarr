@@ -852,3 +852,127 @@ $ git push origin v1.8.0
 ```
 Annotated tag on the merge commit of PR #143 (which itself sits on the merge commit of PR #142).
 
+## Tag CI (REL-06)
+
+Run: https://github.com/thejuran/seedsyncarr/actions/runs/40775673056 — `push`, branch `v1.8.0`,
+head `098ed81bbe34106646fee2b260c872c48b95ce00`. Conclusion: `success`.
+
+| Job | Conclusion |
+|-----|------------|
+| Lint (Python) | success |
+| Lint (Angular) | success |
+| Release metadata verifier tests | success |
+| Verify release metadata | success |
+| Verify Python package | success |
+| Angular unit tests | success |
+| Python unit tests | success |
+| Build Docker Image | success |
+| End-to-end tests on Docker Image (amd64) | success |
+| End-to-end tests on Docker Image (arm64) | success |
+| Publish to PyPI | success |
+| Publish Docker Image | success |
+| Publish Documentation | success |
+| Publish Docker Image (:dev) | skipped (tag push, expected) |
+| Publish GitHub Release | success |
+
+All five named publish-adjacent gate jobs (verify-release-metadata, e2etests-docker-image,
+publish-docker-image, publish-github-release, publish-pypi) `success`.
+
+### e2e [chromium-token] proof (SEC-02 browser proof on the tagged tree)
+
+`gh run view 40775673056 --log --job 123126726966 | grep chromium-token`:
+
+```
+  ✓  53 [chromium-token] › tests/auth-token.spec.ts:47:9 › API token configured (SEC-02) › rejects /server/ requests without the token (157ms)
+  ✓  54 [chromium-token] › tests/auth-token.spec.ts:55:9 › API token configured (SEC-02) › sends the token to /server/* but never to api.github.com (623ms)
+  ✓  55 [chromium-token] › tests/auth-token.spec.ts:85:9 › API token configured (SEC-02) › authenticated write flow works with the token (569ms)
+```
+All three pass in a real Chromium instance against the tagged build (amd64 job).
+
+### GHCR digest
+
+Method A (`docker buildx imagetools inspect`):
+
+```
+$ docker buildx imagetools inspect ghcr.io/thejuran/seedsyncarr:1.8.0
+Digest:    sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7
+  linux/amd64: sha256:b50422a0a4d237f0e5c8b31ef3119013357b169df14341fe33372784220869ff
+  linux/arm64: sha256:2d922637e671a5e00f96899719f86db1c6b7fba4a2dc0cd5530ee8b6229cccd5
+```
+
+Method B (anonymous GHCR pull token, `HEAD /v2/.../manifests/1.8.0`, OCI index Accept header):
+
+```
+docker-content-digest: sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7
+```
+
+Methods A and B agree.
+
+**`:latest` check** (same two commands against the `latest` tag):
+
+```
+$ docker buildx imagetools inspect ghcr.io/thejuran/seedsyncarr:latest
+Digest:    sha256:bf03d61856a916c48eaed60d6ecfad12924a5f72a00da5de3eddcb32ee52794a
+  linux/amd64: sha256:b50422a0a4d237f0e5c8b31ef3119013357b169df14341fe33372784220869ff
+  linux/arm64: sha256:2d922637e671a5e00f96899719f86db1c6b7fba4a2dc0cd5530ee8b6229cccd5
+```
+As with 1.7.5/1.7.6 (119.1-REL04-EVIDENCE.md §"GHCR digest"), the top-level OCI index digest
+differs between `:1.8.0` and `:latest` only because the two `make docker-image-release` push steps
+each write their own attestation manifest; the underlying `linux/amd64` and `linux/arm64` image
+manifest digests are byte-identical between the two tags (`b50422a0…` and `2d922637…` both appear
+under both tags). This matches the documented, accepted pattern from every prior release — it is
+not a discrepancy in the published image content.
+
+```
+RELEASE_DIGEST=sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7
+```
+Platforms: linux/amd64, linux/arm64.
+
+### GitHub release
+
+```
+$ gh release view v1.8.0 --json name,tagName,url,isDraft,isPrerelease --jq '{name,tagName,url,isDraft,isPrerelease}'
+{"isDraft":false,"isPrerelease":false,"name":"v1.8.0 — SeedSyncarr","tagName":"v1.8.0","url":"https://github.com/thejuran/seedsyncarr/releases/tag/v1.8.0"}
+```
+Body contains `blob/v1.8.0/CHANGELOG.md` (1 match) and no `{{VERSION}}` (0 matches).
+
+### PyPI
+
+The local default `python3` is 3.14 (outside the package's `>=3.11,<3.13` range); used
+`/opt/homebrew/bin/python3.12` for the clean venv, matching the Python version the package
+actually supports (not a workaround of the release itself — pip correctly refused on 3.14 with
+"Requires-Python" filtering, confirming the metadata is read correctly).
+
+```
+$ /opt/homebrew/bin/python3.12 -m venv <scratchpad>/pypi
+$ <scratchpad>/pypi/bin/pip install --no-cache-dir seedsyncarr==1.8.0
+Successfully installed ... seedsyncarr-1.8.0 ...
+INSTALL_EXIT=0
+$ <scratchpad>/pypi/bin/pip show seedsyncarr | grep ^Version
+Version: 1.8.0
+```
+
+### Final wud / production re-check
+
+```
+$ ssh nas "sudo /usr/local/bin/docker inspect wud --format '{{.State.Status}}'"
+exited
+$ ssh nas "sudo /usr/local/bin/docker inspect seedsyncarr --format '{{.Id}} {{.Config.Image}} {{.State.StartedAt}} {{.State.Status}}'"
+2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e running
+```
+wud `exited`; production fingerprint identical to every prior check in this plan and in 126-01/03.
+
+### Status at end of Plan 126-04
+
+- PR #142 (1.8.0 release) and PR #143 (setuptools/qs fix) both **merged** to `main` with history
+  kept (two-parent merge commits)
+- `v1.8.0` annotated tag pushed on `098ed81b` (PR #143's merge commit); tag CI **all green**
+  including the five publish jobs and both e2e architectures
+- Open Dependabot alerts: **0**; all 8 originally-tracked PRs closed (126-04 Task 2) plus the two
+  new alerts (#106, #107) resolved by PR #143
+- GHCR `:1.8.0` and `:latest` published, index digests cross-checked, `RELEASE_DIGEST` recorded
+  above; GitHub release live (not draft/prerelease); PyPI `1.8.0` installs cleanly
+- wud `exited`; production `seedsyncarr` untouched throughout (`:1.7.6@sha256:da6196e0…`)
+- Local `main` carries the 126-03/126-04 docs commits rebased onto the new `origin/main`, not yet
+  pushed (owner's call, per the plan)
+- Ready for Plan 05 (sandbox smoke on the `RELEASE_DIGEST` above)
