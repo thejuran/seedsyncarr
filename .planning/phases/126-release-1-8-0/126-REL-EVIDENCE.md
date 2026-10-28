@@ -266,3 +266,199 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 itself — the first released version already had it. Confirmed the CHANGELOG/release-notes wording
 "Versions 1.0.0 through 1.7.6" is accurate (no earlier tag to check; `v1.0.0` is the oldest version
 tag in the repo). No fallback to "1.7.6 and earlier" was needed.
+
+**D-16 rollback `%` fact check (Task 2):** confirmed `git show v1.7.6:release-notes.md`'s existing
+rollback caution ("remove any `%` from secrets you saved on 1.7.6 ... older versions read it but
+fail") is about rolling back *from* 1.7.6 *to* 1.7.5-or-earlier (pre-119.1 fix), not about a
+1.8.0-to-1.7.6 rollback. Checked whether 119.1-06's `%%`-escape fix (`Config.to_str` encodes every
+`%` as `%%` on write; the unchanged `from_str` decodes it back) is part of the 1.7.6 release:
+
+```
+$ git merge-base --is-ancestor 8938695 v1.7.6 && echo "8938695 (119.1-06 GREEN) IS ancestor of v1.7.6"
+8938695 (119.1-06 GREEN) IS ancestor of v1.7.6
+```
+
+Combined with the earlier rollback-safety finding (zero diff to `common/config.py` between
+`v1.7.6` and `main`), 1.7.6 and 1.8.0 write and read `%` in secrets identically. The 1.8.0
+release-notes.md rollback section states this fact plainly and does not add an extra numbered
+step for it, per the plan's "include a step only if 1.7.6 needs one."
+
+## Release gate (Task 3)
+
+Hygiene: only command output, counts, names and conclusions are recorded below. No secret value
+appears in this file.
+
+### Full host suite
+
+```
+$ cd src/python && poetry run pytest tests/unittests -q -p no:cacheprovider \
+    --ignore=tests/unittests/test_ssh/test_sshcp.py \
+    --ignore=tests/unittests/test_controller/test_scan/test_scanner_process.py \
+    --ignore=tests/unittests/test_system/test_scanner.py \
+    --ignore=tests/unittests/test_controller/test_extract/test_extract_process.py
+1945 passed, 2 warnings, 106 subtests passed in 46.36s
+```
+
+0 failed. The four ignored files are the pre-existing host-only exclusions (ssh / multiprocessing
+scanner / extract process timeouts on this macOS host); CI's dockerized `unittests-python` job
+runs them and is the authority for those paths (see CI section below).
+
+### Ruff 0.15.22 (whole tree)
+
+```
+$ <scratch>/ruff/bin/ruff --version
+ruff 0.15.22
+$ <scratch>/ruff/bin/ruff check src/python/
+All checks passed!
+```
+
+### Packaging
+
+`build`/`twine` installed in a scratch venv (mirroring CI's `pip install build twine`, same
+pattern as 119.1-REL04):
+
+```
+$ cd src/python && rm -rf dist && <scratch>/pkg/bin/python -m build -q
+Successfully built seedsyncarr-1.8.0.tar.gz and seedsyncarr-1.8.0-py3-none-any.whl
+$ <scratch>/pkg/bin/twine check dist/*
+Checking dist/seedsyncarr-1.8.0-py3-none-any.whl: PASSED with warnings
+  WARNING long_description_content_type missing. defaulting to text/x-rst.
+  WARNING long_description missing.
+Checking dist/seedsyncarr-1.8.0.tar.gz: PASSED with warnings
+  (same two warnings)
+$ python3 ../../scripts/verify-python-package.py dist
+PASS seedsyncarr-1.8.0-py3-none-any.whl members=85
+INFO seedsyncarr-1.8.0-py3-none-any.whl files=85
+PASS seedsyncarr-1.8.0.tar.gz members=84
+TOTAL members=169
+PACKAGE_OK
+```
+
+Both warnings are the same pre-existing, non-blocking warnings recorded in every prior release's
+evidence (1.7.6, 1.7.5); nothing new.
+
+### Release metadata
+
+```
+$ node scripts/verify-release-metadata.mjs 1.8.0
+Release metadata matches 1.8.0:
+- CHANGELOG.md has release section [1.8.0]
+- release-notes.md links to CHANGELOG.md through the {{VERSION}} tag placeholder
+- package.json version is 1.8.0
+- src/angular/package.json version is 1.8.0
+- src/angular/package-lock.json version is 1.8.0
+- src/angular/package-lock.json packages[""].version is 1.8.0
+$ grep -n '"version"' package-lock.json | head -3
+3:  "version": "1.8.0",
+8:      "version": "1.8.0",
+14:      "version": "3.2.6",
+$ grep -n '^version' src/python/pyproject.toml
+7:version = "1.8.0"
+47:version = "1.8.0"
+```
+
+### Dependabot re-check before push (D-04)
+
+Observed 2026-10-28, immediately before pushing `release/1.8.0`:
+
+```
+$ gh api repos/thejuran/seedsyncarr/dependabot/alerts --jq '[.[]|select(.state=="open")]|length'
+9
+$ gh api repos/thejuran/seedsyncarr/dependabot/alerts --jq '[.[]|select(.state=="open")]|sort_by(.number)|.[]|{number,package:.dependency.package.name,severity:.security_advisory.severity}'
+94 @modelcontextprotocol/server medium
+96 @modelcontextprotocol/server high
+97 follow-redirects high
+98 follow-redirects high
+99 vite medium
+100 vite high
+101 vite medium
+103 vite low
+104 vite medium
+$ gh pr list --author app/dependabot --json number,title,createdAt
+#141 mkdocs-material 9.7.7->9.8.0, #138 follow-redirects, #136 certifi, #135 vite,
+#131 npm_and_yarn group (23 updates), #130 @modelcontextprotocol/server + @angular/cli,
+#125 testfixtures, #117 puppeteer
+```
+
+**Expected:** the same 9 alerts and 8 PRs from the 126-01 snapshot (they close only after the
+merge to `main`, not on this release branch). **Observed:** identical alert numbers/packages and
+identical PR numbers/titles to the 126-01 snapshot. No NEW alert and no NEW PR appeared since
+126-01. D-04 not triggered; nothing additional rolled in.
+
+**Note on `git push`'s banner:** the `git push -u origin release/1.8.0` output included GitHub's
+standard advisory banner ("GitHub found 10 vulnerabilities on thejuran/seedsyncarr's default
+branch (1 critical, 4 high, 4 moderate, 1 low)"). This banner is a cached, repo-wide dependency-
+graph summary and does not match the live Dependabot alerts API output above (9 open alerts, 0
+critical) queried immediately before and after the push. Per this project's established pattern
+(RESEARCH.md "Don't Hand-Roll": the alerts API is ground truth, not a banner/audit tool), the `gh
+api .../dependabot/alerts` query is authoritative; it was re-run after the push with the identical
+9-alert result. No new alert was found by direct inspection.
+
+### Merge check
+
+```
+$ git log origin/main..release/1.8.0 --oneline
+```
+Matches the planning commits from `main` (phase-126 context/research/plan docs) plus the
+126-01/126-02/126-03 commits — confirmed before pushing.
+
+### CI
+
+Head tested: the full `release/1.8.0` branch head after the Task 1/2 commits (`f71b3e2`) and
+through the evidence commit below. Branch pushed with `git push -u origin release/1.8.0`. PR
+[#142](https://github.com/thejuran/seedsyncarr/pull/142) opened into `main`
+(`gh pr create --base main --head release/1.8.0 --title "Release 1.8.0 — reliability" --body-file
+<scratchpad>/pr-body-126.md`, body = `release-notes.md` with `{{VERSION}}` replaced by `1.8.0`
+plus the Claude Code attribution line).
+
+- **CI run:** https://github.com/thejuran/seedsyncarr/actions/runs/40765512411 — conclusion
+  `success` (`gh run watch 40765512411 --exit-status` exited 0).
+- **CodeQL run:** https://github.com/thejuran/seedsyncarr/actions/runs/40765508739 — conclusion
+  `success` (`Analyze (actions)`, `Analyze (javascript-typescript)`, `Analyze (python)` all `pass`
+  per `gh pr checks 142`).
+
+Per-job conclusions (`gh run view 40765512411 --json jobs --jq '.jobs[]|{name,conclusion}'`):
+
+| Job | Conclusion |
+|-----|------------|
+| Lint (Python) | success |
+| Release metadata verifier tests | success |
+| Lint (Angular) | success |
+| Verify release metadata | success |
+| Python unit tests | success |
+| Angular unit tests | success |
+| Verify Python package | success |
+| Build Docker Image | success |
+| End-to-end tests on Docker Image (amd64) | success |
+| Publish Docker Image / Publish to PyPI / Publish Docker Image (:dev) / Publish Documentation / Publish GitHub Release | skipped (PR, not a tag push — expected) |
+
+`gh pr checks 142` confirms no failing or pending check: every check is `pass` except the five
+`skipping` publish jobs.
+
+### e2e [chromium-token] proof (SEC-02 browser proof on this tree)
+
+`gh run view 40765512411 --log --job 123094438859 | grep chromium-token`:
+
+```
+  ✓  53 [chromium-token] › tests/auth-token.spec.ts:47:9 › API token configured (SEC-02) › rejects /server/ requests without the token (147ms)
+  ✓  54 [chromium-token] › tests/auth-token.spec.ts:55:9 › API token configured (SEC-02) › sends the token to /server/* but never to api.github.com (607ms)
+  ✓  55 [chromium-token] › tests/auth-token.spec.ts:85:9 › API token configured (SEC-02) › authenticated write flow works with the token (580ms)
+```
+
+All three pass in a real Chromium instance against the CI-built staging image.
+
+### Branch/tag safety check
+
+```
+$ gh pr view release/1.8.0 --json state,headRefName --jq '{state,headRefName}'
+{"state":"OPEN","headRefName":"release/1.8.0"}
+$ git ls-remote --heads origin main
+123b26fcfd41247637435c0e9b501d1a252a8597	refs/heads/main
+$ git tag -l v1.8.0
+(empty)
+$ git ls-remote --tags origin v1.8.0
+(empty)
+```
+
+`origin/main` is unchanged from the SHA recorded at Phase 126 start (123b26f, the Phase 125 merge
+commit). No `v1.8.0` tag exists locally or on the remote. Nothing merged, nothing tagged.
