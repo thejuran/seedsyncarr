@@ -424,3 +424,22 @@ D-17 is satisfied: a successful scan was observed after start (1f, 31 s after UP
 warm-up error), Sonarr and Radarr were both reachable with no stuck holds (1f), wud was
 restored last with an unchanged post-restore fingerprint (1h), and the owner has now confirmed
 the deployed state. REL-06 is complete.
+
+## Final Dependabot state
+
+Checked 2026-10-28, after the owner confirmation above.
+
+```
+$ gh api repos/thejuran/seedsyncarr/dependabot/alerts --paginate --jq '[.[] | select(.state=="open")] | length'
+0
+$ gh pr list --author app/dependabot --state open --json number,title,createdAt
+[]
+```
+
+Open alerts: **0**. Open Dependabot PRs: **0**.
+
+The `v1.8.0` tag was pushed `2026-10-28T21:51:23Z`. Checking every Dependabot PR's `createdAt`
+against that timestamp: the most recent is #141 (mkdocs-material, created
+`2026-10-28T18:14:51Z`, closed — superseded by the D-01 roll-in on the release branch), which
+predates the tag. **No Dependabot PR was opened after the tag.** Nothing to roll in; REL-05's
+zero-open-alerts state (126-04) holds unchanged through the production deploy.

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: executing
-stopped_at: Completed 126-05-PLAN.md (all eleven D-12a smoke checks PASS on the exact 1.8.0 digest; owner verbatim 'deploy' recorded; sandbox Radarr credential copy cleared; production untouched; 126-06 performs the production deploy)
-last_updated: "2026-10-28T23:05:20.494Z"
-last_activity: 2026-10-28 -- Phase 126 execution started
+status: Phase 126 complete — v1.8.0 deployed to NAS production, owner confirmed
+stopped_at: Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest (backups + loader checks PASS, clean recovery, 0 secret matches, wud restored last), owner verbatim 'confirmed'; all 6 phases of the v1.8.0 Reliability milestone are now complete (13/13 requirements)
+last_updated: "2026-10-28T23:27:46.000Z"
+last_activity: 2026-10-28 -- Phase 126 complete, v1.8.0 deployed to production
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 7
   total_plans: 52
-  completed_plans: 51
-  percent: 71
+  completed_plans: 52
+  percent: 100
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 
 ## Current Position
 
-Phase: 126 (Release 1.8.0) — EXECUTING
-Plan: 6 of 6
-Status: Executing Phase 126
-Last activity: 2026-10-28 -- Phase 126 execution started
+Phase: 126 (Release 1.8.0) — COMPLETE
+Plan: 6 of 6 complete
+Status: Phase 126 complete — v1.8.0 deployed to NAS production, owner confirmed
+Last activity: 2026-10-28 -- Phase 126 complete, v1.8.0 deployed to production
 
 ## Accumulated Context
 
@@ -123,6 +123,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 126]: 126-03: version bumped to 1.8.0 everywhere, CHANGELOG/release-notes/SECURITY.md finalized (D-08 token-exposure range and D-16 % rollback caveat fact-checked against git history); release/1.8.0 pushed, PR #142 open with all 8 CI gate jobs + CodeQL green on two consecutive pushes incl. 3/3 chromium-token e2e; origin/main unchanged, no v1.8.0 tag
 - [Phase 126]: 126-04: owner approved publishing 1.8.0 as drafted; merge of PR #142 surfaced two new post-merge Dependabot alerts (#106 qs, #107 setuptools) not visible on the release branch -- owner chose fix-both-then-tag ('1'), resolved via follow-up PR #143 (setuptools 84.2.1, qs 6.16.2), merged with CI green; 0 open Dependabot alerts, v1.8.0 tagged on PR #143's merge commit; GHCR/GitHub release/PyPI published, RELEASE_DIGEST=sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7 (amd64+arm64) cross-checked by two methods; wud stays exited, production untouched
 - [Phase 126]: Phase 126-05: owner verbatim "deploy" authorizes the production deploy; sandbox copy of production Radarr credentials (URL/key) cleared from settings.cfg on disk at owner-sanctioned addendum, verified by sha256 count-only comparison; REL-06 stays open pending Plan 126-06 production deploy
+- [Phase 126]: 126-06: production deployed by digest to `:1.8.0@sha256:6e8d453f...4879aa7` (container `34470550b27f`, `.Image` == smoked sandbox image ID); CLEAN_STOP, four `.pre-1.8.0-<TS>` backups sha256-recorded, loader check PASS (`PARSE_OK`/`EXIT=0`) in both the 1.7.6 and 1.8.0 images with `AutoDelete.enabled=True` noted for the rollback runbook; compose pin was inode-preserving (one-line diff, wud labels unchanged); first remote scan succeeded 31s after start with no warm-up error; Sonarr (4.0.20.3014) and Radarr (6.4.4.10685) both reachable; 309s steady-state window showed 0 unavailable/Traceback/ERROR lines and 0 restarts; no-secrets count-only check matched 0/3 values in both the container log and the plain-file logs; wud restored last and a 195s-later re-fingerprint confirmed it changed nothing; D-16 rollback was not triggered. Owner verbatim "confirmed" closes D-17. Post-deploy: 0 open Dependabot alerts, 0 open Dependabot PRs, none opened after the `v1.8.0` tag. REL-06 complete; Phase 126 complete; the v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) is fully delivered. Post-tag `.planning` docs commits remain local on `main`, not pushed (pushing `main` publishes the `:dev` image tag; the owner decides when to push).
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -181,9 +182,9 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-28T23:05:20.489Z
-Stopped at: Completed 126-05-PLAN.md (all eleven D-12a smoke checks PASS on the exact 1.8.0 digest; owner verbatim 'deploy' recorded; sandbox Radarr credential copy cleared; production untouched; 126-06 performs the production deploy)
-Next action: Phase 123 is now fully executed. 123-07 wrote the gap-round-2 restart evidence into 123-LIFE-EVIDENCE.md, restored the sandbox to `IMAGE_PIN_L0` (1.7.6) via `teardown.sh --final` (fresh-session verified, production byte-identical throughout), and wrote the Phase 123 verdict ("**Phase 123 live restart check: PASSED**"). Before approving, the owner ran an independent vibe-check deep review of PR #137 (5 reviewers: bugs/architecture on Opus, security, impact, language-python; 0 findings scored >=70; impact verdict "shippable as-is"), which surfaced two items -- `WebAppJob.cleanup()`'s missing per-step isolation and `ControllerJob.execute()`'s non-`AppError` failures bypassing RECOV-01 auto-restart -- and replied verbatim "approve, backlog both items"; both items are logged in `deferred-items.md`, not fixed in-phase. LIFE-01 and LIFE-02 are closed. Remaining step: phase verification/close-out (orchestrator-driven, not yet run) -- this session did not run phase verification or mark the phase complete in ROADMAP.md beyond updating the plan-progress row. Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
+Last session: 2026-10-28T23:27:46.000Z
+Stopped at: Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
+Next action: None required for v1.8.0 -- all release and deploy work is done. Remaining items are operator follow-ups (api_token rotation, credential rotation confirmation, sandbox test-torrent removal; see Operator Next Steps and Deferred Items) and awaiting the owner's direction on what comes next. The milestone's own close-out/archival (if desired) is a separate owner decision, not performed by this plan.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -196,7 +197,9 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- /bm:execute-phase 122 (Plan 09 SAFE-02 reconciliation is complete; remaining phase work is the one-PR-per-phase merge decision, on the same fixed DEV_PIN sha256:e3941f97...)
+- v1.8.0 Reliability (Phases 121-126) is fully complete and deployed to production; the Phase 122 note previously here is stale (that merge decision resolved in Phase 122-09/-17, 2026-10-23/25). No phase is currently active.
+- Remaining operator items (not release-blocking): rotate the production `api_token` per the Phase 121 pending-todo note above; seedbox/Sonarr/Radarr credential rotation confirmation; remove the Hacks.S04E01 test torrent from the sandbox Deluge once seed time is met (see Deferred Items).
+- No next milestone has been started; awaiting the owner's direction for what comes after v1.8.0.
 
 ## Deferred Items
 
