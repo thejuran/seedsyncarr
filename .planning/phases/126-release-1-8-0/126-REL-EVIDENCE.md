@@ -235,3 +235,34 @@ PR #128 state: **CLOSED** (confirmed via `gh pr view 128 --json state`).
 | #138 | follow-redirects | 1.16.0 -> 1.16.2 | Build/test tooling (karma's http-proxy dependency) | Dev-only | #97, #98 (follow-redirects x2 high) |
 
 **Before:** 9 open Dependabot alerts, 8 open Dependabot PRs. **After this roll-in:** 0 of the 9 originally-open alerts remain unaddressed (all closed by resolved versions above); all 8 PRs' target versions are met or exceeded on `release/1.8.0`. 2 residual `npm audit` findings (body-parser, qs, both dev-only via karma, no GitHub alert) remain as a separate, non-D-01 owner item (see "npm audit" section above).
+
+## Release notes fact checks
+
+**D-08 (Phase 121 token-exposure version range):** per the plan's Task 1 step 2, checked when the
+unconditional token-attach logic was first released, rather than assuming "since v1.0.0" from
+STATE.md's carried-forward note.
+
+```
+$ git show v1.0.0:src/angular/src/app/services/utils/auth.interceptor.ts
+```
+
+Output (relevant excerpt) confirms the file exists at `v1.0.0` and already contains the
+unconditional attach logic:
+
+```
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+    const token = getApiToken();
+    if (token) {
+        const authReq = req.clone({
+            setHeaders: {Authorization: `Bearer ${token}`}
+        });
+        return next(authReq);
+    }
+    return next(req);
+};
+```
+
+**Result:** the unconditional attach (no `isOwnApiRequest` gate) was present at the `v1.0.0` tag
+itself — the first released version already had it. Confirmed the CHANGELOG/release-notes wording
+"Versions 1.0.0 through 1.7.6" is accurate (no earlier tag to check; `v1.0.0` is the oldest version
+tag in the repo). No fallback to "1.7.6 and earlier" was needed.
