@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: executing
-stopped_at: Completed 125-06-PLAN.md (gap-closure live re-check PASS on DEV_PIN_R2; owner approved the updated Phase 125 verdict; LAN-01/LAN-02 closed; sandbox restored to IMAGE_PIN_L0 and fresh-session verified; production unchanged); Phase 125 ready for orchestrator verification
-last_updated: "2026-10-28T17:57:36.765Z"
+status: ready_to_plan
+stopped_at: Phase 125 complete (6/6) — ready to discuss Phase 126
+last_updated: 2026-10-28T18:10:48.237Z
 last_activity: 2026-10-27 -- Phase 125 gap-closure plans 125-04..06 created
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 46
-  completed_plans: 46
+  completed_plans: 89
   percent: 71
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-21)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 125 — LAN Connection Tests
+**Current focus:** Phase 126 — release 1.8.0
 
 ## Current Position
 
-Phase: 125 (LAN Connection Tests) — EXECUTING
-Plan: 6 of 6 (gap-closure plans 125-04..06 complete; owner approved 125-06's updated verdict)
-Status: Phase 125 plans complete — awaiting orchestrator verification
-Last activity: 2026-10-28 -- Phase 125 gap-closure plan 125-06 complete (owner-approved); LAN-01/LAN-02 closed
+Phase: 126
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-28
 
 ## Accumulated Context
 
