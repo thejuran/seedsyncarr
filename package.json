@@ -1,11 +1,11 @@
 {
-  "version": "1.7.6",
+  "version": "1.8.0",
   "scripts": {
     "verify:release-metadata": "node scripts/verify-release-metadata.mjs",
     "test:release-metadata": "node --test scripts/verify-release-metadata.test.mjs"
   },
   "devDependencies": {
-    "puppeteer": "^25.11.0"
+    "puppeteer": "^25.16.0"
   },
   "overrides": {
     "basic-ftp": "^5.3.0"

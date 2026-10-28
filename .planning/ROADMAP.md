@@ -267,7 +267,32 @@ Plans:
   3. The published image is smoke-tested on the NAS sandbox by exact digest: restart, a real transfer, Sonarr/Radarr integration and cleanup checks pass
   4. NAS production compose is pinned to `:1.8.0@sha256:…` (the same digest; never `:dev`, never a local build — NAS local build is blocked by QEMU) and a successful post-deploy scan confirms recovery, with the owner's confirmation recorded
 
-**Plans**: TBD
+**Plans:** 2/6 plans executed
+
+Plans:
+**Wave 1**
+
+- [x] 126-01-PLAN.md — Roll every open Dependabot PR into release/1.8.0 by lockfile regeneration (per-group tests, @types/jasmine isolated), npm audit, 999.4 recheck
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 126-02-PLAN.md — Sandbox smoke harness: teardown with radarr/key restore, Test-event webhook poster, count-only extractor, browser token probe with 1.7.6 positive control
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 126-03-PLAN.md — Version bump, CHANGELOG [1.8.0], release notes with rollback runbook, SECURITY.md guard fix, release PR with CI + CodeQL green
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 126-04-PLAN.md — Owner pre-tag approval, wud pause, merge, Dependabot close-out, tag v1.8.0, verify GHCR/GitHub/PyPI and capture RELEASE_DIGEST
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 126-05-PLAN.md — Smoke the exact digest on seedsyncarr-test (sonarr-v4 + Radarr + D-12a spot checks), restore wiring, owner pre-prod go-ahead
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 126-06-PLAN.md — Production deploy by digest with backups/loader checks, recovery verification, rollback rule, wud last, owner confirmation, STATE close-out
 
 #### Progress
 
@@ -278,7 +303,7 @@ Plans:
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
 | 124. Model-Stream Overflow Recovery | 3/3 | Complete    | 2026-10-27 |
 | 125. LAN Connection Tests | 6/6 | Complete    | 2026-10-28 |
-| 126. Release 1.8.0 | 0/TBD | Not started | - |
+| 126. Release 1.8.0 | 2/6 | In Progress|  |
 
 **Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks and is deployed to NAS production by digest. Record residual limitations explicitly. Conditional investigations in the Backlog are not completion gates unless evidence justifies explicitly promoting a bounded fix.
 
@@ -367,6 +392,7 @@ In `ModelStreamHandler.get_value()` (`src/python/web/handler/stream_model.py` ~l
 **Plans:** 0 plans
 
 Acceptance criteria:
+
 - Add a prominent Documentation section linking directly to `docs/GETTING-STARTED.md`, `docs/CONFIGURATION.md`, `SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `docs/TESTING.md`. Replace the installation section's website-only documentation link with repository guide links.
 - Replace "Security by default" with accurate security-control wording. State that API authentication is off when `api_token` is empty, webhook verification is off when `webhook_secret` is empty, `webhook_require_secret` defaults to `False`, and encryption at rest defaults to off (stored secrets are plaintext).
 - Qualify HMAC verification claims throughout the README. Replace absolute "never deletes" promises with an explanation of import confirmation, optional pruning, and the safety delay; note that pruning defaults to off.
@@ -376,6 +402,7 @@ Acceptance criteria:
 **Context:** A community comment described SeedSyncArr as having "no documentation" and raised concerns after Huntarr. Existing guides are present, but discoverability and inconsistent security messaging warrant this bounded correction. The comment is motivation, not evidence of equivalent vulnerabilities.
 
 Plans:
+
 - [ ] TBD (promote with $gsd-review-backlog when ready)
 
 ### 999.7: Speed up the CI Docker image build

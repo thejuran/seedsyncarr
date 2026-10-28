@@ -4,30 +4,12 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [1.8.0] - 2026-10-28
 
-These are the draft notes for 1.8.0. The Test Connection change below changes
-behaviour, which is why the next release is a minor version (1.8.0) rather
-than a patch.
-
-### Changed
-
-- Test Connection for Sonarr and Radarr now accepts local network and
-  Docker container addresses (examples: `http://192.168.1.20:8989`,
-  `http://sonarr:8989`), including Tailscale addresses as before; `localhost`
-  and other loopback addresses are accepted only on port 8989 or 7878, so a
-  Sonarr or Radarr on a custom port should be entered by LAN address or
-  container name; cloud-metadata and link-local destinations such as
-  `169.254.169.254` stay blocked, as do unspecified, multicast and reserved
-  addresses, and redirects are still not followed. A refused address now gets
-  a specific reason instead of the old "private/reserved IP address" message.
-  Leading and trailing spaces around a saved URL are now ignored.
-  (LAN-01, LAN-02)
-- Test Connection now refuses URLs that are malformed or could be read two
-  ways: URLs containing spaces, backslashes, control or non-ASCII characters
-  (enter international host names in their `xn--` form), a user name or password
-  in the URL, a query string or fragment (`?` or `#`), or a malformed host
-  name are all refused, each with a specific reason. (LAN-02)
+A reliability release. It closes a second credential-exposure issue alongside
+the Test Connection fix below, which is why this is a minor version rather
+than a patch; it also fixes three smaller startup, shutdown and browser-tab
+issues. Upgrading from 1.7.6 needs no configuration changes.
 
 ### Security
 
@@ -48,6 +30,49 @@ than a patch.
   transition-address forms (6to4, Teredo, NAT64, IPv4-compatible) are
   refused explicitly so behaviour does not depend on the Python version.
   (LAN-02)
+- Versions 1.0.0 through 1.7.6 sent the configured API token to GitHub's
+  update-check request on every page load; GitHub rejected it, and no other
+  destination ever received it. 1.8.0 sends the token only to SeedSyncarr's
+  own API, which also means the update notice now works correctly for users
+  who have a token configured (GitHub's 401 response had been silently
+  suppressing it). If you have an API token configured, rotating it after
+  upgrading is a cheap precaution, not required. (SEC-02)
+
+### Changed
+
+- Test Connection for Sonarr and Radarr now accepts local network and
+  Docker container addresses (examples: `http://192.168.1.20:8989`,
+  `http://sonarr:8989`), including Tailscale addresses as before; `localhost`
+  and other loopback addresses are accepted only on port 8989 or 7878, so a
+  Sonarr or Radarr on a custom port should be entered by LAN address or
+  container name; cloud-metadata and link-local destinations such as
+  `169.254.169.254` stay blocked, as do unspecified, multicast and reserved
+  addresses, and redirects are still not followed. A refused address now gets
+  a specific reason instead of the old "private/reserved IP address" message.
+  Leading and trailing spaces around a saved URL are now ignored.
+  (LAN-01, LAN-02)
+- Test Connection now refuses URLs that are malformed or could be read two
+  ways: URLs containing spaces, backslashes, control or non-ASCII characters
+  (enter international host names in their `xn--` form), a user name or password
+  in the URL, a query string or fragment (`?` or `#`), or a malformed host
+  name are all refused, each with a specific reason. (LAN-02)
+- Dependency updates: the shipped CA certificate bundle was refreshed,
+  Angular framework packages in the web UI received patch updates, and
+  build, test and documentation tooling was updated; every Dependabot alert
+  open at the time of this release is closed.
+
+### Fixed
+
+- Webhook test events now show up in the application log, and a completion
+  hold that is dropped without a release is now logged as "dropped" rather
+  than "cleared", so the two cases are no longer indistinguishable.
+  (LOG-01, LOG-02)
+- If startup fails partway through, the parts that already started are now
+  shut down cleanly; one part failing to shut down no longer stops the rest
+  from shutting down. (LIFE-01, LIFE-02)
+- A slow or backgrounded browser tab now catches up to the current state
+  instead of falling further behind, with bounded memory use.
+  (STRM-01, STRM-02)
 
 ## [1.7.6] - 2026-10-15
 
