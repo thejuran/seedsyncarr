@@ -303,7 +303,7 @@ Plans:
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
 | 124. Model-Stream Overflow Recovery | 3/3 | Complete    | 2026-10-27 |
 | 125. LAN Connection Tests | 6/6 | Complete    | 2026-10-28 |
-| 126. Release 1.8.0 | 6/6 | Complete   | 2026-10-28 |
+| 126. Release 1.8.0 | 6/6 | Complete    | 2026-10-28 |
 
 **Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks and is deployed to NAS production by digest. Record residual limitations explicitly. Conditional investigations in the Backlog are not completion gates unless evidence justifies explicitly promoting a bounded fix.
 
