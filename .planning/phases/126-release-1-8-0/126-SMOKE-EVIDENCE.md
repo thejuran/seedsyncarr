@@ -687,3 +687,19 @@ All eleven D-12a checks pass on the exact published `1.8.0` digest
 (`sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7`). Sandbox wiring
 restored (with the two documented, inert, no-restore-to-empty exceptions above) and left on the
 1.8.0 digest. Production fingerprint (`P0`..`P3`) identical throughout — never touched.
+
+## Owner go-ahead (Plan 126-05 Task 3, 2026-10-28)
+
+Presented in plain terms: the eleven-check smoke table and what each means for the owner, the
+Radarr residual limitation (checked by connection test and a simulated webhook, not a full live
+Radarr completion), the production deploy sequence (wud stays paused; production stopped, its
+settings/state files/compose backed up; compose pinned to `1.8.0@<RELEASE_DIGEST>`, never `:dev`
+or a local build; started and checked for a successful scan, Sonarr/Radarr reachable with no
+stuck holds, a no-secrets log check; wud started again last), the D-16 rollback rule (immediate
+rollback to `:1.7.6@sha256:da6196e0…101e` from the backups if production clearly cannot sync, owner
+told; anything ambiguous comes back to the owner first; no data conversion needed either way), and
+the expected brief sync-pause interruption.
+
+Owner's reply, verbatim: "deploy"
+
+Production confirmed still on `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e` at the moment this reply was recorded. No production command was run in this task. Plan 126-06 performs the deploy.
