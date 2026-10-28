@@ -241,12 +241,53 @@
 - Sessions: 1 day (2026-10-20).
 - Notable: GSD `milestone.complete` again recorded 0 tasks and no accomplishments; MILESTONES.md entry corrected by hand.
 
+## Milestone: v1.8.0 — Reliability
+
+**Shipped:** 2026-10-28 (tag `v1.8.0`; GHCR/GitHub/PyPI; NAS production by digest)
+**Phases:** 6 (121–126) | **Plans:** 52
+
+### What Was Built
+- The app token is sent only to SeedSyncarr's own API, so the GitHub update check no longer receives it (SEC-02).
+- The Phase 119 import and auto-delete safeguards were proven live on the sandbox, both incident records were closed, and two misleading log messages were fixed (SAFE-01/02, LOG-01/02).
+- A partial startup or a failing cleanup no longer leaves components running, and restart-time false errors are gone (LIFE-01/02).
+- After a stream overflow, a slow browser tab recovers with one snapshot and bounded buffering (STRM-01/02).
+- Test Connection works for LAN and Docker addresses while staying closed to metadata and ambiguous URLs (LAN-01/02).
+- 1.8.0 was released with every Dependabot fix, smoke-tested by digest and deployed to production (REL-05/06).
+
+### What Worked
+- Live sandbox checks found real defects that unit tests missed: the dropped late webhook notice (122-05) and the scanner-death race (123-06, 3 of 5 restarts). Both were fixed in-phase with the owner's decision, not deferred.
+- Reproducing before fixing (Phase 124) gave the fix a concrete, measurable target.
+- One PR per phase, with the PR CI staging image used as the sandbox pin by digest. Production stayed byte-identical through every sandbox session.
+- Code review after verification caught a real pre-existing bypass (125 CR-01) before release.
+
+### What Was Inefficient
+- Phases 122 and 123 each needed two gap-closure rounds (17 plans each against 3–6 originally planned), mostly because live timing on the NAS differed from what the unit tests assumed.
+- Review findings committed after the owner's sign-off left VERIFICATION.md files at `gaps_found`, which the close audit flagged again even though the items were already parked.
+- `milestone.complete` again produced an unusable MILESTONES.md entry (52 raw plan one-liners, phase count 7). It had to be rewritten by hand.
+
+### Patterns Established
+- Bounded, clock-based grace windows (monotonic, 10 s) instead of "one more cycle" for shutdown races.
+- Live restart harnesses record every cycle's outcome (PASS/FAIL/INCOMPLETE), with a process sampler that proves reaping instead of inferring it from quiet logs.
+- URL guards validate the exact string the HTTP stack will connect to.
+- Before a version bump, review Dependabot and roll the fixes in, with a follow-up PR for alerts that appear after merge and before the tag.
+
+### Key Lessons
+- Shutdown and signal timing must be checked on the real container. Unit tests got the grace window wrong once already.
+- When review findings land after verification, re-run or annotate verification at the same time so later audits don't flag them again.
+- Budget for a gap-closure round on any phase that ends in a live sandbox check.
+
+### Cost Observations
+- Model mix: Opus orchestration and execution; balanced-profile planning, checking and verification subagents.
+- Sessions: 8 days (2026-10-21 → 2026-10-28), 309 commits.
+- Notable: the two live-check phases (122, 123) accounted for 34 of the 52 plans.
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
 
 | Milestone | Phases | Plans | Key Change |
 |-----------|--------|-------|------------|
+| v1.8.0 | 6 | 52 | Live sandbox acceptance with in-phase gap rounds; digest-pinned PR staging images; full Dependabot roll-in |
 | v1.7.7 | 1 | 6 | Compatibility check on a sandbox; live fixtures in CI; closed with no release |
 | v1.7.5 | 2 | 18 | Incident-driven safety release; deploy held on smoke finding, inserted 119.1 for a secrets fix |
 | v1.7.4 | 3 | 16 | Safety patch from a design spec; RED-first release gate; digest-pinned NAS deploy |
@@ -259,6 +300,7 @@
 
 | Milestone | Python Tests | Angular Tests | E2E Specs | Python Coverage |
 |-----------|-------------|---------------|-----------|-----------------|
+| v1.8.0 | 1,945 (host run at release) | 657 | 45+ | fail_under 88 (CI) |
 | v1.7.5 | 1,895 (CI dockerized) | 643 | 45+ | fail_under 88 (CI) |
 | v1.7.4 | 1,481 host part-1 (+ container-only suites) | — | 45+ | fail_under 88 (CI); host 86.36% informational |
 | v1.3.0 | 1,278 | 614 | 45+ | 89.27% container-inclusive (fail_under 88) |
@@ -274,3 +316,4 @@
 3. Quality-only milestones execute faster than mixed milestones — clear scope, no feature drift
 4. REQUIREMENTS.md checkboxes should be updated at plan completion, not deferred to milestone close (repeated in v1.7.4)
 5. A guard added to one destructive path must be checked on every destructive path (v1.7.4 → backlog 999.3)
+6. Live checks on the real container find timing and race defects that unit tests miss; plan a gap round for them (v1.7.7, v1.8.0)
