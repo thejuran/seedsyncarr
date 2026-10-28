@@ -462,3 +462,208 @@ $ git ls-remote --tags origin v1.8.0
 
 `origin/main` is unchanged from the SHA recorded at Phase 126 start (123b26f, the Phase 125 merge
 commit). No `v1.8.0` tag exists locally or on the remote. Nothing merged, nothing tagged.
+
+## Owner decision (Plan 126-04 Task 1, 2026-10-28)
+
+Verbatim (2026-10-28): "approve"
+
+Interpretation: approve publishing 1.8.0 **as drafted** — no changes to release notes, CHANGELOG,
+SECURITY.md or the dependency set. Authorizes: merge PR #142 keeping history, pause wud, tag
+`v1.8.0` (publishes the Docker image as `1.8.0` and `latest`, a GitHub release, and PyPI 1.8.0).
+The pre-approval packet (readiness/CI/CodeQL status, CHANGELOG/release-notes verbatim, the D-05
+dependency table with before/after alert counts, the 999.4 outcome, the SECURITY.md correction,
+the sandbox check plan and its Radarr-depth limitation, the wud pause plan, and the irreversibility
+notice) was assembled and presented in the prior session per 126-04-PLAN.md Task 1; this plan
+resumes at Task 2 with the verbatim reply above. Not "hold" and not "approve-with-changes", so no
+amendment commit and no release-date change were needed.
+
+## Dependabot re-check at tag time (D-04) — pre-merge
+
+Observed 2026-10-28T21:1x UTC, before `gh pr merge`:
+
+```
+$ gh api repos/thejuran/seedsyncarr/dependabot/alerts --paginate --jq '[.[]|select(.state=="open")]|length'
+9
+$ gh api repos/thejuran/seedsyncarr/dependabot/alerts --paginate --jq '[.[]|select(.state=="open")]|sort_by(.number)|.[]|{number,package:.dependency.package.name,severity:.security_advisory.severity}'
+94 @modelcontextprotocol/server medium
+96 @modelcontextprotocol/server high
+97 follow-redirects high
+98 follow-redirects high
+99 vite medium
+100 vite high
+101 vite medium
+103 vite low
+104 vite medium
+$ gh pr list --author app/dependabot --json number,title,createdAt   (8 PRs: #141, #138, #136, #135, #131, #130, #125, #117 — same as 126-01/126-03 snapshot)
+```
+
+Identical to the 126-01 and 126-03 snapshots: same 9 alert numbers/packages, same 8 PR
+numbers/titles. No new runtime/shipped alert at this checkpoint. D-04 not triggered here —
+proceeded to merge. (A new runtime alert appeared later, during the post-merge Dependabot
+close-out poll below — see "Dependabot close-out (D-01) — STOP".)
+
+## wud pause (D-15)
+
+Before stopping, read-only:
+
+```
+$ ssh nas "sudo /usr/local/bin/docker inspect wud --format '{{.State.Status}} {{.State.FinishedAt}}'"
+running 2026-10-23T06:54:01.328839126Z
+$ ssh nas "sudo /usr/local/bin/docker inspect wud --format '{{range .Config.Env}}{{println .}}{{end}}'" | cut -d= -f1 | grep -i trigger
+WUD_TRIGGER_DOCKERCOMPOSE_LOCAL_DRYRUN
+WUD_TRIGGER_DOCKERCOMPOSE_V5TEST_FILE
+WUD_TRIGGER_DOCKERCOMPOSE_V5TEST_DRYRUN
+WUD_TRIGGER_DOCKERCOMPOSE_LOCAL_PRUNE
+WUD_TRIGGER_DOCKERCOMPOSE_LOCAL_FILE
+WUD_TRIGGER_DOCKERCOMPOSE_V5TEST_PRUNE
+$ ssh nas "sudo /usr/local/bin/docker inspect seedsyncarr --format '{{.Id}} {{.Config.Image}} {{.State.StartedAt}} {{.State.Status}}'"
+2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e 2026-10-23T07:04:18.591254939Z running
+```
+
+Production fingerprint (pre-merge): container `2feb4073…`, image
+`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0…`, `StartedAt` `2026-10-23T07:04:18Z`, `running`.
+
+```
+$ ssh nas 'cd /volume1/docker && sudo /usr/local/bin/docker compose stop wud'
+Container wud  Stopping
+Container wud  Stopped
+$ ssh nas "sudo /usr/local/bin/docker inspect wud --format '{{.State.Status}} {{.State.FinishedAt}}'"
+exited 2026-10-28T21:20:36.156826683Z
+```
+
+wud confirmed `exited`. Production `seedsyncarr` was not touched by this step.
+
+## Merge and tag
+
+`gh pr view release/1.8.0 --json state,mergeable,mergeStateStatus` before merge: `OPEN`,
+`MERGEABLE`, `CLEAN`. `gh pr checks release/1.8.0`: all 15 non-skip checks `pass` (8 CI gate jobs +
+CodeQL × 3 languages + 3 duplicate-named jobs already counted above), 5 publish jobs correctly
+`skipping` on a PR.
+
+```
+$ gh pr merge 142 --merge --subject "Merge 1.8.0 release (#142)"
+$ gh pr view 142 --json state,mergeCommit,mergedAt
+{"mergeCommit":"0583fc2024bea0d9fccf1919a8d77064b81bee28","mergedAt":"2026-10-28T21:20:48Z","state":"MERGED"}
+$ git log -1 --format=%P 0583fc2024bea0d9fccf1919a8d77064b81bee28
+123b26fcfd41247637435c0e9b501d1a252a8597 8d949eaea6c496f15597164a241e5b72061dc519
+```
+
+Two parents (`123b26f` previous `origin/main`, `8d949eae` the release head) — merge commit, history
+kept, per D-14. `git checkout main && git pull --ff-only`: local `main` (`36867467`, confirmed an
+ancestor of the merge commit via `git merge-base --is-ancestor`) fast-forwarded cleanly to
+`0583fc20`. The local-only `126-03` plan-completion commit `e9e84660` (SUMMARY.md + STATE/ROADMAP
+updates, committed after PR #142's evidence push and never pushed, per 126-03-SUMMARY.md's own
+"Plan metadata: this SUMMARY.md commit (next)" note) was cherry-picked cleanly onto the new `main`
+(`d79be69c`) so the 126-03 plan-completion record is not orphaned off history; its diff base
+(`8d949eae`) matched `main`'s post-merge tree for the touched files exactly, so the cherry-pick had
+zero conflicts. **Tag not yet pushed** — see the stop below.
+
+## Dependabot close-out (D-01) — STOPPED: new runtime alert found (D-04)
+
+Poll 1, immediately after the merge (2026-10-28T21:22:17Z):
+
+```
+$ gh api repos/thejuran/seedsyncarr/dependabot/alerts --paginate --jq '[.[]|select(.state=="open")]|length'
+2
+```
+
+Down from 9 (expected, as GitHub's dependency-graph re-scan of `main` picked up the merged
+roll-ins), but not yet 0. Detail:
+
+```
+$ gh api repos/thejuran/seedsyncarr/dependabot/alerts --paginate --jq '[.[]|select(.state=="open")]|sort_by(.number)|.[]|{number,package:.dependency.package.name,scope:.dependency.scope,severity:.security_advisory.severity,ghsa:.security_advisory.ghsa_id}'
+{"number":106,"package":"qs","scope":"development","severity":"medium","ghsa":"GHSA-6pq8-jhm2-2vcw"}
+{"number":107,"package":"setuptools","scope":"runtime","severity":"low","ghsa":"GHSA-xmj3-9gf7-h52w"}
+```
+
+Both `created_at: 2026-10-28T21:21:5{4,5}Z` — brand new, not part of the 126-01/126-03/pre-merge
+9-alert snapshot (vite ×5, follow-redirects ×2, `@modelcontextprotocol/server` ×2, all now closed
+by the merge). Poll 2 at `2026-10-28T21:24:25Z` (2 min later): identical, still 2, stable (not a
+mid-scan transient).
+
+**#106 `qs` (CVE-2026-110816, medium, `qs.stringify({arrayFormat:'comma'})` uncaught `TypeError`
+DoS)** — `scope: development`, manifest `src/angular/package-lock.json`, pulled in transitively via
+`karma` (same dev-only test-tooling path as the residual `body-parser`/`qs` `npm audit` findings
+already recorded in 126-01-EVIDENCE.md's "npm audit" section). Published 2026-10-27, one day before
+this snapshot — newly indexed by GitHub, not newly introduced by this release. Per the plan's D-04
+language, a non-runtime one is "recorded and left open", not a stop trigger by itself.
+
+**#107 `setuptools` (GHSA-xmj3-9gf7-h52w, low, Windows-only legacy-wheel `install_as_egg` path
+-traversal via `namespace_packages.txt`)** — `scope: runtime`, manifest `src/python/poetry.lock`,
+`relationship: transitive`, locked at `83.0.0` (vulnerable range `>=38.2.2,<84.1.0`; fixed at
+`84.1.0`). Confirmed genuinely shipped, not just a build-time artifact: `paste` (a direct `main`
+dependency per `pyproject.toml`) declares `setuptools = "*"` in its own `[package.dependencies]`
+(`src/python/poetry.lock`), and the Dockerfile's runtime stage runs
+`poetry install --only main` (`src/docker/build/docker-image/Dockerfile`), which installs the
+`main` group — `setuptools` is tagged `groups = ["main", "dev"]`, so it lands in the running
+container's site-packages. Published 2026-10-23, five days before this snapshot and one day
+before the 126-01 snapshot — it did not exist as an advisory when 126-01/126-03 took their
+snapshots; this is the first point in the phase it could have been seen.
+
+Reachability assessment (not a decision, informational only): the vulnerable code path is
+`setuptools.wheel.Wheel(...).install_as_egg()`'s legacy-wheel installer, exploitable only on
+**Windows** (the advisory's PoC path-joins an absolute Windows drive-qualified path) and only when
+installing an attacker-crafted wheel via that legacy path. SeedSyncarr's runtime image is
+`python:3.11-slim` (Linux) and never installs wheels at runtime (the Dockerfile installs
+dependencies only at build time via `poetry install --only main`; the running container doesn't
+invoke pip/setuptools wheel installation at all). `reachability.verdict` from GitHub's own API is
+`"disabled"` (undetermined), not `"reachable"`. This is evidence for the owner's judgment, not a
+basis for the executor to roll in or defer unilaterally.
+
+**This is exactly the D-04 condition** ("If a NEW runtime/shipped security alert appears between
+this review and the tag push, raise it to the owner. Don't add it silently") and the plan's Task 2
+step 3/6 stop rule ("If any open alert is on a runtime/shipped dependency not addressed by 1.8.0,
+STOP: record it and return to the owner (roll in or defer); do not proceed" / "a security/runtime
+one follows the D-04 stop rule"). **Stopping here, before any tag push.** No tag has been created
+or pushed; GHCR/PyPI/GitHub-release publication has not started. The merge (PR #142 → `main`) and
+the wud pause already happened under the Task 1 "approve" authorization and are not rolled back
+(merging is not itself irreversible in the same way tagging/publishing is, and wud staying stopped
+is safe); only the tag push and everything downstream of it are held for this decision.
+
+### Original 8 rolled-in PRs — mechanical close-out (independent of the stop above)
+
+This part of D-01 does not depend on the owner's setuptools/qs decision (it only confirms the
+already-merged, already-CI-verified roll-ins from 126-01 are reflected as closed PRs), so it was
+completed now rather than left pending:
+
+```
+$ for n in 136 141 125 117 135 138 130 131; do gh pr view $n --json state --jq .state; done
+(before closing) 136 OPEN, 141 CLOSED, 125 OPEN, 117 CLOSED, 135 OPEN, 138 CLOSED-by-dependabot?, 130 CLOSED, 131 CLOSED
+```
+
+4 auto-closed by Dependabot itself within ~5 minutes of the merge (#141 mkdocs-material, #117
+puppeteer, #130 `@modelcontextprotocol/server`+`@angular/cli`, #131 npm_and_yarn group). 4 did not
+auto-close within that window; confirmed each one's resolved version on `main` meets or exceeds its
+PR's target before closing manually:
+
+| PR | Package | Target | Resolved on main | Meets |
+|----|---------|--------|-------------------|-------|
+| #136 | certifi | 2026.10.19 | 2026.10.23 | Yes (exceeds) |
+| #125 | testfixtures | 12.4.0 | 12.4.0 | Yes |
+| #135 | vite | 7.3.7 | 7.3.7 | Yes |
+| #138 | follow-redirects | 1.16.2 | 1.16.2 | Yes |
+
+```
+$ gh pr close 136 --comment "Rolled into 1.8.0 via #142 (resolved version on main is >= this PR's target)."
+$ gh pr close 125 --comment "Rolled into 1.8.0 via #142 (resolved version on main is >= this PR's target)."
+$ gh pr close 135 --comment "Rolled into 1.8.0 via #142 (resolved version on main is >= this PR's target)."
+$ gh pr close 138 --comment "Rolled into 1.8.0 via #142 (resolved version on main is >= this PR's target)."
+```
+
+Final states, all 8: #136 CLOSED, #141 CLOSED, #125 CLOSED, #117 CLOSED, #135 CLOSED, #138 CLOSED,
+#130 CLOSED, #131 CLOSED. All eight original rolled-in PRs are closed. The only remaining blocker
+to tagging is the owner's decision on alerts #106 (qs) and #107 (setuptools), above.
+
+### Status at end of this session
+
+- PR #142 **merged** to `main` (merge commit `0583fc2024bea0d9fccf1919a8d77064b81bee28`, history kept)
+- wud **stopped** (`exited`), production **unchanged** (`seedsyncarr` still `2feb4073…` on `:1.7.6@sha256:da6196e0…`)
+- All 8 originally-tracked Dependabot PRs **closed**
+- Open Dependabot alerts: **2** (both new since the 126-03 snapshot — #106 `qs` dev-scope, #107
+  `setuptools` runtime-scope) — **not 0**, blocking the tag per D-01/D-04
+- **No `v1.8.0` tag created or pushed.** Nothing published to GHCR/PyPI/GitHub Releases.
+- Awaiting owner decision: (a) roll in a `setuptools` bump to >=84.1.0 before tagging (small,
+  mechanical lockfile change, re-run CI, then resume this plan), (b) defer both alerts (accepted as
+  a release-notes-free known issue, given setuptools' low severity and the Windows-only/no-runtime-
+  wheel-install reachability gap, with `qs` already following the existing dev-only-residual
+  pattern) and proceed straight to tagging, or (c) hold entirely.
