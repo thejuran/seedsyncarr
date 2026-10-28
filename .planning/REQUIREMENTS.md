@@ -29,8 +29,8 @@ Committed scope for this milestone. Each maps to exactly one roadmap phase. Fixe
 
 ### LAN Connection Tests
 
-- [ ] **LAN-01**: Test Connection succeeds for representative local Sonarr/Radarr configurations: private-range IP addresses and Docker container/host names resolving to private addresses
-- [ ] **LAN-02**: Unintended destinations (e.g. cloud-metadata/link-local addresses, redirects to disallowed targets) remain rejected
+- [x] **LAN-01**: Test Connection succeeds for representative local Sonarr/Radarr configurations: private-range IP addresses and Docker container/host names resolving to private addresses
+- [x] **LAN-02**: Unintended destinations (e.g. cloud-metadata/link-local addresses, redirects to disallowed targets) remain rejected
 
 ### Logging
 
@@ -76,8 +76,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIFE-02 | Phase 123 | Complete |
 | STRM-01 | Phase 124 | Complete |
 | STRM-02 | Phase 124 | Complete |
-| LAN-01 | Phase 125 | Pending |
-| LAN-02 | Phase 125 | Pending |
+| LAN-01 | Phase 125 | Complete |
+| LAN-02 | Phase 125 | Complete |
 | LOG-01 | Phase 122 | Complete |
 | LOG-02 | Phase 122 | Complete |
 | REL-05 | Phase 126 | Pending |

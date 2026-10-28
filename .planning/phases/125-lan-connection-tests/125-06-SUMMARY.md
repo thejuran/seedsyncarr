@@ -132,3 +132,12 @@ None - no external service configuration required.
 *Phase: 125-lan-connection-tests*
 *Tasks 1-3 completed: 2026-10-28*
 *Phase 125 gap closure: owner-approved*
+
+## Self-Check: PASSED
+
+- `FOUND: .planning/phases/125-lan-connection-tests/125-06-SUMMARY.md`
+- `FOUND: .planning/phases/125-lan-connection-tests/125-LAN-EVIDENCE.md`
+- `FOUND: bd6a98c` (Task 1 commit) -- confirmed in `git log --oneline --all`
+- `FOUND: 4fb05a2` (Task 2 commit) -- confirmed in `git log --oneline --all`
+- `FOUND: 260191f` (Task 3 commit) -- confirmed in `git log --oneline --all`
+- `grep -c "Owner reply" 125-06-SUMMARY.md` -> `3`
