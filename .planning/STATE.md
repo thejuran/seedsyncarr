@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: Phase 126 complete — v1.8.0 deployed to NAS production, owner confirmed
-stopped_at: Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest (backups + loader checks PASS, clean recovery, 0 secret matches, wud restored last), owner verbatim 'confirmed'; all 6 phases of the v1.8.0 Reliability milestone are now complete (13/13 requirements)
-last_updated: "2026-10-28T23:27:46.000Z"
+status: completed
+stopped_at: "Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered."
+last_updated: "2026-10-28T23:34:31.286Z"
 last_activity: 2026-10-28 -- Phase 126 complete, v1.8.0 deployed to production
 progress:
   total_phases: 7
-  completed_phases: 7
+  completed_phases: 6
   total_plans: 52
   completed_plans: 52
-  percent: 100
+  percent: 86
 ---
 
 # Project State
@@ -182,7 +182,7 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-28T23:27:46.000Z
+Last session: 2026-10-28T23:34:31.282Z
 Stopped at: Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
 Next action: None required for v1.8.0 -- all release and deploy work is done. Remaining items are operator follow-ups (api_token rotation, credential rotation confirmation, sandbox test-torrent removal; see Operator Next Steps and Deferred Items) and awaiting the owner's direction on what comes next. The milestone's own close-out/archival (if desired) is a separate owner decision, not performed by this plan.
 

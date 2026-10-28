@@ -40,7 +40,7 @@ Committed scope for this milestone. Each maps to exactly one roadmap phase. Fixe
 ### Release
 
 - [x] **REL-05**: Open Dependabot alerts and PRs are reviewed before the version bump/tag; runtime/shipped fixes are rolled in, dev-only ones only if cheap (includes the 999.4 braces/karma recheck)
-- [ ] **REL-06**: 1.8.0 is published (Docker/GitHub/PyPI), smoke-tested on the NAS by exact digest (restart, transfer, integration, cleanup), and deployed to NAS production by that digest, with a successful post-deploy scan confirming recovery
+- [x] **REL-06**: 1.8.0 is published (Docker/GitHub/PyPI), smoke-tested on the NAS by exact digest (restart, transfer, integration, cleanup), and deployed to NAS production by that digest, with a successful post-deploy scan confirming recovery
 
 ## Future Requirements
 
@@ -81,7 +81,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LOG-01 | Phase 122 | Complete |
 | LOG-02 | Phase 122 | Complete |
 | REL-05 | Phase 126 | Complete |
-| REL-06 | Phase 126 | Pending |
+| REL-06 | Phase 126 | Complete |
 
 **Coverage:**
 - v1.8.0 requirements: 13 total

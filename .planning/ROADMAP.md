@@ -31,7 +31,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 - [x] **Phase 123: Startup and Shutdown Lifecycle** - Partial startup failures clean up started children; a failing component cleanup does not stop the remaining cleanups (completed 2026-10-27)
 - [x] **Phase 124: Model-Stream Overflow Recovery** - A slow client converges to current server state after overflow, with bounded buffering (or a recorded existing guarantee) (completed 2026-10-27)
 - [x] **Phase 125: LAN Connection Tests** - Test Connection accepts intended local Sonarr/Radarr addresses, including Docker container names, while unintended destinations stay rejected (completed 2026-10-28)
-- [ ] **Phase 126: Release 1.8.0** - Dependabot review, publish to Docker/GitHub/PyPI, NAS digest smoke test, production deploy by digest confirmed by a successful scan
+- [x] **Phase 126: Release 1.8.0** - Dependabot review, publish to Docker/GitHub/PyPI, NAS digest smoke test, production deploy by digest confirmed by a successful scan (completed 2026-10-28)
 
 #### Phase Details
 
@@ -267,7 +267,7 @@ Plans:
   3. The published image is smoke-tested on the NAS sandbox by exact digest: restart, a real transfer, Sonarr/Radarr integration and cleanup checks pass
   4. NAS production compose is pinned to `:1.8.0@sha256:…` (the same digest; never `:dev`, never a local build — NAS local build is blocked by QEMU) and a successful post-deploy scan confirms recovery, with the owner's confirmation recorded
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 **Wave 1**
@@ -292,7 +292,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 126-06-PLAN.md — Production deploy by digest with backups/loader checks, recovery verification, rollback rule, wud last, owner confirmation, STATE close-out
+- [x] 126-06-PLAN.md — Production deploy by digest with backups/loader checks, recovery verification, rollback rule, wud last, owner confirmation, STATE close-out
 
 #### Progress
 
@@ -303,7 +303,7 @@ Plans:
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
 | 124. Model-Stream Overflow Recovery | 3/3 | Complete    | 2026-10-27 |
 | 125. LAN Connection Tests | 6/6 | Complete    | 2026-10-28 |
-| 126. Release 1.8.0 | 5/6 | In Progress|  |
+| 126. Release 1.8.0 | 6/6 | Complete   | 2026-10-28 |
 
 **Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks and is deployed to NAS production by digest. Record residual limitations explicitly. Conditional investigations in the Backlog are not completion gates unless evidence justifies explicitly promoting a bounded fix.
 
