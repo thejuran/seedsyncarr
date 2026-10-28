@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: "Completed 126-03-PLAN.md (release/1.8.0 pushed, PR #142 open, all CI + CodeQL green; nothing merged or tagged)"
-last_updated: "2026-10-28T21:12:42.038Z"
+stopped_at: "Completed 126-04-PLAN.md (1.8.0 published: GHCR/GitHub release/PyPI, RELEASE_DIGEST recorded; 0 open Dependabot alerts; wud exited; production untouched)"
+last_updated: "2026-10-28T22:12:57.098Z"
 last_activity: 2026-10-28 -- Phase 126 execution started
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 52
-  completed_plans: 49
+  completed_plans: 50
   percent: 71
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 126 (Release 1.8.0) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Executing Phase 126
 Last activity: 2026-10-28 -- Phase 126 execution started
 
@@ -121,6 +121,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 126]: 126-01: evidence-file writes split into separate docs(126-01) commits so each chore(126-01) dependency-bump commit stays scoped to exactly its manifest/lockfile files; 2 residual npm audit findings (body-parser, qs via karma) left as a non-D-01 owner item, not fixed
 - [Phase 126]: 126-02: probe-dir cleanup in 126-teardown.sh uses plain rm -rf not sudo rm -rf (NAS passwordless sudoers rule covers only docker/docker-compose); token probe proved non-vacuous via a live positive control on a throwaway 1.7.6 container (WITH_TOKEN=1)
 - [Phase 126]: 126-03: version bumped to 1.8.0 everywhere, CHANGELOG/release-notes/SECURITY.md finalized (D-08 token-exposure range and D-16 % rollback caveat fact-checked against git history); release/1.8.0 pushed, PR #142 open with all 8 CI gate jobs + CodeQL green on two consecutive pushes incl. 3/3 chromium-token e2e; origin/main unchanged, no v1.8.0 tag
+- [Phase 126]: 126-04: owner approved publishing 1.8.0 as drafted; merge of PR #142 surfaced two new post-merge Dependabot alerts (#106 qs, #107 setuptools) not visible on the release branch -- owner chose fix-both-then-tag ('1'), resolved via follow-up PR #143 (setuptools 84.2.1, qs 6.16.2), merged with CI green; 0 open Dependabot alerts, v1.8.0 tagged on PR #143's merge commit; GHCR/GitHub release/PyPI published, RELEASE_DIGEST=sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7 (amd64+arm64) cross-checked by two methods; wud stays exited, production untouched
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -179,8 +180,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-28T21:12:42.033Z
-Stopped at: Completed 126-03-PLAN.md (release/1.8.0 pushed, PR #142 open, all CI + CodeQL green; nothing merged or tagged)
+Last session: 2026-10-28T22:12:57.094Z
+Stopped at: Completed 126-04-PLAN.md (1.8.0 published: GHCR/GitHub release/PyPI, RELEASE_DIGEST recorded; 0 open Dependabot alerts; wud exited; production untouched)
 Next action: Phase 123 is now fully executed. 123-07 wrote the gap-round-2 restart evidence into 123-LIFE-EVIDENCE.md, restored the sandbox to `IMAGE_PIN_L0` (1.7.6) via `teardown.sh --final` (fresh-session verified, production byte-identical throughout), and wrote the Phase 123 verdict ("**Phase 123 live restart check: PASSED**"). Before approving, the owner ran an independent vibe-check deep review of PR #137 (5 reviewers: bugs/architecture on Opus, security, impact, language-python; 0 findings scored >=70; impact verdict "shippable as-is"), which surfaced two items -- `WebAppJob.cleanup()`'s missing per-step isolation and `ControllerJob.execute()`'s non-`AppError` failures bypassing RECOV-01 auto-restart -- and replied verbatim "approve, backlog both items"; both items are logged in `deferred-items.md`, not fixed in-phase. LIFE-01 and LIFE-02 are closed. Remaining step: phase verification/close-out (orchestrator-driven, not yet run) -- this session did not run phase verification or mark the phase complete in ROADMAP.md beyond updating the plan-progress row. Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
