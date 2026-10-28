@@ -9,14 +9,15 @@
 #   DEV_PIN        this phase's PR CI staging image, pinned by digest (required)
 # This script appends further KEY=value lines to the same file as it runs
 # (SONARR_URL_L0, SONARR_URL_SET, BEFORE_SUCCESS, BEFORE_OLD_MSG, POSITIVE,
-# POSITIVE_VERSION, NEGATIVE, CHECK_STATUS) using the same last-value-wins contract
-# as 125-teardown.sh.
+# POSITIVE_VERSION, NEGATIVE, NEGATIVE_CR01, CHECK_STATUS) using the same
+# last-value-wins contract as 125-teardown.sh.
 #
 # Sequence: preflight (nothing changed yet) -> fingerprint production (read-only) ->
 # point sonarr_url at the Docker container name -> BEFORE check on the original image
 # (informational) -> deploy DEV_PIN -> POSITIVE check (LAN-01) -> NEGATIVE check against
-# a cloud-metadata address (LAN-02), restoring sonarr_url immediately after -> re-check
-# production is unchanged -> CHECK_STATUS.
+# a cloud-metadata address (LAN-02) -> NEGATIVE_CR01 check against the 125-REVIEW CR-01
+# backslash payload (D-11), restoring sonarr_url immediately after both negatives ->
+# re-check production is unchanged -> CHECK_STATUS.
 #
 # Only seedsyncarr-test and 127.0.0.1:8801 are changed. Production is only ever
 # fingerprinted with a single read-only `docker inspect`, never started, stopped,
@@ -25,11 +26,12 @@
 # .sonarr.sonarr_url. Output is status words, HTTP codes, the Sonarr version and the
 # refusal text only.
 #
-# Safety net: on any exit before the sonarr_url restore has verifiably succeeded, the
-# EXIT trap runs `teardown.sh --final` so the sandbox is never left mid-change. Once the
-# restore has succeeded, OK=1 so the trap steps aside and the explicit `teardown.sh
-# --final` call (run separately, after this script exits) does the full image-pin
-# restore and final verification.
+# Safety net: the EXIT trap runs `teardown.sh --final` on any exit except a fully
+# passing check (CHECK_STATUS=PASS) with a verified sonarr_url restore. On that single
+# success path, OK=1 so the trap steps aside and the explicit `teardown.sh --final` call
+# (run separately, after this script exits) does the full image-pin restore and final
+# verification. Any failure after the deploy step -- including a failed negative check --
+# therefore restores the sandbox automatically via the trap.
 set -u
 
 D="${1:-}"
@@ -45,6 +47,8 @@ DOCKER="sudo /usr/local/bin/docker"
 TARGET_URL="http://sonarr-v5:8989"
 REFUSED_URL="http://169.254.169.254"
 EXPECTED_REFUSAL="URL points to a link-local or cloud-metadata address, which is not allowed"
+CR01_URL='http://169.254.169.254\@sonarr-v5:8989'
+EXPECTED_CR01_REFUSAL="Invalid URL: it contains a space, backslash or other character that is not allowed"
 APP_LOG="/volume1/docker/v5test/seedsyncarr/log/seedsyncarr.log"
 PROD_NAME="seedsyncarr"
 
@@ -235,7 +239,27 @@ state_set NEGATIVE "$NEGATIVE"
 echo "NEGATIVE $NEGATIVE success=$NEG_SUCCESS error=$NEG_ERROR"
 [ "$NEGATIVE" = "PASS" ] || fail negative
 
-# Restore sonarr_url immediately, regardless of the NEGATIVE outcome.
+# --- NEGATIVE_CR01 (D-11: 125-REVIEW CR-01 backslash payload) ---
+state_set SONARR_URL_SET 1
+set_sonarr_url "$CR01_URL"
+have="$(get_sonarr_url)"
+if [ "$have" != "$CR01_URL" ]; then
+  echo "SET sonarr_url cr01 FAIL"
+  fail url_set_cr01
+fi
+
+negative_cr01_out="$(tc negative_cr01)"
+NEGCR01_SUCCESS="$(printf '%s\n' "$negative_cr01_out" | sed -n '1p')"
+NEGCR01_ERROR="$(printf '%s\n' "$negative_cr01_out" | sed -n '3p')"
+NEGATIVE_CR01=FAIL
+if [ "$NEGCR01_SUCCESS" = "false" ] && [ "$NEGCR01_ERROR" = "$EXPECTED_CR01_REFUSAL" ]; then
+  NEGATIVE_CR01=PASS
+fi
+state_set NEGATIVE_CR01 "$NEGATIVE_CR01"
+echo "NEGATIVE_CR01 $NEGATIVE_CR01 success=$NEGCR01_SUCCESS error=$NEGCR01_ERROR"
+[ "$NEGATIVE_CR01" = "PASS" ] || fail negative_cr01
+
+# Restore sonarr_url immediately, regardless of either negative's outcome.
 set_sonarr_url "$SONARR_URL_L0"
 have="$(get_sonarr_url)"
 if [ "$have" = "$SONARR_URL_L0" ]; then
@@ -265,12 +289,12 @@ fi
 
 # --- CHECK_STATUS ---
 CHECK_STATUS=PASS
-if [ "$POSITIVE" != "PASS" ] || [ "$NEGATIVE" != "PASS" ] || [ "$URL_RESTORED" != "1" ] || [ "$DEPLOYED_IMAGE" != "$DEV_PIN" ] || [ -n "$FAILED" ]; then
+if [ "$POSITIVE" != "PASS" ] || [ "$NEGATIVE" != "PASS" ] || [ "$NEGATIVE_CR01" != "PASS" ] || [ "$URL_RESTORED" != "1" ] || [ "$DEPLOYED_IMAGE" != "$DEV_PIN" ] || [ -n "$FAILED" ]; then
   CHECK_STATUS=FAIL
 fi
 state_set CHECK_STATUS "$CHECK_STATUS"
 
-if [ "$URL_RESTORED" = "1" ]; then
+if [ "$CHECK_STATUS" = "PASS" ] && [ "$URL_RESTORED" = "1" ]; then
   OK=1
 fi
 
