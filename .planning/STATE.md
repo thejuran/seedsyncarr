@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: ready_to_plan
-stopped_at: Phase 125 complete (6/6) — ready to discuss Phase 126
+stopped_at: Phase 125 complete (6/6, verified; draft PR #140 open, not merged) — ready to discuss Phase 126
 last_updated: 2026-10-28T18:10:48.237Z
-last_activity: 2026-10-27 -- Phase 125 gap-closure plans 125-04..06 created
+last_activity: 2026-10-28 -- Phase 125 complete (6/6, verified 13/13; draft PR #140 open, not merged)
 progress:
   total_phases: 7
   completed_phases: 5
