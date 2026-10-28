@@ -267,7 +267,7 @@ Plans:
   3. The published image is smoke-tested on the NAS sandbox by exact digest: restart, a real transfer, Sonarr/Radarr integration and cleanup checks pass
   4. NAS production compose is pinned to `:1.8.0@sha256:…` (the same digest; never `:dev`, never a local build — NAS local build is blocked by QEMU) and a successful post-deploy scan confirms recovery, with the owner's confirmation recorded
 
-**Plans:** 2/6 plans executed
+**Plans:** 3/6 plans executed
 
 Plans:
 **Wave 1**
@@ -280,7 +280,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 126-03-PLAN.md — Version bump, CHANGELOG [1.8.0], release notes with rollback runbook, SECURITY.md guard fix, release PR with CI + CodeQL green
+- [x] 126-03-PLAN.md — Version bump, CHANGELOG [1.8.0], release notes with rollback runbook, SECURITY.md guard fix, release PR with CI + CodeQL green
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -303,7 +303,7 @@ Plans:
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
 | 124. Model-Stream Overflow Recovery | 3/3 | Complete    | 2026-10-27 |
 | 125. LAN Connection Tests | 6/6 | Complete    | 2026-10-28 |
-| 126. Release 1.8.0 | 2/6 | In Progress|  |
+| 126. Release 1.8.0 | 3/6 | In Progress|  |
 
 **Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks and is deployed to NAS production by digest. Record residual limitations explicitly. Conditional investigations in the Backlog are not completion gates unless evidence justifies explicitly promoting a bounded fix.
 
