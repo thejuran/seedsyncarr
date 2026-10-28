@@ -267,7 +267,15 @@ Plans:
   3. The published image is smoke-tested on the NAS sandbox by exact digest: restart, a real transfer, Sonarr/Radarr integration and cleanup checks pass
   4. NAS production compose is pinned to `:1.8.0@sha256:…` (the same digest; never `:dev`, never a local build — NAS local build is blocked by QEMU) and a successful post-deploy scan confirms recovery, with the owner's confirmation recorded
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+- [ ] 126-01-PLAN.md — Roll every open Dependabot PR into release/1.8.0 by lockfile regeneration (per-group tests, @types/jasmine isolated), npm audit, 999.4 recheck
+- [ ] 126-02-PLAN.md — Sandbox smoke harness: teardown with radarr/key restore, Test-event webhook poster, count-only extractor, browser token probe with 1.7.6 positive control
+- [ ] 126-03-PLAN.md — Version bump, CHANGELOG [1.8.0], release notes with rollback runbook, SECURITY.md guard fix, release PR with CI + CodeQL green
+- [ ] 126-04-PLAN.md — Owner pre-tag approval, wud pause, merge, Dependabot close-out, tag v1.8.0, verify GHCR/GitHub/PyPI and capture RELEASE_DIGEST
+- [ ] 126-05-PLAN.md — Smoke the exact digest on seedsyncarr-test (sonarr-v4 + Radarr + D-12a spot checks), restore wiring, owner pre-prod go-ahead
+- [ ] 126-06-PLAN.md — Production deploy by digest with backups/loader checks, recovery verification, rollback rule, wud last, owner confirmation, STATE close-out
 
 #### Progress
 
@@ -278,7 +286,7 @@ Plans:
 | 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
 | 124. Model-Stream Overflow Recovery | 3/3 | Complete    | 2026-10-27 |
 | 125. LAN Connection Tests | 6/6 | Complete    | 2026-10-28 |
-| 126. Release 1.8.0 | 0/TBD | Not started | - |
+| 126. Release 1.8.0 | 0/6 | Planned | - |
 
 **Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks and is deployed to NAS production by digest. Record residual limitations explicitly. Conditional investigations in the Backlog are not completion gates unless evidence justifies explicitly promoting a bounded fix.
 
