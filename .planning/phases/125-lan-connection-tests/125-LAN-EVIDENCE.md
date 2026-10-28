@@ -439,3 +439,107 @@ IMAGE_PIN_L0=ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d
 ```
 
 Routine push output: `git push` surfaced GitHub's standing Dependabot summary (10 vulnerabilities on the default branch, 1 critical/4 high/4 moderate/1 low) — out of this plan's scope; Dependabot review is Phase 126's release-gate responsibility (same note as 125-02).
+
+### Live re-check (D-09, D-11)
+
+Capture dir `/volume1/docker/v5test/results/lan01-125r2-20261028T001748Z` (mode 0700). `livecheck.sh`/`teardown.sh` copied via `ssh nas 'cat > ...' < file` (not `scp`) and sha256-verified byte-identical to the committed files before running. Preflight re-read `seedsyncarr-test .Config.Image` in a fresh `ssh nas` call before writing `state.env` — it equalled `IMAGE_PIN_L0` exactly, confirming no drift since 125-05.
+
+```
+IMAGE_PIN_L0=ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e
+DEV_PIN=ghcr.io/thejuran/seedsyncarr@sha256:76df9d9a5dccb89d1106ca7d0b66e98319e482c6aa65f0d010159df5a19d9d45
+```
+
+(the `DEV_PIN` key in `state.env` holds the `DEV_PIN_R2` value recorded above under "Build under test (125-05)".)
+
+- **Preflight:** `PREFLIGHT ok` — compose line and `.Config.Image` both equal `IMAGE_PIN_L0` before any change.
+- **Compose inode (DEV_PIN_R2 edit):** `INODE before=101505523 after=101505523` — same inode, in-place rewrite confirmed.
+- **Readiness transcript:** `seedsyncarr-test Pulling` → `Pulled` → `Container seedsyncarr-test Recreate` → `Recreated` → `Starting` → `Started` → `DEPLOY starting-line ok` (fresh `Starting SeedSyncarr` line after the pre-deploy marker) → `WAIT server/status ok` → 8s settle.
+- **Deployed image:** `DEPLOY image=ghcr.io/thejuran/seedsyncarr@sha256:76df9d9a5dccb89d1106ca7d0b66e98319e482c6aa65f0d010159df5a19d9d45 id=sha256:81f0377d60508d0ae109756c2733336f43e0a9d438539d757bdc4acd44d1bd1f` — `.Config.Image` matched `DEV_PIN_R2` exactly.
+- **BEFORE (informational, still on `IMAGE_PIN_L0`, CR-01 payload intentionally not sent on 1.7.6):** `BEFORE success=false old_msg=1` — `before.json`: `{"success": false, "error": "URL resolves to a private/reserved IP address"}`. Unchanged from 125-03's attempt 2 BEFORE result — the shipping 1.7.6 image still fails the container-name case with the pre-fix message.
+- **POSITIVE (LAN-01):** `POSITIVE PASS success=true version=5.0.0.2800` — `positive.json`: `{"success": true, "version": "5.0.0.2800"}`. On the hardened `DEV_PIN_R2` build, `http://sonarr-v5:8989` still succeeds and reports the live Sonarr 5 version — the 125-04 guard rewrite did not break LAN-01.
+- **NEGATIVE (LAN-02):** `NEGATIVE PASS success=false error=URL points to a link-local or cloud-metadata address, which is not allowed` — `negative.json`: `{"success": false, "error": "URL points to a link-local or cloud-metadata address, which is not allowed"}`, an exact match to the locked refusal string against `http://169.254.169.254`.
+- **NEGATIVE_CR01 (D-11, the 125-REVIEW CR-01 backslash payload):** `NEGATIVE_CR01 PASS success=false error=Invalid URL: it contains a space, backslash or other character that is not allowed` — `negative_cr01.json`: `{"success": false, "error": "Invalid URL: it contains a space, backslash or other character that is not allowed"}`, an exact match to the locked CR-01 refusal string against `http://169.254.169.254\@sonarr-v5:8989`. This is the live, real-`requests`/real-`urllib3`/real-Docker-DNS proof that the parser-differential bypass closed by `fix(125-04)` (`b6d0902`) holds outside the unit-test harness: the backslash payload never reached Sonarr or any other host, and the sandbox's own Sonarr `sonarr-v5` container was reachable throughout (proven by the immediately preceding `POSITIVE` check against it).
+- **sonarr_url restore:** `RESTORED sonarr_url ok` — read back equal to `SONARR_URL_L0` (`http://sonarr-v5:8989`) immediately after both negative checks, run once after `NEGATIVE_CR01` per the script's updated restore-after-both-negatives step.
+- **Informational log counts (window after the pre-deploy marker):** `LOGCOUNT error=2 unexpected_error_testing=0`. The 2 ` - ERROR - ` lines (app-log `2026-10-27 20:18:58`, NAS host clock ~`2026-10-28 00:18` UTC) are the same pre-existing "Scanner process(es) died unexpectedly" / "Caught exception in job ControllerJob" pair logged during the container recreate as in 125-03's attempt 2 — the known Phase 123 D-01-scanner-half restart pattern, unrelated to LAN-01/LAN-02/D-11 and not part of this phase's scope. Zero `Unexpected error testing` lines.
+- **Production fingerprint during the check:** `prod-before.txt` and `prod-after.txt` are byte-identical (`diff` empty): `2feb4073db71... sha256:5b801f83... ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0... running 2026-10-23T07:04:18.591254939Z`.
+- **CHECK_STATUS:** `PASS` (`state.env`: `POSITIVE=PASS`, `NEGATIVE=PASS`, `NEGATIVE_CR01=PASS`, `SONARR_URL_SET=0`, `CHECK_STATUS=PASS`). Last line: `LIVECHECK PASS`, exit 0.
+
+No harness defect was hit this round (Task 1's trap fix was not exercised by a failure path, since the check passed cleanly on the first attempt) — unlike 125-03's attempt 1, no retry cycle was needed.
+
+### Final restore (re-check)
+
+Run against this capture dir immediately after `LIVECHECK PASS`:
+
+```
+INODE before=101505523 after=101505523
+ seedsyncarr-test Pulling
+ seedsyncarr-test Pulled
+ Container seedsyncarr-test  Recreate
+ Container seedsyncarr-test  Recreated
+ Container seedsyncarr-test  Starting
+ Container seedsyncarr-test  Started
+WAIT server/status ok
+RESTORED sonarr_url ok (not set this session)
+CHECK image=restored ok
+SANDBOX_RESTORED ok
+```
+
+Last line `SANDBOX_RESTORED ok`.
+
+### Fresh-session restore check (re-check)
+
+In a second, independent `ssh nas` call, after the final restore:
+
+| Check | Result |
+|---|---|
+| `.Config.Image` | `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e` — equals `IMAGE_PIN_L0` exactly |
+| Compose `seedsyncarr-test` image line | `image: ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e` — equals `IMAGE_PIN_L0` |
+| `.sonarr.sonarr_url` | `http://sonarr-v5:8989` — equals `SONARR_URL_L0` |
+| `GET /server/status` | `200` |
+| Production fingerprint (`prod-final.txt`) vs `prod-before.txt` | byte-identical, `diff` empty |
+
+### Production unchanged (re-check)
+
+`prod-before.txt`, `prod-after.txt` (during the check) and `prod-final.txt` (fresh session, after the final restore) are all byte-identical:
+
+```
+2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 sha256:5b801f8397d68bf9bb35eed0d4f882cae2ab24100e4d28be4006f8f028e0ef62 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e running 2026-10-23T07:04:18.591254939Z
+```
+
+`StartedAt` (`2026-10-23T07:04:18.591254939Z`) matches the value recorded in `123-LIFE-EVIDENCE.md` and 125-03's "### Production unchanged" exactly — no drift across the whole gap-closure cycle. Production `seedsyncarr` was never started, stopped, recreated or reconfigured anywhere in this plan; the only command ever run against it was the single permitted read-only `docker inspect` fingerprint.
+
+## Phase 125 verdict (after gap closure)
+
+Rows below update or add to the original "## Phase 125 verdict" table above. Any row from the original verdict not repeated here (SC1, SC3, D-01, D-02, D-03, D-04, D-05) stands unchanged — the 125-04 guard rewrite did not touch the allowed-range classification, the loopback-port rule, mixed-resolution handling, redirect handling or the relaxation-scope test, confirmed by the 125-05 whole-suite baseline match (24-line environmental baseline, identical before and after 125-04) and the full `TestLanRelaxationScope`/`TestValidateUrl` suites passing unchanged at the 125-04 GREEN commit.
+
+| Item | Decision / criterion | Evidence | Verdict |
+|------|----------------------|----------|---------|
+| LAN-01 | Container-name/private-range Test Connection still succeeds on the hardened build | Live: this plan's `POSITIVE PASS` (`success=true version=5.0.0.2800`) against `http://sonarr-v5:8989` on `DEV_PIN_R2`. Unit: 125-04 GREEN leaves all 125-01 allow-case tests passing (201 passed/87 subtests) | PASS |
+| LAN-02 | Cloud-metadata/link-local still refused with the same message | Live: this plan's `NEGATIVE PASS` against `http://169.254.169.254` with the exact locked string | PASS |
+| SC2 (metadata/link-local, loopback-wrong-port, redirects stay rejected) | Same outcome preserved after the guard rewrite | Live `NEGATIVE PASS` (this plan) plus 125-04 unit `test_rejects_aws_ipv6_metadata`, `test_rejects_alibaba_metadata`(+ipv6-mapped); loopback-port and redirect tests unchanged from 125-01 | PASS |
+| SC4 (release notes note the behaviour change) | 1.8.0 draft notes describe the behaviour accurately | 125-05 Task 1 commit `18de612` rewrote `CHANGELOG.md` `## [Unreleased]` to match post-125-04 behavior | PASS |
+| D-06 (scope) | Only `_validate_url`/`_test_arr_connection` changed by the gap-closure fix | 125-05 Gate 4 rerun over 125-04: exactly 3 files in the `src/` diff since `BASE`, `controller/` untouched, one definition/one call site of `_validate_url` | PASS |
+| D-07 (wording; key never echoed) | Specific refusal reasons for the new cases; no new logger/key lines | 125-05 Gate 5 rerun: 0 new `logger.`/`api_key`/`X-Api-Key` lines in `b6d0902`; live `NEGATIVE_CR01` shows the new `BAD_CHARS_MSG` text end to end | PASS |
+| D-08 (test-first proof) | RED-before-GREEN for the gap-closure fix; full suite + whole-tree ruff pass | 125-05 Gates 1–3 rerun over 125-04: suite matches the fixed 24-line baseline, whole-tree `ruff check src/python/` clean, `test(125-04)` (`730d3c7`) precedes `fix(125-04)` (`b6d0902`) | PASS |
+| D-09 (live check) | The hardened build passes the live re-check; sandbox restored and verified; production read-only | This plan: `CHECK_STATUS=PASS`; `teardown.sh --final` ends `SANDBOX_RESTORED ok`; fresh-session check confirms `IMAGE_PIN_L0`, compose line, `sonarr_url`, `/server/status` 200; production fingerprint byte-identical across before/after/final, matching 125-03's `StartedAt` with zero drift | PASS |
+| D-10 (release notes) | 1.8.0 draft CHANGELOG entry records the behaviour change | 125-02 Task 1 commit `3022056` (original entry), kept accurate by 125-05's rewrite | PASS |
+| D-11 (parser-differential bypass fixed) | URLs the guard and `requests`/`urllib3` would interpret differently are refused; exact-string validation | Unit: 125-04 `TestParserDifferentialGuard` (19 tests) plus handler-level backslash tests, RED (`730d3c7`) → GREEN (`b6d0902`), 201 passed/87 subtests. Live: this plan's `NEGATIVE_CR01 PASS` against the exact CR-01-style backslash payload `http://169.254.169.254\@sonarr-v5:8989`, refused with the exact locked message, with the real `requests`/`urllib3` stack and real Docker DNS | PASS |
+| D-12 (metadata addresses inside allowed ranges refused) | `fd00:ec2::254` and `100.100.100.200` refused; ULA/CGNAT neighbors stay allowed | Unit only: 125-04 `test_rejects_aws_ipv6_metadata`, `test_rejects_alibaba_metadata`(+ipv6-mapped), `test_accepts_fd00_ec2_neighbor`/`test_accepts_tailscale_magicdns`/`test_accepts_alibaba_metadata_neighbor` | PASS (unit-proven; not separately exercised live in this plan — neither address is the sandbox's Sonarr target) |
+| D-13 (release notes disclose the pre-upgrade risk) | Plain-language note that 1.7.6 and earlier could be tricked by a crafted URL, and upgrading fixes it | 125-05 `CHANGELOG.md` `### Security` section leads with this exact disclosure, commit `18de612` | PASS |
+| D-14 (non-ASCII hosts and `?`/`#` refused; `xn--` accepted) | International host names must use the `xn--` form; query/fragment refused | Unit: 125-04 `TestParserDifferentialGuard::test_rejects_non_ascii_host`, `test_rejects_query_string`, `test_rejects_fragment`, `test_accepts_punycode_host` (lock). CHANGELOG: 125-05's Changed-section bullet states the `xn--` guidance | PASS |
+
+### Review-closure table (125-REVIEW.md findings)
+
+| Finding | Issue | Closure evidence | Verdict |
+|---------|-------|-------------------|---------|
+| CR-01 | Parser mismatch (`urlparse` vs `urllib3.util.parse_url`) let a backslash payload bypass the loopback-port gate and the metadata block | 125-04 RED (`730d3c7`) → GREEN (`b6d0902`): character allow-list before any parser, parser-agreement check, single normalized URL reused for validation and the request. 125-05 Gate rerun confirms the fix is scoped to `config.py` with 0 new log/key lines. Live: this plan's `NEGATIVE_CR01 PASS` against the real payload with the real `requests`/`urllib3` stack | CLOSED |
+| WR-01 | AWS IPv6 instance-metadata `fd00:ec2::254` allowed via the new `fc00::/7` range | 125-04 `_METADATA_NETWORKS` check (`test_rejects_aws_ipv6_metadata`); CHANGELOG 125-05 note | CLOSED (unit-proven) |
+| WR-02 | Malformed hostnames raised `UnicodeError`, escaping as an HTTP 500 instead of the JSON refusal contract | 125-04 `test_sonarr_malformed_hostname_returns_json_error` plus `TestParserDifferentialGuard` consecutive-dots/bare-dot/64-char-label tests; `UnicodeError`/`ValueError` now caught and mapped to a normal JSON error | CLOSED |
+| WR-03 | Refusal of IPv6-transition forms depended on interpreter-version-specific `is_global`/`is_reserved` tables | 125-04 explicit `_REFUSED_NETWORKS` entries (6to4/Teredo/NAT64/SIIT) plus a `PropertyMock`-simulated-old-interpreter test proving refusal independent of interpreter tables; 5 real-table lock tests pass unchanged | CLOSED |
+| IN-01 | Trailing whitespace: validated string differed from the fetched string | 125-04 single normalization point (`url = raw_url.strip().rstrip("/")`) reused for both `_validate_url` and `requests.get`; `test_sonarr_trims_whitespace_and_requests_exact_validated_url` | CLOSED |
+| IN-02 | `TestLanRelaxationScope` brittle (scanned `.venv`/`build`/`dist`; narrow import regex) | 125-04 widened directory exclusions and the outbound-HTTP-module regex | CLOSED |
+| IN-03 | CHANGELOG overstated the guard's behaviour before CR-01/WR-01 were fixed | 125-05 rewrote the `[Unreleased]` entry to match post-125-04 behaviour (D-10 through D-14), commit `18de612` | CLOSED |
+
+**Phase 125 live re-check: PASSED**
+
+The sandbox is restored to `IMAGE_PIN_L0` (`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`) and verified in a fresh, independent session. Production `seedsyncarr` was never touched beyond the single permitted read-only fingerprint and is byte-identical before, during and after this plan (and unchanged since 125-03). PR #140 remains open and draft (`isDraft: true`, `state: OPEN`, `headRefOid: 18de612d...`); nothing was merged.
