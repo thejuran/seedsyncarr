@@ -175,3 +175,250 @@ Identical container Id, image and `StartedAt` before and after this plan's entir
 (throwaway positive control + sandbox dry run). Production was never named as a target by
 any harness script (confirmed by the grep gate above) and was only ever read, never
 written, in this plan.
+
+## Build under test
+
+- **Tag/digest:** `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7`
+- **RELEASE_DIGEST source:** `126-04-SUMMARY.md` / `126-REL-EVIDENCE.md`, re-resolved once this
+  session with method B (anonymous GHCR pull token, `HEAD /v2/.../manifests/1.8.0`, OCI index
+  Accept header): `docker-content-digest: sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7`
+  — identical to the recorded value. Confirmed match.
+
+## Sandbox smoke (Plan 126-05)
+
+NAS capture dir (0700, not committed): `/volume1/docker/v5test/results/smoke126-20261028T221654Z`.
+Holds `teardown.sh`, `webhook-post.sh`, `extract_secrets.py`, `token-probe.mjs` (copies of the
+committed harness, sha256-verified byte-identical before use), `state.env`, `secret` (0600, fresh
+webhook HMAC key), and the before/after production-fingerprint captures below.
+
+### Step 0: preconditions (read-only)
+
+```
+wud: exited
+P0 (production): 2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 \
+  ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e \
+  2026-10-23T07:04:18.591254939Z running
+sandbox .Config.Image (before): ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e
+sandbox sonarr_url: http://sonarr-v5:8989
+sandbox radarr_url: "" (empty)
+sandbox radarr enabled: false
+seedbox (nyx.usbx.me): reachable
+arr containers present: sonarr-v4 (linuxserver/sonarr:4.0.20), sonarr-v5 (develop), radarr (latest), sonarr (latest, prod)
+```
+
+`state.env` written before any change: `IMAGE_PIN_L0`, `SONARR_URL_L0=http://sonarr-v5:8989`,
+`RADARR_URL_L0=` (empty), `RADARR_ENABLED_L0=false`.
+
+**Deviation found at Step 0 (Rule 3 - Blocking):** `126-teardown.sh`'s `post_arr_key()` used
+`jq -n --rawfile v "$file" ...`, but the NAS's `jq` is version 1.5 (`--rawfile` was added in jq
+1.6) — the first live attempt to set the Sonarr v4 API key failed with
+`jq: Unknown option --rawfile`. This would also have broken teardown's own key-restore step
+later in this same session. Fixed by switching to `jq -nR --arg section ... --arg key ...
+'{section:$section,key:$key,value:input}' < "$file"` (reads the file's first line as a raw
+string via stdin instead of `--rawfile`) — same value-never-in-argv guarantee, jq-1.5-compatible.
+Verified with `bash -n` and `shellcheck 0.11.0` (0 findings) before use; re-copied to the NAS
+capture dir and sha256-verified (`f0c0c817eed00a8140e479633daea3dd2d2a283ba6d41b3de9c5294606e46b8e`).
+Committed with this plan's Task 1 commit.
+
+### Sandbox deploy
+
+Inode-preserving edit of the `seedsyncarr-test` image line in
+`/volume1/docker/v5test/docker-compose.yml` (sed to a temp file, `cat` back):
+
+```
+INODE before=101505523 after=101505523
+ seedsyncarr-test Pulling
+ ... (multi-arch layers) ...
+ seedsyncarr-test Pulled
+ Container seedsyncarr-test  Recreate
+ Container seedsyncarr-test  Recreated
+ Container seedsyncarr-test  Starting
+ Container seedsyncarr-test  Started
+```
+
+```
+.Image (id): sha256:12fba7858e2b84e5578753e340d5ebe8fd4703f62873ecb84f35ba5b35e79309
+.Config.Image: ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7
+RepoDigests: ["ghcr.io/thejuran/seedsyncarr@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7"]
+```
+
+RepoDigests contains RELEASE_DIGEST exactly (D-11). Replaced pin:
+`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`
+(`IMAGE_PIN_L0`).
+
+**Production P1 (immediately after deploy):** identical to P0 (same Id, image, `StartedAt`).
+
+### Restart check (D-12a)
+
+```
+restart marker: 2026-10-28T22:20:16Z
+sudo /usr/local/bin/docker restart seedsyncarr-test
+up after 3 tries (~15s)
+scan ok after 1 try: scantime=1793226032.047287 (>= restart epoch 1793226016) failed=false
+log since restart: 21 lines, Traceback count=0, fresh "Starting SeedSyncarr" line present
+```
+
+Verdict, restart: **PASS**.
+
+### Sonarr v4 integration (D-12)
+
+Key compare (`cmp -s` on two 0600 files, values never printed): sandbox's current key vs
+`sonarr-v4`'s config.xml key — **DIFFERENT**. Sandbox's original key copied to `sonarr_key.l0`
+(0600) and `SONARR_KEY_SET=1` recorded before any change; `sonarr_api_key` then set from the
+`sonarr-v4` key via the fixed value-free jq pattern (HTTP 200). `sonarr_url` set to
+`http://sonarr-v4:8989` (`SONARR_URL_SET=1`, HTTP 200); `sonarr.enabled` was already `true`.
+
+```
+$ curl -s "http://127.0.0.1:8801/server/config/sonarr/test-connection"
+{"success": true, "version": "4.0.20.3014"}
+```
+
+Version starts with `4.` (D-12a). Queue-poll/`ArrQueueClient` check: exercised live during the
+real-transfer window below (an active auto-queue candidate wired to `sonarr-v4` running through
+the completion gate) — across the full session log (22:20:16Z onward) there are 0
+case-insensitive `unavailable` lines and 0 ` - ERROR - ` lines.
+
+Verdict, Sonarr v4 integration: **PASS**.
+
+### Radarr integration (D-12, orchestrator resolution: Test Connection + signed synthetic webhook only)
+
+Key compare: sandbox's radarr key (empty/unset) vs production `radarr`'s config.xml key —
+**DIFFERENT**. Sandbox's original (empty) key copied to `radarr_key.l0` (0600) and
+`RADARR_KEY_SET=1` recorded before any change; `radarr_api_key` set from the production Radarr's
+key (read read-only from its mounted `config.xml`) via the same value-free jq pattern (HTTP 200).
+`radarr_url` set to `http://radarr:7878` (`RADARR_URL_SET=1`, HTTP 200); `radarr.enabled` set to
+`true` (`RADARR_ENABLED_SET=1`, HTTP 200).
+
+```
+$ curl -s "http://127.0.0.1:8801/server/config/radarr/test-connection"
+{"success": true, "version": "6.4.4.10685"}
+```
+
+Only `GET /api/v3/system/status`-equivalent read traffic was sent to production Radarr (Test
+Connection); no Radarr write endpoint was ever called in this session (confirmed: the only Radarr
+HTTP verbs issued by SeedSyncarr code in this plan are the Test Connection GET and, later, the
+sandbox-side synthetic webhook which never reaches Radarr itself).
+
+Verdict, Radarr integration: **PASS**.
+
+### Webhook secret
+
+The sandbox had no webhook secret configured before this session (confirmed indirectly, since
+`general.webhook_secret` always serializes as `""` regardless of its real value per SEC-02: an
+unsigned `Test` POST to `/server/webhook/sonarr` returned `HTTP 200 "Test OK"` before any change).
+A fresh random secret was generated (`head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9'`),
+written to the capture dir's `secret` file (0600), and POSTed via `config/set`
+(`WEBHOOK_SECRET_SET=1` recorded). Confirmed active: the same unsigned `Test` POST now returns
+`HTTP 401 "Missing webhook signature"`.
+
+### Real transfer (D-12a)
+
+`SYNTH_ROOTS=SSA126.Smoke.S01 SSA126.SmokeMovie.2026` recorded to `state.env` before any synthetic
+material was created. Built on the seedbox in `/home/jules1651/ssa126-stage/` with `head -c` from
+`/dev/urandom`, then `mv`'d atomically into `/home/jules1651/v5test/` (same filesystem):
+
+```
+remote sha256 SSA126.Smoke.S01E01.mkv (8 MiB):       3c58f51b6a57d1a4c33d3409db9c7e99b7becd818bdffe9549dd909d20fed6f1
+remote sha256 SSA126.SmokeMovie.2026.mkv (16 MiB):   6581ea17ee5677c3bf56954347d886131c2556eb9bf2b7bc51349ccc5963b1f5
+```
+
+Both roots were picked up by the scanner and initially **held** (Sonarr now enabled, so the
+completion gate requires arr-queue proof before any new auto-queue candidate may transfer):
+
+```
+2026-10-28 18:27:37,567 - INFO - seedsyncarr.CompletionGate - Completion hold for 'SSA126.Smoke.S01': No matching queue entry
+2026-10-28 18:27:37,584 - INFO - seedsyncarr.CompletionGate - Completion hold for 'SSA126.SmokeMovie.2026': No matching queue entry
+```
+
+Model snapshot at this point: both roots `state: "default"`, `hold_reason: "no_queue_entry"`,
+`local_size: null` — zero bytes transferred, confirming the gate blocks the transfer itself, not
+just the later import/delete decision. Since these are synthetic roots never actually present in
+either arr's real queue, they were released the same way as the established D-06(e) pattern
+(122-SAFE01-EVIDENCE.md): a one-shot manual release per root.
+
+```
+$ curl -s -X POST "http://127.0.0.1:8801/server/command/queue/SSA126.Smoke.S01?release_unverified=true"
+Queued file 'SSA126.Smoke.S01'
+$ curl -s -X POST "http://127.0.0.1:8801/server/command/queue/SSA126.SmokeMovie.2026?release_unverified=true"
+Queued file 'SSA126.SmokeMovie.2026'
+```
+
+```
+2026-10-28 18:30:22,219 - WARNING - seedsyncarr.Controller.CommandProcessor - Manual release of unverified 'SSA126.Smoke.S01' (No matching queue entry); source-completion check bypassed for this transfer only
+2026-10-28 18:30:22,491 - INFO - seedsyncarr.CompletionGate - Completion hold dropped for 'SSA126.Smoke.S01' (no longer a queue candidate)
+2026-10-28 18:30:22,992 - WARNING - seedsyncarr.Controller.CommandProcessor - Manual release of unverified 'SSA126.SmokeMovie.2026' (No matching queue entry); source-completion check bypassed for this transfer only
+2026-10-28 18:30:23,113 - INFO - seedsyncarr.CompletionGate - Completion hold dropped for 'SSA126.SmokeMovie.2026' (no longer a queue candidate)
+```
+
+Correct "dropped" wording both times (the manual-release path bypasses the proof gate; it is
+never logged as "cleared" — that wording is reserved for the proof-based release path, per
+Phase 122 D-16/D-17). Both files transferred to completion within seconds (unmetered
+`lftp.rate_limit=0`); the local sha256 of each matched its remote sha256 exactly:
+
+```
+local sha256 SSA126.Smoke.S01E01.mkv:     3c58f51b6a57d1a4c33d3409db9c7e99b7becd818bdffe9549dd909d20fed6f1  (= remote)
+local sha256 SSA126.SmokeMovie.2026.mkv:  6581ea17ee5677c3bf56954347d886131c2556eb9bf2b7bc51349ccc5963b1f5  (= remote)
+```
+
+Final model state for both: `state: "downloaded"`, `hold_reason: null`,
+`local_size == remote_size`. The in-flight `.lftp` temp-suffix name was not directly observed
+this run (polling interval was coarser than these two small 8/16 MiB files' transfer time at an
+unmetered rate limit) — noted per the plan's "if observed" phrasing, not a failure condition; the
+file-identity (sha256) and lifecycle (held → released → downloaded) evidence stands on its own.
+Across the full session log (22:20:16Z onward): 0 `unavailable` lines, 0 ` - ERROR - ` lines, 0
+`Traceback` lines.
+
+Verdict, real transfer: **PASS**.
+
+### Webhook import (D-12a, D-12)
+
+```
+$ bash webhook-post.sh <D> sonarr Download SSA126.Smoke.S01 SSA126.Smoke.S01E01.mkv
+HTTP_CODE=200
+OK
+$ bash webhook-post.sh <D> radarr Download SSA126.SmokeMovie.2026 SSA126.SmokeMovie.2026.mkv
+HTTP_CODE=200
+OK
+```
+
+```
+2026-10-28 18:33:36,429 - INFO - seedsyncarr.WebhookManager - Sonarr webhook import enqueued: 'SSA126.Smoke.S01E01.mkv' (eventType=Download, episodeFile.sourcePath)
+2026-10-28 18:33:36,888 - INFO - seedsyncarr.WebhookManager - Sonarr import detected: 'SSA126.Smoke.S01E01.mkv' (matched SeedSyncarr file 'SSA126.Smoke.S01'; eventType=Download, episodeFile.sourcePath)
+2026-10-28 18:33:36,889 - INFO - seedsyncarr.Controller - Recorded webhook import: 'SSA126.Smoke.S01' (child: 'SSA126.Smoke.S01E01.mkv')
+2026-10-28 18:33:37,400 - INFO - seedsyncarr.Controller - Scheduled auto-delete of 'SSA126.Smoke.S01' in 300 seconds
+2026-10-28 18:33:40,324 - INFO - seedsyncarr.WebhookManager - Radarr webhook import enqueued: 'SSA126.SmokeMovie.2026.mkv' (eventType=Download, movieFile.sourcePath)
+2026-10-28 18:33:40,718 - INFO - seedsyncarr.WebhookManager - Radarr import detected: 'SSA126.SmokeMovie.2026.mkv' (matched SeedSyncarr file 'SSA126.SmokeMovie.2026'; eventType=Download, movieFile.sourcePath)
+2026-10-28 18:33:40,719 - INFO - seedsyncarr.Controller - Recorded webhook import: 'SSA126.SmokeMovie.2026' (child: 'SSA126.SmokeMovie.2026.mkv')
+2026-10-28 18:33:41,016 - INFO - seedsyncarr.Controller - Scheduled auto-delete of 'SSA126.SmokeMovie.2026' in 300 seconds
+```
+
+Verdict, webhook import: **PASS**.
+
+### Cleanup (D-12a)
+
+```
+2026-10-28 18:38:37,404 - INFO - seedsyncarr.Controller - Auto-deleted local file 'SSA126.Smoke.S01'
+2026-10-28 18:38:41,020 - INFO - seedsyncarr.Controller - Auto-deleted local file 'SSA126.SmokeMovie.2026'
+```
+
+Both deletions fired exactly `300.004s` after their respective "Scheduled auto-delete" line
+(`18:33:37.400` -> `18:38:37.404`; `18:33:41.016` -> `18:38:41.020`), matching the sandbox's
+unchanged `autodelete.delay_seconds=300`. Confirmed absent under the sandbox downloads
+afterward:
+
+```
+$ docker exec seedsyncarr-test sh -c "[ -e /downloads/SSA126.Smoke.S01 ] && echo PRESENT || echo ABSENT"
+ABSENT
+$ docker exec seedsyncarr-test sh -c "[ -e /downloads/SSA126.SmokeMovie.2026 ] && echo PRESENT || echo ABSENT"
+ABSENT
+```
+
+Verdict, cleanup: **PASS**.
+
+### Production fingerprint P2 (after real transfer / webhook import / cleanup)
+
+```
+2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e 2026-10-23T07:04:18.591254939Z running
+```
+
+Identical to P0 and P1 (same Id, image, `StartedAt`). Production was never written in this task.

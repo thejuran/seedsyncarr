@@ -131,12 +131,14 @@ set_radarr_enabled() {
 }
 
 # Build a value-free config/set body for one *arr API key from a 0600 L0 file (never
-# printing the value itself) and POST it.
+# printing the value itself) and POST it. Uses `-nR`/`input` (reads the file's first
+# line as a raw string via stdin) rather than `--rawfile`, which the NAS's jq 1.5 does
+# not support (added in jq 1.6) -- same value-never-in-argv guarantee either way.
 post_arr_key() {
   local section="$1" key="$2" file="$3" tmp
   tmp="$D/.${section}_key.body.$$.json"
-  jq -n --rawfile v "$file" --arg section "$section" --arg key "$key" \
-    '{section:$section,key:$key,value:($v|rtrimstr("\n"))}' > "$tmp"
+  jq -nR --arg section "$section" --arg key "$key" \
+    '{section:$section,key:$key,value:input}' < "$file" > "$tmp"
   chmod 0600 "$tmp"
   curl -s --max-time 15 -o /dev/null -X POST -H "Content-Type: application/json" \
     -d @"$tmp" "$SSY/server/config/set"
