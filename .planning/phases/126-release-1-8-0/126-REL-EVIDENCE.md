@@ -106,3 +106,37 @@ npm install
 ### D-02 stop
 
 Not triggered. All targeted checks passed for both the Python and root roll-ins.
+
+## Roll-in: @types/jasmine 7 (isolated)
+
+**Commands:**
+```
+# src/angular/package.json: "@types/jasmine": "^6.0.0" -> "^7.0.0" (ONLY this line)
+cd src/angular && npm install
+npx tsc --noEmit -p src/tsconfig.spec.json
+npm run lint
+make run-tests-angular   # from repo root
+```
+
+**Resolved versions:** `@types/jasmine@7.0.0`; `jasmine-core@6.3.0` (unchanged) confirmed via `npm ls @types/jasmine jasmine-core`.
+
+**Diff stats:** `git diff --stat` showed only `src/angular/package.json` and `src/angular/package-lock.json` (2 files changed, 5 insertions, 5 deletions).
+
+**TypeScript (`npx tsc --noEmit -p src/tsconfig.spec.json`):** 0 errors (no output).
+
+**Lint (`npm run lint`):** passed, `--max-warnings 0` with no output (0 warnings).
+
+**Karma (`make run-tests-angular`, dockerized ChromeHeadlessCI):**
+```
+Chrome Headless 156.0.0.0 (Linux 0.0.0): Executed 657 of 657 SUCCESS (2.016 secs / 1.786 secs)
+TOTAL: 657 SUCCESS
+
+Coverage summary
+Statements   : 84.62% ( 1805/2133 )
+Branches     : 70.49% ( 509/722 )
+Functions    : 81.56% ( 447/548 )
+Lines        : 85.44% ( 1738/2034 )
+```
+All four coverage metrics above the enforced `check.global` floors (83/68/79/83); container exited 0.
+
+**Commit:** `3605536` — `chore(126-01): roll in @types/jasmine 7 in isolation (#131 part)`
