@@ -301,29 +301,22 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 - ✓ LFTP status stays unavailable after a timed-out command until the command stream is verifiably resynchronized (XFER-06); pending auto-delete timer defers on a submitted-but-unobserved transfer (DEL-01); incomplete copies never exposed at an importable path, transfers gated on strong-identity arr-queue completion evidence with visible Waiting holds and a one-shot confirmed manual release (IMP-01/02); early per-episode import credit persisted while siblings transfer, whole-folder delete still gated on full coverage (IMP-03); PyPI packaging repaired and 1.7.5 published to Docker/GitHub/PyPI with digest smoke 8/8 (REL-02, REL-03 — NAS production deploy held by owner and carried to Phase 119.1) — Validated in Phase 119: Safety Follow-ups and 1.7.5 Release (v1.7.5)
 - ✓ Container startup no longer prints settings.cfg (one 'Config ready at' line); debug dump redacts every secret_fields() option; an unreadable settings.cfg is fatal and value-free (no reset to defaults, no web server); '%' in a value saves and reloads unchanged with value-free serialization errors — RED-first sentinel tests in CI (SEC-01); 1.7.6 published to Docker/GitHub/PyPI with a security notice and the full 1.7.5 changes, exact-digest NAS smoke incl. count-only no-secrets check with 1.7.5 positive control, and deployed to NAS production at `:1.7.6@sha256:da6196e0…` with verified backups, scan/arr checks and wud restored; owner given the credential-rotation checklist (REL-03 NAS portion, REL-04) — Validated in Phase 119.1: Startup log secrets fix and 1.7.6 release (v1.7.5)
 - ✓ SeedSyncarr 1.7.6 works with Sonarr 5.0.0.2701: Test Connection reports success and version; completion holds stay Waiting until the same download is complete in the Sonarr 5 queue (missing entry, API error or unrelated completed download keep the hold); Test webhook marks nothing, a real import marks exactly the right file; sanitized live fixtures with a hygiene guard run in CI without the NAS; closed "verified; no release needed" (SON5-01..05) — Validated in Phase 120: Sonarr 5 Compatibility (v1.7.7)
-- ✓ App API token attached only to same-origin `/server/` requests (fail closed on unparseable URLs); the GitHub update check no longer receives it, which also restores the update notice for token users (GitHub returned 401 before). RED-first Karma case table + VersionCheckService pin + real-browser `chromium-token` E2E green in PR CI; release-note disclosure and token rotation carried to Phase 126 (SEC-02) — Validated in Phase 121: Credential Forwarding (v1.8.0; merged via PR #132, not yet released)
-- ✓ Phase 119 import/auto-delete safeguards exercised live on the sandbox with synthetic material on the shipping build: Waiting hold + one-shot release, early per-episode credit, deferred webhook notices kept within a 120 s post-transfer window (discarded on stop/delete-local), arm-on-commit with a real 300 s auto-delete, credit surviving a restart, extraction staged out of sight with auto-delete re-arm (SAFE-01); Done-group and extract-staging incident records reconciled and closed with owner-confirmed production cleanup (SAFE-02); web handler and rate-limit logs reach the app log with no Arr API key ever logged (LOG-01); completion-gate prune says "dropped", not "cleared" (LOG-02) — Validated in Phase 122: Safety Acceptance and Logging Fixes (v1.8.0; on PR #134, not yet merged or released)
+- ✓ App API token attached only to same-origin `/server/` requests (fail closed on unparseable URLs); the GitHub update check no longer receives it, which also restores the update notice for token users (GitHub returned 401 before). RED-first Karma case table + VersionCheckService pin + real-browser `chromium-token` E2E green in PR CI; release-note disclosure and token rotation carried to Phase 126 (SEC-02) — Validated in Phase 121: Credential Forwarding (v1.8.0; merged via PR #132, released in 1.8.0)
+- ✓ Phase 119 import/auto-delete safeguards exercised live on the sandbox with synthetic material on the shipping build: Waiting hold + one-shot release, early per-episode credit, deferred webhook notices kept within a 120 s post-transfer window (discarded on stop/delete-local), arm-on-commit with a real 300 s auto-delete, credit surviving a restart, extraction staged out of sight with auto-delete re-arm (SAFE-01); Done-group and extract-staging incident records reconciled and closed with owner-confirmed production cleanup (SAFE-02); web handler and rate-limit logs reach the app log with no Arr API key ever logged (LOG-01); completion-gate prune says "dropped", not "cleared" (LOG-02) — Validated in Phase 122: Safety Acceptance and Logging Fixes (v1.8.0; merged via PR #134, released in 1.8.0)
+- ✓ A partial startup failure stops every already-started component (Job.run wraps setup; ScanManager, FileOperationManager and Controller.start clean up started children and re-raise the original error), and one failing cleanup no longer skips the rest. A SIGTERM-killed scanner set during shutdown logs INFO on a 10 s monotonic grace instead of the false "Scanner process(es) died unexpectedly" ERROR, and `Lftp.exit()` reaps a stuck lftp with a bounded (2.0 s) process-group kill. Both errors are gone across 17 live sandbox restart cycles, idle and mid-transfer (LIFE-01, LIFE-02). Validated in Phase 123: Startup and Shutdown Lifecycle (v1.8.0; merged via PR #137, released in 1.8.0)
+- ✓ Model-stream overflow was reproduced first (501 dropped events, 500 missing files, 1 ghost file). A stalled tab now gets one fresh `model-init` snapshot on the same SSE connection and converges to the server's file list, with buffering capped at one queue plus one snapshot (STRM-01, STRM-02). Validated in Phase 124: Model-Stream Overflow Recovery (v1.8.0; merged via PR #139, released in 1.8.0)
 - ✓ Sonarr/Radarr Test Connection accepts LAN IPs (10/8, 172.16/12, 192.168/16), IPv6 ULA, Tailscale/CGNAT and Docker container names (Phase 120's `http://sonarr-v5:8989` now succeeds), loopback only on 8989/7878; cloud-metadata/link-local (incl. `fd00:ec2::254`, `100.100.100.200`), unspecified, multicast, reserved, IPv6 transition forms and redirects stay refused with specific messages; a pre-existing parser-differential bypass (backslash URL) found in code review is closed by checking the exact requested URL and refusing ambiguous, credentialed, non-ASCII and `?`/`#` URLs; no other outbound path relaxed; 1.8.0 CHANGELOG draft records the minor-version behaviour change and a plain security note; sandbox live check owner-approved twice (LAN-01, LAN-02) — Validated in Phase 125: LAN Connection Tests (v1.8.0; merged via PR #140, released in 1.8.0)
 - ✓ 1.8.0 released and deployed: all open Dependabot PRs rolled in by lockfile regeneration plus post-merge setuptools/qs fixes (PR #143), 0 open alerts at tag; tag `v1.8.0` published GHCR (`sha256:6e8d453f…`), GitHub release and PyPI; 11/11 sandbox smoke checks on the exact digest; NAS production pinned to `:1.8.0@sha256:6e8d453f…` with a successful post-deploy scan, wud restored, owner confirmed (REL-05, REL-06) — Validated in Phase 126: Release 1.8.0 (2026-10-28)
 
 ## Current State
 
-Milestone v1.8.0 Reliability active (started 2026-10-21). Phase 121 Credential Forwarding complete, verified and merged to main (PR #132; not yet released). Phase 122 Safety Acceptance and Logging Fixes complete, verified and merged to main (PR #134, 2026-10-25). Phase 123 Startup and Shutdown Lifecycle complete and verified (2026-10-27; LIFE-01/LIFE-02 validated; normal and mid-transfer `docker restart` now log neither the false scanner-death error nor the lftp "Could not terminate the child" error, live-verified on the sandbox) and merged to main (PR #137). Phase 124 Model-Stream Overflow Recovery complete and verified (2026-10-27; STRM-01/STRM-02 validated; a stalled browser tab whose model-stream queue overflows now receives one fresh `model-init` snapshot on the same connection and converges to the server's file list, with buffering capped at one queue plus one snapshot; tests only, no sandbox session) and merged to main (PR #139). Phase 125 LAN Connection Tests complete and verified (2026-10-28; LAN-01/LAN-02 validated; Test Connection accepts LAN and Docker container addresses with loopback only on 8989/7878, metadata/link-local and ambiguous URLs refused, including a pre-existing backslash-URL bypass closed after code review; sandbox live check owner-approved) and merged to main (PR #140). Phase 126 Release 1.8.0 complete and verified (2026-10-28): 1.8.0 published (GHCR/GitHub/PyPI), smoke-tested by digest, deployed. All six milestone phases complete; milestone close-out (`/bm:complete-milestone`) pending. NAS production runs `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f…` (deployed 2026-10-28). v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release, no tag).
+v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126, 13/13 requirements, PRs #132/#134/#137/#139/#140/#142/#143). 1.8.0 is published to GHCR, GitHub and PyPI and runs on NAS production at `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f…`. The milestone is archived (`milestones/v1.8.0-ROADMAP.md`, `v1.8.0-REQUIREMENTS.md`). No milestone is active. Performance and Usability (conditional) is next in the roadmap, and UI Redesign (pipeline-first) comes after it, with order and scope set when activated. Minor review findings from Phases 122–124 are parked in the ROADMAP Backlog.
 
-## Current Milestone: v1.8.0 Reliability
+## Previous Milestone: v1.8.0 Reliability (Shipped 2026-10-28, tagged v1.8.0)
 
 **Goal:** Stop the app token from being sent to outside services, close the outstanding safety acceptance checks, and repair demonstrated lifecycle and integration failures with small changes, then release and deploy 1.8.0.
 
-**Target features:**
-- Credential forwarding: the app token is attached only to SeedSyncarr's own API requests, never external ones (e.g. the GitHub update check)
-- Safety acceptance: extraction/import/auto-delete checks pass; Done-group and extract-staging incident records reconciled (verified fix vs. remaining operator cleanup)
-- Startup/shutdown gaps: a failure during partial scanner/component startup or cleanup still cleans up started children and attempts cleanup of remaining components
-- Model-stream overflow recovery: a slow client converges to current server state after overflow, with bounded buffering (reproduce first; close with a recorded guarantee if one already exists)
-- LAN connection tests: Test Connection accepts intended local Sonarr/Radarr addresses (incl. Docker container names) while unintended destinations stay rejected
-- Logging fixes from Phase 120: webhook handler INFO logs reach the app log; completion-gate prune logs a distinct "dropped" message instead of "cleared"
-- Release 1.8.0: Dependabot review rolled in, image smoke-tested, deployed to NAS production by digest
-
-**Key context:** Small, evidence-backed changes only. Retain LFTP and the existing architecture, the Phase 119 import/deletion safeguards, existing per-component controller cleanup, auto-delete shutdown guards and lock ordering. Scanner buffering, residual import/restart, memory diagnostics and UI/webhook efficiency stay conditional investigations, not completion gates. Version label v1.8.0 matches the release number (minor bump: LAN test behavior change).
+**Outcome:** All 13 requirements validated (see Validated above). The token reaches only SeedSyncarr's own API. The Phase 119 safeguards passed live on the sandbox after one in-phase fix. Startup/shutdown cleanup and restart-time false errors are fixed, slow browser tabs recover from stream overflow, and Test Connection works for LAN and Docker addresses without opening it to metadata or ambiguous URLs. 1.8.0 was smoke-tested by digest and deployed to production.
 
 ## Previous Milestone: v1.7.7 Sonarr 5 Compatibility (Closed 2026-10-20; verified, no release needed)
 
@@ -394,7 +387,7 @@ Milestone v1.8.0 Reliability active (started 2026-10-21). Phase 121 Credential F
 
 ### Active
 
-- [ ] v1.8.0 Reliability (Phase 121+): see REQUIREMENTS.md for scoped requirements
+- [ ] Next milestone not yet defined. Candidates in ROADMAP.md: Performance and Usability (conditional on measured need) and UI Redesign (pipeline-first). Requirements are set by `/bm:new-milestone`.
 
 
 <!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
@@ -422,14 +415,15 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 - Test-hardening backlog (`.planning/backlog/TEST-HARDENING-REVIEW.md`, A-01..A-06) — test-infra niceties invisible to a launch reader; deferred (v1.4.0 scope decision)
 - Path-mapping redesign for webhook imports — v1.7.4 conservatively rejects ambiguous matches instead (Safety Patch scope decision)
 - Persistence migration / backup system / load-side recovery changes — v1.7.4 only makes writes atomic (Safety Patch scope decision)
+- Authentication, lifecycle-framework and event-bus redesigns — v1.8.0 fixed specific demonstrated gaps instead (Reliability scope decision)
+- Broad relaxation of outbound requests — only the Sonarr/Radarr Test Connection guard accepts intended LAN destinations (v1.8.0 scope decision)
 - NAS local-build QEMU issue — deploy-environment limitation, not a code defect; CI multi-arch publish works
 
 ## Context
 
 **Codebase state:**
 - ~35.5k Python LOC, ~20k TypeScript LOC
-- 1,278 Python tests, 89.27% container-inclusive coverage (fail_under=88 enforced); 614 Angular tests (Karma check.global 83/68/79/83 enforced)
-- 599 Angular unit tests passing
+- 1,945 Python unit tests (host run at the 1.8.0 release; fail_under=88 enforced); 657 Angular unit tests (Karma check.global 83/68/79/83 enforced)
 - 45+ Playwright E2E specs (amd64+arm64), CI-gated
 - Zero TypeScript lint errors
 - Angular 21.x, TypeScript 6, Python 3.12+ compatible
@@ -455,6 +449,10 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 - Config API redacts sensitive fields; SSE log stream scrubs passwords
 - SSH uses StrictHostKeyChecking=accept-new (TOFU) with persistent known_hosts
 - CI: lint job (ruff + eslint), unit tests, E2E (amd64+arm64), Docker + Deb builds
+- App API token attached only to same-origin `/server/` requests (fail closed on unparseable URLs)
+- Test Connection URL guard: ordered ipaddress classifier (LAN/ULA/CGNAT/Docker names allowed; loopback only on 8989/7878; metadata, link-local and ambiguous URLs refused) checked against the exact URL requests/urllib3 connect to
+- Model-stream overflow recovery: one fresh `model-init` resync on the same SSE connection; buffering bounded at one queue plus one snapshot
+- Shutdown: SIGTERM-killed scanners get a 10 s monotonic grace; `Lftp.exit()` uses `exit kill` plus a bounded process-group reap fallback
 - Sonarr 5 compatibility pinned by sanitized live fixtures (`src/python/tests/fixtures/sonarr5/`, build 5.0.0.2701) with a hygiene test; Sonarr calls still use API v3
 
 ## Constraints
@@ -517,13 +515,18 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 | Angular Karma `check.global` set stmts 83 / branches 68 / fns 79 / lines 83 (Plan 100-03, RATCHET-02) | Post-100-01/02 measured: stmts 84.14% / branches 69.46% / fns 80.49% / lines 84.99%; floor = floor(measured) − 1 per metric; margin 1%; first-ever Karma global thresholds (prior floor = 0 for all); `--code-coverage` flag added to Dockerfile CMD in same commit so gate is non-silent (text-summary confirms coverage collected) | ✓ Good |
 | Sonarr 5 checked on the NAS sandbox only, prod untouched (v1.7.7) | Sonarr 5 is beta with no downgrade path | ✓ Good |
 | Close v1.7.7 "verified; no release needed", no `v1.7.7` tag (SON5-05) | All checks passed with no code change; a version tag would trigger the release pipeline | ✓ Good |
+| Owner priority order for v1.8.0: credential forwarding → safety acceptance → startup/shutdown → stream overflow → LAN tests → release | Fix the credential leak first, then prove the shipped safeguards before changing more code | ✓ Good |
+| Allow one bounded wait (≤2.0 s lftp reap, only after forced close fails) despite "no new sleeps" (v1.8.0, Phase 123) | An lftp child stuck in uninterruptible I/O otherwise survives shutdown; an unbounded waitpid could hang restart | ✓ Good (17 live restarts clean) |
+| Recover stream overflow with a same-connection snapshot, not an event-bus redesign (v1.8.0, Phase 124) | Smallest change that guarantees convergence with bounded memory | ✓ Good (minor comment/test gaps in backlog) |
+| Validate the exact URL the HTTP stack connects to for Test Connection (v1.8.0, Phase 125) | Closes parser-differential bypasses; LAN acceptance is a minor-version behavior change | ✓ Good |
+| Roll every open Dependabot PR into 1.8.0 by lockfile regeneration (v1.8.0, Phase 126) | 0 open alerts at tag; one follow-up PR for post-merge alerts | ✓ Good |
 | Stay on Sonarr API v3 for now (backlog 999.5) | v3 deprecated but still served on Sonarr 5; v5 changes the queue model | — Pending |
 
 ## Project Status
 
-**Status:** Milestone v1.8.0 Reliability — all phases 121–126 complete; 1.8.0 released and running on NAS production; milestone close-out pending.
+**Status:** Between milestones. v1.8.0 Reliability shipped 2026-10-28 and is running on NAS production. Next milestone not yet started.
 
-31 milestones shipped (v1.0 through v4.0.3 as SeedSync, v1.0.0 rebrand + v1.1.0 UI redesign + v1.1.1 cleanup + v1.1.2 test audit + v1.2.0 test hardening as SeedSyncarr).
+Shipped milestone history: `.planning/MILESTONES.md`.
 
 ## Evolution
 
@@ -543,4 +546,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-28 after Phase 126 completion*
+*Last updated: 2026-10-28 after v1.8.0 milestone*

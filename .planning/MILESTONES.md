@@ -1,5 +1,24 @@
 # Project Milestones: SeedSync
 
+## v1.8.0 Reliability (Shipped: 2026-10-28; tag `v1.8.0`; deployed `1.8.0`)
+
+**Phases completed:** 6 phases (121–126), 52 plans, 124 tasks. Requirements 13/13 (SEC-02, SAFE-01/02, LOG-01/02, LIFE-01/02, STRM-01/02, LAN-01/02, REL-05/06). No milestone audit; every phase verified, with live sandbox evidence where it applied. Timeline 2026-10-21 → 2026-10-28, 309 commits, `src/` 53 files +5,837/−852. PRs #132, #134, #137, #139, #140, #142, #143. NAS production runs `:1.8.0@sha256:6e8d453f…`.
+
+**Key accomplishments:**
+
+- The app API token is sent only to SeedSyncarr's own `/server/` API, never to outside services. The GitHub update check no longer receives it, which also fixes the update notice for token users. Proven in a real browser in CI (SEC-02).
+- The Phase 119 import and auto-delete safeguards were exercised live on the sandbox. Testing found one real defect, a late per-episode webhook notice that was dropped instead of credited, and it was fixed in-phase and rechecked live. Both open incident records were closed with owner-confirmed cleanup. Webhook logs now reach the app log, Arr API keys are never logged, and a pruned hold says "dropped" rather than "cleared" (SAFE-01/02, LOG-01/02).
+- If startup fails partway, the components that already started are cleaned up, and one failing cleanup no longer skips the rest. Normal and mid-transfer `docker restart` no longer log the false "Scanner process(es) died unexpectedly" error or lftp's "Could not terminate the child" error, confirmed over 17 live restart cycles (LIFE-01/02).
+- A browser tab that falls behind on the live file-list stream now gets one fresh snapshot and catches up to the server's state. Buffering is capped at one queue plus one snapshot (STRM-01/02).
+- Test Connection works for LAN, Tailscale and Docker container-name Sonarr/Radarr addresses. Cloud-metadata, link-local and ambiguous URLs stay refused, and a pre-existing backslash-URL bypass found in code review is closed (LAN-01/02).
+- 1.8.0 rolled in every open Dependabot fix (0 open alerts at the tag) and was published to GHCR, GitHub and PyPI. It passed 11/11 smoke checks on the exact digest and was deployed to NAS production by that digest, with a successful post-deploy scan and owner confirmation (REL-05/06).
+
+**Known deferred items at close:** 3 open verification artifacts (see STATE.md Deferred Items). Phase 119's is stale, since its human checks passed 2026-10-18. Phases 123 and 124 each have a minor review finding (SIGINT shutdown grace; model-stream resync comment and tests), both parked in the ROADMAP Backlog.
+
+**Operator follow-ups carried:** api_token rotation (1.8.0 release-note disclosure), 1.7.6 credential rotation confirmation, sandbox `sonarr-v5` key rotation, sandbox test-torrent removal.
+
+---
+
 ## v1.7.7 Sonarr 5 Compatibility (Closed: 2026-10-20; verified, no release needed; no tag)
 
 **Phases completed:** 1 phase (120), 6 plans, 21 tasks. Requirements 5/5 (SON5-01..05). Verification: passed 5/5 (`phases/120-sonarr-5-compatibility/120-VERIFICATION.md`). No milestone audit (single phase, verified). Tests only: 12 files, +1,191 lines under `src/python/tests/`; no production code changed. No 1.7.7 release cut and no `v1.7.7` git tag (a tag would trigger the release pipeline); NAS production stays on 1.7.6.

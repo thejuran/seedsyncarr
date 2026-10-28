@@ -2,33 +2,33 @@
 gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
-status: milestone_complete
-stopped_at: Milestone complete (Phase 126 was final phase)
-last_updated: 2026-10-28T23:46:07.226Z
-last_activity: 2026-10-28 -- Phase 126 complete, v1.8.0 deployed to production
+status: Awaiting next milestone
+stopped_at: "v1.8.0 Reliability milestone closed and archived (Phases 121-126, 13/13 requirements); 1.8.0 running on NAS production"
+last_updated: "2026-10-28T23:54:26.000Z"
+last_activity: 2026-10-28 — Milestone v1.8.0 completed and archived
 progress:
-  total_phases: 7
+  total_phases: 6
   completed_phases: 6
   total_plans: 52
-  completed_plans: 95
-  percent: 86
+  completed_plans: 52
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-21)
+See: .planning/PROJECT.md (updated 2026-10-28)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Milestone complete
+**Current focus:** Planning next milestone (v1.8.0 Reliability shipped and archived 2026-10-28)
 
 ## Current Position
 
-Phase: 126
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-10-28
+Phase: Milestone v1.8.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-28 — Milestone v1.8.0 completed and archived
 
 ## Accumulated Context
 
@@ -184,7 +184,7 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 Last session: 2026-10-28T23:34:31.282Z
 Stopped at: Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
-Next action: None required for v1.8.0 -- all release and deploy work is done. Remaining items are operator follow-ups (api_token rotation, credential rotation confirmation, sandbox test-torrent removal; see Operator Next Steps and Deferred Items) and awaiting the owner's direction on what comes next. The milestone's own close-out/archival (if desired) is a separate owner decision, not performed by this plan.
+Next action: Start the next milestone with /bm:new-milestone. v1.8.0 is closed and archived (`milestones/v1.8.0-ROADMAP.md`, `v1.8.0-REQUIREMENTS.md`). Remaining items are operator follow-ups (api_token rotation, credential rotation confirmation, sandbox test-torrent removal; see Deferred Items).
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -197,9 +197,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- v1.8.0 Reliability (Phases 121-126) is fully complete and deployed to production; the Phase 122 note previously here is stale (that merge decision resolved in Phase 122-09/-17, 2026-10-23/25). No phase is currently active.
-- Remaining operator items (not release-blocking): rotate the production `api_token` per the Phase 121 pending-todo note above; seedbox/Sonarr/Radarr credential rotation confirmation; remove the Hacks.S04E01 test torrent from the sandbox Deluge once seed time is met (see Deferred Items).
-- No next milestone has been started; awaiting the owner's direction for what comes after v1.8.0.
+- Start the next milestone with /bm:new-milestone
 
 ## Deferred Items
 
@@ -220,3 +218,11 @@ Open audit artifacts acknowledged at v1.7.7 close (2026-10-20), all from earlier
 | debug | done-group-no-auto-delete | resolved (Phase 122-09; owner-confirmed cleanup 2026-10-23, moved to `.planning/debug/resolved/`) |
 | debug | extract-staging-autodel-rearm | resolved (Phase 122-09; owner-confirmed cleanup 2026-10-23, moved to `.planning/debug/resolved/`) |
 | verification | Phase 119 119-VERIFICATION.md | resolved (browser half closed 2026-10-18 in 119-HUMAN-UAT.md; extraction/import checks closed via SAFE-01 D-06/D-07 PASS evidence + Phase 122-09 owner-confirmed cleanup) |
+
+Open artifacts acknowledged at v1.8.0 close (2026-10-28):
+
+| Category | Item | Status |
+|----------|------|--------|
+| verification | Phase 119 119-VERIFICATION.md (`human_needed`) | Stale frontmatter only: both human checks passed 2026-10-18 (`119-HUMAN-UAT.md` status complete) |
+| verification | Phase 123 123-VERIFICATION.md (`gaps_found`, minor) | SIGINT shutdown-grace gap (review WR-01); parked in ROADMAP Backlog 2026-10-27 |
+| verification | Phase 124 124-VERIFICATION.md (`gaps_found`, minor) | Resync comment accuracy and test tightening (review WR-01/WR-02); parked in ROADMAP Backlog 2026-10-27 |

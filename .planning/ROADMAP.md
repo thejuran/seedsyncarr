@@ -1,13 +1,13 @@
 # Roadmap: SeedSyncarr
 
-Updated 2026-10-21. Milestone v1.8.0 Reliability is active (Phases 121–126, started 2026-10-21; nothing implemented yet). v1.7.7 Sonarr 5 Compatibility closed 2026-10-20 (verified; no release needed). NAS production runs 1.7.6. Existing implementation must be checked before planning any carried-forward fix.
+Updated 2026-10-28. Milestone v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126; 1.8.0 published and running on NAS production by digest). No milestone is active; the next one starts with `/bm:new-milestone`. Existing implementation must be checked before planning any carried-forward fix.
 
 ## Milestones
 
 - ✅ v1.7.4 Safety Patch -- Phases 116–118 (shipped 2026-10-09)
 - ✅ v1.7.5 Safety Release -- Phases 119 and 119.1; includes release 1.7.6 (shipped 2026-10-15)
 - ✅ v1.7.7 Sonarr 5 Compatibility -- Phase 120 (closed 2026-10-20; verified, no release needed)
-- 🔨 v1.8.0 Reliability -- Phases 121–126 (in progress)
+- ✅ v1.8.0 Reliability -- Phases 121–126 (shipped 2026-10-28)
 
 Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
 
@@ -18,294 +18,19 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 
 </details>
 
-### 🔨 v1.8.0 Reliability (Phases 121–126, in progress)
-
-**Goal:** Stop the app token from being sent to outside services, close the outstanding safety acceptance checks, and repair demonstrated lifecycle and integration failures with small changes, then release and deploy 1.8.0.
-
-**Requirements:** `REQUIREMENTS.md` (13: SEC-02, SAFE-01/02, LIFE-01/02, STRM-01/02, LAN-01/02, LOG-01/02, REL-05/06). Owner-approved priority order: credential forwarding → safety acceptance → startup/shutdown → model-stream overflow → LAN connection tests → release. Planning boundaries: small, evidence-backed changes only; no authentication, lifecycle-framework or event-bus redesign; no broad relaxation of outbound requests; retain LFTP, the existing architecture, the Phase 119 import/deletion safeguards, existing per-component controller cleanup, auto-delete shutdown guards and lock ordering.
-
-**CI gate (every phase):** full Python suite green AND whole-tree `ruff check src/python/` clean (CI runs ruff as a separate gate from pytest, so build-verify must run it on the whole tree, not just touched files); Python `fail_under` ≥ 88 holds; Angular unit tests and Karma `check.global` thresholds green where Angular code is touched (Phase 121); every targeted regression shown to fail before its fix and pass after.
-
-- [x] **Phase 121: Credential Forwarding** - The app token is attached only to SeedSyncarr's own API requests, never to external destinations such as the GitHub update check (completed 2026-10-21)
-- [x] **Phase 122: Safety Acceptance and Logging Fixes** - Extraction/import/auto-delete checks pass on a running build, incident records are reconciled, and webhook/completion-gate log messages are accurate (completed 2026-10-25)
-- [x] **Phase 123: Startup and Shutdown Lifecycle** - Partial startup failures clean up started children; a failing component cleanup does not stop the remaining cleanups (completed 2026-10-27)
-- [x] **Phase 124: Model-Stream Overflow Recovery** - A slow client converges to current server state after overflow, with bounded buffering (or a recorded existing guarantee) (completed 2026-10-27)
-- [x] **Phase 125: LAN Connection Tests** - Test Connection accepts intended local Sonarr/Radarr addresses, including Docker container names, while unintended destinations stay rejected (completed 2026-10-28)
-- [x] **Phase 126: Release 1.8.0** - Dependabot review, publish to Docker/GitHub/PyPI, NAS digest smoke test, production deploy by digest confirmed by a successful scan (completed 2026-10-28)
-
-#### Phase Details
-
-### Phase 121: Credential Forwarding
-
-**Goal**: The configured app token reaches only SeedSyncarr's own API; no outside service ever receives it
-**Depends on**: Nothing (first phase of the milestone; follows Phase 120)
-**Requirements**: SEC-02
-**Success Criteria** (what must be TRUE):
-
-  1. A request from the UI to a SeedSyncarr `/server/*` endpoint still carries the Bearer token and succeeds (no regression in authenticated UI flows, verified by Angular unit tests and the existing E2E suite)
-  2. The GitHub update-check request, and any other request to a non-app origin, is sent with no `Authorization` header or app token (regression test asserts the absence)
-  3. A regression test that asserts the token is absent on an external request fails against the current interceptor and passes after the fix
-  4. No authentication redesign: the token source (meta tag), the interceptor mechanism and the server-side Bearer check are unchanged
-
-**Plans**: 3 plans
-
-Plans:
-**Wave 1**
-
-- [x] 121-01-PLAN.md — TDD: destination-gated authInterceptor (own origin + /server/, fail closed), RED-first GitHub-URL test, D-10 case table, VersionCheckService pin
-- [x] 121-02-PLAN.md — Token-configured E2E: dependent `chromium-token` Playwright project asserting no Authorization to api.github.com
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 121-03-PLAN.md — Phase gate: full Angular/lint/SC4 checks, D-07 evidence, D-08/D-09 carried to 126, PR CI E2E green (owner go-ahead to push)
-
-**UI hint**: yes
-
-### Phase 122: Safety Acceptance and Logging Fixes
-
-**Goal**: The Phase 119 safety behaviors are proven on a running build, the two open incident records say truthfully what is fixed and what is not, and the two log messages found in Phase 120 stop misleading operators
-**Depends on**: Phase 121 (sequencing only; disjoint code paths)
-**Requirements**: SAFE-01, SAFE-02, LOG-01, LOG-02
-**Success Criteria** (what must be TRUE):
-
-  1. On a running build (sandbox `seedsyncarr-test`; prod untouched), extraction, import and auto-delete checks each pass with recorded evidence (log excerpts, timestamps, resulting file state), completing the extraction/import half of `119-VERIFICATION.md` whose browser half passed 2026-10-18
-  2. `.planning/debug/done-group-no-auto-delete.md` and `extract-staging-autodel-rearm` each record, per finding, "verified fixed (evidence)" or "remaining operator cleanup"; neither is marked closed solely because its code shipped, and the Done-group one-time cleanup remains an operator follow-up until the owner confirms it
-  3. A webhook Test event produces a `<source> webhook test event received` INFO line in the app log (handler logger attached under the app logger), with a regression test that fails before and passes after
-  4. When the completion gate prunes a hold (root left the stability sweep), the app log says the hold was *dropped* (no release); `Completion hold cleared` appears only for a proof-based release, with a regression test covering both paths
-  5. Phase 119 import safeguards (early credit, pending-notice revalidation, arm-on-commit, Waiting holds, one-shot manual release) are exercised, not rebuilt
-
-**Plans**: 17 plans (9 + 8 gap closure)
-
-Plans:
-**Wave 1**
-
-- [x] 122-01-PLAN.md — TDD: completion gate says "dropped (reason)" for prune/no-arr removals, "cleared" only for proof-based release (LOG-02)
-- [x] 122-02-PLAN.md — TDD: webhook/controller/config handlers and rate_limit log under the app logger; D-14 secret review (LOG-01)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 122-03-PLAN.md — Phase gate (suite, ruff, RED-first, scope) and PR with CI green (owner go-ahead to push)
-
-**Wave 3**
-
-- [x] 122-04-PLAN.md — Owner go-ahead to merge; `:dev` digest of the merge commit pinned on `seedsyncarr-test`; teardown/webhook harness; LOG-01 live
-
-**Wave 4**
-
-- [x] 122-05-PLAN.md — SAFE-01 import: Waiting hold + one-shot release, early credit, deferral/revalidation, arm-on-commit and 300 s auto-delete (D-06(c) FAIL found; gap closed by 122-10..12)
-
-**Wave 5-7** *(gap closure for 122-05 D-06(c); same PR #134)*
-
-- [x] 122-10-PLAN.md — TDD: keep a revalidated pending import notice between transfer end and commit (D-06(c) fix) + local gates
-- [x] 122-11-PLAN.md — Push fix to PR #134, CI green, new staging digest as DEV_PIN, re-pin sandbox, LOG-01 recheck
-- [x] 122-12-PLAN.md — Rerun D-06 (c) on the fixed build plus (e)/(a)/(b) regression and a (c) repeat
-
-**Wave 8-10** *(sequential, sandbox only, on the fixed build)*
-
-- [x] 122-06-PLAN.md — SAFE-01 restart persistence of early credit
-- [x] 122-07-PLAN.md — SAFE-01 extraction staging (~1 GB multi-part RAR) and auto-delete re-arm
-- [x] 122-08-PLAN.md — Sandbox Sonarr key rotation decision, restore sandbox to 1.7.6 pin, SAFE-01 verdict (owner review)
-
-**Wave 11**
-
-- [x] 122-09-PLAN.md — SAFE-02: reconcile both incident records, owner cleanup checklist, close rule, deferred C-G to backlog
-
-**Wave 12-15** *(gap closure for verification CR-01, WR-01..03; owner decision 2026-10-23; same PR #134)*
-
-- [x] 122-13-PLAN.md — TDD: bound post-transfer pending-notice window to 120 s with a local copy, discard on stop/delete-local, accurate credit reason (WR-02, WR-03)
-- [x] 122-14-PLAN.md — TDD: never log the Arr API key from Test Connection; status rate-limit warning on the app logger, rate_limit logger required (CR-01, WR-01)
-- [x] 122-15-PLAN.md — Phase gates, push to PR #134, CI green, new staging digest as DEV_PIN
-- [x] 122-16-PLAN.md — Re-pin sandbox; LOG-01/WR-01 live; D-06(c) rerun with (e)/(a)/(b) regression and live WR-02 stop check (D-03 checkpoint)
-- [x] 122-17-PLAN.md — Rerun evidence, restore sandbox to 1.7.6 pin, SAFE-01 gap-cycle-2 verdict (owner review)
-
-### Phase 123: Startup and Shutdown Lifecycle
-
-**Goal**: A failure partway through startup or cleanup never leaves started children running or skips the cleanup of later components
-**Depends on**: Phase 122 (sequencing only; disjoint code paths)
-**Requirements**: LIFE-01, LIFE-02
-**Success Criteria** (what must be TRUE):
-
-  1. With a failure injected into the startup of the scanner or another component after some children have started, the already-started children are stopped/cleaned up and the failure still surfaces (test fails before the fix, passes after)
-  2. With a failure injected into the cleanup of one component, cleanup is still attempted for every remaining component and the first failure is logged, not swallowed (test fails before the fix, passes after)
-  3. The existing per-component controller cleanup, the auto-delete shutdown guards (`threading.Event` in-flight guard under `__auto_delete_lock`) and the established lock ordering are unchanged, and their existing tests stay green
-  4. A clean startup and a clean shutdown behave exactly as before (no new sleeps, no lifecycle-framework rewrite)
-
-**Plans**: 17 plans (7 + 10 gap-closure)
-
-Plans:
-**Wave 1**
-
-- [x] 123-01-PLAN.md — TDD: Job.run surfaces setup() failures and guards cleanup(); ControllerJob routes start failures to RECOV-01 as ControllerError; WebAppJob cleanup None-guard (LIFE-01)
-- [x] 123-02-PLAN.md — TDD: ScanManager partial-start cleanup and per-process terminate/join isolation; FileOperationManager.stop per-reservation isolation (LIFE-01, LIFE-02)
-- [x] 123-03-PLAN.md — TDD: Controller.start partial-start cleanup (exit()-style loop, lftp included), exit() pinned unchanged; MultiprocessingLogger.stop never-started guard (LIFE-01, LIFE-02)
-
-**Wave 2** *(blocked on 123-02 and 123-03)*
-
-- [x] 123-04-PLAN.md — TDD: D-01 shutdown-aware scanner health check wired from the SIGTERM handler; D-03 sleep kept (recorded)
-
-**Wave 3**
-
-- [x] 123-05-PLAN.md — Phase gates (baseline suite, ruff, RED-before-GREEN, scope, criteria 3/4), push to one draft PR, CI green, DEV_PIN digest
-
-**Wave 4**
-
-- [x] 123-06-PLAN.md — Sandbox re-pin and live restart cycles (2 idle, 2 active-transfer, 1 idle) with production bracketing; failure gate to owner
-
-**Wave 5** *(gap closure, GAP-1: live check failed in 123-06; owner chose fix-in-phase)*
-
-- [x] 123-08-PLAN.md — TDD: time-bounded (10 s, monotonic clock) SIGTERM grace in ScanManager health check, independent of main-thread signal latency
-- [x] 123-09-PLAN.md — Restart-cycle harness: STARTED/INCOMPLETE outcome markers, detached-run progress, `Exited successfully` recorded-only (pre-existing on 1.7.6)
-
-**Wave 6**
-
-- [x] 123-10-PLAN.md — Gap-round phase gates, push to draft PR #137, CI green, DEV_PIN_GAP digest
-
-**Wave 7**
-
-- [x] 123-11-PLAN.md — Outstanding 123-06 SSA123 teardown (seedbox verified clean), re-pin sandbox to DEV_PIN_GAP, idle cycles I1/I2
-
-**Wave 8**
-
-- [x] 123-12-PLAN.md — Active-transfer cycles A1/A2, idle I3, CHECK_STATUS, session teardown; failure gate to owner
-
-**Wave 9** *(gap closure, GAP-2: lftp `Could not terminate the child` on active-transfer restarts in 123-12; owner chose fix-in-phase)*
-
-- [x] 123-13-PLAN.md — TDD: Lftp.exit() reaps an lftp child that outlives pexpect's force close (process-group SIGKILL, bounded 2 s on an injected clock, WARNING not ERROR, still raises if it never dies); `exit kill`; idle path unchanged
-- [x] 123-14-PLAN.md — Restart-cycle harness: process sampler proving lftp and its children are reaped before the old container stops (`procs_*` fail rule), lftp fallback counts recorded
-
-**Wave 10**
-
-- [x] 123-15-PLAN.md — Gap-round-2 phase gates (incl. Gate 5b: the one owner-flagged bounded wait), push to draft PR #137, CI green, DEV_PIN_GAP2 digest
-
-**Wave 11**
-
-- [x] 123-16-PLAN.md — New capture dir, preflight, sampler probe, re-pin sandbox DEV_PIN_GAP -> DEV_PIN_GAP2, idle cycles I1/I2
-
-**Wave 12**
-
-- [x] 123-17-PLAN.md — Active-transfer cycles A1 (Foxtrot) / A2 (Golf), idle I3, live lftp root cause, CHECK_STATUS, session teardown; failure gate to owner
-
-**Wave 13**
-
-- [x] 123-07-PLAN.md — Restart evidence (gap round 2), deferred findings, `--final` sandbox restore with fresh-session check, Phase 123 verdict, owner review
-
-### Phase 124: Model-Stream Overflow Recovery
-
-**Goal**: A slow SSE client that loses incremental model events converges back to the server's current state without unbounded buffering
-**Depends on**: Phase 123 (sequencing only; disjoint code paths)
-**Requirements**: STRM-01, STRM-02
-**Success Criteria** (what must be TRUE):
-
-  1. Overflow is reproduced at the model-stream boundary (bounded `StreamQueue` dropping events for a stalled consumer) with a recorded, repeatable test or script, before any fix is proposed
-  2. If reproduction shows an existing recovery guarantee (for example a fresh snapshot already follows a drop), that guarantee is recorded with evidence and STRM-02 closes with no code change
-  3. Otherwise, after overflow the slow client's model matches the server's current state (fresh snapshot or reconnect — the smallest mechanism), demonstrated by a test that fails before and passes after
-  4. Buffering stays bounded under a stalled consumer; producer atomicity alone is not accepted as the recovery mechanism, and there is no event-bus redesign
-
-**Plans**: 3 plans
-
-Plans:
-**Wave 1**
-
-- [x] 124-01-PLAN.md — STRM-01: recorded overflow reproduction (stalled listener diverges: 500 missing + ghost), D-06 status evidence, wire-format client + stall-capable SSE harness, go/no-go verdict
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 124-02-PLAN.md — TDD: StreamQueue.clear() + atomic Controller.resync_model_files(discard_backlog) under __model_lock, bounded-stall test
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 124-03-PLAN.md — TDD: ModelStreamHandler resync gate (fresh model-init on same connection, coalesced, rate-limited warning); convergence RED then GREEN at unit and WSGI level
-
-### Phase 125: LAN Connection Tests
-
-**Goal**: Test Connection works for the local Sonarr/Radarr addresses people actually use, without opening the test endpoint to arbitrary destinations
-**Depends on**: Phase 124 (sequencing only; disjoint code paths)
-**Requirements**: LAN-01, LAN-02
-**Success Criteria** (what must be TRUE):
-
-  1. Test Connection succeeds for a private-range IP (e.g. `192.168.x.x`, `10.x.x.x`, `172.16–31.x.x`) running Sonarr/Radarr, and for a Docker container or host name that resolves to a private address (the container-name failure recorded in Phase 120, D-02, is fixed), with regression tests for each representative case
-  2. Cloud-metadata and link-local addresses (e.g. `169.254.169.254`), loopback-to-unexpected-port probes outside the allowed intent, and redirects to disallowed targets are still rejected with the same user-visible outcome as today, with regression tests
-  3. The new acceptance is limited to the configured Sonarr/Radarr test-connection path; no other outbound request path is relaxed
-  4. The change is noted as the minor-version driver (behavior change) in the 1.8.0 release notes
-
-**Plans**: 6 plans (3 gap closure)
-
-Plans:
-**Wave 1**
-
-- [x] 125-01-PLAN.md — TDD: ordered LAN-aware classifier in `_validate_url` (LAN ranges, ULA, CGNAT, container names allowed; loopback only on 8989/7878; metadata/link-local, unspecified, multicast, reserved, site-local and embedded-loopback forms refused with specific messages), redirect and scope regression locks
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 125-02-PLAN.md — CHANGELOG 1.8.0 draft entry (minor-version driver), phase gates, single draft PR, CI green, staging digest (DEV_PIN)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 125-03-PLAN.md — NAS sandbox live check on DEV_PIN (`http://sonarr-v5:8989` succeeds, `http://169.254.169.254` refused), Sonarr URL and image-pin restore with fresh-session check, owner verdict review
-
-**Wave 4** *(gap closure, code review 125-REVIEW.md; D-11, D-12)*
-
-- [x] 125-04-PLAN.md — TDD: refuse URLs the guard and requests/urllib3 parse differently (backslash, whitespace/control/non-ASCII, userinfo, `%` host, query/fragment, scheme/host/port disagreement), validate the exact requested URL, malformed host names as JSON errors, explicit IPv6 transition-network refusals, `fd00:ec2::254` and `100.100.100.200` refused, hardened scope test
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-- [x] 125-05-PLAN.md — CHANGELOG accuracy (IN-03), phase gates, push to PR #140, CI green, staging digest (DEV_PIN_R2)
-
-**Wave 6** *(blocked on Wave 5 completion)*
-
-- [x] 125-06-PLAN.md — short NAS sandbox re-check on DEV_PIN_R2 (container name succeeds, `169.254.169.254` and the CR-01 backslash URL refused), restore and fresh-session check, owner verdict review
-
-### Phase 126: Release 1.8.0
-
-**Goal**: 1.8.0 is published, smoke-tested by exact digest, and running on NAS production with a confirmed successful scan
-**Depends on**: Phases 121, 122, 123, 124, 125 (all milestone work complete)
-**Requirements**: REL-05, REL-06
-**Success Criteria** (what must be TRUE):
-
-  1. Before the version bump/tag, open Dependabot alerts and PRs are reviewed and listed for the owner in plain terms; runtime/shipped fixes are rolled into 1.8.0, dev-only ones only if cheap; backlog 999.4 (braces/karma advisory, PRs #128/#125/#117) is rechecked as part of this review and its outcome recorded
-  2. Full Python suite, whole-tree ruff, Angular tests and release CI are green on the release commit; tag `v1.8.0` publishes the image to GHCR, the GitHub release and PyPI, with CHANGELOG and release notes (including the LAN test behavior change and a rollback runbook)
-  3. The published image is smoke-tested on the NAS sandbox by exact digest: restart, a real transfer, Sonarr/Radarr integration and cleanup checks pass
-  4. NAS production compose is pinned to `:1.8.0@sha256:…` (the same digest; never `:dev`, never a local build — NAS local build is blocked by QEMU) and a successful post-deploy scan confirms recovery, with the owner's confirmation recorded
-
-**Plans:** 6/6 plans complete
-
-Plans:
-**Wave 1**
-
-- [x] 126-01-PLAN.md — Roll every open Dependabot PR into release/1.8.0 by lockfile regeneration (per-group tests, @types/jasmine isolated), npm audit, 999.4 recheck
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 126-02-PLAN.md — Sandbox smoke harness: teardown with radarr/key restore, Test-event webhook poster, count-only extractor, browser token probe with 1.7.6 positive control
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 126-03-PLAN.md — Version bump, CHANGELOG [1.8.0], release notes with rollback runbook, SECURITY.md guard fix, release PR with CI + CodeQL green
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-- [x] 126-04-PLAN.md — Owner pre-tag approval, wud pause, merge, Dependabot close-out, tag v1.8.0, verify GHCR/GitHub/PyPI and capture RELEASE_DIGEST
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-- [x] 126-05-PLAN.md — Smoke the exact digest on seedsyncarr-test (sonarr-v4 + Radarr + D-12a spot checks), restore wiring, owner pre-prod go-ahead
-
-**Wave 6** *(blocked on Wave 5 completion)*
-
-- [x] 126-06-PLAN.md — Production deploy by digest with backups/loader checks, recovery verification, rollback rule, wud last, owner confirmation, STATE close-out
-
-#### Progress
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 121. Credential Forwarding | 3/3 | Complete   | 2026-10-21 |
-| 122. Safety Acceptance and Logging Fixes | 17/17 | Complete   | 2026-10-25 |
-| 123. Startup and Shutdown Lifecycle | 17/17 | Complete    | 2026-10-27 |
-| 124. Model-Stream Overflow Recovery | 3/3 | Complete    | 2026-10-27 |
-| 125. LAN Connection Tests | 6/6 | Complete    | 2026-10-28 |
-| 126. Release 1.8.0 | 6/6 | Complete    | 2026-10-28 |
-
-**Done when:** each scoped item has its stated evidence, targeted regressions and applicable existing checks pass, and the built image passes relevant restart, transfer, integration and cleanup smoke checks and is deployed to NAS production by digest. Record residual limitations explicitly. Conditional investigations in the Backlog are not completion gates unless evidence justifies explicitly promoting a bounded fix.
+<details>
+<summary>✅ v1.8.0 Reliability (Phases 121–126) — SHIPPED 2026-10-28</summary>
+
+- [x] Phase 121: Credential Forwarding (3/3 plans) — completed 2026-10-21
+- [x] Phase 122: Safety Acceptance and Logging Fixes (17/17 plans) — completed 2026-10-25
+- [x] Phase 123: Startup and Shutdown Lifecycle (17/17 plans) — completed 2026-10-27
+- [x] Phase 124: Model-Stream Overflow Recovery (3/3 plans) — completed 2026-10-27
+- [x] Phase 125: LAN Connection Tests (6/6 plans) — completed 2026-10-28
+- [x] Phase 126: Release 1.8.0 (6/6 plans) — completed 2026-10-28
+
+[Archived roadmap](milestones/v1.8.0-ROADMAP.md) · [Requirements](milestones/v1.8.0-REQUIREMENTS.md)
+
+</details>
 
 ## Backlog
 
@@ -409,7 +134,7 @@ Plans:
 
 **Scope:** Two small changes first: (1) build the Angular stage once on the build platform (`FROM --platform=$BUILDPLATFORM node:22-slim AS seedsyncarr_build_angular_env` in `src/docker/build/docker-image/Dockerfile`) instead of running `npm install` + the Angular build under QEMU for arm64 (its output is architecture-independent JS); (2) let the `build-docker-image` job in `.github/workflows/ci.yml` start in parallel with the unit-test/lint jobs instead of `needs:`-ing all seven, keeping the end-to-end and publish jobs gated on tests passing. Evidence (last 30 CI runs, 2026-10-27): build job 0–5 min when the registry cache hits, outliers 16/23/27 min on cache misses; Python unit tests (~5–6 min) sit on the critical path before the build starts. Further options only if needed: amd64-only PR images (NAS is x86_64; arm64 E2E already skipped on PRs; main/tags still build both), or native arm64 builds on `ubuntu-24.04-arm` plus a manifest merge. Not a Reliability gate.
 
-## Following milestone: Performance and Usability (conditional)
+## Next milestone: Performance and Usability (conditional)
 
 **Activation:** v1.8.0 Reliability is complete and measurements or recurring user friction justify a bounded follow-up. If no material opportunity is demonstrated, defer this milestone.
 
@@ -424,18 +149,20 @@ Credential forwarding and LAN connection tests belong to v1.8.0 Reliability, not
 
 ## Future milestone: UI Redesign (pipeline-first)
 
-**Activation:** after v1.8.0 Reliability; set its order relative to Performance and Usability when activated. Not active; no phases or version assigned.
+**Activation:** after v1.8.0 Reliability (shipped 2026-10-28); set its order relative to Performance and Usability when activated. Not active; no phases or version assigned.
 
 **Goal:** Make the import-driven safe-delete pipeline visible: show each file's lifecycle (seedbox → local → imported → local copy cleaned up), surface problems with per-row actions, regroup Settings around the pipeline, and add phone and iPhone Duo layouts. Full scope, backend dependencies, component change list and finish line: [UI Redesign brief](backlog/UI-REDESIGN.md). Design canvas linked there.
 
 ## Operator follow-ups (not development milestones)
 
+- [ ] Rotate the production `api_token` (optional, per the 1.8.0 release-note disclosure; Phase 121 pending item).
 - [ ] Confirm credential rotation from the 1.7.6 checklist is complete.
 - [x] Confirm one-time Done-group cleanup is complete. Owner confirmed 2026-10-23 (Phase 122-09, verbatim "All confirmed"); `done-group-no-auto-delete.md` and `extract-staging-autodel-rearm.md` both resolved and moved to `.planning/debug/resolved/`.
 - [ ] Rotate the sandbox `sonarr-v5` Sonarr API key (exposed once in a Phase 122 research-session tool transcript, never written to a repo file; test Sonarr only, not production). Owner declined rotation during 122-08, verbatim "I'll replace it myself later" (`owner-later`).
 
 ## Completed releases
 
+- **1.8.0:** Reliability, Phases 121–126; deployed to NAS production 2026-10-28 by digest. [Archived roadmap](milestones/v1.8.0-ROADMAP.md).
 - **1.7.4:** safety patch, Phases 116–118. [Archived roadmap](milestones/v1.7.4-ROADMAP.md).
 - **v1.7.7 (no release):** Sonarr 5.0.0.2701 compatibility verified on the sandbox and pinned in CI, Phase 120. [Archived roadmap](milestones/v1.7.7-ROADMAP.md).
 - **1.7.5 / 1.7.6:** safety release and startup-secret fix, Phases 119/119.1. Records show 1.7.6 deployed to the NAS on 2026-10-15. [Archived audit](milestones/v1.7.5-MILESTONE-AUDIT.md). The browser checks passed 2026-10-18; the extraction/import checks are Phase 122 (SAFE-01).
