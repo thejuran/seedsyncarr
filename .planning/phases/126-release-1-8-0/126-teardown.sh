@@ -354,7 +354,13 @@ if [ -n "$PROBE_DIRS" ]; then
   for dir in $PROBE_DIRS; do
     case "$dir" in
       ${ALLOWED_PROBE_DIR_PREFIX}*)
-        sudo rm -rf -- "$dir" 2>/dev/null
+        # No sudo here: the NAS's passwordless sudoers rule only covers the
+        # docker/docker-compose binaries (absolute path), so a non-interactive
+        # `sudo rm` would hang/fail waiting for a password. These dirs are
+        # created by this same user (mkdir, no sudo) and the throwaway
+        # container's PUID/PGID maps its writes to the same uid/gid, so a
+        # plain rm -rf always has permission.
+        rm -rf -- "$dir" 2>/dev/null
         if [ -e "$dir" ]; then
           echo "REMOVED probe dir FAIL: $dir"
           fail "probe_dir:$dir"
