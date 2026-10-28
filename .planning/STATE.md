@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.0
 milestone_name: Reliability
 status: executing
-stopped_at: Completed 126-01-PLAN.md (Dependabot roll-in on release/1.8.0, not pushed)
-last_updated: "2026-10-28T20:05:51.854Z"
+stopped_at: Completed 126-02-PLAN.md (sandbox smoke harness built and proven on NAS; release/1.8.0 not pushed)
+last_updated: "2026-10-28T20:30:56.650Z"
 last_activity: 2026-10-28 -- Phase 126 execution started
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 52
-  completed_plans: 47
+  completed_plans: 48
   percent: 71
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 ## Current Position
 
 Phase: 126 (Release 1.8.0) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Executing Phase 126
 Last activity: 2026-10-28 -- Phase 126 execution started
 
@@ -119,6 +119,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 125]: 125-05: CHANGELOG Unreleased entry made accurate after 125-04 fix (D-11..D-14, IN-03); gates rerun over 125-04 (all 5 pass); pushed to PR 140, CI run 416 green, DEV_PIN_R2 sha256:76df9d9a... resolved by two independent methods for 125-06's live recheck — Gap-closure plan per owner-approved post-review decisions; release notes must describe the guard as it actually behaves
 - [Phase 125]: 125-06: owner reviewed and approved the gap-closure verdict (Task 3), verbatim reply 'approved'; live re-check PASS on DEV_PIN_R2 confirmed LAN-01/LAN-02 hold and CR-01 (backslash payload) is refused end to end with the real requests/urllib3 stack; sandbox restored to IMAGE_PIN_L0 and fresh-session verified, production byte-identical; LAN-01 and LAN-02 closed
 - [Phase 126]: 126-01: evidence-file writes split into separate docs(126-01) commits so each chore(126-01) dependency-bump commit stays scoped to exactly its manifest/lockfile files; 2 residual npm audit findings (body-parser, qs via karma) left as a non-D-01 owner item, not fixed
+- [Phase 126]: 126-02: probe-dir cleanup in 126-teardown.sh uses plain rm -rf not sudo rm -rf (NAS passwordless sudoers rule covers only docker/docker-compose); token probe proved non-vacuous via a live positive control on a throwaway 1.7.6 container (WITH_TOKEN=1)
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -177,8 +178,8 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 ## Session Continuity
 
-Last session: 2026-10-28T20:05:51.849Z
-Stopped at: Completed 126-01-PLAN.md (Dependabot roll-in on release/1.8.0, not pushed)
+Last session: 2026-10-28T20:30:56.645Z
+Stopped at: Completed 126-02-PLAN.md (sandbox smoke harness built and proven on NAS; release/1.8.0 not pushed)
 Next action: Phase 123 is now fully executed. 123-07 wrote the gap-round-2 restart evidence into 123-LIFE-EVIDENCE.md, restored the sandbox to `IMAGE_PIN_L0` (1.7.6) via `teardown.sh --final` (fresh-session verified, production byte-identical throughout), and wrote the Phase 123 verdict ("**Phase 123 live restart check: PASSED**"). Before approving, the owner ran an independent vibe-check deep review of PR #137 (5 reviewers: bugs/architecture on Opus, security, impact, language-python; 0 findings scored >=70; impact verdict "shippable as-is"), which surfaced two items -- `WebAppJob.cleanup()`'s missing per-step isolation and `ControllerJob.execute()`'s non-`AppError` failures bypassing RECOV-01 auto-restart -- and replied verbatim "approve, backlog both items"; both items are logged in `deferred-items.md`, not fixed in-phase. LIFE-01 and LIFE-02 are closed. Remaining step: phase verification/close-out (orchestrator-driven, not yet run) -- this session did not run phase verification or mark the phase complete in ROADMAP.md beyond updating the plan-progress row. Owner follow-up (unchanged): rotate the sandbox Sonarr (`sonarr-v5`) API key, declined 2026-10-23 (`owner-later`); remove the Hacks.S04E01 test torrent from sandbox Deluge (~/v5test on seedbox) once seed time is met.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
