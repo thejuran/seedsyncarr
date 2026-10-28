@@ -703,3 +703,46 @@ the expected brief sync-pause interruption.
 Owner's reply, verbatim: "deploy"
 
 Production confirmed still on `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e` at the moment this reply was recorded. No production command was run in this task. Plan 126-06 performs the deploy.
+
+## Sandbox Radarr credential cleanup (owner-sanctioned addendum, 2026-10-28)
+
+The residual limitation recorded above ("`radarr_api_key` left set, not restored to empty") meant
+`seedsyncarr-test`'s on-disk `settings.cfg` still held a copy of production Radarr's URL and API
+key. The orchestrator flagged this to the owner and proceeded unobjected. Cleared on disk,
+sandbox-only, production untouched.
+
+**Config loader check (before editing):** `Config.Radarr.radarr_url`/`radarr_api_key` use
+`Checkers.null`/`Converters.null` (`src/python/common/config.py` lines 373-374) — no non-empty
+validation. `seedsyncarr.py`'s own default-config generator (lines 427-429) sets exactly
+`radarr.enabled = False`, `radarr_url = ""`, `radarr_api_key = ""` as the disabled-Radarr baseline,
+and `arr_queue.py` only reads `radarr_url`/`radarr_api_key` when `config.radarr.enabled` is `True`
+(line 172). Blank values on disk are the application's own documented default state, not a
+placeholder — confirmed safe before editing, no fake-value fallback needed.
+
+**Before (count-only):** sandbox `radarr_api_key` length 33, production `radarr`'s `config.xml`
+`<ApiKey>` length 33; sha256 of each compared — **SAME** (confirming the sandbox held a real copy
+of the production key before this cleanup).
+
+**Change:** stopped `seedsyncarr-test` only (`docker stop seedsyncarr-test`); backed up
+`settings.cfg` (0600, same directory, timestamped `settings.cfg.bak.20261028T230041Z`); edited the
+`[Radarr]` section's `radarr_url` and `radarr_api_key` lines to empty values via an inode-preserving
+awk-to-temp-then-`cat`-back edit (inode unchanged: `101927026` before and after); kept file mode
+`0600`, owner `jule1651:users`; `[Radarr].enabled` line untouched, confirmed still `False`.
+
+**After:** `seedsyncarr-test` started, status endpoint responded `up: true` within 2 polls;
+`radarr.enabled` read back `false`; sandbox image unchanged at
+`ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7`.
+Sandbox `radarr_api_key` length now 1 (a bare newline, i.e. empty); sha256 of the now-empty sandbox
+value vs. production's key sha256 — **DIFFERENT**. Backup file deleted immediately after this
+confirmation (`backup_removed=yes`); no copy of the production key remains anywhere outside
+production's own config.
+
+**Production fingerprint (read-only, unchanged):** `seedsyncarr`
+`2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9` /
+`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`
+/ `2026-10-23T07:04:18.591254939Z` / `running` — identical to P0-P3 throughout this plan. Production
+`radarr` container was only read from the host filesystem (its mounted `config.xml`, for the
+sha256 comparison) — never stopped, started, or exec'd into.
+
+No credential value (sandbox or production) was printed at any point in this cleanup — only
+lengths, sha256 digests, and SAME/DIFFERENT/yes/no outcomes.
