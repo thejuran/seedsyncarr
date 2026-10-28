@@ -121,7 +121,11 @@ set_radarr_url() {
 }
 
 get_radarr_enabled() {
-  curl -s --max-time 15 "$SSY/server/config/get" | jq -r '.radarr.enabled // empty'
+  # NOT `.radarr.enabled // empty`: jq's `//` treats boolean `false` as falsy too, so
+  # that idiom silently returns "" whenever radarr is actually disabled -- making a
+  # correct restore-to-false permanently unverifiable (always reads back as "" and
+  # compares unequal to the literal string "false"). Use an explicit null check instead.
+  curl -s --max-time 15 "$SSY/server/config/get" | jq -r 'if .radarr.enabled == null then "" else (.radarr.enabled|tostring) end'
 }
 set_radarr_enabled() {
   local value="$1" body
@@ -131,14 +135,18 @@ set_radarr_enabled() {
 }
 
 # Build a value-free config/set body for one *arr API key from a 0600 L0 file (never
-# printing the value itself) and POST it. Uses `-nR`/`input` (reads the file's first
-# line as a raw string via stdin) rather than `--rawfile`, which the NAS's jq 1.5 does
-# not support (added in jq 1.6) -- same value-never-in-argv guarantee either way.
+# printing the value itself) and POST it. Uses `-nR`/`[inputs]` (reads every stdin line
+# as a raw string, joined back with "\n") rather than `--rawfile`, which the NAS's jq
+# 1.5 does not support (added in jq 1.6) -- same value-never-in-argv guarantee either
+# way. `[inputs]` (not a single `input`) is required so an EMPTY file -- restoring a
+# key that was never set, e.g. radarr's key when radarr started this session disabled
+# -- yields zero lines and therefore value:"" instead of jq raising "break" on `input`
+# finding nothing to read.
 post_arr_key() {
   local section="$1" key="$2" file="$3" tmp
   tmp="$D/.${section}_key.body.$$.json"
   jq -nR --arg section "$section" --arg key "$key" \
-    '{section:$section,key:$key,value:input}' < "$file" > "$tmp"
+    '{section:$section,key:$key,value:([inputs]|join("\n"))}' < "$file" > "$tmp"
   chmod 0600 "$tmp"
   curl -s --max-time 15 -o /dev/null -X POST -H "Content-Type: application/json" \
     -d @"$tmp" "$SSY/server/config/set"
@@ -197,8 +205,15 @@ fi
 img_now="$($DOCKER inspect seedsyncarr-test --format '{{.Config.Image}}' 2>/dev/null)"
 echo "IMAGE current=$img_now"
 
-# (3) sonarr_url restore
-if [ "$SONARR_URL_SET" = "1" ] && [ -n "$SONARR_URL_L0" ]; then
+# (3) sonarr_url restore. If SONARR_URL_SET=1 but the original (L0) value was itself
+# empty, no restore POST is attempted: ConfigHandler.__handle_set_config rejects any
+# request with an empty "value" (400 by design, D-06) regardless of field, so a
+# value:"" POST can never succeed for ANY field -- not just the api-key ones. Report
+# this plainly instead of the misleading "not set this session" (it WAS set).
+if [ "$SONARR_URL_SET" = "1" ] && [ -z "$SONARR_URL_L0" ]; then
+  echo "RESTORED sonarr_url ok (original was empty; API cannot clear a URL value, left as currently set)"
+  state_set SONARR_URL_SET 0
+elif [ "$SONARR_URL_SET" = "1" ] && [ -n "$SONARR_URL_L0" ]; then
   have="$(get_sonarr_url)"
   if [ "$have" != "$SONARR_URL_L0" ]; then
     set_sonarr_url "$SONARR_URL_L0"
@@ -215,8 +230,11 @@ else
   echo "RESTORED sonarr_url ok (not set this session)"
 fi
 
-# (4) radarr_url restore
-if [ "$RADARR_URL_SET" = "1" ] && [ -n "$RADARR_URL_L0" ]; then
+# (4) radarr_url restore (same empty-original handling as sonarr_url above)
+if [ "$RADARR_URL_SET" = "1" ] && [ -z "$RADARR_URL_L0" ]; then
+  echo "RESTORED radarr_url ok (original was empty; API cannot clear a URL value, left as currently set)"
+  state_set RADARR_URL_SET 0
+elif [ "$RADARR_URL_SET" = "1" ] && [ -n "$RADARR_URL_L0" ]; then
   have="$(get_radarr_url)"
   if [ "$have" != "$RADARR_URL_L0" ]; then
     set_radarr_url "$RADARR_URL_L0"
@@ -254,42 +272,60 @@ fi
 # (6) sonarr_api_key restore (value-free; see post_arr_key above). The original key
 # lives only in the 0600 file $D/sonarr_key.l0, written by the smoke session before it
 # changes the key; compared via a single-field jq read, never the full config response.
+# If the original (want) was itself empty -- sonarr had no key configured before this
+# session -- no restore POST is attempted: ConfigHandler.__handle_set_config rejects
+# any request with an empty "value" (400, by design, D-06), so a value:"" POST can
+# never succeed. This is the same documented no-restore-to-empty-path limitation as
+# webhook_secret (see "Webhook secret" above) -- recorded, not treated as a failure.
 SONARR_KEY_FILE="$D/sonarr_key.l0"
 if [ "$SONARR_KEY_SET" = "1" ] && [ -f "$SONARR_KEY_FILE" ]; then
   want="$(cat "$SONARR_KEY_FILE")"
-  have="$(curl -s --max-time 15 "$SSY/server/config/get" | jq -r '.sonarr.sonarr_api_key // empty')"
-  if [ "$have" != "$want" ]; then
-    post_arr_key sonarr sonarr_api_key "$SONARR_KEY_FILE"
-    have="$(curl -s --max-time 15 "$SSY/server/config/get" | jq -r '.sonarr.sonarr_api_key // empty')"
-  fi
-  if [ "$have" = "$want" ]; then
-    echo "RESTORED sonarr_api_key ok"
+  if [ -z "$want" ]; then
+    echo "RESTORED sonarr_api_key ok (original was empty; API cannot clear a key value, left as currently set)"
     state_set SONARR_KEY_SET 0
     rm -f "$SONARR_KEY_FILE"
   else
-    echo "RESTORED sonarr_api_key FAIL"
-    fail sonarr_api_key
+    have="$(curl -s --max-time 15 "$SSY/server/config/get" | jq -r '.sonarr.sonarr_api_key // empty')"
+    if [ "$have" != "$want" ]; then
+      post_arr_key sonarr sonarr_api_key "$SONARR_KEY_FILE"
+      have="$(curl -s --max-time 15 "$SSY/server/config/get" | jq -r '.sonarr.sonarr_api_key // empty')"
+    fi
+    if [ "$have" = "$want" ]; then
+      echo "RESTORED sonarr_api_key ok"
+      state_set SONARR_KEY_SET 0
+      rm -f "$SONARR_KEY_FILE"
+    else
+      echo "RESTORED sonarr_api_key FAIL"
+      fail sonarr_api_key
+    fi
   fi
 else
   echo "RESTORED sonarr_api_key ok (not set this session)"
 fi
 
-# (7) radarr_api_key restore (same value-free pattern as sonarr_api_key above)
+# (7) radarr_api_key restore (same value-free pattern and same empty-original handling
+# as sonarr_api_key above)
 RADARR_KEY_FILE="$D/radarr_key.l0"
 if [ "$RADARR_KEY_SET" = "1" ] && [ -f "$RADARR_KEY_FILE" ]; then
   want="$(cat "$RADARR_KEY_FILE")"
-  have="$(curl -s --max-time 15 "$SSY/server/config/get" | jq -r '.radarr.radarr_api_key // empty')"
-  if [ "$have" != "$want" ]; then
-    post_arr_key radarr radarr_api_key "$RADARR_KEY_FILE"
-    have="$(curl -s --max-time 15 "$SSY/server/config/get" | jq -r '.radarr.radarr_api_key // empty')"
-  fi
-  if [ "$have" = "$want" ]; then
-    echo "RESTORED radarr_api_key ok"
+  if [ -z "$want" ]; then
+    echo "RESTORED radarr_api_key ok (original was empty; API cannot clear a key value, left as currently set)"
     state_set RADARR_KEY_SET 0
     rm -f "$RADARR_KEY_FILE"
   else
-    echo "RESTORED radarr_api_key FAIL"
-    fail radarr_api_key
+    have="$(curl -s --max-time 15 "$SSY/server/config/get" | jq -r '.radarr.radarr_api_key // empty')"
+    if [ "$have" != "$want" ]; then
+      post_arr_key radarr radarr_api_key "$RADARR_KEY_FILE"
+      have="$(curl -s --max-time 15 "$SSY/server/config/get" | jq -r '.radarr.radarr_api_key // empty')"
+    fi
+    if [ "$have" = "$want" ]; then
+      echo "RESTORED radarr_api_key ok"
+      state_set RADARR_KEY_SET 0
+      rm -f "$RADARR_KEY_FILE"
+    else
+      echo "RESTORED radarr_api_key FAIL"
+      fail radarr_api_key
+    fi
   fi
 else
   echo "RESTORED radarr_api_key ok (not set this session)"

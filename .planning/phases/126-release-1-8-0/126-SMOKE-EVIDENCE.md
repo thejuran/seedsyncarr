@@ -422,3 +422,268 @@ Verdict, cleanup: **PASS**.
 ```
 
 Identical to P0 and P1 (same Id, image, `StartedAt`). Production was never written in this task.
+
+## 1.8.0 spot checks (Plan 126-05 Task 2)
+
+Continuing in the same capture dir (`/volume1/docker/v5test/results/smoke126-20261028T221654Z`).
+
+### Webhook test event (D-12a)
+
+```
+$ bash webhook-post.sh <D> sonarr Test SSA126.Smoke.S01 SSA126.Smoke.S01
+HTTP_CODE=200
+Test OK
+$ bash webhook-post.sh <D> radarr Test SSA126.SmokeMovie.2026 SSA126.SmokeMovie.2026
+HTTP_CODE=200
+Test OK
+```
+
+```
+2026-10-28 18:41:06,446 - INFO - seedsyncarr.WebhookHandler - Sonarr webhook test event received
+2026-10-28 18:41:10,412 - INFO - seedsyncarr.WebhookHandler - Radarr webhook test event received
+```
+
+Both requests were HMAC-signed (the sandbox's webhook secret is now set and enforced — an
+unsigned request at this point would get `401`, confirmed earlier in the "Webhook secret"
+section above).
+
+Verdict, webhook test event: **PASS**.
+
+### Test Connection container name (D-12, D-12a)
+
+Key compare: sandbox's current key (set to `sonarr-v4`'s key above) vs `sonarr-v5`'s own
+config.xml key — **DIFFERENT**. Swapped to `sonarr-v5`'s key via the same value-free jq pattern
+(original sandbox key stays preserved in `sonarr_key.l0` for teardown, untouched by this
+intermediate swap); `sonarr_url` set to `http://sonarr-v5:8989`.
+
+```
+$ curl -s "http://127.0.0.1:8801/server/config/sonarr/test-connection"
+{"success": true, "version": "5.0.0.2838"}
+```
+
+Verdict, Test Connection container name: **PASS**.
+
+### Metadata refusal (D-12a)
+
+```
+$ curl -s -X POST ... -d '{"section":"sonarr","key":"sonarr_url","value":"http://169.254.169.254"}' .../server/config/set
+SET_URL http=200
+$ curl -s "http://127.0.0.1:8801/server/config/sonarr/test-connection"
+{"success": false, "error": "URL points to a link-local or cloud-metadata address, which is not allowed"}
+```
+
+Exact match to the Phase 125-locked refusal string (`125-LAN-EVIDENCE.md` §"Live check"/"Live
+re-check"); does not contain the old "private/reserved IP address" text. `sonarr_url`
+immediately set back to `http://sonarr-v4:8989` afterward.
+
+Verdict, metadata refusal: **PASS**.
+
+### No secrets in a fresh start's log (D-12a)
+
+Extractor run read-only against the live sandbox config dir, on the exact 1.8.0 digest:
+
+```
+$ sudo /usr/local/bin/docker run --rm -i --read-only --network none --cap-drop ALL --user 1026:100 \
+    -v /volume1/docker/v5test/seedsyncarr:/c:ro --entrypoint python3 -w /app/python \
+    ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7 - \
+    < extract_secrets.py > "$T/values" 2> "$T/fields"
+extractor rc=0
+FIELDS General.webhook_secret Lftp.remote_password Sonarr.sonarr_api_key Radarr.radarr_api_key N=4 LINES=4
+values: wc -l=4
+```
+
+(No `%`-serialized form differs from its decoded form for any of the four fields this session —
+`N` and `LINES` match exactly.)
+
+```
+$ sudo /usr/local/bin/docker restart seedsyncarr-test
+up after 3 tries
+$ sudo /usr/local/bin/docker logs seedsyncarr-test --since <restart time> > "$T/log" 2>&1
+log: 19 lines, non-empty
+"Config ready at" count: 1
+$ grep -cFf "$T/values" "$T/log"; echo rc=$?
+count=0 rc=1
+```
+
+Verdict, no secrets in startup log: **PASS**.
+
+### No app token to GitHub (D-12a)
+
+Throwaway container `seedsyncarr-probe126-rel` on the exact 1.8.0 digest, `--label
+wud.watch=false -p 127.0.0.1:8803:8800`, fresh scratch config (`PROBE_CONTAINERS`/`PROBE_DIRS`
+recorded to `state.env` before creation). `general.api_token` set to the synthetic value
+`probe126-token-not-a-secret` (confirmed set indirectly via the same 401-without-auth /
+200-with-auth proof as the Plan 126-02 positive control, since `api_token` always serializes as
+`""`). Probed through an SSH tunnel from the Mac:
+
+```
+$ ssh -f -N -L 18803:127.0.0.1:8803 nas
+$ node 126-token-probe.mjs http://localhost:18803 probe126-token-not-a-secret
+GITHUB_REQUESTS=1 WITH_AUTH=0 WITH_TOKEN=0
+(exit 0)
+```
+
+`WITH_AUTH=0` (not just `WITH_TOKEN=0`): on 1.8.0 the GitHub update-check request carries no
+`Authorization` header at all, confirming the SEC-02 fix holds on the exact published digest.
+Tunnel closed immediately after (confirmed: port 18803 no longer listening). Cross-reference: the
+tag CI run's `[chromium-token]` browser-level proof on this same tagged tree
+(`126-REL-EVIDENCE.md` §"Tag CI"):
+
+```
+✓  [chromium-token] API token configured (SEC-02) › rejects /server/ requests without the token
+✓  [chromium-token] API token configured (SEC-02) › sends the token to /server/* but never to api.github.com
+✓  [chromium-token] API token configured (SEC-02) › authenticated write flow works with the token
+```
+
+Verdict, no app token to GitHub: **PASS**.
+
+### Teardown
+
+**First run** surfaced three Rule 1 bugs in `126-teardown.sh` (none were data-loss; all were
+either a false-FAIL on an already-correct restore or a silently-skipped restore attempt against
+an API constraint the script didn't account for):
+
+1. `post_arr_key()`'s `jq -nR ... 'value:input'` (this plan's own Task 1 jq-1.5 fix) raises
+   `jq: error (at <stdin>:0): break` when the key file is **empty** (restoring a key that was
+   never configured, e.g. Radarr's key when Radarr started this session disabled) — `input` has
+   nothing to read. Fixed by reading `[inputs]|join("\n")` instead of a single `input`, which
+   yields `""` for a zero-line (empty) file and the unchanged single-line value otherwise.
+2. `get_radarr_enabled()` used `.radarr.enabled // empty`; jq's `//` treats boolean `false` as
+   falsy too, so it silently returned `""` whenever Radarr was actually disabled — making a
+   correct restore-to-`false` permanently unverifiable (always read back as `""`, compared
+   unequal to the literal string `"false"`, reported `FAIL` even though the live value was
+   already correct). Fixed with an explicit `if .radarr.enabled == null then "" else
+   (.radarr.enabled|tostring) end`.
+3. The `sonarr_url`/`radarr_url` restore blocks fell through to `"ok (not set this session)"`
+   whenever the original (`L0`) value was itself empty, even when the field genuinely **was**
+   changed this session (`*_URL_SET=1`) — misleading, since `ConfigHandler.__handle_set_config`
+   rejects any `value:""` POST with 400 by design (D-06) for every field, not just API keys, so
+   a restore-to-empty can never succeed for a URL either. Added an explicit branch that reports
+   `"ok (original was empty; API cannot clear a URL value, left as currently set)"` instead.
+
+These three were found while running the **real teardown call** that Task 1's jq-1.5 fix had not
+yet exercised against a genuinely-empty original value (Radarr started this session disabled with
+no key/URL configured). All three are documented residual-limitation classes, the same shape as
+the already-accepted `webhook_secret` "no restore-to-empty path" note — not something a jq fix
+can route around, since the API's empty-value rejection is an intentional existing guard
+(`D-06`), not a bug to work around.
+
+First run output (post-fix items 1-3 not yet applied when this ran):
+
+```
+RESTORED sonarr_url ok
+RESTORED radarr_url ok (not set this session)     <- misleading, see bug 3
+RESTORED radarr_enabled FAIL                       <- see bug 2 (value was already correct)
+RESTORED sonarr_api_key ok
+RESTORED radarr_api_key FAIL                       <- see bug 1
+REMOVED synth roots count=2 refused=0
+REMOVED probe containers count=1 refused=0
+REMOVED probe dirs count=1 refused=0
+SANDBOX_RESTORED FAIL radarr_enabled,radarr_api_key
+```
+
+After the fix, re-run (first post-fix run):
+
+```
+WAIT server/status ok
+IMAGE current=ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7
+RESTORED sonarr_url ok (not set this session)
+RESTORED radarr_url ok (original was empty; API cannot clear a URL value, left as currently set)
+RESTORED radarr_enabled ok
+RESTORED sonarr_api_key ok (not set this session)
+RESTORED radarr_api_key ok (original was empty; API cannot clear a key value, left as currently set)
+REMOVED synth roots count=2 refused=0
+REMOVED probe containers count=1 refused=0
+REMOVED probe dirs count=1 refused=0
+SANDBOX_RESTORED ok
+```
+
+Read-back confirmed: `sonarr_url=http://sonarr-v5:8989` (restored, matches `SONARR_URL_L0`),
+`radarr_enabled=false` (restored, matches `RADARR_ENABLED_L0`), `radarr_url=http://radarr:7878`
+(left as set this session — inert, since `radarr_enabled=false` means it is never used for any
+outbound call), sandbox image unchanged at `1.8.0@sha256:6e8d453f...`.
+
+**Second run, fresh `ssh nas` session** (idempotency check):
+
+```
+WAIT server/status ok
+IMAGE current=ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7
+RESTORED sonarr_url ok (not set this session)
+RESTORED radarr_url ok (not set this session)
+RESTORED radarr_enabled ok (not set this session)
+RESTORED sonarr_api_key ok (not set this session)
+RESTORED radarr_api_key ok (not set this session)
+REMOVED synth roots count=2 refused=0
+REMOVED probe containers count=1 refused=0
+REMOVED probe dirs count=1 refused=0
+SANDBOX_RESTORED ok
+```
+
+Every line `ok`, exit 0 — confirmed idempotent.
+
+**Independent fresh-session read-back** (third `ssh nas` call):
+
+| Check | Result |
+|---|---|
+| `.Config.Image` | `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7` |
+| Compose `seedsyncarr-test` image line | same digest |
+| `.sonarr.sonarr_url` | `http://sonarr-v5:8989` — equals `SONARR_URL_L0` |
+| `GET /server/status` | `{"up":true,"error_msg":null}` |
+
+### Production fingerprint P3
+
+```
+2feb4073db711c623c4719f1fdd328cb3216201a162c6e8b7fabe33d386b32f9 ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e 2026-10-23T07:04:18.591254939Z running
+```
+
+Identical to P0, P1, P2. Production was never written at any point in this plan.
+
+## Residual limitations
+
+- **Radarr depth (orchestrator resolution, per plan):** Radarr was checked by Test Connection
+  (read-only GET) and a signed synthetic webhook import on a synthetic root — no dedicated test
+  Radarr instance exists, and production Radarr must not be disturbed. There is no live Radarr
+  completion-gate replay (the "held with no_queue_entry, one-shot release" completion-gate
+  mechanism was proven generically via Sonarr in this plan and was already proven for Sonarr
+  specifically in Phase 122's SAFE-01 acceptance). This is a scope limitation accepted by the
+  plan's own orchestrator-resolution language, not a gap found during execution.
+- **`radarr_url` left set, not restored to empty:** the sandbox's `radarr_url` started this
+  session empty (Radarr was never configured before). `ConfigHandler.__handle_set_config` 400s
+  any `value:""` POST by design (D-06), so `teardown.sh` cannot clear it back to empty — it is
+  left at `http://radarr:7878`. Inert: `radarr_enabled` was correctly restored to `false`, so
+  this URL is never used for any outbound call while the sandbox stays in this state.
+- **`radarr_api_key` left set, not restored to empty:** same root cause and same inertness
+  argument as `radarr_url` above — the production Radarr's API key (copied in for this session's
+  Test Connection + webhook check) remains stored in the sandbox's `settings.cfg`, unused while
+  `radarr_enabled=false`. This is the same documented class of limitation already accepted for
+  `webhook_secret` in Plan 126-02/05 ("no restore-to-empty path").
+- **Webhook secret remains set:** a fresh random value was generated this session
+  (`WEBHOOK_SECRET_SET=1`); `webhook_secret` has no restore-to-empty path (same API constraint).
+  It is a sandbox-only random value, never reused anywhere else, and was never printed in this
+  evidence.
+- **In-flight `.lftp` temp suffix not directly observed:** the two synthetic files (8/16 MiB)
+  transferred faster than the polling interval at the sandbox's unmetered `lftp.rate_limit=0`.
+  File-identity (sha256 match) and lifecycle (held → one-shot released → `downloaded`) evidence
+  stands on its own; the plan's wording ("if observed") does not require this as a pass
+  condition.
+
+## Smoke verdict summary
+
+| # | Check | Verdict |
+|---|-------|---------|
+| 1 | Restart | **PASS** |
+| 2 | Real transfer | **PASS** |
+| 3 | Sonarr v4 integration | **PASS** |
+| 4 | Radarr integration | **PASS** |
+| 5 | Webhook import | **PASS** |
+| 6 | Cleanup (auto-delete) | **PASS** |
+| 7 | Webhook test event | **PASS** |
+| 8 | Test Connection container name | **PASS** |
+| 9 | Metadata refusal | **PASS** |
+| 10 | No secrets in startup log | **PASS** |
+| 11 | No app token to GitHub | **PASS** |
+
+All eleven D-12a checks pass on the exact published `1.8.0` digest
+(`sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7`). Sandbox wiring
+restored (with the two documented, inert, no-restore-to-empty exceptions above) and left on the
+1.8.0 digest. Production fingerprint (`P0`..`P3`) identical throughout — never touched.
