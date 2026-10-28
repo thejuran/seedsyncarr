@@ -31,25 +31,22 @@ key-decisions:
   - "No harness-bug retry cycle was needed this round (unlike 125-03's attempt 1) -- the hardened livecheck.sh passed cleanly on its first live run, so Task 1's restore-on-any-failure trap fix was not itself exercised by a real failure path this session"
   - "D-12 (metadata-in-allowed-range) stays unit-proven only for this plan's live re-check, consistent with 125-01's D-02 row precedent -- neither fd00:ec2::254 nor 100.100.100.200 is the sandbox's Sonarr target, so there is no live scenario that would exercise it without fabricating an unrelated target"
 
-requirements-completed: []
-# LAN-01/LAN-02 completion and REQUIREMENTS.md/STATE.md/ROADMAP.md updates are deferred
-# to this plan's own Task 3 checkpoint resolution -- the orchestrator-level state_updates
-# step runs only once Task 3 (owner review) closes, not at this partial Task 1/2 commit.
+requirements-completed: [LAN-01, LAN-02]
 
 # Metrics
-duration: ~40min (Tasks 1-2; Task 3 checkpoint pending)
+duration: ~45min (Tasks 1-3)
 completed: 2026-10-28
 ---
 
 # Phase 125 Plan 06: Gap-Closure Live Re-Check, Restore and Updated Verdict Summary
 
-**Re-ran the hardened Test Connection guard's live sandbox check on the PR #140 staging image (DEV_PIN_R2): the container-name positive still succeeds, the cloud-metadata negative still refuses, and the new CR-01 backslash payload is refused end to end with the real requests/urllib3 stack and real Docker DNS -- sandbox restored to 1.7.6 and fresh-session verified, production byte-identical throughout.**
+**Re-ran the hardened Test Connection guard's live sandbox check on the PR #140 staging image (DEV_PIN_R2): the container-name positive still succeeds, the cloud-metadata negative still refuses, and the new CR-01 backslash payload is refused end to end with the real requests/urllib3 stack and real Docker DNS -- sandbox restored to 1.7.6 and fresh-session verified, production byte-identical throughout. Owner approved the updated Phase 125 verdict.**
 
 ## Performance
 
-- **Duration:** ~40 min (Task 1 script hardening + Task 2 single live NAS session, no retry needed)
-- **Completed:** 2026-10-28 (Tasks 1-2; Task 3 owner checkpoint pending)
-- **Tasks:** 2 of 3 (Task 3 is the owner-verdict checkpoint, reached but not yet resolved)
+- **Duration:** ~45 min (Task 1 script hardening + Task 2 single live NAS session, no retry needed + Task 3 owner review)
+- **Completed:** 2026-10-28 (Tasks 1-3, all complete)
+- **Tasks:** 3 of 3
 - **Files modified:** 2 (`125-livecheck.sh`, `125-LAN-EVIDENCE.md`); 1 created (this summary)
 
 ## Accomplishments
@@ -61,7 +58,8 @@ completed: 2026-10-28
 ## Task Commits
 
 1. **Task 1: Add the CR-01 payload negative and restore-on-any-failure to the LAN sandbox live check** - `bd6a98c` (docs)
-2. **Task 2: Run the re-check on DEV_PIN_R2, final restore, fresh-session check, evidence and updated verdict** - committed together with this summary (see below)
+2. **Task 2: Run the re-check on DEV_PIN_R2, final restore, fresh-session check, evidence and updated verdict** - `4fb05a2` (docs)
+3. **Task 3: Owner review of the updated Phase 125 verdict** - committed together with this summary update (see below)
 
 ## Files Created/Modified
 
@@ -87,6 +85,12 @@ completed: 2026-10-28
 
 **Production unchanged:** `prod-before.txt`, `prod-after.txt` and `prod-final.txt` all identical: `2feb4073db71... sha256:5b801f83... ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0... running 2026-10-23T07:04:18.591254939Z` -- matches 125-03's recorded value exactly.
 
+## Owner reply
+
+Owner reply, verbatim, 2026-10-28: "approved"
+
+The owner reviewed, before replying: a positive check against `http://sonarr-v5:8989` succeeding with Sonarr `5.0.0.2800`; `http://169.254.169.254` refused with the link-local/cloud-metadata message; the CR-01 payload `http://169.254.169.254\@sonarr-v5:8989` refused with the invalid-character message; the sandbox restored to the 1.7.6 pin and original Sonarr URL; production untouched; PR #140 still draft. The orchestrator independently re-verified in a separate `ssh nas` session: `seedsyncarr-test` and `seedsyncarr` both report `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0...`, and production `StartedAt` `2026-10-23T07:04:18.591254939Z` is unchanged. The owner was told one CHANGELOG `### Security` bullet names the backslash character and did not ask to change it.
+
 ## Decisions Made
 
 - Used `ssh nas 'cat > ...' < file` (not `scp`) to place both scripts, sha256-verified byte-identical before running -- same workaround as 125-03 for this environment's SSH/scp limitation.
@@ -111,19 +115,20 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-- Tasks 1 and 2 are complete and committed. Task 3 (owner review of the updated Phase 125 verdict) is a `checkpoint:human-verify` and has not been presented/resolved yet -- see the CHECKPOINT REACHED message returned alongside this summary.
-- `REQUIREMENTS.md`, `STATE.md` and `ROADMAP.md` are untouched by this partial commit; those updates, the phase-closing requirements marking, and the final metadata commit are deferred to the continuation agent that resolves Task 3.
+- All three tasks are complete and committed. The owner has reviewed and approved the updated Phase 125 verdict (gap closure).
+- `REQUIREMENTS.md`, `STATE.md` and `ROADMAP.md` are updated by this continuation to mark LAN-01/LAN-02 complete and advance plan progress; the phase itself is not marked complete in ROADMAP.md (the orchestrator runs verification first).
 - PR #140 remains open and draft (`headRefOid` unchanged at `18de612d...`); nothing was merged.
 
-## Self-Check (Tasks 1-2 only; Task 3 pending)
+## Self-Check
 
 - `FOUND: .planning/phases/125-lan-connection-tests/125-livecheck.sh`
 - `FOUND: .planning/phases/125-lan-connection-tests/125-LAN-EVIDENCE.md`
 - `FOUND: bd6a98c` (docs, Task 1 commit) -- confirmed in `git log --oneline --all`
+- `FOUND: 4fb05a2` (docs, Task 2 commit) -- confirmed in `git log --oneline --all`
 - NAS state independently re-verified in a fresh `ssh nas` session after `teardown.sh --final`: `.Config.Image` == `IMAGE_PIN_L0`, compose line == `IMAGE_PIN_L0`, `sonarr_url` == `http://sonarr-v5:8989`, `/server/status` == 200, production fingerprint diff empty against `prod-before.txt`
-- This summary's own Task 2 commit hash is necessarily self-referential (recorded in the orchestrator's CHECKPOINT REACHED message, not inside this file, since the hash is created by committing this very file)
+- Owner reply recorded verbatim in this file and in `125-LAN-EVIDENCE.md`
 
 ---
 *Phase: 125-lan-connection-tests*
-*Tasks 1-2 completed: 2026-10-28*
-*Task 3: pending owner review (see CHECKPOINT REACHED)*
+*Tasks 1-3 completed: 2026-10-28*
+*Phase 125 gap closure: owner-approved*

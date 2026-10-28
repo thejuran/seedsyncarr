@@ -543,3 +543,11 @@ Rows below update or add to the original "## Phase 125 verdict" table above. Any
 **Phase 125 live re-check: PASSED**
 
 The sandbox is restored to `IMAGE_PIN_L0` (`ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`) and verified in a fresh, independent session. Production `seedsyncarr` was never touched beyond the single permitted read-only fingerprint and is byte-identical before, during and after this plan (and unchanged since 125-03). PR #140 remains open and draft (`isDraft: true`, `state: OPEN`, `headRefOid: 18de612d...`); nothing was merged.
+
+## Owner review (gap closure, Task 3)
+
+Owner reply, verbatim, 2026-10-28: "approved"
+
+The owner reviewed, before replying: a positive check against `http://sonarr-v5:8989` succeeding with Sonarr `5.0.0.2800`; `http://169.254.169.254` refused with the link-local/cloud-metadata message; the CR-01 payload `http://169.254.169.254\@sonarr-v5:8989` refused with the invalid-character message; the sandbox restored to the 1.7.6 pin and original Sonarr URL; production untouched; PR #140 still draft. The orchestrator independently re-verified in a separate `ssh nas` session: `seedsyncarr-test` and `seedsyncarr` both report `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0...`, and production `StartedAt` `2026-10-23T07:04:18.591254939Z` is unchanged. The owner was told one CHANGELOG `### Security` bullet names the backslash character and did not ask to change it.
+
+**Phase 125: gap-closure owner-approved.**
