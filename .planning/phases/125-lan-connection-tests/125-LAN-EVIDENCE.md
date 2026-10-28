@@ -284,3 +284,158 @@ Owner reply, verbatim, 2026-10-27: "approved"
 The owner reviewed, before replying: 1.7.6 failed Test Connection on `http://sonarr-v5:8989` (the old problem); the PR build succeeded against the identical URL and reported Sonarr `5.0.0.2800`; `http://169.254.169.254` was refused with the locked message; the sandbox was restored to 1.7.6 and its original Sonarr URL; production was untouched. The orchestrator independently re-verified in a separate `ssh nas` session: `seedsyncarr-test` and `seedsyncarr` both report `ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`; production `StartedAt` `2026-10-23T07:04:18.591254939Z` unchanged.
 
 **Phase 125: owner-approved.**
+
+## Gap closure (D-11, D-12)
+
+A post-approval code review (`125-REVIEW.md`) found a parser-differential SSRF bypass (CR-01) and related gaps after the Phase 125 verdict above; the owner reopened the phase for gap closure (D-11 through D-14). This section records the 125-04 regression closure and the 125-05 gate rerun over it.
+
+### Unit regressions 125-04 (RED before GREEN)
+
+- RED (test, `730d3c7`): `test(125-04): add parser-differential, metadata and malformed-host regressions for Test Connection guard`
+  - Command: `cd src/python && timeout 600 poetry run pytest tests/unittests/test_web/test_handler/test_config_handler.py -p no:cacheprovider -q`
+  - Result: **37 failed, 115 passed, 22 subtests passed** (1 warning, pre-existing `cache_dir` pytest-config notice)
+  - Full failing-id list and passing-lock-test list are in `125-04-SUMMARY.md` "RED" (CR-01 backslash-userinfo payloads, D-12 metadata addresses, WR-02 malformed hostnames, WR-03 simulated-old-interpreter IPv6-transition forms, D-14 character/IDN cases)
+
+- GREEN (fix, `b6d0902`): `fix(125-04): refuse URLs the guard and requests parse differently; block metadata hosts in allowed ranges`
+  - Command: `cd src/python && timeout 600 poetry run pytest tests/unittests/test_web/test_handler/test_config_handler.py tests/unittests/test_web/test_web_app_builder_logging.py tests/unittests/test_sonarr5 -p no:cacheprovider -q`
+  - Result: **201 passed, 87 subtests passed, 0 failed** (2 warnings, pre-existing and unrelated)
+  - Whole-tree lint at GREEN: `ruff check src/python/` -> `All checks passed!`
+
+### Gates (125-05)
+
+Preconditions: `git branch --show-current` -> `gsd/phase-125-lan-connection-tests`; `git status --porcelain -- src/` -> empty; `git fetch origin`; `BASE=$(git merge-base origin/main HEAD)` -> `1ce120c642ae984cd66c055a38aa70804ab18e53` (unchanged from the 125-02 gate run).
+
+**Gate 1 (suite vs. environmental baseline):**
+
+Command: `cd src/python && timeout 900 poetry run pytest tests/unittests -p no:cacheprovider -q`
+
+Completed normally in 82.69s (no timeout/exit 124 — the `--ignore` rerun path was not needed).
+
+Verbatim summary line:
+```
+21 failed, 1965 passed, 2 warnings, 3 errors, 106 subtests passed in 82.69s (0:01:22)
+```
+
+Extracted `FAILED `/`ERROR ` lines (suffix after ` - ` stripped), sorted, 24 lines — `comm -23 current baseline` against the fixed 24-line baseline recorded above under "### Gate 1 (suite vs. environmental baseline)" (test_extract_process.py x6, test_scanner_process.py 3 FAILED + 3 ERROR, test_sshcp.py x11, test_scanner.py::test_scan_file_with_latin_chars x1) is empty — the two 24-line sets are identical (`diff` empty).
+
+Result: **PASS** (24 lines, 21 FAILED + 3 ERROR, no new failure).
+
+**Gate 2 (lint):**
+
+Command: `cd /Users/julianamacbook/seedsyncarr && ruff check src/python/`
+
+Output: `All checks passed!`
+
+Result: **PASS**
+
+**Gate 3 (RED before GREEN, D-08):**
+
+`git log --format="%h %s" --reverse $BASE..HEAD` (relevant excerpt, in order):
+```
+8a69fdf test(125-01): add failing LAN classifier regression tests (LAN-01, LAN-02)
+f82e256 fix(125-01): accept LAN and container addresses in Test Connection, keep metadata/link-local/multicast/reserved refused (LAN-01, LAN-02)
+...
+730d3c7 test(125-04): add parser-differential, metadata and malformed-host regressions for Test Connection guard
+b6d0902 fix(125-04): refuse URLs the guard and requests parse differently; block metadata hosts in allowed ranges
+```
+`test(125-01)` precedes `fix(125-01)`; `test(125-04)` precedes `fix(125-04)`.
+
+`git show --stat --format= 730d3c7`:
+```
+ .../test_web/test_handler/test_config_handler.py   | 491 ++++++++++++++++++++-
+ 1 file changed, 488 insertions(+), 3 deletions(-)
+```
+Only `src/python/tests/unittests/test_web/test_handler/test_config_handler.py`.
+
+`git show --stat --format= b6d0902`:
+```
+ src/python/web/handler/config.py | 126 ++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 119 insertions(+), 7 deletions(-)
+```
+Only `src/python/web/handler/config.py`.
+
+Result: **PASS**
+
+**Gate 4 (scope, D-06):**
+
+`git diff --name-only $BASE..HEAD -- src/ | sort`:
+```
+src/python/tests/unittests/test_sonarr5/test_sonarr5_system_status.py
+src/python/tests/unittests/test_web/test_handler/test_config_handler.py
+src/python/web/handler/config.py
+```
+Exactly 3 lines, exactly the expected set — unchanged from the 125-02 gate run (125-04 touched only files already in this set).
+
+`git diff $BASE..HEAD -- src/python/controller/` -> empty (0 lines).
+
+`grep -rn "_validate_url" src/python --include="*.py" | grep -v "/tests/"`:
+```
+src/python/web/handler/config.py:182:    def _validate_url(url: str) -> str | None:
+src/python/web/handler/config.py:372:        error_msg = ConfigHandler._validate_url(url)
+```
+One definition, one call, both in `web/handler/config.py` only.
+
+Result: **PASS**
+
+**Gate 5 (log/secret hygiene, D-07):**
+
+Command: `git diff b6d0902~1 b6d0902 -- src/python/web/handler/config.py | grep "^+" | grep -cE "logger\.|api_key|X-Api-Key"`
+
+Output: `0`
+
+Result: **PASS**
+
+### Build under test (125-05)
+
+- PR: https://github.com/thejuran/seedsyncarr/pull/140 (draft, base `main`, reused — one PR per phase)
+- NEW_HEAD_SHA: `18de612d0d3a0ab316b2c108857ba2f768b5d727` (`docs(125-05): make 1.8.0 draft CHANGELOG accurate after Test Connection guard hardening`); confirmed equal to `gh pr view 140 --json headRefOid` both before and after the digest lookup; `fix(125-04)` (`b6d0902`) confirmed an ancestor via `git merge-base --is-ancestor`
+- PR description updated: trailing attribution line removed, a "Review follow-up" paragraph appended in plain terms (backslash parser-differential bypass, exact-URL validation, credentials/query/malformed-hostname refusals, the two cloud-metadata-in-allowed-range addresses, explicit IPv6-transition refusals, CHANGELOG updated), attribution line re-added last; PR stayed draft throughout (`gh pr view 140` confirmed `OPEN true` after the edit)
+- CI run: https://github.com/thejuran/seedsyncarr/actions/runs/40605742420 (run number 416, workflow `ci.yml`, triggered via `pull_request`), conclusion `success`
+
+Per-check conclusions (`gh pr checks 140`):
+
+| Check | Conclusion | Duration |
+|---|---|---|
+| Analyze (actions) | pass | 44s |
+| Analyze (javascript-typescript) | pass | 55s |
+| Analyze (python) | pass | 1m0s |
+| Angular unit tests | pass | 2m16s |
+| Build Docker Image | pass | 2m26s |
+| CodeQL | pass | 2s |
+| End-to-end tests on Docker Image (amd64) | pass | 4m4s |
+| Lint (Angular) | pass | 24s |
+| Lint (Python) | pass | 10s |
+| Python unit tests | pass | 4m56s |
+| Verify Python package | pass | 27s |
+| Verify release metadata | pass | 3s |
+| Release metadata verifier tests | pass | 10s |
+| Publish Docker Image | skipping | - |
+| Publish Docker Image (:dev) | skipping | - |
+| Publish Documentation | skipping | - |
+| Publish GitHub Release | skipping | - |
+| Publish to PyPI | skipping | - |
+
+Publish-* jobs are skipped on `pull_request`, as expected (they run only on `main`/tag pushes).
+
+Equivalence guard (run immediately before the digest lookup): newest `ci.yml` run on the branch still has `headSha == 18de612d0d3a0ab316b2c108857ba2f768b5d727`; `gh pr view 140 --json headRefOid` still equals the same SHA. No later push occurred between CI completion and digest resolution.
+
+Digest resolution — two independent methods, both against `ghcr.io/thejuran/seedsyncarr:416`:
+
+1. `docker buildx imagetools inspect ghcr.io/thejuran/seedsyncarr:416` → index `Digest: sha256:76df9d9a5dccb89d1106ca7d0b66e98319e482c6aa65f0d010159df5a19d9d45`
+2. Anonymous GHCR token (`https://ghcr.io/token?scope=repository:thejuran/seedsyncarr:pull&service=ghcr.io`) + `HEAD https://ghcr.io/v2/thejuran/seedsyncarr/manifests/416` with `Accept: application/vnd.oci.image.index.v1+json` → `docker-content-digest: sha256:76df9d9a5dccb89d1106ca7d0b66e98319e482c6aa65f0d010159df5a19d9d45`
+
+Both methods agree (64 hex chars). The token itself was never printed.
+
+```
+DEV_PIN_R2=ghcr.io/thejuran/seedsyncarr@sha256:76df9d9a5dccb89d1106ca7d0b66e98319e482c6aa65f0d010159df5a19d9d45
+```
+
+This differs from the pre-fix digest (`DEV_PIN=...162d453217fbada459504d084b8ea2915aca6bd9b2285239f972a487888a75d3`, recorded above under "Build under test") and from the 1.7.6 production digest (`da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e`), as required.
+
+Expected sandbox restore pin for 125-06 teardown (unchanged from Phase 123/124/125-03, verified restored by 123-07 and 125-03):
+
+```
+IMAGE_PIN_L0=ghcr.io/thejuran/seedsyncarr:1.7.6@sha256:da6196e0e89a4d986381b3f3d14ff7c1c63e9ec02c807f6e8efde00fc4db101e
+```
+
+Routine push output: `git push` surfaced GitHub's standing Dependabot summary (10 vulnerabilities on the default branch, 1 critical/4 high/4 moderate/1 low) — out of this plan's scope; Dependabot review is Phase 126's release-gate responsibility (same note as 125-02).
