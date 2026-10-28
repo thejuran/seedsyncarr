@@ -415,3 +415,12 @@ Pending: owner confirmation (D-17, Task 2 of this plan).
 
 **Total deviations:** 1 auto-fixed (Rule 3, verification-command-only, no product or config
 change).
+
+## Owner confirmation (Plan 126-06, 2026-10-28)
+
+Owner reply, verbatim: `confirmed`
+
+D-17 is satisfied: a successful scan was observed after start (1f, 31 s after UP_TIME, no
+warm-up error), Sonarr and Radarr were both reachable with no stuck holds (1f), wud was
+restored last with an unchanged post-restore fingerprint (1h), and the owner has now confirmed
+the deployed state. REL-06 is complete.
