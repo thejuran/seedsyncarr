@@ -101,6 +101,70 @@
         </div>
       </div>
 
+      <div class="settings-card settings-card--pairs">
+        <div class="settings-card-header">
+          <i class="ph ph-folders"></i>
+          <span>Path Pairs</span>
+        </div>
+        <div class="settings-card-body">
+          <p class="pair-description">
+            Each pair syncs one remote directory to one local directory, with its own transfers and scans.
+            Changes apply after a restart.
+          </p>
+          <div class="pair-list">
+            @for (pair of pathPairs | async; track pair.id) {
+              <div class="pair-row" [class.pair-row--disabled]="!pair.enabled">
+                <div class="pair-info">
+                  <span class="pair-name">{{pair.name}}</span>
+                  <span class="pair-path">{{pair.remote_path}} <i class="ph ph-arrow-right"></i> {{pair.local_path}}</span>
+                </div>
+                <div class="pair-actions">
+                  <label class="pair-check">
+                    <input type="checkbox" [ngModel]="pair.enabled" [disabled]="!commandsEnabled || pairBusy"
+                      (ngModelChange)="onTogglePair(pair, 'enabled', $event)" /> Enabled
+                  </label>
+                  <label class="pair-check">
+                    <input type="checkbox" [ngModel]="pair.auto_queue" [disabled]="!commandsEnabled || pairBusy"
+                      (ngModelChange)="onTogglePair(pair, 'auto_queue', $event)" /> Auto-queue
+                  </label>
+                  <button class="pair-btn" type="button" [disabled]="!commandsEnabled || pairBusy"
+                    (click)="onEditPair(pair)" aria-label="Edit path pair">
+                    <i class="ph ph-pencil-simple"></i>
+                  </button>
+                  <button class="pair-btn pair-btn--danger" type="button" [disabled]="!commandsEnabled || pairBusy"
+                    (click)="onDeletePair(pair)" aria-label="Delete path pair">
+                    <i class="ph ph-trash"></i>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+          <h4 class="subsection-header">{{editingPairId == null ? 'Add a path pair' : 'Edit path pair'}}</h4>
+          <div class="pair-form">
+            <input type="text" class="form-control form-control-sm" placeholder="Name (e.g. tv-sonarr)"
+              maxlength="64" [(ngModel)]="pairForm.name" [disabled]="!commandsEnabled" />
+            <input type="text" class="form-control form-control-sm" placeholder="Remote path"
+              [(ngModel)]="pairForm.remote_path"
+              [disabled]="!commandsEnabled || editingPairId === LEGACY_PATH_PAIR_ID" />
+            <input type="text" class="form-control form-control-sm" placeholder="Local path (absolute)"
+              [(ngModel)]="pairForm.local_path"
+              [disabled]="!commandsEnabled || editingPairId === LEGACY_PATH_PAIR_ID" />
+            @if (editingPairId === LEGACY_PATH_PAIR_ID) {
+              <p class="pair-description">The paths of the Default pair are set under Remote Server (LFTP).</p>
+            }
+            <div class="pair-form-actions">
+              <button class="btn-pattern-add" type="button" [disabled]="!canSavePair" (click)="onSavePair()">
+                <i class="ph" [class.ph-plus-circle]="editingPairId == null" [class.ph-floppy-disk]="editingPairId != null"></i>
+                {{editingPairId == null ? 'Add' : 'Save'}}
+              </button>
+              @if (editingPairId != null) {
+                <button class="pair-btn" type="button" (click)="onCancelPairEdit()">Cancel</button>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="settings-card">
         <div class="settings-card-header">
           <i class="ph ph-magnifying-glass"></i>

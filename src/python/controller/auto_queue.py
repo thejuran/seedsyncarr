@@ -200,8 +200,11 @@ class AutoQueue:
     def __init__(self,
                  context: Context,
                  persist: AutoQueuePersist,
-                 controller: Controller):
+                 controller: Controller,
+                 pair_id: Optional[str] = None):
         self.logger = context.logger.getChild("AutoQueue")
+        # Path pair this auto queue serves; carried by every command it sends
+        self.__pair_id = pair_id
         self.__context = context
         self.__persist = persist
         self.__controller = controller
@@ -407,7 +410,8 @@ class AutoQueue:
             )
             command = Controller.Command(
                 Controller.Command.Action.QUEUE, filename,
-                origin=Controller.Command.Origin.AUTO
+                origin=Controller.Command.Origin.AUTO,
+                pair_id=self.__pair_id
             )
             self.__controller.queue_command(command)
 
@@ -417,7 +421,7 @@ class AutoQueue:
                 "Auto extracting '{}'".format(filename) +
                 (" for pattern '{}'".format(pattern.pattern) if pattern else "")
             )
-            command = Controller.Command(Controller.Command.Action.EXTRACT, filename)
+            command = Controller.Command(Controller.Command.Action.EXTRACT, filename, pair_id=self.__pair_id)
             self.__controller.queue_command(command)
 
         # Clear the processed files

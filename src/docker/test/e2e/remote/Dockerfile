@@ -26,6 +26,9 @@ RUN mkdir -p /home/remoteuser/.ssh && \
 
 # Copy over data
 ADD --chown=remoteuser:remoteuser src/docker/test/e2e/remote/files /home/remoteuser/files
+# Second remote directory for the multi path pair test. It shares the file name
+# 'joke' with the first one on purpose.
+ADD --chown=remoteuser:remoteuser src/docker/test/e2e/remote/files-movies /home/remoteuser/files-movies
 
 # Change sshd port to 1234
 RUN sed -i '/Port 22/c\Port 1234' /etc/ssh/sshd_config

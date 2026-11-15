@@ -262,3 +262,71 @@ class TestModelDebugLogSanitization(unittest.TestCase):
         retrieved = self.model.get_file(crlf_name)
         self.assertEqual(200, retrieved.local_size,
                          "Model must store updated file under the raw name")
+
+
+class TestModelPathPairs(unittest.TestCase):
+    def setUp(self):
+        self.model = Model()
+
+    def test_same_name_in_two_pairs_does_not_collide(self):
+        a1 = ModelFile("a", False, pair_id="p1")
+        a1.local_size = 1
+        a2 = ModelFile("a", False, pair_id="p2")
+        a2.local_size = 2
+        a0 = ModelFile("a", False)
+        for f in (a1, a2, a0):
+            self.model.add_file(f)
+        self.assertEqual(1, self.model.get_file("a", pair_id="p1").local_size)
+        self.assertEqual(2, self.model.get_file("a", pair_id="p2").local_size)
+        self.assertIs(a0, self.model.get_file("a"))
+        self.assertEqual({"a"}, self.model.get_file_names())
+        self.assertEqual({("p1", "a"), ("p2", "a"), (None, "a")}, self.model.get_file_keys())
+
+    def test_duplicate_within_a_pair_rejected(self):
+        self.model.add_file(ModelFile("a", False, pair_id="p1"))
+        with self.assertRaises(ModelError):
+            self.model.add_file(ModelFile("a", False, pair_id="p1"))
+
+    def test_update_and_remove_are_pair_scoped(self):
+        self.model.add_file(ModelFile("a", False, pair_id="p1"))
+        self.model.add_file(ModelFile("a", False, pair_id="p2"))
+        updated = ModelFile("a", False, pair_id="p2")
+        updated.local_size = 5
+        self.model.update_file(updated)
+        self.assertIsNone(self.model.get_file("a", pair_id="p1").local_size)
+        self.assertEqual(5, self.model.get_file("a", pair_id="p2").local_size)
+        with self.assertRaises(ModelError):
+            self.model.update_file(ModelFile("a", False, pair_id="p3"))
+        self.model.remove_file("a", pair_id="p1")
+        self.assertEqual({("p2", "a")}, self.model.get_file_keys())
+        with self.assertRaises(ModelError):
+            self.model.remove_file("a")
+
+    def test_model_of_a_pair_defaults_lookups_to_its_pair(self):
+        model = Model(pair_id="p1")
+        f = ModelFile("a", False, pair_id="p1")
+        model.add_file(f)
+        self.assertIs(f, model.get_file("a"))
+        self.assertIs(f, model.get_file("a", pair_id="p1"))
+        model.remove_file("a")
+        self.assertEqual(set(), model.get_file_keys())
+
+    def test_model_of_a_pair_does_not_find_other_pairs_files(self):
+        model = Model(pair_id="p1")
+        model.add_file(ModelFile("a", False, pair_id="p2"))
+        with self.assertRaises(ModelError):
+            model.get_file("a")
+        with self.assertRaises(ModelError):
+            model.remove_file("a")
+
+    def test_listener_gets_the_added_file(self):
+        listener = MagicMock()
+        self.model.add_listener(listener)
+        f = ModelFile("a", False, pair_id="p1")
+        self.model.add_file(f)
+        listener.file_added.assert_called_once_with(f)
+
+    def test_pair_id_is_part_of_equality(self):
+        self.assertEqual(ModelFile("a", False, pair_id="p1"), ModelFile("a", False, pair_id="p1"))
+        self.assertNotEqual(ModelFile("a", False, pair_id="p1"), ModelFile("a", False, pair_id="p2"))
+        self.assertNotEqual(ModelFile("a", False, pair_id="p1"), ModelFile("a", False))

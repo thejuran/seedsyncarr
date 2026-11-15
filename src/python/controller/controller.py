@@ -137,9 +137,13 @@ class Controller:
 
         def __init__(self, action: Action, filename: str,
                      origin: "Controller.Command.Origin" = None,
-                     release_unverified: bool = False):
+                     release_unverified: bool = False,
+                     pair_id: Optional[str] = None):
             self.action = action
             self.filename = filename
+            # Path pair the file belongs to; None lets the multi-pair
+            # controller resolve it from the file name
+            self.pair_id = pair_id
             self.origin = origin if origin is not None else Controller.Command.Origin.USER
             # One-shot user confirmation to transfer a root whose completion
             # could not be verified. Lives only on this command and is never
@@ -155,8 +159,16 @@ class Controller:
                  context: Context,
                  persist: ControllerPersist,
                  webhook_manager: WebhookManager,
-                 persist_callback: Optional[Callable[[], None]] = None):
+                 persist_callback: Optional[Callable[[], None]] = None,
+                 pair_id: Optional[str] = None,
+                 report_status: bool = True):
         self.__context = context
+        # Path pair this controller serves; None for the single/legacy pair
+        self.__pair_id = pair_id
+        # Whether this controller writes scan times and capacity to the shared
+        # status. With several pairs only one of them does, so the values
+        # do not flip between pairs.
+        self.__report_status = report_status
         self.__persist = persist
         self.__webhook_manager = webhook_manager
         # Writes the controller persist to disk right away. Called after an
@@ -182,7 +194,7 @@ class Controller:
         self.__command_queue = Queue()
 
         # The model
-        self.__model = Model()
+        self.__model = Model(pair_id=pair_id)
         self.__model.set_base_logger(self.logger)
         # Lock for the model
         # Note: While the scanners are in a separate process, the rest of the application
@@ -192,7 +204,7 @@ class Controller:
         self.__model_lock = Lock()
 
         # Model builder
-        self.__model_builder = ModelBuilder()
+        self.__model_builder = ModelBuilder(pair_id=pair_id)
         self.__model_builder.set_base_logger(self.logger)
         self.__model_builder.set_downloaded_files(self.__persist.downloaded_file_names)
         self.__model_builder.set_extracted_files(self.__persist.extracted_file_names)
@@ -448,6 +460,44 @@ class Controller:
         with self.__model_lock:
             model_files = self.__get_model_files()
         return model_files
+
+    def stop_lftp(self):
+        """
+        Stop the lftp process, which is spawned when the controller is constructed.
+        For a controller that will never be started.
+        """
+        self.__lftp_manager.exit()
+
+    def has_model_file(self, filename: str) -> bool:
+        """
+        Whether a root file of this name is in this controller's model
+        """
+        with self.__model_lock:
+            return filename in self.__model.get_file_names()
+
+    def matches_webhook_name(self, file_name: str) -> bool:
+        """
+        Whether a webhook-reported file name resolves to a file in this
+        controller's model: a root file or any of its children, compared
+        case-insensitively like WebhookManager. Thread-safe; used to detect
+        a name present in more than one path pair.
+        """
+        wanted = file_name.lower()
+        with self.__model_lock:
+            for root_name in self.__model.get_file_names():
+                if root_name.lower() == wanted:
+                    return True
+                try:
+                    root_file = self.__model.get_file(root_name)
+                except ModelError:
+                    continue
+                frontier = collections.deque(root_file.get_children())
+                while frontier:
+                    child = frontier.popleft()
+                    if child.name.lower() == wanted:
+                        return True
+                    frontier.extend(child.get_children())
+        return False
 
     def is_file_stopped(self, filename: str) -> bool:
         """
@@ -713,7 +763,8 @@ class Controller:
         self._update_active_file_tracking(lftp_statuses, latest_extract_statuses)
 
         # Retained coordinator stage: calls Controller._should_update_capacity (circular-import guard)
-        self._update_controller_status(latest_remote_scan, latest_local_scan)
+        if self.__report_status:
+            self._update_controller_status(latest_remote_scan, latest_local_scan)
 
     def __check_webhook_imports(self):
         """

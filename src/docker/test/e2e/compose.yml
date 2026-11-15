@@ -43,6 +43,9 @@ services:
         source: ${E2E_SSH_KEY:?E2E_SSH_KEY must be set — run via 'make run-tests-e2e'}
         target: /home/seedsync/.ssh/id_ed25519
         read_only: true
+    # Local directory of the second path pair in path-pairs.spec.ts
+    tmpfs:
+      - /downloads-movies:mode=1777
 
   configure:
     image: seedsyncarr/test/e2e/configure

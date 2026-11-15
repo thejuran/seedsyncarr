@@ -14,10 +14,11 @@ import threading
 from common import ServiceExit, Context, Constants, Config, Args, AppError
 from common import ServiceRestart
 from common import Localization, Status, ConfigError, ConfigUnreadableError, Persist, PersistError
-from common import EncryptionError
+from common import EncryptionError, PathPair, PathPairsConfig
 from common.encryption import is_ciphertext
 from controller import Controller, ControllerJob, ControllerPersist, AutoQueue, AutoQueuePersist
 from controller.webhook_manager import WebhookManager
+from controller.multi_controller import build_pair_runtime
 from web import WebAppJob, WebAppBuilder
 
 T_Persist = TypeVar('T_Persist', bound=Persist)
@@ -40,6 +41,7 @@ class Seedsyncarr:
     __FILE_CONFIG = "settings.cfg"
     __FILE_AUTO_QUEUE_PERSIST = "autoqueue.persist"
     __FILE_CONTROLLER_PERSIST = "controller.persist"
+    __FILE_PATH_PAIRS = "path_pairs.json"
     __FILE_SECRETS_KEY = "secrets.key"
     __CONFIG_DUMMY_VALUE = "<replace me>"
 
@@ -131,6 +133,27 @@ class Seedsyncarr:
         self.auto_queue_persist_path = os.path.join(args.config_dir, Seedsyncarr.__FILE_AUTO_QUEUE_PERSIST)
         self.auto_queue_persist = self._load_persist(AutoQueuePersist, self.auto_queue_persist_path)
 
+        self.path_pairs_path = os.path.join(args.config_dir, Seedsyncarr.__FILE_PATH_PAIRS)
+        self.path_pairs = self._load_path_pairs(self.path_pairs_path, config)
+
+        # One controller persist per enabled path pair. The legacy pair keeps the
+        # original controller.persist, so state from before path pairs carries over.
+        self.pair_persists: dict = {}
+        self.pair_persist_paths: dict = {}
+        for pair in self.path_pairs.pairs:
+            if not pair.enabled:
+                continue
+            if pair.id == PathPair.LEGACY_ID:
+                self.pair_persists[pair.id] = self.controller_persist
+                self.pair_persist_paths[pair.id] = self.controller_persist_path
+            else:
+                pair_persist_path = os.path.join(args.config_dir, "controller.{}.persist".format(pair.id))
+                self.pair_persist_paths[pair.id] = pair_persist_path
+                self.pair_persists[pair.id] = self._load_controller_persist(
+                    pair_persist_path,
+                    config.controller.max_tracked_files
+                )
+
     def run(self,
             consecutive_restarts: int = 0,
             run_start: Optional[datetime] = None,
@@ -150,22 +173,31 @@ class Seedsyncarr:
         # SEC-02 #5b: emit per-field warnings for decrypt failures from from_str
         Seedsyncarr._emit_decrypt_warnings(self.context.logger, self.context.config)
 
-        # Create webhook manager (shared between controller and web app)
-        webhook_manager = WebhookManager(self.context)
-
-        # Create controller
-        # The persist callback saves the controller persist as soon as an
-        # import notice is credited, closing the crash window between the
-        # credit and the next periodic save.
-        controller = Controller(self.context, self.controller_persist, webhook_manager,
-                                persist_callback=self._persist_controller_now)
+        enabled_pairs = [p for p in self.path_pairs.pairs if p.enabled]
+        if enabled_pairs:
+            # One controller, webhook manager and auto queue per path pair. The
+            # persist callbacks save a pair's controller persist as soon as an
+            # import notice is credited, closing the crash window between the
+            # credit and the next periodic save.
+            controller, webhook_manager, auto_queue = build_pair_runtime(
+                self.context,
+                enabled_pairs,
+                self.pair_persists,
+                self.auto_queue_persist,
+                {pair.id: self._pair_persist_callback(pair.id) for pair in enabled_pairs}
+            )
+        else:
+            # No path pair is configured yet: the single controller reports
+            # the incomplete config as it always did
+            webhook_manager = WebhookManager(self.context)
+            controller = Controller(self.context, self.controller_persist, webhook_manager,
+                                    persist_callback=self._persist_controller_now)
+            auto_queue = AutoQueue(self.context, self.auto_queue_persist, controller)
         self.__controller = controller
 
-        # Create auto queue
-        auto_queue = AutoQueue(self.context, self.auto_queue_persist, controller)
-
         # Create web app
-        web_app_builder = WebAppBuilder(self.context, controller, self.auto_queue_persist, webhook_manager)
+        web_app_builder = WebAppBuilder(self.context, controller, self.auto_queue_persist, webhook_manager,
+                                        path_pairs=self.path_pairs, path_pairs_path=self.path_pairs_path)
         web_app = web_app_builder.build()
 
         # Define child threads
@@ -273,6 +305,9 @@ class Seedsyncarr:
         with self.__persist_lock:
             self.context.logger.debug("Persisting states to file")
             self.controller_persist.to_file(self.controller_persist_path)
+            for pair_id, pair_persist in self.pair_persists.items():
+                if pair_persist is not self.controller_persist:
+                    pair_persist.to_file(self.pair_persist_paths[pair_id])
             self.auto_queue_persist.to_file(self.auto_queue_persist_path)
             self.context.config.to_file(self.config_path)
 
@@ -285,6 +320,13 @@ class Seedsyncarr:
         """
         with self.__persist_lock:
             self.controller_persist.to_file(self.controller_persist_path)
+
+    def _pair_persist_callback(self, pair_id: str):
+        """Callback that writes one pair's controller persist, now (controller thread)."""
+        def callback():
+            with self.__persist_lock:
+                self.pair_persists[pair_id].to_file(self.pair_persist_paths[pair_id])
+        return callback
 
     def signal(self, signum: int, _):
         # Signals is a generated enum
@@ -575,6 +617,40 @@ class Seedsyncarr:
                 return cls()
         else:
             return cls()
+
+    @staticmethod
+    def _load_path_pairs(file_path: str, config: Config) -> PathPairsConfig:
+        """
+        Loads the path pairs from file.
+        If the file does not exist, a single "Default" pair is migrated from the
+        legacy lftp remote_path/local_path and written, but only once those are
+        configured (not unset or the placeholder). The legacy settings are left
+        untouched. A corrupted file is backed up and re-migrated.
+        """
+        remote_path = config.lftp.remote_path
+        local_path = config.lftp.local_path
+        configured = all(
+            p and p != Seedsyncarr.__CONFIG_DUMMY_VALUE for p in (remote_path, local_path)
+        )
+        if os.path.isfile(file_path):
+            try:
+                path_pairs = PathPairsConfig.from_file(file_path)
+                # settings.cfg stays the source of truth for the legacy pair
+                if configured and path_pairs.sync_legacy(remote_path, local_path):
+                    path_pairs.to_file(file_path)
+                return path_pairs
+            except PersistError:
+                if Seedsyncarr.logger:
+                    Seedsyncarr.logger.exception("Caught exception")
+                Seedsyncarr.__backup_file(file_path)
+
+        if not configured:
+            return PathPairsConfig()
+        path_pairs = PathPairsConfig.from_legacy(remote_path, local_path)
+        path_pairs.to_file(file_path)
+        if Seedsyncarr.logger:
+            Seedsyncarr.logger.info("Migrated legacy remote/local path to {}".format(file_path))
+        return path_pairs
 
     @staticmethod
     def _load_controller_persist(file_path: str, max_tracked_files: int) -> ControllerPersist:

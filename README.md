@@ -52,6 +52,7 @@ services:
 - **Web UI** — monitor and control all transfers from a clean, responsive dashboard
 - **Auto-extraction** — automatically extract archives after sync completes
 - **AutoQueue** — pattern-based file selection syncs only the files you want
+- **Multiple path pairs** — sync several remote directories, each into its own local directory (for example one per rTorrent label). See [Path Pairs](docs/CONFIGURATION.md#path-pairs)
 - **Sonarr and Radarr integration** — HMAC-verified import webhooks drive safe auto-delete; once your media library confirms the import, SeedSyncarr removes the local copy
 - **Local and remote file management** — browse, delete, and manage files on both ends from the UI
 - **Docker packaging** — available as Docker images for amd64 and arm64
@@ -118,6 +119,7 @@ Key configuration areas in **Settings**:
 
 - **Remote Server** — SSH host, port, username, and path to sync from
 - **Local Path** — where files are downloaded to on your local machine
+- **Path Pairs** — add more remote-to-local directory pairs on the same server; the remote and local path above form the Default pair
 - **Sonarr / Radarr** — webhook URLs and API keys for automated media imports
 - **AutoQueue** — define patterns to automatically queue matching files for sync
 

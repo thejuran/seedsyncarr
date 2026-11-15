@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import common
-from common import AppError, Config, Constants, ServiceExit, ServiceRestart
+from common import AppError, Config, Constants, PathPair, PathPairsConfig, ServiceExit, ServiceRestart
 from common.encryption import is_ciphertext
 from seedsyncarr import Seedsyncarr, main
 
@@ -1088,3 +1088,70 @@ class TestSeedsyncarrSignalShutdownRequest(unittest.TestCase):
             Seedsyncarr.signal(fake, signal.SIGTERM, None)
 
         fake.context.logger.exception.assert_called_once()
+
+
+class TestSeedsyncarrLoadPathPairs(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="test_load_path_pairs_")
+        self.path = os.path.join(self.tmp, "path_pairs.json")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    @staticmethod
+    def _config(remote, local):
+        config = Config()
+        config.lftp.remote_path = remote
+        config.lftp.local_path = local
+        return config
+
+    def test_migrates_legacy_paths_once(self):
+        config = self._config("/remote/files", "/local/files")
+        pairs = Seedsyncarr._load_path_pairs(self.path, config).pairs
+        self.assertEqual(1, len(pairs))
+        self.assertEqual("Default", pairs[0].name)
+        self.assertEqual("/remote/files", pairs[0].remote_path)
+        self.assertEqual("/local/files", pairs[0].local_path)
+        self.assertTrue(os.path.isfile(self.path))
+        # Second start loads the file rather than migrating again
+        again = Seedsyncarr._load_path_pairs(self.path, config).pairs
+        self.assertEqual(pairs, again)
+        self.assertEqual(PathPair.LEGACY_ID, again[0].id)
+
+    def test_legacy_pair_follows_settings(self):
+        Seedsyncarr._load_path_pairs(self.path, self._config("/remote/files", "/local/files"))
+        changed = self._config("/remote/new", "/local/new")
+        pairs = Seedsyncarr._load_path_pairs(self.path, changed).pairs
+        self.assertEqual("/remote/new", pairs[0].remote_path)
+        self.assertEqual("/local/new", pairs[0].local_path)
+        # and the change was written
+        self.assertEqual(pairs, PathPairsConfig.from_file(self.path).pairs)
+
+    def test_other_pairs_are_not_touched_by_settings(self):
+        config = self._config("/remote/files", "/local/files")
+        loaded = Seedsyncarr._load_path_pairs(self.path, config)
+        other = PathPair("movies", "/r/movies", "/l/movies")
+        loaded.add_pair(other)
+        loaded.to_file(self.path)
+        pairs = Seedsyncarr._load_path_pairs(self.path, config).pairs
+        self.assertIn(other, pairs)
+
+    def test_unconfigured_legacy_paths_do_not_create_file(self):
+        for remote, local in ((None, None), ("<replace me>", "<replace me>"), ("/r", "<replace me>")):
+            with self.subTest(remote=remote, local=local):
+                result = Seedsyncarr._load_path_pairs(self.path, self._config(remote, local))
+                self.assertEqual([], result.pairs)
+                self.assertFalse(os.path.exists(self.path))
+
+    def test_corrupt_file_is_backed_up_and_remigrated(self):
+        with open(self.path, "w") as f:
+            f.write("not json")
+        result = Seedsyncarr._load_path_pairs(self.path, self._config("/r", "/l"))
+        self.assertEqual(1, len(result.pairs))
+        self.assertTrue(os.path.isfile(self.path + ".1.bak"))
+
+    def test_leaves_legacy_settings_untouched(self):
+        config = self._config("/r", "/l")
+        Seedsyncarr._load_path_pairs(self.path, config)
+        self.assertEqual("/r", config.lftp.remote_path)
+        self.assertEqual("/l", config.lftp.local_path)

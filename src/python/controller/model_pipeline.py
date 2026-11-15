@@ -363,7 +363,7 @@ class ModelPipeline:
             if diff.change == ModelDiff.Change.ADDED:
                 self._model.add_file(diff.new_file)
             elif diff.change == ModelDiff.Change.REMOVED:
-                self._model.remove_file(diff.old_file.name)
+                self._model.remove_file(diff.old_file.name, pair_id=diff.old_file.pair_id)
                 self._notify_lifecycle_reset(diff.old_file.name, "root removed from model")
             elif diff.change == ModelDiff.Change.UPDATED:
                 self._model.update_file(diff.new_file)

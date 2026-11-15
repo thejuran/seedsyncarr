@@ -27,9 +27,32 @@ export interface BulkActionOptions {
  */
 export interface BulkFileResult {
     file: string;
+    // Path pair of the file, present when the request named one
+    pair_id?: string;
     success: boolean;
     error?: string;
     error_code?: number;
+}
+
+/**
+ * A file to act on: its bare name, or its name and path pair.
+ * A bare name is enough while there is a single pair.
+ */
+export interface BulkFileRef {
+    name: string;
+    pairId: string;
+}
+export type BulkFile = string | BulkFileRef;
+
+export function bulkFileName(file: BulkFile): string {
+    return typeof file === "string" ? file : file.name;
+}
+
+/**
+ * Bulk reference for a file: just the name without a pair, else name and pair.
+ */
+export function toBulkFile(name: string, pairId: string | null | undefined): BulkFile {
+    return pairId ? {name, pairId} : name;
 }
 
 /**
@@ -120,17 +143,20 @@ export class BulkCommandService {
     /**
      * Execute a bulk action on multiple files.
      * @param action The action to perform
-     * @param files Array of file names to operate on
+     * @param files Array of files (name, or name and pair) to operate on
      * @param options Optional per-request flags (see BulkActionOptions)
      * @returns Observable that emits BulkActionResult
      */
     public executeBulkAction(
         action: BulkAction,
-        files: string[],
+        files: BulkFile[],
         options?: BulkActionOptions
     ): Observable<BulkActionResult> {
         return new Observable<BulkActionResult>(observer => {
-            const body: Record<string, unknown> = {action, files};
+            const body: Record<string, unknown> = {
+                action,
+                files: files.map(f => typeof f === "string" ? f : {name: f.name, pair_id: f.pairId})
+            };
             if (options?.releaseUnverified) {
                 body["release_unverified"] = true;
             }
