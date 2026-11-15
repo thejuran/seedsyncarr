@@ -3,7 +3,7 @@ import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
 
 import {Localization} from "../../common/localization";
 import {
-    BulkAction, BulkActionOptions, BulkActionResult, BulkCommandService
+    BulkAction, BulkActionOptions, BulkActionResult, BulkCommandService, BulkFile, bulkFileName, toBulkFile
 } from "../server/bulk-command.service";
 import {ConfirmModalService} from "../utils/confirm-modal.service";
 import {Notification} from "../utils/notification";
@@ -56,7 +56,7 @@ export class BulkActionDispatcher {
     private readonly _fileSelectionService = inject(FileSelectionService);
     private readonly _destroyRef = inject(DestroyRef);
 
-    dispatchQueue(fileNames: string[]): void {
+    dispatchQueue(fileNames: BulkFile[]): void {
         this._dispatch("queue", fileNames, BulkActionDispatcher.QUEUE_MESSAGES, {
             quietOnConfirmationOnly: true,
             onResult: (result) => {
@@ -66,21 +66,21 @@ export class BulkActionDispatcher {
         });
     }
 
-    dispatchStop(fileNames: string[]): void {
+    dispatchStop(fileNames: BulkFile[]): void {
         this._dispatch("stop", fileNames, {
             successMsg: Localization.Bulk.SUCCESS_STOPPED,
             partialMsg: Localization.Bulk.PARTIAL_STOPPED
         });
     }
 
-    dispatchExtract(fileNames: string[]): void {
+    dispatchExtract(fileNames: BulkFile[]): void {
         this._dispatch("extract", fileNames, {
             successMsg: Localization.Bulk.SUCCESS_EXTRACTED,
             partialMsg: Localization.Bulk.PARTIAL_EXTRACTED
         });
     }
 
-    async confirmAndDispatchDeleteLocal(fileNames: string[], selectedCount: number): Promise<void> {
+    async confirmAndDispatchDeleteLocal(fileNames: BulkFile[], selectedCount: number): Promise<void> {
         const skipCount = selectedCount - fileNames.length;
         const body = Localization.Modal.BULK_DELETE_LOCAL_MESSAGE(fileNames.length)
                      + this._buildPreviewSuffix(fileNames);
@@ -99,7 +99,7 @@ export class BulkActionDispatcher {
         }
     }
 
-    async confirmAndDispatchDeleteRemote(fileNames: string[], selectedCount: number): Promise<void> {
+    async confirmAndDispatchDeleteRemote(fileNames: BulkFile[], selectedCount: number): Promise<void> {
         const skipCount = selectedCount - fileNames.length;
         const body = Localization.Modal.BULK_DELETE_REMOTE_MESSAGE(fileNames.length)
                      + this._buildPreviewSuffix(fileNames);
@@ -147,15 +147,15 @@ export class BulkActionDispatcher {
         }
     }
 
-    private static _filesNeedingConfirmation(result: BulkActionResult): string[] {
+    private static _filesNeedingConfirmation(result: BulkActionResult): BulkFile[] {
         return (result.response?.results ?? [])
             .filter(r => !r.success && r.error_code === ERROR_CODE_NEEDS_CONFIRMATION)
-            .map(r => r.file);
+            .map(r => toBulkFile(r.file, r.pair_id));
     }
 
     private _dispatch(
         action: BulkAction,
-        fileNames: string[],
+        fileNames: BulkFile[],
         messages: BulkActionMessages,
         options: DispatchOptions = {}
     ): void {
@@ -232,7 +232,8 @@ export class BulkActionDispatcher {
         }
     }
 
-    private _buildPreviewSuffix(fileNames: string[]): string {
+    private _buildPreviewSuffix(files: BulkFile[]): string {
+        const fileNames = files.map(bulkFileName);
         if (fileNames.length === 0) { return ""; }
         if (fileNames.length <= PREVIEW_LIMIT) {
             return "\n\n" + fileNames.join("\n");

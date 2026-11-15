@@ -739,4 +739,29 @@ describe("BulkActionsBarComponent", () => {
             expect(component.actionCounts).toBe(initialCounts);
         });
     });
+
+    // =========================================================================
+    // Path pairs
+    // =========================================================================
+
+    describe("Path pairs", () => {
+        const tv = new ViewFile({name: "same", pairId: "tv", isQueueable: true});
+        const movies = new ViewFile({name: "same", pairId: "movies", isQueueable: true});
+
+        it("acts only on the selected file of a name shared by two pairs", () => {
+            setInputsAndDetectChanges(List([tv, movies]), new Set([movies.key]));
+            expect(component.selectedCount).toBe(1);
+            expect(component.queueableFiles).toEqual([{name: "same", pairId: "movies"}]);
+        });
+
+        it("emits name and pair for files in a pair and a plain name otherwise", () => {
+            const plain = new ViewFile({name: "plain", isQueueable: true});
+            setInputsAndDetectChanges(List([tv, plain]), new Set([tv.key, plain.key]));
+            spyOn(component.queueAction, "emit");
+
+            component.onQueueClick();
+
+            expect(component.queueAction.emit).toHaveBeenCalledWith([{name: "same", pairId: "tv"}, "plain"]);
+        });
+    });
 });

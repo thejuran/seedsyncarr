@@ -256,6 +256,20 @@ describe("BulkActionDispatcher", () => {
             expect(dispatcher.inProgress()).toBe(false);
         }));
 
+        it("re-sends a held file with its pair, not by bare name", fakeAsync(() => {
+            const held: BulkFileResult[] = [
+                {file: "same", pair_id: "tv", success: true},
+                {file: "same", pair_id: "movies", success: false, error: "held", error_code: 428},
+            ];
+            bulkCommand.executeBulkAction.and.returnValues(of(perFileResult(held)), of(okResult(1, 0)));
+
+            dispatcher.dispatchQueue([{name: "same", pairId: "tv"}, {name: "same", pairId: "movies"}]);
+            tick();
+
+            expect(bulkCommand.executeBulkAction.calls.argsFor(1))
+                .toEqual(["queue", [{name: "same", pairId: "movies"}], {releaseUnverified: true}]);
+        }));
+
         it("sends nothing more when the user cancels", fakeAsync(() => {
             confirmModal.confirm.and.returnValue(Promise.resolve(false));
             bulkCommand.executeBulkAction.and.returnValue(of(perFileResult(MIXED)));

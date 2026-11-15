@@ -12,6 +12,8 @@ import {ViewFileOptionsService} from "../../services/files/view-file-options.ser
 import {ViewFile} from "../../services/files/view-file";
 import {FileSelectionService} from "../../services/files/file-selection.service";
 import {BulkActionDispatcher} from "../../services/files/bulk-action-dispatcher.service";
+import {BulkFile} from "../../services/server/bulk-command.service";
+import {PathPairsService} from "../../services/settings/path-pairs.service";
 import {TransferRowComponent} from "./transfer-row.component";
 import {BulkActionsBarComponent} from "./bulk-actions-bar.component";
 
@@ -69,6 +71,10 @@ export class TransferTableComponent implements OnInit {
     hasSelection$!: Observable<boolean>;
     headerCheckboxState$!: Observable<"none" | "some" | "all">;
 
+    // Path pairs that have files, for the pair filter and column (shown for more than one)
+    pairOptions$!: Observable<{id: string; name: string}[]>;
+    activePair: string | null = null;
+
     // Exposed to the template as a computed (signal-backed) so the bar can disable
     // its buttons while a dispatch is in flight. Backed by BulkActionDispatcher.inProgress.
     readonly bulkOperationInProgress = computed(() => this.bulkActionDispatcher.inProgress());
@@ -85,6 +91,7 @@ export class TransferTableComponent implements OnInit {
         page: number;
     }>({segment: "all", subStatus: null, page: 1});
     private searchInput$ = new Subject<string>();
+    private pairFilter$ = new BehaviorSubject<string | null>(null);
     private destroyRef = inject(DestroyRef);
 
     constructor(
@@ -92,6 +99,7 @@ export class TransferTableComponent implements OnInit {
         private viewFileOptionsService: ViewFileOptionsService,
         public fileSelectionService: FileSelectionService,
         public bulkActionDispatcher: BulkActionDispatcher,
+        private pathPairsService: PathPairsService,
         private router: Router,
         private route: ActivatedRoute,
     ) {
@@ -101,9 +109,11 @@ export class TransferTableComponent implements OnInit {
             this.filterState$.pipe(
                 map(s => ({segment: s.segment, subStatus: s.subStatus})),
                 distinctUntilChanged((a, b) => a.segment === b.segment && a.subStatus === b.subStatus)
-            )
+            ),
+            this.pairFilter$
         ]).pipe(
-            map(([files, state]) => {
+            map(([allFiles, state, pair]) => {
+                const files = pair != null ? allFiles.filter(f => f.pairId === pair).toList() : allFiles;
                 if (state.subStatus != null && state.segment !== "all") {
                     return files.filter(f => f.status === state.subStatus).toList();
                 }
@@ -132,6 +142,17 @@ export class TransferTableComponent implements OnInit {
             map(files => files.size)
         );
 
+        this.pairOptions$ = combineLatest([
+            this.viewFileService.files.pipe(
+                map(files => Array.from(new Set(files.map(f => f.pairId).filter((p): p is string => !!p))).sort()),
+                distinctUntilChanged((a, b) => a.length === b.length && a.every((v, i) => v === b[i]))
+            ),
+            this.pathPairsService.pairs
+        ]).pipe(
+            map(([ids, pairs]) => ids.map(id => ({id, name: pairs.find(p => p.id === id)?.name ?? id}))),
+            shareReplay(1)
+        );
+
         this.pagedFilesList$ = this.pagedFiles$.pipe(map(arr => List(arr)), shareReplay(1));
         this.selectedFiles$ = this.fileSelectionService.selectedFiles$;
         this.hasSelection$ = this.selectedFiles$.pipe(map(s => s.size > 0));
@@ -146,7 +167,7 @@ export class TransferTableComponent implements OnInit {
         ]).pipe(
             map(([files, selectedFiles]) => {
                 if (files.size === 0 || selectedFiles.size === 0) { return "none" as const; }
-                const visibleSelectedCount = files.filter(f => f.name != null && selectedFiles.has(f.name)).size;
+                const visibleSelectedCount = files.filter(f => f.name != null && selectedFiles.has(f.key)).size;
                 if (visibleSelectedCount === 0) { return "none" as const; }
                 if (visibleSelectedCount === files.size) { return "all" as const; }
                 return "some" as const;
@@ -174,6 +195,7 @@ export class TransferTableComponent implements OnInit {
     }
 
     ngOnInit(): void {
+        this.pathPairsService.refresh();
         const segParam = this.route.snapshot.queryParamMap.get("segment");
         const subParam = this.route.snapshot.queryParamMap.get("sub");
 
@@ -254,6 +276,20 @@ export class TransferTableComponent implements OnInit {
         this._writeFilterToUrl();
     }
 
+    showPair(options: {id: string; name: string}[] | null): boolean {
+        return options != null && options.length > 1;
+    }
+
+    pairNameOf(file: ViewFile, options: {id: string; name: string}[] | null): string | null {
+        return options?.find(o => o.id === file.pairId)?.name ?? file.pairId;
+    }
+
+    onPairChange(pair: string | null): void {
+        this.activePair = pair;
+        this.pairFilter$.next(pair);
+        this.goToPage(1);
+    }
+
     goToPage(page: number): void {
         this.currentPage = page;
         this.filterState$.next({...this.filterState$.value, page});
@@ -284,7 +320,7 @@ export class TransferTableComponent implements OnInit {
     }
 
     trackByName(index: number, file: ViewFile): string {
-        return file.name ?? `__row_${index}`;
+        return file.name != null ? file.key : `__row_${index}`;
     }
 
     @HostListener("document:keydown", ["$event"])
@@ -303,28 +339,28 @@ export class TransferTableComponent implements OnInit {
     onCheckboxToggle(event: {file: ViewFile, shiftKey: boolean}): void {
         const lastClicked = this.fileSelectionService.getLastClicked();
         if (event.shiftKey && lastClicked !== null) {
-            const lastIndex = this._currentPagedFiles.findIndex(f => f.name === lastClicked);
-            const currentIndex = this._currentPagedFiles.findIndex(f => f.name === event.file.name);
+            const lastIndex = this._currentPagedFiles.findIndex(f => f.key === lastClicked);
+            const currentIndex = this._currentPagedFiles.findIndex(f => f.key === event.file.key);
             if (lastIndex !== -1 && currentIndex !== -1) {
                 const start = Math.min(lastIndex, currentIndex);
                 const end = Math.max(lastIndex, currentIndex);
                 const rangeNames: string[] = [];
                 for (let i = start; i <= end; i++) {
                     const file = this._currentPagedFiles.get(i);
-                    if (file?.name) { rangeNames.push(file.name); }
+                    if (file?.name) { rangeNames.push(file.key); }
                 }
                 this.fileSelectionService.setSelection(rangeNames);
                 return;
             }
         }
-        this.fileSelectionService.toggle(event.file.name!);
-        this.fileSelectionService.setLastClicked(event.file.name ?? null);
+        this.fileSelectionService.toggle(event.file.key);
+        this.fileSelectionService.setLastClicked(event.file.name != null ? event.file.key : null);
     }
 
     onHeaderCheckboxClick(): void {
         const selectedFiles = this.fileSelectionService.getSelectedFiles();
         const files = this._currentPagedFiles;
-        const visibleSelectedCount = files.filter(f => f.name != null && selectedFiles.has(f.name)).size;
+        const visibleSelectedCount = files.filter(f => f.name != null && selectedFiles.has(f.key)).size;
         if (visibleSelectedCount === files.size && files.size > 0) {
             this.fileSelectionService.clearSelection();
         } else {
@@ -336,26 +372,26 @@ export class TransferTableComponent implements OnInit {
         this.fileSelectionService.clearSelection();
     }
 
-    onBulkQueue(fileNames: string[]): void {
+    onBulkQueue(fileNames: BulkFile[]): void {
         this.bulkActionDispatcher.dispatchQueue(fileNames);
     }
 
-    onBulkStop(fileNames: string[]): void {
+    onBulkStop(fileNames: BulkFile[]): void {
         this.bulkActionDispatcher.dispatchStop(fileNames);
     }
 
-    onBulkExtract(fileNames: string[]): void {
+    onBulkExtract(fileNames: BulkFile[]): void {
         this.bulkActionDispatcher.dispatchExtract(fileNames);
     }
 
-    onBulkDeleteLocal(fileNames: string[]): Promise<void> {
+    onBulkDeleteLocal(fileNames: BulkFile[]): Promise<void> {
         return this.bulkActionDispatcher.confirmAndDispatchDeleteLocal(
             fileNames,
             this.fileSelectionService.getSelectedFiles().size
         );
     }
 
-    onBulkDeleteRemote(fileNames: string[]): Promise<void> {
+    onBulkDeleteRemote(fileNames: BulkFile[]): Promise<void> {
         return this.bulkActionDispatcher.confirmAndDispatchDeleteRemote(
             fileNames,
             this.fileSelectionService.getSelectedFiles().size

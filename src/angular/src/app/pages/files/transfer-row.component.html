@@ -16,6 +16,9 @@
     }
   </div>
 </td>
+@if (showPair) {
+  <td class="cell-pair" [title]="pairName || file.pairId || ''">{{ pairName || file.pairId }}</td>
+}
 <td class="cell-status">
   <span class="status-badge" [class]="badgeClass" [attr.title]="isHeld ? holdReasonLabel : null">
     @if (isDownloading) {

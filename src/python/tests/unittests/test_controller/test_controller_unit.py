@@ -112,6 +112,20 @@ class TestControllerPublicAPI(BaseControllerTestCase):
         names = {f.name for f in result}
         self.assertEqual({"file1", "file2"}, names)
 
+    def test_get_model_files_for_a_controller_with_a_pair_id(self):
+        # The runtime builds every controller with its pair id, including the
+        # Default pair; model lookups by bare name must still find its files.
+        controller = Controller(context=self.mock_context, persist=self.persist,
+                                webhook_manager=self.mock_webhook_manager, pair_id="default")
+        model = controller._Controller__model
+        for name in ("file1", "file2"):
+            model.add_file(ModelFile(name, False, pair_id="default"))
+        names = {f.name for f in controller.get_model_files()}
+        self.assertEqual({"file1", "file2"}, names)
+        listener = MagicMock()
+        files = controller.get_model_files_and_add_listener(listener)
+        self.assertEqual(2, len(files))
+
     def test_is_file_stopped_false_initially(self):
         self.assertFalse(self.controller.is_file_stopped("file"))
 

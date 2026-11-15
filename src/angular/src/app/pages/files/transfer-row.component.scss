@@ -67,6 +67,15 @@ td {
 // ============================================================================
 // Cell: Status badge
 // ============================================================================
+.cell-pair {
+  padding-top: 16px;
+  font-size: 12px;
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .cell-status {
   padding-top: 16px;
 

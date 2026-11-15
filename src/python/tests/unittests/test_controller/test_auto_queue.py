@@ -2709,3 +2709,24 @@ class TestAutoQueueCompletionGate(unittest.TestCase):
         self._set_verdict(Verdict.proven())
         auto_queue.process()
         self.assertEqual([self.OBSESSION], self._queued_names())
+
+
+class TestAutoQueueCommandPair(TestAutoQueueCommandOrigin):
+    """Auto-queue commands carry the path pair they were sent for."""
+
+    def _run(self, pair_id):
+        from controller import AutoQueue, AutoQueuePersist
+        auto_queue = AutoQueue(self.context, AutoQueuePersist(), self.controller, pair_id=pair_id)
+        listener = self.controller.get_model_files_and_add_listener.call_args[0][0]
+        f = ModelFile("file", False)
+        f.remote_size = 1000
+        listener.file_added(f)
+        self.controller.get_model_files.return_value = [f]
+        auto_queue.process()
+        return self.controller.queue_command.call_args[0][0]
+
+    def test_queue_command_carries_the_pair_id(self):
+        self.assertEqual("tv", self._run("tv").pair_id)
+
+    def test_queue_command_has_no_pair_without_one(self):
+        self.assertIsNone(self._run(None).pair_id)

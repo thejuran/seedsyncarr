@@ -7,6 +7,18 @@ SeedSyncarr is a daemon service that automates syncing files from a remote SFTP/
 
 ---
 
+## Path Pairs
+
+With several path pairs (see [Configuration](CONFIGURATION.md#path-pairs)) the daemon runs one `Controller` per enabled pair, each with its own LFTP process, scanners, model and persisted state, behind a `MultiController` that presents them as one controller to the web layer. A single pair uses a plain `Controller` as before.
+
+- **Identity**: model files carry a `pair_id`. In the web layer a file is identified by pair and name; without pairs the key is the bare name.
+- **Commands**: `MultiController.queue_command` routes by `pair_id`. Without one it routes by file name and refuses a name that exists in more than one pair; an unknown pair is refused.
+- **Webhooks**: `WebhookFanout` offers an import to the pairs whose model holds the name. A name found in several pairs is ambiguous and dropped; one found in a single pair goes only to it.
+- **AutoQueue**: `AutoQueueGroup` runs the auto queue of each pair that has `auto_queue` on; each sends its commands to its own controller with its pair id.
+- **State**: `path_pairs.json` holds the pairs; the Default pair keeps `controller.persist` and the others use `controller.<pair id>.persist`. The REST API for the pairs is `PathPairsHandler`.
+
+---
+
 ## Component Diagram
 
 ```mermaid

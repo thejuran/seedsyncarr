@@ -21,12 +21,16 @@ export class TransferRowComponent {
 
     public readonly ViewFile = ViewFile;
     @Input({ required: true }) file!: ViewFile;
+    // Show the path pair cell; set while files come from more than one pair
+    @Input() showPair = false;
+    // Display name of the file's pair (falls back to the pair id)
+    @Input() pairName: string | null = null;
 
     private selectionService = inject(FileSelectionService);
 
     readonly isSelected = computed(() => {
         const selected = this.selectionService.selectedFiles();
-        return this.file?.name != null ? selected.has(this.file.name) : false;
+        return this.file?.name != null ? selected.has(this.file.key) : false;
     });
 
     @Output() checkboxToggle = new EventEmitter<{file: ViewFile, shiftKey: boolean}>();

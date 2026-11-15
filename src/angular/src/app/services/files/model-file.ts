@@ -7,6 +7,8 @@ import {Record, Set} from "immutable";
  */
 export interface ModelFileJson {
     name: string;
+    // Path pair the file belongs to (absent for older backends)
+    pair_id?: string | null;
     is_dir: boolean;
     local_size: number;
     remote_size: number;
@@ -30,6 +32,7 @@ export interface ModelFileJson {
  */
 interface IModelFile {
     name: string;
+    pair_id: string | null;
     is_dir: boolean;
     local_size: number;
     remote_size: number;
@@ -51,6 +54,7 @@ interface IModelFile {
 // Boiler plate code to set up an immutable class
 const DefaultModelFile: IModelFile = {
     name: "",
+    pair_id: null,
     is_dir: false,
     local_size: 0,
     remote_size: 0,
@@ -77,6 +81,7 @@ const ModelFileRecord = Record(DefaultModelFile);
  */
 export class ModelFile extends ModelFileRecord implements IModelFile {
     name!: string;
+    pair_id!: string | null;
     is_dir!: boolean;
     local_size!: number;
     remote_size!: number;
@@ -131,6 +136,7 @@ export namespace ModelFile {
 
         return new ModelFile({
             name: json.name,
+            pair_id: json.pair_id ?? null,
             is_dir: json.is_dir,
             local_size: json.local_size,
             remote_size: json.remote_size,

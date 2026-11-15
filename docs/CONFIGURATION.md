@@ -93,8 +93,8 @@ Settings marked **Required** contain the placeholder value `<replace me>` by def
 | `remote_username` | **Required** | — | SSH/SFTP username on the remote server. |
 | `remote_password` | **Required** | — | Password for the remote user. Ignored when `use_ssh_key` is `True`. |
 | `remote_port` | Optional | `22` | SSH port on the remote server. Must be a positive integer. |
-| `remote_path` | **Required** | — | Absolute path on the remote server to scan for files. |
-| `local_path` | **Required** | `/downloads/` (Docker) | Absolute local path where files are downloaded. The Docker image pre-fills this with `/downloads/`. |
+| `remote_path` | **Required** | — | Absolute path on the remote server to scan for files. This is the Default [path pair](#path-pairs); add more pairs under Settings → Path Pairs. |
+| `local_path` | **Required** | `/downloads/` (Docker) | Absolute local path where files are downloaded. The Docker image pre-fills this with `/downloads/`. This is the Default [path pair](#path-pairs). |
 | `remote_path_to_scan_script` | Optional | `/tmp` | Path on the remote server where the scan helper script is uploaded before execution. |
 | `use_ssh_key` | Optional | `False` | Use SSH key authentication instead of password. The key must already be present in the SSH config for the running user. |
 | `num_max_parallel_downloads` | Optional | `2` | Maximum number of files or directories to download concurrently. Must be ≥ 1. |
@@ -186,6 +186,64 @@ Held items are never transferred automatically. To release one deliberately, use
 
 ---
 
+## Path Pairs
+
+A Path Pair maps one remote directory to one local directory. Since 1.9.0 one install can have several, each synced independently into its own local directory. They are managed under **Settings → Path Pairs** and stored in `path_pairs.json` in the config directory.
+
+| Field | Description |
+|---|---|
+| `name` | Unique display name, up to 64 characters. |
+| `remote_path` | Directory on the remote server to scan. |
+| `local_path` | Absolute local directory the files are downloaded to. |
+| `enabled` | A disabled pair is kept but not synced. |
+| `auto_queue` | Whether AutoQueue queues files of this pair. |
+
+Rules:
+
+- Names, remote paths and local paths must each be unique across pairs. Two pairs cannot sync into the same local directory.
+- All pairs use the one remote server in `[Lftp]`; only the directories differ.
+- Changes are saved at once but apply after a restart. The Settings page says so after every change.
+- The pair named **Default** is the one created from `[Lftp] remote_path` and `local_path`. Its paths are edited in `[Lftp]`, not in the pair; a change there is kept in sync with the pair.
+- Every enabled pair runs its own LFTP process and its own scanners, so the connection limits in `[Lftp]` apply to each pair separately. Keep the number of pairs modest.
+
+### Upgrading from a single path
+
+Nothing needs to be changed. On the first start of a version with path pairs, the existing `remote_path` and `local_path` become one pair named **Default**, and it keeps using the existing `controller.persist`, so nothing is re-scanned or re-queued. With one pair the app behaves exactly as before: the pair column and filter in the file list stay hidden.
+
+Pairs you add later get their own state file, `controller.<pair id>.persist`. A version without path pairs ignores `path_pairs.json` and the extra state files and keeps syncing the Default pair, so rolling back is safe. Pairs added after the upgrade are not synced until you upgrade again.
+
+### Example: rTorrent with per-label folders
+
+A seedbox runs rTorrent, and AutoTools moves each finished download into a folder named after its label. Sonarr and Radarr each import from their own local folder. One pair per label:
+
+| Name | Remote path | Local path |
+|---|---|---|
+| `tv-sonarr` | `/home/user/Downloads/Completed/tv-sonarr/torrent` | `/downloads/tv` |
+| `radarr` | `/home/user/Downloads/Completed/radarr/torrent` | `/downloads/movies` |
+
+Point Sonarr's download client folder at `/downloads/tv` and Radarr's at `/downloads/movies`. Labels are fixed in this setup; SeedSyncarr does not detect them, so a new label needs a new pair.
+
+### Sonarr, Radarr, AutoQueue and auto-delete
+
+- **Webhooks are not routed per pair.** Sonarr and Radarr send the same import webhook whatever the pair, and SeedSyncarr matches it to a file by name, as before.
+- If the same name exists in more than one pair, the import is ambiguous. It is logged, no pair is credited and nothing is auto-deleted. Rename one of the releases or wait until only one copy remains.
+- Auto-delete only removes the remote copy of the file in the pair that was credited.
+- AutoQueue patterns are shared by all pairs. A pair's `auto_queue` switch turns AutoQueue off for just that pair.
+- Commands (queue, stop, extract, delete) name the pair of the file. When a name exists in two pairs, a command without a pair is refused rather than guessed.
+
+### REST API
+
+| Endpoint | Description |
+|---|---|
+| `GET /server/pathpairs` | List the pairs. |
+| `POST /server/pathpairs/create` | Create a pair from `name`, `remote_path`, `local_path` and optional `enabled`, `auto_queue`. Returns 201, or 409 for a duplicate name or path. |
+| `POST /server/pathpairs/update/<id>` | Change any of the fields. The Default pair's paths cannot be changed here. |
+| `POST /server/pathpairs/delete/<id>` | Delete a pair. Files already downloaded are left in place. |
+| `POST /server/command/<action>/<file>?pair_id=<id>` | Run a command on the file of one pair. |
+| `POST /server/command/bulk` | `files` entries are a name or `{"name": ..., "pair_id": ...}`; a top-level `pair_id` is the default. |
+
+---
+
 ## CLI Arguments
 
 The following flags are passed to `seedsyncarr` (or `python seedsyncarr.py`) at startup and are separate from `settings.cfg`:
@@ -253,11 +311,13 @@ When running via Docker, the staging compose file (`src/docker/stage/docker-imag
 
 ## Persist State Files
 
-Alongside `settings.cfg`, Seedsyncarr writes two state files to the same config directory. These are managed automatically and do not require manual editing.
+Alongside `settings.cfg`, Seedsyncarr writes state files to the same config directory. These are managed automatically and do not require manual editing.
 
 | File | Description |
 |---|---|
 | `controller.persist` | Tracks the state of all known remote and local files. Backed up automatically if corrupted. |
 | `autoqueue.persist` | Tracks auto-queue pattern state. Backed up automatically if corrupted. |
+| `path_pairs.json` | The [path pairs](#path-pairs). Backed up automatically if corrupted. |
+| `controller.<pair id>.persist` | State of each pair other than Default, which keeps using `controller.persist`. |
 
 Log files are written to the directory specified by `--logdir`, with a 10 MB rotating size limit and 10 backup files kept per log (`seedsyncarr.log`, `web_access.log`).

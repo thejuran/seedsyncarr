@@ -113,3 +113,32 @@ class TestModelDiffUtil(unittest.TestCase):
         updated = [d for d in diffs if d.change == ModelDiff.Change.UPDATED]
         self.assertEqual(1, len(updated))
         self.assertEqual(ModelDiff(ModelDiff.Change.UPDATED, c1, c2), updated[0])
+
+
+class TestModelDiffUtilPathPairs(unittest.TestCase):
+    def test_same_name_in_different_pairs_is_not_an_update(self):
+        model_before = Model()
+        model_after = Model()
+        a_p1 = ModelFile("a", False, pair_id="p1")
+        a_p2 = ModelFile("a", False, pair_id="p2")
+        model_before.add_file(a_p1)
+        model_after.add_file(a_p2)
+        diff = ModelDiffUtil.diff_models(model_before, model_after)
+        self.assertEqual(2, len(diff))
+        self.assertIn(ModelDiff(ModelDiff.Change.REMOVED, a_p1, None), diff)
+        self.assertIn(ModelDiff(ModelDiff.Change.ADDED, None, a_p2), diff)
+
+    def test_update_is_detected_per_pair(self):
+        model_before = Model()
+        model_after = Model()
+        for model, size in ((model_before, 100), (model_after, 200)):
+            changed = ModelFile("a", False, pair_id="p1")
+            changed.local_size = size
+            unchanged = ModelFile("a", False, pair_id="p2")
+            unchanged.local_size = 100
+            model.add_file(changed)
+            model.add_file(unchanged)
+        diff = ModelDiffUtil.diff_models(model_before, model_after)
+        self.assertEqual(1, len(diff))
+        self.assertEqual(ModelDiff.Change.UPDATED, diff[0].change)
+        self.assertEqual("p1", diff[0].new_file.pair_id)

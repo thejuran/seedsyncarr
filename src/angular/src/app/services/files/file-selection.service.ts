@@ -13,7 +13,7 @@ import {ViewFile} from "./view-file";
  * multi-file selection for bulk actions.
  *
  * Selection state:
- * - Selected files are tracked by name in a Set<string>
+ * - Selected files are tracked by file key (pair id and name, see fileKey) in a Set<string>
  *
  * Angular Signals Architecture (Session 16):
  * - Uses signals for fine-grained reactivity
@@ -169,8 +169,8 @@ export class FileSelectionService {
      * @param visibleFiles List of currently visible ViewFiles
      */
     selectAllVisible(visibleFiles: ViewFile[]): void {
-        const fileNames = visibleFiles.map(f => f.name).filter((n): n is string => n != null);
-        this.selectMultiple(fileNames);
+        const keys = visibleFiles.filter(f => f.name != null).map(f => f.key);
+        this.selectMultiple(keys);
     }
 
     /**

@@ -23,8 +23,9 @@ class ModelBuilder:
     # TTL for cached model in seconds (30 minutes)
     CACHE_TTL_SECONDS = 30 * 60
 
-    def __init__(self):
+    def __init__(self, pair_id: Optional[str] = None):
         self.logger = logging.getLogger("ModelBuilder")
+        self.__pair_id = pair_id
         self.__local_files = dict()
         self.__remote_files = dict()
         self.__lftp_statuses = dict()
@@ -141,7 +142,7 @@ class ModelBuilder:
         if self._is_cache_valid():
             return self.__cached_model
 
-        model = Model()
+        model = Model(pair_id=self.__pair_id)
         model.set_base_logger(logging.getLogger("dummy"))  # ignore the logs for this temp model
 
         all_file_names = set().union(
@@ -200,7 +201,7 @@ class ModelBuilder:
         is_dir = self._determine_is_dir(remote, local, status)
         self._validate_is_dir_consistency(is_dir, remote, local, status)
 
-        model_file = ModelFile(name, is_dir)
+        model_file = ModelFile(name, is_dir, pair_id=self.__pair_id)
         self._set_initial_state(model_file, status)
 
         transfer_state = (status.total_transfer_state
@@ -405,7 +406,7 @@ class ModelBuilder:
            (local_child and is_dir != local_child.is_dir):
             raise ModelError("Mismatch in is_dir between child sources")
 
-        child_model_file = ModelFile(child_name, is_dir)
+        child_model_file = ModelFile(child_name, is_dir, pair_id=self.__pair_id)
         parent_model_file.add_child(child_model_file)
 
         # Find transfer state for this child

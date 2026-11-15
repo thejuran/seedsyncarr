@@ -15,6 +15,8 @@ import {BulkCommandService, BulkActionResult, BulkActionResponse} from "../../..
 import {ConfirmModalService} from "../../../../services/utils/confirm-modal.service";
 import {NotificationService} from "../../../../services/utils/notification.service";
 import {Localization} from "../../../../common/localization";
+import {PathPairsService} from "../../../../services/settings/path-pairs.service";
+import {PathPair} from "../../../../services/settings/path-pair";
 
 
 // Simplified template for unit testing — mirrors key structural elements
@@ -89,6 +91,11 @@ class MockViewFileService {
         return this._filteredFiles$.asObservable();
     }
 
+    // The unfiltered list; the table reads it to find which pairs have files
+    get files(): Observable<Immutable.List<ViewFile>> {
+        return this._filteredFiles$.asObservable();
+    }
+
     pushFiles(files: ViewFile[]): void {
         this._filteredFiles$.next(Immutable.List(files));
     }
@@ -132,6 +139,7 @@ describe("TransferTableComponent", () => {
     let bulkCommandMock: {executeBulkAction: jasmine.Spy};
     let confirmModalMock: {confirm: jasmine.Spy};
     let notificationMock: {show: jasmine.Spy; hide: jasmine.Spy};
+    let pairsMock: {pairs: BehaviorSubject<PathPair[]>; refresh: jasmine.Spy};
 
     const mockQueryParamMap: { [k: string]: string | null } = {};
     const mockActivatedRoute = {
@@ -146,6 +154,7 @@ describe("TransferTableComponent", () => {
         for (const k of Object.keys(mockQueryParamMap)) { delete mockQueryParamMap[k]; }
 
         mockFileService = new MockViewFileService();
+        pairsMock = {pairs: new BehaviorSubject<PathPair[]>([]), refresh: jasmine.createSpy("refresh")};
         mockOptionsService = new MockViewFileOptionsService();
 
         const defaultResult = new BulkActionResult(true, {
@@ -171,6 +180,7 @@ describe("TransferTableComponent", () => {
                 {provide: BulkCommandService, useValue: bulkCommandMock},
                 {provide: ConfirmModalService, useValue: confirmModalMock},
                 {provide: NotificationService, useValue: notificationMock},
+                {provide: PathPairsService, useValue: pairsMock},
                 {provide: ActivatedRoute, useValue: mockActivatedRoute},
                 {provide: Router, useValue: mockRouter}
             ]
@@ -826,6 +836,79 @@ describe("TransferTableComponent", () => {
     });
 
     // --- 72-04: Bulk action dispatch (D-16, D-17) ---
+
+    describe("path pairs", () => {
+        const tvA = makeFile("same.mkv", ViewFile.Status.DOWNLOADED, {pairId: "tv"});
+        const movieA = makeFile("same.mkv", ViewFile.Status.DOWNLOADED, {pairId: "movies"});
+        const tvB = makeFile("only-tv.mkv", ViewFile.Status.QUEUED, {pairId: "tv", isStoppable: true, isQueueable: false});
+
+        beforeEach(() => {
+            mockFileService.pushFiles([tvA, movieA, tvB]);
+            (component as unknown as {_currentPagedFiles: Immutable.List<ViewFile>})._currentPagedFiles =
+                Immutable.List([tvA, movieA, tvB]);
+        });
+
+        it("refreshes the pairs on init", () => {
+            component.ngOnInit();
+            expect(pairsMock.refresh).toHaveBeenCalled();
+        });
+
+        it("lists the pairs that have files, using their names", () => {
+            pairsMock.pairs.next([
+                {id: "tv", name: "TV Shows", remote_path: "/r", local_path: "/l", enabled: true, auto_queue: true}
+            ]);
+            let options: {id: string; name: string}[] = [];
+            component.pairOptions$.subscribe(o => options = o);
+            expect(options).toEqual([{id: "movies", name: "movies"}, {id: "tv", name: "TV Shows"}]);
+        });
+
+        it("shows the pair column only for more than one pair", () => {
+            expect(component.showPair([])).toBeFalse();
+            expect(component.showPair([{id: "tv", name: "tv"}])).toBeFalse();
+            expect(component.showPair([{id: "tv", name: "tv"}, {id: "m", name: "m"}])).toBeTrue();
+            expect(component.showPair(null)).toBeFalse();
+        });
+
+        it("filters the list to one pair", () => {
+            component.onPairChange("tv");
+            let names: string[] = [];
+            component.pagedFiles$.subscribe(files => names = files.map(f => f.key));
+            expect(names.length).toBe(2);
+            expect(names.every(k => k.startsWith("tv"))).toBeTrue();
+            component.onPairChange(null);
+            component.pagedFiles$.subscribe(files => names = files.map(f => f.key));
+            expect(names.length).toBe(3);
+        });
+
+        it("clears the selection and returns to page 1 on a pair change", () => {
+            selectionService.select(tvA.key);
+            component.onPairChange("movies");
+            expect(selectionService.getSelectedCount()).toBe(0);
+            expect(component.currentPage).toBe(1);
+        });
+
+        it("selects the same file name in two pairs independently", () => {
+            component.onCheckboxToggle({file: tvA, shiftKey: false});
+            expect(selectionService.getSelectedFiles()).toEqual(new Set([tvA.key]));
+            expect(selectionService.isSelected(movieA.key)).toBeFalse();
+        });
+
+        it("selects a shift-click range by key across pairs", () => {
+            component.onCheckboxToggle({file: tvA, shiftKey: false});
+            component.onCheckboxToggle({file: tvB, shiftKey: true});
+            expect(selectionService.getSelectedFiles()).toEqual(new Set([tvA.key, movieA.key, tvB.key]));
+        });
+
+        it("header checkbox selects every paged file once per pair", () => {
+            component.onHeaderCheckboxClick();
+            expect(selectionService.getSelectedCount()).toBe(3);
+        });
+
+        it("names the pair of a file, falling back to the id", () => {
+            expect(component.pairNameOf(tvA, [{id: "tv", name: "TV Shows"}])).toBe("TV Shows");
+            expect(component.pairNameOf(tvA, null)).toBe("tv");
+        });
+    });
 
     describe("bulk action dispatch (D-16)", () => {
         it("onBulkQueue calls BulkCommandService.executeBulkAction with 'queue'", () => {

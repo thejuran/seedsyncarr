@@ -4,6 +4,43 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.9.0] - 2026-11-08
+
+Adds multiple path pairs: one install can now sync several remote directories,
+each into its own local directory. Upgrading from 1.8.0 needs no configuration
+changes; with a single path SeedSyncarr behaves exactly as before.
+
+### Added
+
+- **Path pairs** — a remote-to-local directory mapping with a name, an
+  enabled switch and an AutoQueue switch. Manage them under Settings → Path
+  Pairs or through `/server/pathpairs`. Pairs are stored in `path_pairs.json`
+  and apply after a restart. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md#path-pairs),
+  including an example for rTorrent with per-label folders.
+- The file list shows a Pair column and a pair filter when files come from
+  more than one pair. The same file name in two pairs is two rows that can be
+  selected and acted on separately.
+- `pair_id` on the command endpoints (`?pair_id=`) and per file in the bulk
+  request.
+
+### Changed
+
+- On first start the existing `remote_path` and `local_path` become a pair
+  named Default. It keeps using `controller.persist`, so nothing is re-scanned
+  or re-queued. Other pairs use `controller.<pair id>.persist`.
+- A Sonarr or Radarr import whose file name exists in more than one pair is
+  treated as ambiguous: it is logged and no pair is credited or auto-deleted.
+- A command for a pair that is not active is refused (404) instead of being
+  sent to another pair.
+- Delete and extract check the file against the local path of its own pair.
+
+### Upgrade and rollback
+
+Copy `settings.cfg`, `controller.persist` and `autoqueue.persist` before
+upgrading. Version 1.8.0 ignores `path_pairs.json` and the extra state files and
+keeps syncing the Default pair, so rolling back is safe; pairs added after the
+upgrade are not synced until you upgrade again.
+
 ## [1.8.0] - 2026-10-28
 
 A reliability release. It closes a second credential-exposure issue alongside

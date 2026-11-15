@@ -11,6 +11,7 @@ from .handler.stream_log import LogStreamHandler
 from .handler.stream_heartbeat import HeartbeatStreamHandler
 from .handler.status import StatusHandler
 from .handler.webhook import WebhookHandler
+from .handler.path_pairs import PathPairsHandler
 
 class WebAppBuilder:
     """
@@ -20,20 +21,26 @@ class WebAppBuilder:
                  context: Context,
                  controller: Controller,
                  auto_queue_persist: AutoQueuePersist,
-                 webhook_manager):
+                 webhook_manager,
+                 path_pairs=None,
+                 path_pairs_path: str = ""):
         self.__context = context
         self.__controller = controller
 
         self.controller_handler = ControllerHandler(
             controller,
             context,
-            local_path=context.config.lftp.local_path
+            local_path=context.config.lftp.local_path,
+            path_pairs=path_pairs
         )
         self.server_handler = ServerHandler(context)
         self.config_handler = ConfigHandler(context.config, context)
         self.auto_queue_handler = AutoQueueHandler(auto_queue_persist)
         self.status_handler = StatusHandler(context.status, context)
         self.webhook_handler = WebhookHandler(webhook_manager, context.config, context)
+        self.path_pairs_handler = (
+            PathPairsHandler(path_pairs, path_pairs_path, context) if path_pairs is not None else None
+        )
 
     def build(self) -> WebApp:
         web_app = WebApp(context=self.__context,
@@ -57,6 +64,8 @@ class WebAppBuilder:
         self.auto_queue_handler.add_routes(web_app)
         self.status_handler.add_routes(web_app)
         self.webhook_handler.add_routes(web_app)
+        if self.path_pairs_handler is not None:
+            self.path_pairs_handler.add_routes(web_app)
 
         web_app.add_default_routes()
 

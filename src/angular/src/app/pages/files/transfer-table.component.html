@@ -17,6 +17,18 @@
                [ngModel]="nameFilter"
                (ngModelChange)="onSearchInput($event)">
       </div>
+      @if ((pairOptions$ | async); as pairOptions) {
+        @if (pairOptions.length > 1) {
+          <select class="pair-filter" aria-label="Path pair filter"
+                  [ngModel]="activePair"
+                  (ngModelChange)="onPairChange($event)">
+            <option [ngValue]="null">All pairs</option>
+            @for (option of pairOptions; track option.id) {
+              <option [ngValue]="option.id">{{ option.name }}</option>
+            }
+          </select>
+        }
+      }
       <div class="segment-filters" role="group" aria-label="File status filter">
 
         <!-- All: terminal button, keeps existing active class -->
@@ -150,6 +162,9 @@
                    aria-label="Select all visible files" />
           </th>
           <th class="col-name">Data Content</th>
+          @if (showPair(pairOptions$ | async)) {
+            <th class="col-pair">Pair</th>
+          }
           <th class="col-status">Status</th>
           <th class="col-progress">Progress</th>
           <th class="col-speed">Bandwidth</th>
@@ -159,10 +174,13 @@
       </thead>
       <tbody>
         @for (file of (vm.paged ?? []); track trackByName($index, file)) {
-          <app-transfer-row [file]="file" (checkboxToggle)="onCheckboxToggle($event)"></app-transfer-row>
+          <app-transfer-row [file]="file"
+                            [showPair]="showPair(pairOptions$ | async)"
+                            [pairName]="pairNameOf(file, pairOptions$ | async)"
+                            (checkboxToggle)="onCheckboxToggle($event)"></app-transfer-row>
         } @empty {
           <tr class="empty-row">
-            <td colspan="7" class="text-center text-muted py-4">
+            <td [attr.colspan]="showPair(pairOptions$ | async) ? 8 : 7" class="text-center text-muted py-4">
               No files match the current filter
             </td>
           </tr>

@@ -91,6 +91,21 @@ class TestModelBuilder(unittest.TestCase):
         model = self.model_builder.build_model()
         self.assertEqual({"a", "b", "c", "d"}, model.get_file_names())
 
+
+    def test_build_sets_pair_id_on_roots_and_children(self):
+        builder = ModelBuilder(pair_id="p1")
+        builder.set_base_logger(self._logger)
+        remote_a = SystemFile("a", 10, True)
+        remote_a.add_child(SystemFile("aa", 10, False))
+        builder.set_remote_files([remote_a, SystemFile("b", 5, False)])
+        model = builder.build_model()
+        self.assertEqual({("p1", "a"), ("p1", "b")}, model.get_file_keys())
+        self.assertEqual("p1", model.get_file("a", pair_id="p1").get_children()[0].pair_id)
+
+    def test_build_without_pair_id_uses_none(self):
+        self.model_builder.set_remote_files([SystemFile("a", 5, False)])
+        model = self.model_builder.build_model()
+        self.assertEqual({(None, "a")}, model.get_file_keys())
     def test_build_is_dir(self):
         # remote
         self.model_builder.clear()

@@ -15,12 +15,16 @@ import {NotificationService} from "../../services/utils/notification.service";
 import {ServerCommandService} from "../../services/server/server-command.service";
 import {AutoQueueService} from "../../services/autoqueue/autoqueue.service";
 import {AutoQueuePattern} from "../../services/autoqueue/autoqueue-pattern";
+import {PathPairsService} from "../../services/settings/path-pairs.service";
+import {LEGACY_PATH_PAIR_ID, PathPair, PathPairInput} from "../../services/settings/path-pair";
+import {ConfirmModalService} from "../../services/utils/confirm-modal.service";
 import {
     OPTIONS_CONTEXT_CONNECTIONS, OPTIONS_CONTEXT_DISCOVERY, OPTIONS_CONTEXT_OTHER,
     OPTIONS_CONTEXT_SERVER, OPTIONS_CONTEXT_AUTOQUEUE, OPTIONS_CONTEXT_EXTRACT,
     OPTIONS_CONTEXT_AUTODELETE
 } from "./options-list";
 import {ConnectedService} from "../../services/utils/connected.service";
+import {WebReaction} from "../../services/utils/rest.service";
 import {StreamServiceRegistry} from "../../services/base/stream-service.registry";
 
 import * as Immutable from "immutable";
@@ -81,16 +85,26 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
     public autoqueueEnabled = false;
     public patternsOnly = false;
 
+    // Path pair management
+    public readonly LEGACY_PATH_PAIR_ID = LEGACY_PATH_PAIR_ID;
+    public pathPairs: Observable<PathPair[]>;
+    public pairForm: PathPairInput = {name: "", remote_path: "", local_path: ""};
+    public editingPairId: string | null = null;
+    public pairBusy = false;
+
     constructor(private _logger: LoggerService,
                 _streamServiceRegistry: StreamServiceRegistry,
                 private _configService: ConfigService,
                 private _notifService: NotificationService,
                 private _commandService: ServerCommandService,
                 private _autoqueueService: AutoQueueService,
+                private _pathPairsService: PathPairsService,
+                private _confirmModal: ConfirmModalService,
                 private _cdr: ChangeDetectorRef) {
         this._connectedService = _streamServiceRegistry.connectedService;
         this.config = _configService.config;
         this.patterns = _autoqueueService.patterns;
+        this.pathPairs = _pathPairsService.pairs;
         this.commandsEnabled = false;
         this._configRestartNotif = new Notification({
             level: Notification.Level.INFO,
@@ -114,6 +128,9 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
 
                 // Enable/disable commands based on server connection
                 this.commandsEnabled = connected;
+                if (connected) {
+                    this._pathPairsService.refresh();
+                }
             }
         });
 
@@ -221,6 +238,77 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
                 this._cdr.markForCheck();
             }, 2000);
         }).catch(() => { /* clipboard unavailable */ });
+    }
+
+    get canSavePair(): boolean {
+        return this.commandsEnabled && !this.pairBusy
+            && !!this.pairForm.name.trim() && !!this.pairForm.remote_path.trim() && !!this.pairForm.local_path.trim();
+    }
+
+    onEditPair(pair: PathPair): void {
+        this.editingPairId = pair.id;
+        this.pairForm = {name: pair.name, remote_path: pair.remote_path, local_path: pair.local_path};
+        this._cdr.markForCheck();
+    }
+
+    onCancelPairEdit(): void {
+        this.editingPairId = null;
+        this.pairForm = {name: "", remote_path: "", local_path: ""};
+        this._cdr.markForCheck();
+    }
+
+    onSavePair(): void {
+        if (!this.canSavePair) {
+            return;
+        }
+        const form = {
+            name: this.pairForm.name.trim(),
+            remote_path: this.pairForm.remote_path.trim(),
+            local_path: this.pairForm.local_path.trim()
+        };
+        // The paths of the legacy pair belong to the Lftp settings; send only what can change
+        const changes = this.editingPairId === LEGACY_PATH_PAIR_ID ? {name: form.name} : form;
+        const request = this.editingPairId == null
+            ? this._pathPairsService.create(form)
+            : this._pathPairsService.update(this.editingPairId, changes);
+        this.runPairRequest(request, () => this.onCancelPairEdit());
+    }
+
+    onTogglePair(pair: PathPair, field: "enabled" | "auto_queue", value: boolean): void {
+        this.runPairRequest(this._pathPairsService.update(pair.id, {[field]: value}));
+    }
+
+    async onDeletePair(pair: PathPair): Promise<void> {
+        const confirmed = await this._confirmModal.confirm({
+            title: "Delete path pair",
+            body: `Delete the path pair "${pair.name}"? Files already downloaded are kept.`,
+            okBtn: "Delete",
+            okBtnClass: "btn-danger"
+        });
+        if (confirmed) {
+            this.runPairRequest(this._pathPairsService.remove(pair.id));
+        }
+    }
+
+    private runPairRequest(request: Observable<WebReaction>, onSuccess?: () => void): void {
+        this.pairBusy = true;
+        this._cdr.markForCheck();
+        request.pipe(takeUntil(this.destroy$)).subscribe({
+            next: reaction => {
+                this.pairBusy = false;
+                if (reaction.success) {
+                    this._notifService.show(this._configRestartNotif);
+                    onSuccess?.();
+                } else {
+                    this._notifService.show(new Notification({
+                        level: Notification.Level.DANGER,
+                        dismissible: true,
+                        text: reaction.errorMessage ?? "Unknown error"
+                    }));
+                }
+                this._cdr.markForCheck();
+            }
+        });
     }
 
     onAddPattern(): void {

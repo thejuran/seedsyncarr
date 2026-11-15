@@ -997,3 +997,113 @@ class TestControllerHandlerPathTraversal(unittest.TestCase):
         # queue is not path-guarded — should succeed
         self.assertTrue(body["results"][0]["success"])
         self.mock_controller.queue_command.assert_called_once()
+
+
+class TestControllerHandlerPathPairs(unittest.TestCase):
+    """pair_id on the single and bulk command endpoints."""
+
+    def setUp(self):
+        import os
+        import tempfile
+        from common import PathPair, PathPairsConfig
+        self.mock_controller = MagicMock(spec=Controller)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.default_dir = os.path.join(self.tmp.name, "default")
+        self.tv_dir = os.path.join(self.tmp.name, "tv")
+        os.makedirs(self.default_dir)
+        os.makedirs(self.tv_dir)
+        self.pairs = PathPairsConfig()
+        self.pairs.add_pair(PathPair("Default", "/r/d", self.default_dir, pair_id="default"))
+        self.pairs.add_pair(PathPair("tv", "/r/tv", self.tv_dir, pair_id="tv"))
+        self.handler = ControllerHandler(
+            self.mock_controller, MagicMock(), local_path=self.default_dir, path_pairs=self.pairs
+        )
+        self.captured = []
+
+        def side_effect(command):
+            self.captured.append(command)
+            for callback in command.callbacks:
+                callback.on_success()
+        self.mock_controller.queue_command.side_effect = side_effect
+
+    def _single(self, handler_name, file_name, query):
+        with patch('web.handler.controller.request') as mock_request:
+            mock_request.query = dict(query)
+            return getattr(self.handler, "_ControllerHandler__" + handler_name)(file_name)
+
+    def _bulk(self, body):
+        with patch('web.handler.controller.request') as mock_request:
+            mock_request.json = body
+            return self.handler._ControllerHandler__handle_bulk_command()
+
+    def test_single_command_carries_pair_id(self):
+        response = self._single("handle_action_queue", "a.mkv", {"pair_id": "tv"})
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("tv", self.captured[0].pair_id)
+
+    def test_single_command_without_pair_id_has_none(self):
+        self._single("handle_action_stop", "a.mkv", {})
+        self.assertIsNone(self.captured[0].pair_id)
+
+    def test_single_command_unknown_pair_returns_404(self):
+        response = self._single("handle_action_queue", "a.mkv", {"pair_id": "nope"})
+        self.assertEqual(404, response.status_code)
+        self.mock_controller.queue_command.assert_not_called()
+
+    def test_single_delete_guard_uses_the_pair_path(self):
+        ok = self._single("handle_action_delete_local", "x", {"pair_id": "tv"})
+        self.assertEqual(200, ok.status_code)
+        # A sibling of the default path is outside it, whatever the other pair's path is
+        refused = self._single("handle_action_delete_local", "../tv/x", {"pair_id": "default"})
+        self.assertEqual(400, refused.status_code)
+
+    def test_single_delete_traversal_out_of_pair_returns_400(self):
+        response = self._single("handle_action_delete_local", "../default/a", {"pair_id": "tv"})
+        self.assertEqual(400, response.status_code)
+        self.mock_controller.queue_command.assert_not_called()
+
+    def test_bulk_files_can_name_their_pair(self):
+        response = self._bulk({"action": "queue", "files": [
+            {"name": "same.mkv", "pair_id": "default"},
+            {"name": "same.mkv", "pair_id": "tv"},
+        ]})
+        body = json.loads(response.body)
+        self.assertEqual(2, body["summary"]["succeeded"])
+        self.assertEqual(["default", "tv"], [c.pair_id for c in self.captured])
+        self.assertEqual(["default", "tv"], [r["pair_id"] for r in body["results"]])
+
+    def test_bulk_top_level_pair_id_is_the_default(self):
+        self._bulk({"action": "queue", "pair_id": "tv", "files": ["a", {"name": "b", "pair_id": "default"}]})
+        self.assertEqual(["tv", "default"], [c.pair_id for c in self.captured])
+
+    def test_bulk_results_have_no_pair_id_when_none_given(self):
+        body = json.loads(self._bulk({"action": "queue", "files": ["a"]}).body)
+        self.assertNotIn("pair_id", body["results"][0])
+
+    def test_bulk_duplicates_collapse_per_pair(self):
+        self._bulk({"action": "queue", "files": [
+            {"name": "a", "pair_id": "tv"}, {"name": "a", "pair_id": "tv"}, {"name": "a", "pair_id": "default"},
+        ]})
+        self.assertEqual(2, len(self.captured))
+
+    def test_bulk_unknown_pair_returns_404(self):
+        response = self._bulk({"action": "queue", "files": [{"name": "a", "pair_id": "nope"}]})
+        self.assertEqual(404, response.status_code)
+        self.mock_controller.queue_command.assert_not_called()
+
+    def test_bulk_rejects_malformed_entries(self):
+        for files in ([{"name": ""}], [{"pair_id": "tv"}], [{"name": "a", "pair_id": 3}], [5]):
+            response = self._bulk({"action": "queue", "files": files})
+            self.assertEqual(400, response.status_code, files)
+
+    def test_bulk_rejects_bad_top_level_pair_id(self):
+        response = self._bulk({"action": "queue", "pair_id": "", "files": ["a"]})
+        self.assertEqual(400, response.status_code)
+
+    def test_bulk_delete_guard_uses_the_pair_path(self):
+        body = json.loads(self._bulk({"action": "delete_local", "files": [
+            {"name": "../default/a", "pair_id": "tv"}, {"name": "fine", "pair_id": "tv"},
+        ]}).body)
+        self.assertFalse(body["results"][0]["success"])
+        self.assertTrue(body["results"][1]["success"])

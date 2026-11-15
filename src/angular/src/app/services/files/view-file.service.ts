@@ -38,8 +38,8 @@ export type ViewFileComparator = (a: ViewFile, b: ViewFile) => number;
  * This class stores the following data structures:
  *    1. files: List(ViewFile)
  *              ViewFiles sorted in the display order
- *    2. indices: Map(name, index)
- *                Maps name to its index in sortedList
+ *    2. indices: Map(key, index)
+ *                Maps the file key (pair id and name) to its index in sortedList
  * The runtime complexity of operations is:
  *    1. Update w/o state change:
  *          O(1) to find index and update the sorted list
@@ -180,7 +180,7 @@ export class ViewFileService implements OnDestroy {
         removedNames.forEach(
             name => {
                 updateIndices = true;
-                const index = newViewFiles.findIndex(value => value.name === name);
+                const index = newViewFiles.findIndex(value => value.key === name);
                 newViewFiles = newViewFiles.remove(index);
                 this._indices.delete(name);
             }
@@ -193,7 +193,7 @@ export class ViewFileService implements OnDestroy {
         if (updateIndices || reSort) {
             this._indices.clear();
             newViewFiles.forEach(
-                (value, index) => this._indices.set(value.name!, index!)
+                (value, index) => this._indices.set(value.key, index!)
             );
         }
 
@@ -213,7 +213,7 @@ export class ViewFileService implements OnDestroy {
     private rebuildViewFromScratch(modelFiles: Immutable.Map<string, ModelFile>): void {
         const selectedNames = new Set<string>();
         this._files.forEach(file => {
-            if (file.isSelected) { selectedNames.add(file.name!); }
+            if (file.isSelected) { selectedNames.add(file.key); }
         });
 
         let newViewFiles = Immutable.List<ViewFile>();
@@ -227,7 +227,7 @@ export class ViewFileService implements OnDestroy {
         }
         this._indices.clear();
         newViewFiles.forEach(
-            (value, index) => this._indices.set(value.name!, index!)
+            (value, index) => this._indices.set(value.key, index!)
         );
 
         this._files = newViewFiles;
@@ -261,15 +261,15 @@ export class ViewFileService implements OnDestroy {
             let unSelectViewFile = viewFiles.get(unSelectIndex)!;
 
             // Do nothing if file is already selected
-            if (unSelectViewFile.name === file.name) { return; }
+            if (unSelectViewFile.key === file.key) { return; }
 
             unSelectViewFile = new ViewFile(unSelectViewFile.set("isSelected", false));
             viewFiles = viewFiles.set(unSelectIndex, unSelectViewFile);
         }
 
         // Set the new selected file
-        if (this._indices.has(file.name!)) {
-            const index = this._indices.get(file.name!)!;
+        if (this._indices.has(file.key)) {
+            const index = this._indices.get(file.key)!;
             let viewFile = viewFiles.get(index) as ViewFile;
             viewFile = new ViewFile(viewFile.set("isSelected", true));
             viewFiles = viewFiles.set(index, viewFile);
@@ -332,7 +332,7 @@ export class ViewFileService implements OnDestroy {
         this._files = newViewFiles;
         this._indices.clear();
         newViewFiles.forEach(
-            (value, index) => this._indices.set(value.name!, index!)
+            (value, index) => this._indices.set(value.key, index!)
         );
 
         this.pushViewFiles();
@@ -417,6 +417,7 @@ export class ViewFileService implements OnDestroy {
 
         return new ViewFile({
             name: modelFile.name,
+            pairId: modelFile.pair_id ?? null,
             isDir: modelFile.is_dir,
             localSize: localSize,
             remoteSize: remoteSize,

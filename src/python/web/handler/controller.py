@@ -52,12 +52,14 @@ class WebResponseActionCallback(Controller.Command.ICallback):
         return self.__event.wait(timeout=timeout)
 
 class ControllerHandler(IHandler):
-    def __init__(self, controller: Controller, context: Context, local_path: str = ""):
+    def __init__(self, controller: Controller, context: Context, local_path: str = "", path_pairs=None):
         self.logger = context.logger.getChild("ControllerHandler")
         self.__controller = controller
         self.__local_path_real: Path | None = (
             Path(os.path.realpath(local_path)) if local_path else None
         )
+        # Optional PathPairsConfig; gives each pair its own containment root
+        self.__path_pairs = path_pairs
 
     @overrides(IHandler)
     def add_routes(self, web_app: WebApp):
@@ -89,11 +91,15 @@ class ControllerHandler(IHandler):
         """
         # value is double encoded — MUST run before the path-safety guard
         file_name = unquote(file_name)
+        pair_id = self._request_pair_id()
+        unknown = self._check_pair_known(pair_id)
+        if unknown:
+            return unknown
         if guard:
-            path_guard = self._check_path_safe(file_name)
+            path_guard = self._check_path_safe(file_name, pair_id)
             if path_guard:
                 return path_guard
-        command = Controller.Command(action, file_name, release_unverified=release_unverified)
+        command = Controller.Command(action, file_name, release_unverified=release_unverified, pair_id=pair_id)
         callback = WebResponseActionCallback()
         command.add_callback(callback)
         self.__controller.queue_command(command)
@@ -175,20 +181,53 @@ class ControllerHandler(IHandler):
     # Maximum number of files allowed in a single bulk request
     _MAX_BULK_FILES = 1000
 
-    def _check_path_safe(self, file_name: str) -> HTTPResponse | None:
+    @staticmethod
+    def _request_pair_id() -> str | None:
+        """The ?pair_id= of the current request, None when absent."""
+        try:
+            value = request.query.get("pair_id")
+        except Exception:
+            return None
+        return value if isinstance(value, str) and value else None
+
+    def _check_pair_known(self, pair_id: str | None) -> HTTPResponse | None:
         """
-        Returns HTTPResponse(status=400) if file_name resolves outside local_path, else None.
+        Returns HTTPResponse(status=404) if a pair id is given that is not a
+        configured path pair, else None. A no-op without path pairs.
+        """
+        if pair_id is None or self.__path_pairs is None:
+            return None
+        if self.__path_pairs.get_pair(pair_id) is None:
+            return HTTPResponse(body="Path pair '{}' not found".format(pair_id), status=404)
+        return None
+
+    def _local_root(self, pair_id: str | None) -> Path | None:
+        """
+        Directory that a file of the given pair must stay inside; the Default
+        local path when no pair is given or known.
+        """
+        if pair_id is not None and self.__path_pairs is not None:
+            pair = self.__path_pairs.get_pair(pair_id)
+            if pair is not None and pair.local_path:
+                return Path(os.path.realpath(pair.local_path))
+        return self.__local_path_real
+
+    def _check_path_safe(self, file_name: str, pair_id: str | None = None) -> HTTPResponse | None:
+        """
+        Returns HTTPResponse(status=400) if file_name resolves outside the local
+        path of its pair, else None.
 
         Uses realpath() to resolve both '..' sequences and symlinks before checking
-        containment within local_path. Returns None when local_path was not configured
-        (guard is a no-op).
+        containment within the local path. Returns None when no local path was
+        configured (guard is a no-op).
         """
-        if self.__local_path_real is None:
+        root = self._local_root(pair_id)
+        if root is None:
             return None
         candidate = Path(os.path.realpath(
-            os.path.join(str(self.__local_path_real), file_name)
+            os.path.join(str(root), file_name)
         ))
-        if not candidate.is_relative_to(self.__local_path_real):
+        if not candidate.is_relative_to(root):
             # repr() here instead of sanitize_log_value is pre-existing and
             # out of scope for this change; file name only, no credential.
             self.logger.warning("Rejected path traversal attempt for: %s", repr(file_name))
@@ -261,14 +300,38 @@ class ControllerHandler(IHandler):
                 status=400,
                 content_type="application/json"
             )
-        if not all(isinstance(f, str) and f.strip() for f in files):
+        # A file is a name, or {"name", "pair_id"}; a top-level pair_id is the
+        # default for entries that give none.
+        default_pair = body.get("pair_id")
+        if default_pair is not None and (not isinstance(default_pair, str) or not default_pair.strip()):
             return HTTPResponse(
-                body=json.dumps({"error": "All files must be non-empty strings"}),
+                body=json.dumps({"error": "pair_id must be a non-empty string"}),
                 status=400,
                 content_type="application/json"
             )
+        entries: list[tuple[str, str | None]] = []
+        for f in files:
+            if isinstance(f, str) and f.strip():
+                entries.append((f, default_pair))
+            elif (isinstance(f, dict) and isinstance(f.get("name"), str) and f["name"].strip()
+                  and (f.get("pair_id") is None or (isinstance(f["pair_id"], str) and f["pair_id"].strip()))):
+                entries.append((f["name"], f.get("pair_id") or default_pair))
+            else:
+                return HTTPResponse(
+                    body=json.dumps({"error": "All files must be non-empty strings"}),
+                    status=400,
+                    content_type="application/json"
+                )
+        for pair_id in dict.fromkeys(p for _, p in entries):
+            unknown = self._check_pair_known(pair_id)
+            if unknown:
+                return HTTPResponse(
+                    body=json.dumps({"error": unknown.body}),
+                    status=404,
+                    content_type="application/json"
+                )
 
-        files = list(dict.fromkeys(files))
+        files = list(dict.fromkeys(entries))
 
         # Prevent DoS — enforce file limit
         if len(files) > self._MAX_BULK_FILES:
@@ -320,10 +383,19 @@ class ControllerHandler(IHandler):
             content_type="application/json"
         )
 
+    @staticmethod
+    def _result(file_name: str, pair_id: str | None, fields: dict) -> dict:
+        """Bulk result row; carries pair_id only when the request named a pair."""
+        result = {"file": file_name}
+        if pair_id is not None:
+            result["pair_id"] = pair_id
+        result.update(fields)
+        return result
+
     def _process_bulk_commands(
         self,
         action: Controller.Command.Action,
-        files: list[str],
+        files: list[tuple[str, str | None]],
         action_name: str,
         *,
         release_unverified: bool = False,
@@ -358,29 +430,30 @@ class ControllerHandler(IHandler):
         )
 
         # Queue all commands (parallel queuing)
-        commands_with_callbacks: list[tuple[str, WebResponseActionCallback]] = []
+        commands_with_callbacks: list[tuple[str, str | None, WebResponseActionCallback]] = []
         results = []
         succeeded = 0
         failed = 0
-        for file_name in files:
+        for file_name, pair_id in files:
             # Path traversal guard for destructive actions
             if action in self._GUARDED_ACTIONS:
-                guard = self._check_path_safe(file_name)
+                guard = self._check_path_safe(file_name, pair_id)
                 if guard:
-                    results.append({
-                        "file": file_name,
+                    results.append(self._result(file_name, pair_id, {
                         "success": False,
                         "error": "Invalid file path",
                         "error_code": 400
-                    })
+                    }))
                     failed += 1
                     continue
 
-            command = Controller.Command(action, file_name, release_unverified=release_unverified)
+            command = Controller.Command(
+                action, file_name, release_unverified=release_unverified, pair_id=pair_id
+            )
             callback = WebResponseActionCallback()
             command.add_callback(callback)
             self.__controller.queue_command(command)
-            commands_with_callbacks.append((file_name, callback))
+            commands_with_callbacks.append((file_name, pair_id, callback))
 
         queue_time = time.time()
         self.logger.debug("Bulk {}: queued {} commands in {:.3f}s".format(
@@ -392,33 +465,28 @@ class ControllerHandler(IHandler):
         # so waiting for all at once is much faster than waiting one-by-one.
         timed_out = 0
 
-        for file_name, callback in commands_with_callbacks:
+        for file_name, pair_id, callback in commands_with_callbacks:
             remaining_timeout = max(0.1, timeout - (time.time() - start_time))
             completed = callback.wait(timeout=remaining_timeout)
 
             if not completed:
                 # Timed out waiting for this command
-                results.append({
-                    "file": file_name,
+                results.append(self._result(file_name, pair_id, {
                     "success": False,
                     "error": "Operation timed out",
                     "error_code": 504
-                })
+                }))
                 failed += 1
                 timed_out += 1
             elif callback.success:
-                results.append({
-                    "file": file_name,
-                    "success": True
-                })
+                results.append(self._result(file_name, pair_id, {"success": True}))
                 succeeded += 1
             else:
-                results.append({
-                    "file": file_name,
+                results.append(self._result(file_name, pair_id, {
                     "success": False,
                     "error": callback.error,
                     "error_code": callback.error_code
-                })
+                }))
                 failed += 1
 
         total_time = time.time() - start_time

@@ -31,8 +31,9 @@ class ModelFile:
         NONE = 0                    # Not tracked by *arr / no import detected
         IMPORTED = 1                # Imported by Sonarr/Radarr
 
-    def __init__(self, name: str, is_dir: bool):
+    def __init__(self, name: str, is_dir: bool, pair_id: Optional[str] = None):
         self.__name = name  # file or folder name
+        self.__pair_id = pair_id  # owning path pair, None for the single/legacy pair
         self.__is_dir = is_dir  # True if this is a dir, False if file
         self.__state = ModelFile.State.DEFAULT  # status
         self.__remote_size = None  # remote size in bytes, None if file does not exist
@@ -127,6 +128,9 @@ class ModelFile:
 
     @property
     def name(self) -> str: return self.__name
+
+    @property
+    def pair_id(self) -> Optional[str]: return self.__pair_id
 
     @property
     def is_dir(self) -> bool: return self.__is_dir

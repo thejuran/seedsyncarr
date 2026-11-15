@@ -104,6 +104,15 @@ class TestSerializeModel(unittest.TestCase):
         self.assertEqual("a", data[0]["name"])
         self.assertEqual("b", data[1]["name"])
 
+
+    def test_file_pair_id(self):
+        serialize = SerializeModel()
+        files = [ModelFile("a", True, pair_id="p1"), ModelFile("b", False)]
+        out = parse_stream(serialize.model(files))
+        data = json.loads(out["data"])
+        self.assertEqual("p1", data[0]["pair_id"])
+        self.assertIsNone(data[1]["pair_id"])
+
     def test_file_is_dir(self):
         serialize = SerializeModel()
         files = [ModelFile("a", True), ModelFile("b", False)]

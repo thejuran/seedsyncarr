@@ -1,11 +1,15 @@
 import {Record} from "immutable";
 
+import {fileKey} from "./file-key";
+
 /**
  * View file
  * Represents the View Model
  */
 interface IViewFile {
     name: string | null;
+    // Path pair the file belongs to, null without pairs
+    pairId: string | null;
     isDir: boolean | null;
     localSize: number | null;
     remoteSize: number | null;
@@ -35,6 +39,7 @@ interface IViewFile {
 // Boiler plate code to set up an immutable class
 const DefaultViewFile: IViewFile = {
     name: null,
+    pairId: null,
     isDir: null,
     localSize: null,
     remoteSize: null,
@@ -64,6 +69,7 @@ const ViewFileRecord = Record(DefaultViewFile);
  */
 export class ViewFile extends ViewFileRecord implements IViewFile {
     name!: string | null;
+    pairId!: string | null;
     isDir!: boolean | null;
     localSize!: number | null;
     remoteSize!: number | null;
@@ -88,6 +94,13 @@ export class ViewFile extends ViewFileRecord implements IViewFile {
 
     constructor(props: Partial<ViewFile>) {
         super(props);
+    }
+
+    /**
+     * Identity of the file across path pairs (see fileKey)
+     */
+    get key(): string {
+        return fileKey(this.pairId, this.name ?? "");
     }
 }
 

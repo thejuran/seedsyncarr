@@ -2,6 +2,7 @@ import {Component, Input, Output, EventEmitter, ChangeDetectionStrategy, OnChang
 import {List} from "immutable";
 
 import {ViewFile} from "../../services/files/view-file";
+import {BulkFile, toBulkFile} from "../../services/server/bulk-command.service";
 
 /**
  * Action counts for bulk operations.
@@ -65,11 +66,11 @@ export class BulkActionsBarComponent implements OnChanges {
         locallyDeletable: 0,
         remotelyDeletable: 0
     };
-    private _cachedQueueableFiles: string[] = [];
-    private _cachedStoppableFiles: string[] = [];
-    private _cachedExtractableFiles: string[] = [];
-    private _cachedLocallyDeletableFiles: string[] = [];
-    private _cachedRemotelyDeletableFiles: string[] = [];
+    private _cachedQueueableFiles: BulkFile[] = [];
+    private _cachedStoppableFiles: BulkFile[] = [];
+    private _cachedExtractableFiles: BulkFile[] = [];
+    private _cachedLocallyDeletableFiles: BulkFile[] = [];
+    private _cachedRemotelyDeletableFiles: BulkFile[] = [];
 
     ngOnChanges(changes: SimpleChanges): void {
         // Only recompute if visibleFiles or selectedFiles changed
@@ -86,33 +87,33 @@ export class BulkActionsBarComponent implements OnChanges {
     private _recomputeCachedValues(): void {
         // Compute selected view files once
         this._cachedSelectedViewFiles = this.visibleFiles
-            .filter(f => f.name != null && this.selectedFiles.has(f.name))
+            .filter(f => f.name != null && this.selectedFiles.has(f.key))
             .toArray();
 
         // Compute action-specific lists in a single pass
-        const queueable: string[] = [];
-        const stoppable: string[] = [];
-        const extractable: string[] = [];
-        const locallyDeletable: string[] = [];
-        const remotelyDeletable: string[] = [];
+        const queueable: BulkFile[] = [];
+        const stoppable: BulkFile[] = [];
+        const extractable: BulkFile[] = [];
+        const locallyDeletable: BulkFile[] = [];
+        const remotelyDeletable: BulkFile[] = [];
 
         for (const file of this._cachedSelectedViewFiles) {
             if (!file.name) { continue; }
             if (file.isQueueable) {
-                queueable.push(file.name);
+                queueable.push(toBulkFile(file.name, file.pairId));
             }
             if (file.isStoppable) {
-                stoppable.push(file.name);
+                stoppable.push(toBulkFile(file.name, file.pairId));
             }
             // Match single-file logic: isExtractable AND isArchive
             if (file.isExtractable && file.isArchive) {
-                extractable.push(file.name);
+                extractable.push(toBulkFile(file.name, file.pairId));
             }
             if (file.isLocallyDeletable) {
-                locallyDeletable.push(file.name);
+                locallyDeletable.push(toBulkFile(file.name, file.pairId));
             }
             if (file.isRemotelyDeletable) {
-                remotelyDeletable.push(file.name);
+                remotelyDeletable.push(toBulkFile(file.name, file.pairId));
             }
         }
 
@@ -135,31 +136,31 @@ export class BulkActionsBarComponent implements OnChanges {
      * Emitted when user clicks Queue button.
      * Passes array of file names that are queueable.
      */
-    @Output() queueAction = new EventEmitter<string[]>();
+    @Output() queueAction = new EventEmitter<BulkFile[]>();
 
     /**
      * Emitted when user clicks Stop button.
      * Passes array of file names that are stoppable.
      */
-    @Output() stopAction = new EventEmitter<string[]>();
+    @Output() stopAction = new EventEmitter<BulkFile[]>();
 
     /**
      * Emitted when user clicks Extract button.
      * Passes array of file names that are extractable.
      */
-    @Output() extractAction = new EventEmitter<string[]>();
+    @Output() extractAction = new EventEmitter<BulkFile[]>();
 
     /**
      * Emitted when user clicks Delete Local button.
      * Passes array of file names that are locally deletable.
      */
-    @Output() deleteLocalAction = new EventEmitter<string[]>();
+    @Output() deleteLocalAction = new EventEmitter<BulkFile[]>();
 
     /**
      * Emitted when user clicks Delete Remote button.
      * Passes array of file names that are remotely deletable.
      */
-    @Output() deleteRemoteAction = new EventEmitter<string[]>();
+    @Output() deleteRemoteAction = new EventEmitter<BulkFile[]>();
 
     /**
      * Check if any files are selected (determines bar visibility).
@@ -192,35 +193,35 @@ export class BulkActionsBarComponent implements OnChanges {
     /**
      * Get files that are queueable (cached).
      */
-    get queueableFiles(): string[] {
+    get queueableFiles(): BulkFile[] {
         return this._cachedQueueableFiles;
     }
 
     /**
      * Get files that are stoppable (cached).
      */
-    get stoppableFiles(): string[] {
+    get stoppableFiles(): BulkFile[] {
         return this._cachedStoppableFiles;
     }
 
     /**
      * Get files that are extractable (cached).
      */
-    get extractableFiles(): string[] {
+    get extractableFiles(): BulkFile[] {
         return this._cachedExtractableFiles;
     }
 
     /**
      * Get files that are locally deletable (cached).
      */
-    get locallyDeletableFiles(): string[] {
+    get locallyDeletableFiles(): BulkFile[] {
         return this._cachedLocallyDeletableFiles;
     }
 
     /**
      * Get files that are remotely deletable (cached).
      */
-    get remotelyDeletableFiles(): string[] {
+    get remotelyDeletableFiles(): BulkFile[] {
         return this._cachedRemotelyDeletableFiles;
     }
 
