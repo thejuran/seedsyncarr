@@ -2,7 +2,7 @@
 phase: 127
 slug: readme-accuracy
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: true
 created: 2026-11-18
 ---
@@ -20,7 +20,8 @@ created: 2026-11-18
 | **Framework** | None for prose. Mechanical python3/grep/awk/git checks (see 127-RESEARCH.md "Validation Architecture"). Existing CI (pytest, `ruff check src/python/`, Angular, e2e) unaffected |
 | **Config file** | none |
 | **Quick run command** | The current task's group: `python3 .planning/phases/127-readme-accuracy/127-check.py structure` (Task 1), `... claims` (Task 2), `... all` (Task 3). Replaces the verification block in 127-RESEARCH.md |
-| **Full suite command** | `python3 .planning/phases/127-readme-accuracy/127-check.py all && ruff check src/python/` (groups: structure, claims, security, scope, selftest; ruff expected clean, unchanged) |
+| **Full suite command** | `python3 .planning/phases/127-readme-accuracy/127-check.py all && ruff check src/python/ && if git diff --quiet 33c50bfc -- .planning/phases/127-readme-accuracy/127-check.py; then echo "check script: unchanged (path i)"; else echo "check script: CHANGED (path ii)"; fi` (groups: structure, claims, security, scope, selftest; ruff expected clean, unchanged; the last part reports check-script integrity) |
+| **Check-script integrity** | Baseline commit `33c50bfc`. Path (i): the script is unchanged since the baseline. Path (ii): it was changed to fix a detector that rejected accurate text; the full diff is reproduced and justified hunk by hunk in the SUMMARY, no reject fixture is removed, and `selftest` (part of `all`) passes. The verifier confirms path (ii) by reading the SUMMARY against `git diff 33c50bfc -- .planning/phases/127-readme-accuracy/127-check.py` |
 | **What the script proves** | Mostly presence checks (a required term appears in the right section) plus a narrow set of contradiction detectors pinned by its `selftest` fixtures. A green run does not prove the prose is true; the Manual-Only Verifications below are mandatory |
 | **Baseline** | One baseline for the security and scope groups: commit `091f51f2` (pre-phase README.md and SECURITY.md). For a re-run after the phase PR merged and unrelated work landed on main, set `BASE_REF` to the parent of the phase's first commit |
 | **Estimated runtime** | ~2 seconds |
@@ -42,7 +43,7 @@ created: 2026-11-18
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 127-01-T1 | 01 | 1 | DOC-01, DOC-04 | T-127-02 | Guides linked; Quick Start states port exposure and that `api_token` does not protect the UI | mechanical | `python3 .planning/phases/127-readme-accuracy/127-check.py structure` | yes | ⬜ pending |
 | 127-01-T2 | 01 | 1 | DOC-02, DOC-03 | T-127-01, T-127-03, T-127-04 | Defaults and cleanup conditions stated as the code behaves; no webhook-secret recommendation | mechanical | `python3 .planning/phases/127-readme-accuracy/127-check.py claims` | yes | ⬜ pending |
-| 127-01-T3 | 01 | 1 | DOC-02, DOC-03 (D-08) | T-127-03, T-127-06 | SECURITY.md changed only in the two approved spots (intro sentence and webhook bullet); scope limited to README.md and SECURITY.md; check script unmodified | mechanical | `python3 .planning/phases/127-readme-accuracy/127-check.py all && ruff check src/python/` | yes | ⬜ pending |
+| 127-01-T3 | 01 | 1 | DOC-02, DOC-03 (D-08) | T-127-03, T-127-06 | SECURITY.md changed only in the two approved spots (intro sentence and webhook bullet); scope limited to README.md and SECURITY.md; check script unmodified since `33c50bfc` (path i) or changed with a justified diff and passing selftest (path ii) | mechanical | `python3 .planning/phases/127-readme-accuracy/127-check.py all && ruff check src/python/ && if git diff --quiet 33c50bfc -- .planning/phases/127-readme-accuracy/127-check.py; then echo "check script: unchanged (path i)"; else echo "check script: CHANGED (path ii)"; fi` | yes | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -71,11 +72,11 @@ Existing infrastructure covers all phase requirements.
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 5s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (none: the check script already exists)
+- [x] No watch-mode flags
+- [x] Feedback latency < 5s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** pending (plan-time boxes ticked 2026-11-18; status stays draft until execution)

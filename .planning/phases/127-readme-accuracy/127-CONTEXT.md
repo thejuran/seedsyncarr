@@ -33,7 +33,7 @@ README.md documentation correction (DOC-01..04): make the six repository guides 
 - **D-11:** Replace the website link (`https://thejuran.github.io/seedsyncarr`) in Installation with links to `docs/GETTING-STARTED.md` and `docs/CONFIGURATION.md`. The website is not referenced as a docs source.
 - **D-12:** New `## Documentation` section placed immediately after Quick Start.
 - **D-13:** Grouped with one-line blurbs — "Using SeedSyncarr": Getting Started, Configuration, Security (`SECURITY.md`); "Contributing / internals": Architecture, Development, Testing.
-- **D-14:** Move `## Usage Examples` from the bottom up to sit with content sections (above Contributing/Security/License). Reorder only.
+- **D-14:** Move `## Usage Examples` from the bottom up to sit with content sections (above Contributing/Security/License). Reorder only. (note 2026-11-18: the move is reorder-only except the minimum accuracy corrections required by D-03/D-04 — 'safely reclaim', the HMAC-when-configured sentence, and the 'then deletes' clause; recorded with before/after in SUMMARY)
 - **D-15:** Every relative link in README.md (including images under `doc/`) must resolve — verify mechanically.
 
 ### Claude's Discretion
