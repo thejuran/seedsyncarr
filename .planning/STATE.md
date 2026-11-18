@@ -4,12 +4,12 @@ milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
 status: Roadmap drafted for Phases 127–130 (11/11 requirements mapped). No implementation started.
 stopped_at: Phase 127 context gathered
-last_updated: "2026-11-18T22:28:05.687Z"
+last_updated: "2026-11-18T23:11:07.567Z"
 last_activity: 2026-11-18 — v1.8.1 roadmap drafted
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 1
   completed_plans: 0
   percent: 0
 ---
