@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: executing
-stopped_at: Completed 127-01-PLAN.md (awaiting phase verification)
-last_updated: "2026-11-18T23:16:24.807Z"
-last_activity: 2026-11-18 -- Phase 127 plan 01 executed; awaiting verification
+status: ready_to_plan
+stopped_at: Phase 127 complete (1/1) — ready to discuss Phase 128
+last_updated: "2026-11-18T23:24:52.000Z"
+last_activity: 2026-11-18 -- Phase 127 verified (passed 8/8) and complete; review WR-01 fixed, WR-02 owner-deferred to backlog 999.9
 progress:
   total_phases: 5
   completed_phases: 1
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 127: readme-accuracy
+**Current focus:** Phase 128 — arr key normalization
 
 ## Current Position
 
-Phase: 127 (readme-accuracy) — EXECUTING
-Plan: 1 of 1
-Status: Plan 01 complete; ready for phase verification
-Last activity: 2026-11-18 -- Phase 127 plan 01 executed; awaiting verification
+Phase: 128
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-18
 
 ## Accumulated Context
 

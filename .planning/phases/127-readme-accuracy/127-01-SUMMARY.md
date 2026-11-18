@@ -168,3 +168,7 @@ None. Docs-only changes; no new code surface.
 
 - README.md, SECURITY.md modified; commits d66de370, f59d8a0f, 995ff457 present in `git log`.
 - `127-check.py all` → `all: OK`; `ruff check src/python/` → `All checks passed!`.
+
+## Post-execution change (code review WR-01, 2026-11-18)
+
+The "check script unchanged since 33c50bfc" statements above held at plan completion only. After code review, commit fbc954ec corrected the README and the SECURITY.md Bearer auth bullet so they name all three routes exempt from `api_token`, and changed `127-check.py` (acceptance path ii). Full diff justification: the owner approved a third SECURITY.md spot (the Bearer auth bullet, replaced in place). The checker now sets that one line aside before the two-spot diff, requires it to name `/server/status`, `/server/stream` and the webhooks, and adds self-tests for both accepting and rejecting it. No existing check was removed. `127-check.py all` passes, including the self-test. See 127-REVIEW.md, section Resolution.

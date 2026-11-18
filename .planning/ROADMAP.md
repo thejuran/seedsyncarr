@@ -102,7 +102,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 127. README Accuracy | 1/1 | Complete   | 2026-11-18 |
+| 127. README Accuracy | 1/1 | Complete    | 2026-11-18 |
 | 128. Arr Key Normalization | 0/TBD | Not started | - |
 | 129. Web-Service Cleanup Isolation | 0/TBD | Not started | - |
 | 130. Release 1.8.1 | 0/TBD | Not started | - |

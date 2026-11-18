@@ -310,7 +310,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Current State
 
-v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126, 13/13 requirements, PRs #132/#134/#137/#139/#140/#142/#143). 1.8.0 is published to GHCR, GitHub and PyPI and runs on NAS production at `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f…`. The milestone is archived (`milestones/v1.8.0-ROADMAP.md`, `v1.8.0-REQUIREMENTS.md`). Milestone v1.8.1 Configuration and Shutdown Correctness started 2026-11-18. Performance and Usability and narrow Pipeline Visibility remain conditional on evidence. Other review findings remain in the ROADMAP Backlog.
+v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126, 13/13 requirements, PRs #132/#134/#137/#139/#140/#142/#143). 1.8.0 is published to GHCR, GitHub and PyPI and runs on NAS production at `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f…`. The milestone is archived (`milestones/v1.8.0-ROADMAP.md`, `v1.8.0-REQUIREMENTS.md`). Milestone v1.8.1 Configuration and Shutdown Correctness started 2026-11-18. Performance and Usability and narrow Pipeline Visibility remain conditional on evidence. Other review findings remain in the ROADMAP Backlog. Phase 127 README Accuracy complete 2026-11-18 (DOC-01–04 validated): README links all six guides, states which protections are off until configured, names the routes `api_token` does not cover, and conditions cleanup promises; the 'only releases SeedSyncarr downloaded' pruning claim runs ahead of the code until backlog 999.9 lands (owner ruling).
 
 ## Current Milestone: v1.8.1 Configuration and Shutdown Correctness
 
@@ -561,4 +561,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-18 after starting milestone v1.8.1*
+*Last updated: 2026-11-18 after Phase 127 completion*
