@@ -72,6 +72,7 @@ Plans:
   1. Save, Test Connection and queue completion checks all use one consistent normalization rule: a key entered with leading/trailing whitespace is saved normalized, using the same rule Test Connection already applies
   2. A previously saved whitespace-padded key works for queue completion checks **without the user resaving it** (normalized on read), so Test Connection and queue requests agree on the same stored key (regression test fails before the fix, passes after)
   3. Invalid keys still fail safely: an empty or invalid key in queue completion checks produces no unsafe import or deletion decision, and no key value ever appears in logs
+**Scope note (2026-11-18 discuss):** owner added that the config save confirmation stops echoing values of `secret=True` settings (all secrets, not only Arr keys) — 128-CONTEXT D-07.
 **Plans**: TBD
 
 ### Phase 129: Web-Service Cleanup Isolation
