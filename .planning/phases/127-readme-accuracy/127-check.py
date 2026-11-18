@@ -7,24 +7,45 @@ Usage:
 Groups:
     structure  DOC-01, DOC-04  (D-09 .. D-15)
     claims     DOC-02, DOC-03  (D-01 .. D-07)
-    security   D-08            (SECURITY.md: exactly two lines changed)
+    security   D-08            (SECURITY.md: only the two approved spots changed)
     scope      only README.md and SECURITY.md changed outside .planning/
+    selftest   fixtures proving the detectors below reject known-bad text
     all        every group above
 
 Exit code 0 when the selected groups pass, 1 otherwise. Each failure prints one
 line starting with FAIL and the decision or requirement it belongs to.
 
-These checks cover what can be decided mechanically. They do not replace the
-read-through of the prose required by D-04 and the revised D-03.
+WHAT THESE CHECKS ARE. Most checks here are PRESENCE checks: they confirm that
+a required term or phrase appears in the right section. Presence of a keyword
+does not prove the sentence around it is true. A small set of CONTRADICTION
+detectors (see contradiction_problems) rejects specific false statements that
+were shown to slip past presence checks, and the selftest group pins those
+cases. Neither replaces the mandatory read-through of the prose: every DOC-02
+and DOC-04 assertion, the signing conditions and the local-only cleanup
+statement must be confirmed by reading (127-VALIDATION.md, Manual-Only
+Verifications; claims ledger in the SUMMARY).
 
-Environment overrides (for trying a draft outside the repository):
-    README_PATH, SECURITY_PATH  alternative files to check
-    BASE_REF                    alternative base commit for the scope group
+Baseline. PIN below is the one baseline for both the security and the scope
+group: the commit whose README.md and SECURITY.md are the pre-phase versions.
+
+Environment overrides:
+    README_PATH, SECURITY_PATH  alternative files to check (for trying a draft
+                                outside the repository; relative links are still
+                                resolved against the repository root)
+    BASE_REF                    alternative base commit for the scope group.
+                                Needed only when commits unrelated to this phase
+                                sit between PIN and the checked tree, for example
+                                when re-running after the phase PR merged and
+                                later work landed on main: set BASE_REF to the
+                                parent of the phase's first commit.
 """
+import difflib
 import os
 import re
 import subprocess
 import sys
+import tempfile
+import urllib.parse
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 
@@ -61,9 +82,15 @@ FORBIDDEN_README = [
     (r"safely reclaim", "D-04 unconditional claim"),
     (r"safe auto-delete", "D-01/D-02 unconditional claim"),
     (r"hmac-verified", "D-03 Sonarr/Radarr webhooks are not verified by default and cannot be signed"),
+    (r"then deletes", "D-02/D-04 deletion is attempted after the delay, subject to safeguards; it is not automatic"),
     (r"thejuran\.github\.io", "D-11 website referenced as a docs source"),
     (r"\[!(warning|note|caution|important|tip)\]", "D-10 admonition syntax"),
 ]
+
+# The two SECURITY.md baseline lines the owner approved for replacement (D-08).
+OLD_INTRO = ("SeedSyncarr is designed to be self-hosted on a private network, "
+             "and several protections are active by default:")
+OLD_BULLET_PREFIX = "- **HMAC-verified import webhooks**"
 
 failures = []
 
@@ -128,6 +155,19 @@ def slug(heading):
     return heading.replace(" ", "-")
 
 
+def anchors_of(text):
+    """Anchors a Markdown file exposes: heading slugs (with GitHub's -1, -2
+    suffixes for repeated headings) and explicit HTML name/id attributes."""
+    found, seen = set(), {}
+    for heading in re.findall(r"(?m)^#{1,6}\s+(.+?)\s*#*\s*$", prose(text)):
+        base = slug(heading)
+        count = seen.get(base, 0)
+        seen[base] = count + 1
+        found.add(base if count == 0 else "{}-{}".format(base, count))
+    found.update(re.findall(r'<a\s+(?:name|id)="([^"]+)"', text))
+    return found
+
+
 def blockquotes(text):
     """Contiguous '>' blocks outside code fences, each as one string."""
     blocks, current = [], []
@@ -144,23 +184,195 @@ def blockquotes(text):
 
 def flat(text):
     """Collapse wrapped prose (and blockquote markers) to single spaces."""
-    return re.sub(r"\s+", " ", re.sub(r"(?m)^> ?", "", text))
+    return re.sub(r"\s+", " ", re.sub(r"(?m)^> ?", "", text)).strip()
 
 
-def check_links(readme):
-    text = prose(readme)
-    anchors = {slug(m) for m in re.findall(r"(?m)^#{1,6}\s+(.+)$", text)}
-    links = re.findall(r"\]\(([^)\s]+)\)", text)
-    links += re.findall(r'(?:src|srcset)="([^"]+)"', text)
-    for link in links:
-        if re.match(r"(https?:|mailto:)", link):
+def blocks_of(text):
+    """List items and paragraphs outside code fences, each flattened to one line."""
+    out = []
+    for item in re.split(r"(?m)^\s*(?:[-*]|\d+\.)\s+", prose(text)):
+        for para in re.split(r"\n\s*\n", item):
+            if flat(para):
+                out.append(flat(para))
+    return out
+
+
+def units(text):
+    """Sentence-sized units (split on . ! ? ; inside each list item or paragraph)."""
+    out = []
+    for block in blocks_of(text):
+        out.extend(s.strip() for s in re.split(r"(?<=[.!?;])\s+", block) if s.strip())
+    return out
+
+
+# --------------------------------------------------------------------------
+# Detectors. Pure functions returning a list of problem strings, so the
+# selftest group can exercise them against fixtures.
+# --------------------------------------------------------------------------
+
+INLINE_LINK = re.compile(r"""\]\(\s*<?([^)\s>]+)>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)""")
+REF_DEF = re.compile(r"""(?m)^ {0,3}\[([^\]]+)\]:\s*<?(\S+?)>?(?:\s+["'(].*)?\s*$""")
+REF_USE = re.compile(r"\[([^\]]+)\]\[([^\]]*)\]")
+
+
+def link_problems(text, root):
+    """Problems with relative links, images and anchors in a Markdown text.
+
+    Supported: inline links and images (with or without a title), reference
+    links ([text][label], [label][]) and their definitions, HTML src / srcset /
+    href attributes, same-file anchors, and fragments on linked .md files.
+    Anything of the form '](' that is not parsed is reported as unsupported
+    instead of being skipped.
+    """
+    problems = []
+    body = prose(text)
+    own_anchors = anchors_of(text)
+
+    targets = [m.group(1) for m in INLINE_LINK.finditer(body)]
+    unparsed = body.count("](") - len(targets)
+    if unparsed:
+        problems.append("{} inline link(s) use syntax this checker does not parse".format(unparsed))
+
+    definitions = {label.strip().lower(): target for label, target in REF_DEF.findall(body)}
+    targets += list(definitions.values())
+    for shown, label in REF_USE.findall(body):
+        key = (label or shown).strip().lower()
+        if key not in definitions:
+            problems.append("reference link has no definition: [{}]".format(label or shown))
+
+    for attr in re.findall(r'(?:src|srcset|href)="([^"]+)"', body):
+        targets += [part.strip().split(" ")[0] for part in attr.split(",") if part.strip()]
+
+    for link in targets:
+        if re.match(r"(?i)(https?:|mailto:)", link):
             continue
-        if link.startswith("#"):
-            need(link[1:] in anchors, "D-15", "same-file anchor does not resolve: " + link)
+        link = urllib.parse.unquote(link)
+        path, _, fragment = link.partition("#")
+        if not path:
+            if fragment not in own_anchors:
+                problems.append("same-file anchor does not resolve: #" + fragment)
             continue
-        target = link.split("#")[0]
-        need(os.path.exists(os.path.join(ROOT, target)), "D-15", "relative link does not resolve: " + link)
+        full = os.path.join(root, path)
+        if not os.path.exists(full):
+            problems.append("relative link does not resolve: " + link)
+            continue
+        if fragment:
+            if not path.lower().endswith(".md") or os.path.isdir(full):
+                problems.append("fragment on a non-Markdown target cannot be checked: " + link)
+            elif fragment not in anchors_of(read(full)):
+                problems.append("fragment does not resolve in {}: #{}".format(path, fragment))
+    return problems
 
+
+SECRET = r"webhook_(?:require_)?secret"
+ADVICE = re.compile(
+    r"recommend\w*|advis\w*|suggest\w*|consider\w*|encourag\w*|best[- ]practices?"
+    r"|\bshould\b(?!\s+not\b)(?!n't)|\bought to\b|\bbe sure to\b|\bmake sure to\b"
+    r"|\bfor (?:better|extra|added|more|stronger|improved) (?:security|protection)\b",
+    re.I,
+)
+NEGATED_JUST_BEFORE = re.compile(r"(?:\bnot|n't|\bnever|\bno)\s+(?:\w+\s+)?$", re.I)
+IMPERATIVE = re.compile(
+    r"(?:^|[;:,(—–]\s*|\b(?:then|and|or|please|also|always|just|simply)\s+)"
+    r"(?:set|enable|configure|turn on|switch on|use|add|define)\s+(?:\w+\s+){0,3}`?" + SECRET,
+    re.I,
+)
+
+
+def recommend_problems(text):
+    """Sentences that advise or instruct the reader to turn on webhook_secret
+    or webhook_require_secret (revised D-03 forbids this for Sonarr/Radarr).
+
+    A negation excuses an advisory word only when it sits immediately before
+    that word ("do not recommend"); a "not" elsewhere in the sentence does not.
+    """
+    problems = []
+    for sentence in units(text):
+        if not re.search(SECRET, sentence):
+            continue
+        advised = any(
+            not NEGATED_JUST_BEFORE.search(sentence[:m.start()]) for m in ADVICE.finditer(sentence)
+        )
+        if advised or IMPERATIVE.search(sentence):
+            problems.append("recommends or instructs a webhook secret setting: " + sentence[:140])
+    return problems
+
+
+EMPTY = r"\b(?:empty|unset|not set|blank|no token|no secret|without a (?:token|secret))\b"
+NEG = r"\b(?:off|not|no|never|disabled|skipped|without|unprotected|neither|nor|cannot|unsigned)\b|n't"
+ON = r"\b(?:on|enabled|active|enforced|required|verified|protected|checked)\b"
+
+
+def contradiction_problems(text):
+    """Specific false statements that presence checks let through.
+
+    Each rule looks at one sentence-sized unit: the topic is named, a positive
+    assertion is made, and no negation is present. This is a narrow net for
+    known contradictions, not a proof that the remaining prose is true.
+    """
+    problems = []
+    for unit in units(text):
+        bare = re.sub(EMPTY, " ", unit, flags=re.I)
+        negated = re.search(NEG, bare, re.I)
+        positive = re.search(ON, bare, re.I)
+
+        def flag(what):
+            problems.append("{}: {}".format(what, unit[:140]))
+
+        if "api_token" in unit and re.search(EMPTY, unit, re.I) and positive and not negated:
+            flag("says API authentication is on while `api_token` is empty")
+        if re.search(r"webhook_secret", unit) and re.search(EMPTY, unit, re.I) and positive and not negated:
+            flag("says webhook verification is on while `webhook_secret` is empty")
+        if re.search(r"encrypt", unit, re.I) and re.search(r"by default", unit, re.I) and positive and not negated:
+            flag("says encryption at rest is on by default")
+        if re.search(r"verif|signature", unit, re.I) and re.search(r"by default", unit, re.I) \
+                and positive and not negated:
+            flag("says webhook verification is on by default")
+        if re.search(r"Sonarr|Radarr", unit) and re.search(r"\bsign(?:s|ed|ing)?\b", unit, re.I) and not negated:
+            flag("says Sonarr/Radarr sign their webhook requests")
+        if re.search(r"remote cop(?:y|ies)", unit, re.I) and re.search(r"delet|remov|prun|clean", unit, re.I) \
+                and not re.search(NEG + r"|\buntouched\b|\bleft\b|\bkept\b|\bstays?\b", unit, re.I):
+            flag("says pruning deletes the remote copy")
+        if re.search(r"\bUI\b", unit) and re.search(r"token", unit, re.I) \
+                and re.search(r"protect|secur|authenticat|gate", unit, re.I) and not negated:
+            flag("says the API token protects the UI")
+    return problems
+
+
+def security_diff_problems(old, new):
+    """Compare SECURITY.md line lists by content, not by line number.
+
+    Passes only when the difference is exactly two replacements: the baseline
+    intro sentence (OLD_INTRO) and the baseline webhook bullet
+    (OLD_BULLET_PREFIX). Every other baseline line must survive unchanged and
+    nothing may be added elsewhere. Returns (problems, intro_text, bullet_text).
+    """
+    ops = [op for op in difflib.SequenceMatcher(None, old, new, autojunk=False).get_opcodes()
+           if op[0] != "equal"]
+    removed = [line for _, i1, i2, _, _ in ops for line in old[i1:i2]]
+    intro_ops = [op for op in ops if old[op[1]:op[2]] == [OLD_INTRO]]
+    bullet_ops = [op for op in ops
+                  if op[2] - op[1] == 1 and old[op[1]].startswith(OLD_BULLET_PREFIX)]
+    problems = []
+    if len(ops) != 2 or len(intro_ops) != 1 or len(bullet_ops) != 1 or any(op[0] != "replace" for op in ops):
+        other = [line[:60] for line in removed if line != OLD_INTRO and not line.startswith(OLD_BULLET_PREFIX)]
+        problems.append(
+            "SECURITY.md must differ from the baseline in exactly two places: the intro sentence of the "
+            "Security posture list and the 'HMAC-verified import webhooks' bullet. Found {} changed "
+            "region(s); other baseline lines removed or altered: {}".format(len(ops), other))
+        return problems, "", ""
+    intro_lines = new[intro_ops[0][3]:intro_ops[0][4]]
+    bullet_lines = new[bullet_ops[0][3]:bullet_ops[0][4]]
+    if any(not line.strip() for line in intro_lines + bullet_lines):
+        problems.append("the two SECURITY.md replacements must not introduce blank lines")
+    if len(bullet_lines) != 1:
+        problems.append("the replaced webhook bullet must stay a single list item on one line, like its siblings")
+    return problems, " ".join(intro_lines), " ".join(bullet_lines)
+
+
+# --------------------------------------------------------------------------
+# Groups
+# --------------------------------------------------------------------------
 
 def group_structure(readme):
     order, sec, _ = h2_sections(readme)
@@ -215,9 +427,12 @@ def group_structure(readme):
     need("-p 8800:8800" in inst, "D-09", "docker run example must keep -p 8800:8800")
     need(not re.search(r"\d+\.\d+\.\d+\.\d+:8800", readme), "D-09", "examples must not bind 8800 to a host IP")
 
-    notes = [flat(b) for b in blockquotes(quick)]
+    raw_notes = blockquotes(quick)
+    notes = [flat(b) for b in raw_notes]
     need(any(n.startswith("**Set `PUID`/`PGID`") for n in notes), "D-10",
          "the existing PUID/PGID note must stay in Quick Start")
+    need(len([b for b in blockquotes(readme) if re.match(r"> \*\*", b)]) == 2, "D-10",
+         "README should have exactly two bold-lead blockquote notes (PUID/PGID and Network exposure)")
     exposure = [n for n in notes if re.match(r"\*\*[^*]*network exposure[^*]*\*\*", n, re.I)]
     need(len(exposure) == 1, "D-10",
          "Quick Start needs exactly one blockquote whose bold lead contains 'Network exposure'")
@@ -225,15 +440,21 @@ def group_structure(readme):
         note = exposure[0]
         need(quick.find("```yaml") < quick.lower().find("network exposure"), "D-10",
              "the Network exposure note must sit under the compose example")
+        # Presence checks: the terms must be there. Whether the sentences are
+        # true is covered by contradiction_problems and the manual read-through.
         need(re.search(r"all (host )?interfaces", note, re.I), "DOC-04", "note must say port 8800 is published on all host interfaces")
         need("8800" in note, "DOC-04", "note must name port 8800")
         need(re.search(r"reverse proxy", note, re.I), "DOC-04", "note must name an authenticating reverse proxy")
         need(re.search(r"authenticat", note, re.I), "DOC-04", "note must say the reverse proxy authenticates")
         need(re.search(r"restrict", note, re.I), "DOC-04", "note must say to restrict network access")
         need("`api_token`" in note, "DOC-04", "note must name `api_token`")
-        need(re.search(r"\bUI\b", note), "DOC-04", "note must say the API token does not protect the UI")
-        need(re.search(r"\b(contains|carries|includes)\b", note, re.I), "DOC-04", "note must say the UI contains the token")
+        need(re.search(r"(?:\bnot|n't)\b[^.;]{0,40}\bUI\b", note), "DOC-04",
+             "note must say the API token does NOT protect the UI")
+        need(re.search(r"\bUI\b[^.;]{0,40}\b(contains|carries|includes)\b[^.;]{0,30}token", note, re.I), "DOC-04",
+             "note must say the UI contains the token")
         need("(#security)" in note, "D-10", "note must link to the Security section (#security)")
+        for problem in contradiction_problems("\n".join(raw_notes)):
+            fail("DOC-04", "Quick Start note " + problem)
 
     usage = sec["Usage Examples"]
     for title in (
@@ -245,7 +466,8 @@ def group_structure(readme):
     need("/server/webhook/sonarr" in usage and "/server/webhook/radarr" in usage, "D-14",
          "Usage Examples must keep both webhook endpoint paths")
 
-    check_links(readme)
+    for problem in link_problems(readme, ROOT):
+        fail("D-15", problem)
 
 
 def group_claims(readme):
@@ -270,6 +492,7 @@ def group_claims(readme):
             fail("DOC-03", "README is missing the '## {}' section".format(name))
             return
 
+    # Presence checks from here on (see the module docstring).
     how = flat(sec["How It Works"])
     for pattern, what in (
         (r"webhook", "the inbound import webhook"),
@@ -278,7 +501,10 @@ def group_claims(readme):
         (r"delay", "the safety delay"),
         (r"\b60\b", "the 60 second default"),
         (r"dry[- ]run", "the dry-run option"),
+        (r"local copy", "that pruning deletes the local copy"),
         (r"remote", "that the remote copy is not deleted by pruning"),
+        (r"\bdownloaded\b", "that pruning applies only to releases SeedSyncarr downloaded"),
+        (r"attempt|safeguard|subject to|deferred|defers?\b", "that deletion is attempted after the delay, subject to safeguards (not automatic)"),
     ):
         need(re.search(pattern, how, re.I), "D-02", "How It Works must state " + what)
     need("(#security)" in how, "D-03", "How It Works must link to the Security section (#security)")
@@ -304,6 +530,7 @@ def group_claims(readme):
             (r"\bCSP\b", "CSP headers"),
             (r"rate[- ]limit", "rate limiting"),
             (r"webhook", "the rate-limited webhook endpoints by name"),
+            (r"config[- ]set|config/set", "the rate-limited POST config-set endpoint by name (not 'config endpoints')"),
             (r"status", "the rate-limited status endpoint by name"),
             (r"log", "log-injection sanitizing"),
             (r"test(ing)? (a|an|the) .{0,24}connection|test-connection|connection test", "that the IP guard applies when testing a connection"),
@@ -316,37 +543,55 @@ def group_claims(readme):
 
     security_raw = sec["Security"]
     security = flat(security_raw)
+    blocks = blocks_of(security_raw)
+    empty = r"\b(empty|unset|not set|blank)\b"
+    off = r"\b(off|disabled|skipped|not (required|verified|checked|enforced)|unauthenticated)\b"
+
+    def block_with(*patterns):
+        return any(all(re.search(p, b, re.I) for p in patterns) for b in blocks)
+
     need(not any(line.lstrip().startswith("|") for line in security_raw.split("\n")), "D-06",
          "Security section must be a list, not a table")
     need(len(re.findall(r"(?m)^- ", security_raw)) >= 4, "D-06", "Security section needs a list of at least four off-until-configured items")
-    need(re.search(r"`api_token`.{0,160}(empty|unset|not set|off)|(empty|unset|not set|off).{0,160}`api_token`", security, re.I),
-         "DOC-02", "Security must say API authentication is off when `api_token` is empty")
-    need(re.search(r"`webhook_secret`.{0,160}(empty|unset|not set|off)|(empty|unset|not set|off).{0,160}`webhook_secret`", security, re.I),
-         "DOC-02", "Security must say webhook verification is off when `webhook_secret` is empty")
+    need(block_with(r"`api_token`", empty, off), "DOC-02",
+         "Security must say, in one list item, that API authentication is off when `api_token` is empty")
+    need(block_with(r"`api_token`", r"webhook", r"\bnot\b|n't|\bexempt"), "DOC-02",
+         "Security must say `api_token` does not authenticate the webhook endpoints")
+    need(block_with(r"`webhook_secret`", empty, off), "DOC-02",
+         "Security must say, in one list item, that webhook verification is off when `webhook_secret` is empty")
     need(re.search(r"`webhook_require_secret`.{0,120}`False`", security), "DOC-02",
          "Security must say `webhook_require_secret` defaults to `False`")
     need("`[Encryption] enabled = True`" in security, "DOC-02", "Security must give `[Encryption] enabled = True` as the way to enable encryption")
-    need(re.search(r"plaintext|plain text", security, re.I), "DOC-02", "Security must say stored secrets are plaintext by default")
+    need(block_with(r"encrypt", r"\boff\b", r"plaintext|plain text"), "DOC-02",
+         "Security must say, in one list item, that encryption at rest is off by default and stored secrets are plaintext")
     need("settings.cfg" in security, "D-06", "Security must say these are set in settings.cfg")
     need("](SECURITY.md)" in security, "D-06", "Security must link SECURITY.md")
     need(re.search(r"report", security, re.I), "D-06", "Security must keep the vulnerability-reporting pointer")
     need(re.search(r"can reach", security, re.I), "D-03", "Security must say anything that can reach the endpoint can report an import")
     need(re.search(r"\bsigns?\b|\bsigned\b|\bsigning\b", security, re.I), "D-03", "Security must say verification needs a sender that signs each request")
-    need(re.search(r"Sonarr", security) and re.search(r"Radarr", security), "D-03", "Security must say Sonarr and Radarr do not sign")
-    need(re.search(r"reject", security, re.I), "D-03", "Security must say a secret makes SeedSyncarr reject Sonarr/Radarr webhooks")
+    need("X-Webhook-Signature" in security, "D-03", "Security must name the `X-Webhook-Signature` header")
+    need(re.search(r"Sonarr", security) and re.search(r"Radarr", security), "D-03", "Security must name Sonarr and Radarr")
+    need(re.search(r"(do not|don't|does not|cannot|can't|never) sign", security, re.I), "D-03",
+         "Security must say Sonarr and Radarr do not sign their webhooks")
+    need(re.search(r"reject", security, re.I), "D-03", "Security must say unsigned Sonarr/Radarr webhooks are rejected once a secret is configured")
+    need(re.search(r"\bdirect\b", security, re.I) and re.search(r"unsigned|not signed|(do not|don't) sign", security, re.I), "D-03",
+         "Security must scope the incompatibility to direct, unsigned Sonarr/Radarr webhooks")
+    need(re.search(r"`webhook_require_secret\s*=\s*true`", security, re.I)
+         and re.search(r"no secret|without a secret|no `webhook_secret`|`webhook_secret` (is )?(empty|unset|not set)", security, re.I),
+         "D-03", "Security must state the precise condition: `webhook_require_secret = true` with no secret rejects every call")
     need("8800" in security, "D-03", "Security must name restricting who can reach port 8800 as the practical protection")
 
     usage = flat(sec["Usage Examples"])
     need("(#security)" in usage, "D-03", "Usage Examples webhook example must point to the Security section (#security)")
     need(re.search(r"dry[- ]run", usage, re.I) and re.search(r"\b60\b", usage), "D-14",
          "Usage Examples must keep the 60 second default and the dry-run advice")
+    need(re.search(r"attempt|safeguard|subject to|deferred|defers?\b", usage, re.I), "D-04",
+         "Usage Examples cleanup example must say deletion is attempted after the delay, subject to safeguards")
 
-    for sentence in re.split(r"(?<=[.!?])\s+", flat(prose(readme))):
-        if not re.search(r"webhook_(require_)?secret", sentence):
-            continue
-        if re.search(r"\b(recommend(ed|s)?|should (set|enable|configure)|be sure to|make sure to|we advise)\b", sentence, re.I) \
-                and not re.search(r"\b(not|don't|never)\b", sentence, re.I):
-            fail("D-03", "README recommends a webhook secret setting: " + sentence[:120])
+    for problem in recommend_problems(readme):
+        fail("D-03", "README " + problem)
+    for problem in contradiction_problems(readme):
+        fail("DOC-02/03", "README " + problem)
 
     code = read(os.path.join(ROOT, "src", "python", "seedsyncarr.py"))
     for pattern in CODE_DEFAULTS:
@@ -361,46 +606,46 @@ def group_security(security_text):
     if base.returncode != 0:
         fail("D-08", "cannot read baseline SECURITY.md from commit " + PIN[:8])
         return
-    old = base.stdout.split("\n")
-    new = security_text.split("\n")
-    if len(old) != len(new):
-        fail("D-08", "SECURITY.md line count changed ({} -> {}); each of the two edits must stay on its own single line".format(len(old), len(new)))
-        return
-    changed = [i + 1 for i, (a, b) in enumerate(zip(old, new)) if a != b]
-    need(changed == [40, 43], "D-08",
-         "SECURITY.md must differ from the baseline on lines 40 and 43 only; differs on {}".format(changed))
-    if changed != [40, 43]:
+    problems, intro, bullet = security_diff_problems(base.stdout.split("\n"), security_text.split("\n"))
+    for problem in problems:
+        fail("D-08", problem)
+    if not intro or not bullet:
         return
 
-    intro, bullet = new[39], new[42]
     need(intro.startswith("SeedSyncarr is designed to be self-hosted on a private network"), "D-08",
-         "line 40 must keep the 'self-hosted on a private network' opening")
-    need(intro.rstrip().endswith(":"), "D-08", "line 40 must still end with a colon introducing the list")
-    need(re.search(r"always[- ]on", intro, re.I), "D-08", "line 40 must say which protections are always on")
-    need(re.search(r"off (until|unless)|opt-in", intro, re.I), "D-08", "line 40 must say which protections are off until configured")
-    need(not re.search(r"by default", intro, re.I), "D-08", "line 40 must not claim protections are active by default")
+         "the intro sentence must keep the 'self-hosted on a private network' opening")
+    need(intro.rstrip().endswith(":"), "D-08", "the intro sentence must still end with a colon introducing the list")
+    need(re.search(r"always[- ]on", intro, re.I), "D-08", "the intro sentence must say which protections are always on")
+    need(re.search(r"off (until|unless)|opt-in", intro, re.I), "D-08", "the intro sentence must say which protections are off until configured")
+    need(not re.search(r"by default", intro, re.I), "D-08", "the intro sentence must not claim protections are active by default")
 
-    need(bullet.startswith("- **"), "D-08", "line 43 must stay a bold-titled list bullet")
-    need(not bullet.startswith("- **HMAC-verified import webhooks**"), "D-08", "line 43 must not keep the 'HMAC-verified import webhooks' title")
-    need("Sonarr" in bullet and "Radarr" in bullet, "D-08", "line 43 must name Sonarr and Radarr")
+    need(bullet.startswith("- **"), "D-08", "the webhook bullet must stay a bold-titled list bullet")
+    need(not bullet.startswith(OLD_BULLET_PREFIX), "D-08", "the webhook bullet must not keep the 'HMAC-verified import webhooks' title")
+    need("Sonarr" in bullet and "Radarr" in bullet, "D-08", "the webhook bullet must name Sonarr and Radarr")
     need(re.search(r"(do not|don't|cannot|can't|never) (sign|compute)", bullet, re.I), "D-08",
-         "line 43 must say Sonarr/Radarr do not sign requests")
-    need("`webhook_secret`" in bullet and "`webhook_require_secret" in bullet, "D-08",
-         "line 43 must name `webhook_secret` and `webhook_require_secret`")
-    need("401" in bullet and "503" in bullet, "D-08", "line 43 must keep the 401 and 503 rejection facts")
-    need(re.search(r"reject", bullet, re.I), "D-08", "line 43 must say their webhooks would be rejected")
-    need("X-Webhook-Signature" in bullet, "D-08", "line 43 must name the X-Webhook-Signature header")
-    need(not re.search(r"\benable `webhook_require_secret", bullet, re.I), "D-08",
-         "line 43 must not tell the reader to enable webhook_require_secret")
-    need(re.search(r"\b8800\b|network", bullet, re.I), "D-08", "line 43 must name network restriction as the practical protection")
+         "the webhook bullet must say Sonarr/Radarr do not sign requests")
+    need("`webhook_secret`" in bullet and re.search(r"`webhook_require_secret\s*=\s*true`", bullet, re.I), "D-08",
+         "the webhook bullet must name `webhook_secret` and `webhook_require_secret = true`")
+    need("401" in bullet and "503" in bullet, "D-08", "the webhook bullet must keep the 401 and 503 rejection facts")
+    need(re.search(r"no secret|without a secret|no `webhook_secret`|`webhook_secret` (is )?(empty|unset|not set)", bullet, re.I), "D-08",
+         "the webhook bullet must tie 503 to `webhook_require_secret = true` with no secret set")
+    need(re.search(r"unsigned|missing or invalid|invalid", bullet, re.I), "D-08",
+         "the webhook bullet must tie 401 to a configured secret meeting a missing or invalid signature")
+    need(re.search(r"\bdirect\b", bullet, re.I), "D-08",
+         "the webhook bullet must scope the incompatibility to direct Sonarr/Radarr webhooks")
+    need(re.search(r"reject", bullet, re.I), "D-08", "the webhook bullet must say their webhooks would be rejected")
+    need("X-Webhook-Signature" in bullet, "D-08", "the webhook bullet must name the X-Webhook-Signature header")
+    need(re.search(r"\b8800\b|network", bullet, re.I), "D-08", "the webhook bullet must name network restriction as the practical protection")
+
+    changed = intro + "\n\n" + bullet
+    for problem in recommend_problems(changed):
+        fail("D-08", "SECURITY.md " + problem)
+    for problem in contradiction_problems(changed):
+        fail("D-08", "SECURITY.md " + problem)
 
 
 def group_scope():
-    base = os.environ.get("BASE_REF")
-    if not base:
-        head = git("rev-parse", "HEAD").stdout.strip()
-        merge_base = git("merge-base", "HEAD", "main").stdout.strip()
-        base = merge_base if merge_base and merge_base != head else PIN
+    base = os.environ.get("BASE_REF") or PIN
     diff = git("diff", "--name-only", base, "--", ".", ":(exclude).planning")
     untracked = git("ls-files", "--others", "--exclude-standard", "--", ".", ":(exclude).planning")
     if diff.returncode != 0 or untracked.returncode != 0:
@@ -408,18 +653,152 @@ def group_scope():
         return
     changed = sorted(set(filter(None, (diff.stdout + "\n" + untracked.stdout).split("\n"))))
     extra = [name for name in changed if name not in ("README.md", "SECURITY.md")]
-    need(not extra, "SCOPE", "files outside README.md, SECURITY.md and .planning/ changed: {}".format(extra))
+    # This list is every difference from the baseline, including untracked files
+    # and commits this phase did not make. The check reports; it cannot tell who
+    # made a change. Do not revert a file because it appears here (see Task 3).
+    need(not extra, "SCOPE", "files outside README.md, SECURITY.md and .planning/ differ from {}: {}".format(base[:8], extra))
     for name in ("README.md", "SECURITY.md"):
         need(name in changed, "SCOPE", "{} is unchanged against {}".format(name, base[:8]))
 
 
+# --------------------------------------------------------------------------
+# Selftest: fixtures that must be rejected (and near-misses that must pass).
+# --------------------------------------------------------------------------
+
+def group_selftest():
+    def expect(flagged, detector, text, label):
+        got = bool(detector(text))
+        need(got == flagged, "SELFTEST",
+             "{} should {} flagged: {}".format(label, "be" if flagged else "NOT be", text[:110]))
+
+    for text in (
+        "We recommend setting `webhook_secret` if SeedSyncarr is not on a private network.",
+        "Set `webhook_require_secret = true`.",
+        "Enable `webhook_require_secret = true` (opt-in) to fail-closed.",
+        "Consider setting `webhook_secret` for your install.",
+        "We suggest a `webhook_secret`.",
+        "We advise configuring `webhook_secret`.",
+        "As a best practice, `webhook_secret` is configured on every install.",
+        "For extra security, give `webhook_secret` a value.",
+        "For better security you can fill in `webhook_secret`.",
+        "You should set `webhook_secret`.",
+        "To lock this down, turn on `webhook_require_secret`.",
+        "Open settings.cfg, then configure `webhook_secret`.",
+        "Do not leave it empty: use a `webhook_secret`.",
+    ):
+        expect(True, recommend_problems, text, "recommendation")
+    for text in (
+        "Setting `webhook_secret` or `webhook_require_secret = true` makes SeedSyncarr reject their calls.",
+        "We do not recommend setting `webhook_secret` for direct Sonarr/Radarr webhooks.",
+        "Setting `webhook_secret` is not recommended for direct Sonarr/Radarr webhooks.",
+        "Do not set `webhook_secret` for direct Sonarr/Radarr webhooks.",
+        "Verification is off unless `webhook_secret` is set.",
+        "`webhook_require_secret` defaults to `False`.",
+        "With `webhook_require_secret = true` and no secret, every call is rejected with 503.",
+        "You should restrict who can reach port 8800.",
+    ):
+        expect(False, recommend_problems, text, "factual statement")
+
+    for text in (
+        "API authentication is on when `api_token` is empty.",
+        "- API authentication is enforced while `api_token` is unset",
+        "Webhook verification is active when `webhook_secret` is empty.",
+        "Webhook verification is enabled even if `webhook_secret` is not set.",
+        "Encryption at rest is on by default.",
+        "Stored secrets are encrypted by default and encryption is enabled by default.",
+        "Webhook calls are verified by default.",
+        "Sonarr and Radarr sign every request.",
+        "Radarr signs each webhook with an HMAC.",
+        "Pruning deletes the local and the remote copy.",
+        "When enabled, pruning also removes remote copies.",
+        "`api_token` protects the API and the UI.",
+        "Setting a token secures the UI as well.",
+    ):
+        expect(True, contradiction_problems, text, "contradiction")
+    for text in (
+        "API authentication is off when `api_token` is empty.",
+        "Webhook verification is off when `webhook_secret` is empty, so anything that can reach the endpoint can report an import.",
+        "Encryption at rest is off by default; stored secrets are plaintext.",
+        "Webhook calls are not verified by default.",
+        "Verification needs a sender that signs each request; Sonarr and Radarr do not sign their webhooks.",
+        "Pruning deletes the local copy only; the remote copy is not deleted by it.",
+        "`api_token` protects the API but not the UI, and the UI contains that token.",
+        "`api_token` does not authenticate the webhook endpoints.",
+    ):
+        expect(False, contradiction_problems, text, "accurate statement")
+
+    with tempfile.TemporaryDirectory() as root:
+        os.mkdir(os.path.join(root, "docs"))
+        with open(os.path.join(root, "docs", "GUIDE.md"), "w", encoding="utf-8") as handle:
+            handle.write("# Guide\n\n## Real Heading\n\n## Real Heading\n")
+        with open(os.path.join(root, "LICENSE"), "w", encoding="utf-8") as handle:
+            handle.write("x\n")
+
+        def links(text):
+            return link_problems("# Top\n\n## Section One\n\n" + text + "\n", root)
+
+        for text in (
+            '[x](docs/MISSING.md "A title")',
+            "[x](docs/MISSING.md 'A title')",
+            "[x][ref]\n\n[ref]: docs/MISSING.md",
+            "[x][nodef]",
+            "[nodef][]",
+            "[x](docs/GUIDE.md#no-such-heading)",
+            "[x](docs/GUIDE.md#real-heading-2)",
+            "[x](LICENSE#frag)",
+            "[x](#no-such-section)",
+            "[x](docs/MISSING.md)",
+            '<img src="doc/missing.png">',
+            '<a href="docs/MISSING.md">x</a>',
+            '[x](docs/GUIDE.md "unterminated)',
+            "```\ncode\n```\n[x]( docs/MISSING.md )",
+        ):
+            expect(True, links, text, "broken link")
+        for text in (
+            '[x](docs/GUIDE.md "A title")',
+            "[x](docs/GUIDE.md#real-heading)",
+            "[x](docs/GUIDE.md#real-heading-1)",
+            "[x][ref] and [ref][]\n\n[ref]: docs/GUIDE.md",
+            "[x](#section-one) and [y](#top)",
+            "[x](LICENSE) and [y](https://example.com/nope) and [z](<docs/GUIDE.md>)",
+            "```\n[x](docs/MISSING.md)\n```",
+        ):
+            expect(False, links, text, "valid link")
+
+    old = ["# S", "", OLD_INTRO, "", "- **A** one", OLD_BULLET_PREFIX + " old text", "- **C** three", ""]
+
+    def diff(new):
+        return security_diff_problems(old, new)[0]
+
+    good = list(old)
+    good[2] = "SeedSyncarr is designed to be self-hosted on a private network. New:"
+    good[5] = "- **Webhook signature verification (opt-in)** new text"
+    need(not diff(good), "SELFTEST", "the two approved SECURITY.md replacements should be accepted")
+    wrapped = good[:2] + ["SeedSyncarr is designed to be self-hosted", "on a private network. New:"] + good[3:]
+    need(not diff(wrapped), "SELFTEST", "a wrapped intro replacement should be accepted")
+    for label, mutate in (
+        ("a third changed line", lambda new: new.__setitem__(4, "- **A** changed")),
+        ("an added bullet", lambda new: new.insert(7, "- **D** four")),
+        ("a deleted line", lambda new: new.__delitem__(6)),
+        ("only one of the two edits", lambda new: new.__setitem__(5, old[5])),
+        ("a two-line webhook bullet", lambda new: new.insert(6, "  continuation")),
+    ):
+        candidate = list(good)
+        mutate(candidate)
+        need(diff(candidate), "SELFTEST", "SECURITY.md diff with {} should be rejected".format(label))
+    need(diff(list(old)), "SELFTEST", "an unchanged SECURITY.md should be rejected")
+
+
 def main():
     group = sys.argv[1] if len(sys.argv) == 2 else ""
-    if group not in ("structure", "claims", "security", "scope", "all"):
+    if group not in ("structure", "claims", "security", "scope", "selftest", "all"):
         print(__doc__)
         return 2
-    readme = read(os.environ.get("README_PATH") or os.path.join(ROOT, "README.md"))
-    security = read(os.environ.get("SECURITY_PATH") or os.path.join(ROOT, "SECURITY.md"))
+    if group in ("selftest", "all"):
+        group_selftest()
+    if group != "selftest":
+        readme = read(os.environ.get("README_PATH") or os.path.join(ROOT, "README.md"))
+        security = read(os.environ.get("SECURITY_PATH") or os.path.join(ROOT, "SECURITY.md"))
     if group in ("structure", "all"):
         group_structure(readme)
     if group in ("claims", "all"):

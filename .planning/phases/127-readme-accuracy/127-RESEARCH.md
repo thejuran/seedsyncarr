@@ -4,6 +4,8 @@
 **Domain:** Documentation accuracy (README.md, one SECURITY.md sentence), verified against Python/Angular source
 **Confidence:** HIGH (every default and control below was read from source in this session)
 
+> **Revision note (2026-11-18, after the owner decision).** D-03 was revised and D-08 widened in 127-CONTEXT.md after this research was written. 127-CONTEXT.md is authoritative. Passages below that quote the earlier D-03 ("recommend setting a secret") or the earlier D-08 (one sentence, numstat `1 1`) are marked SUPERSEDED in place. The verification block in Validation Architecture is replaced by `.planning/phases/127-readme-accuracy/127-check.py`. Findings 1 to 6 (facts read from source) stand unchanged.
+
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
 
@@ -12,14 +14,14 @@
 #### Headline pitch and cleanup claims (DOC-03)
 - **D-01:** Tagline keeps the differentiator as a *conditioned* promise — auto-delete only runs after Sonarr/Radarr confirms the import (e.g. "...where auto-delete waits for Sonarr/Radarr to confirm the import"). No absolute "never deletes" wording anywhere.
 - **D-02:** Say it once fully. Tagline = one-line conditioned pitch; the full explanation (import confirmation via inbound webhook → optional Post-Import Pruning, **off by default** → safety delay, default 60 s → dry-run option) lives once in **How It Works**. About This Fork and the Features bullet are shortened and point there instead of repeating the promise.
-- **D-03:** State the no-secret consequence plainly: without `webhook_secret`, webhook calls are not verified, so anything that can reach the endpoint can report an import. Recommend setting a secret, and `webhook_require_secret = true` to reject calls when no secret is configured.
+- **D-03 (SUPERSEDED 2026-11-18; see revised D-03 in 127-CONTEXT.md):** ~~State the no-secret consequence plainly: without `webhook_secret`, webhook calls are not verified, so anything that can reach the endpoint can report an import. Recommend setting a secret, and `webhook_require_secret = true` to reject calls when no secret is configured.~~ Revised decision: keep the consequence sentence; do NOT recommend `webhook_secret` or `webhook_require_secret = true` for Sonarr/Radarr; state that verification needs a sender that signs each request, that Sonarr/Radarr do not, and that the practical protection is restricting who can reach port 8800.
 - **D-04:** Review the entire README for remaining unconditional claims (e.g. "maximum transfer speed", "safely reclaim") and qualify or soften them.
 
 #### Security wording (DOC-02)
 - **D-05:** Replace the "Security by default" Features bullet with a "Security controls" bullet listing only always-on controls (CSP headers, rate limiting on named endpoints, log-injection sanitizing, *arr connection-URL IP guard) and linking to the Security section.
 - **D-06:** Expand the existing `## Security` section (currently a single link) into a short "what's off until you configure it" list: API auth off when `api_token` empty; webhook verification off when `webhook_secret` empty; `webhook_require_secret` defaults to `False`; encryption at rest off by default (stored secrets plaintext; enable via `[Encryption] enabled = True`). Keep the vulnerability-reporting link. Link SECURITY.md for full posture — don't duplicate it as a table.
 - **D-07:** Recheck every stated default against current code (`src/python/common/config.py` and the pruning/auto-delete config) and SECURITY.md at implementation time; the wording must match code, not this file.
-- **D-08 (scope extension, owner-approved):** Fix the single SECURITY.md sentence "several protections are active by default" so it no longer contradicts the opt-in items it lists. No other SECURITY.md edits.
+- **D-08 (SUPERSEDED 2026-11-18; see widened D-08 in 127-CONTEXT.md):** ~~Fix the single SECURITY.md sentence "several protections are active by default" so it no longer contradicts the opt-in items it lists. No other SECURITY.md edits.~~ Widened decision: fix that sentence AND correct the "HMAC-verified import webhooks" bullet so it states that Sonarr/Radarr do not sign requests and that a secret or `webhook_require_secret` would reject their webhooks. No other SECURITY.md edits.
 
 #### Quick Start exposure (DOC-04)
 - **D-09:** Keep `8800:8800` in both the compose and `docker run` examples (no localhost-bind change).
@@ -38,7 +40,8 @@
 - Link-check method (script or grep + `test -f`).
 
 ### Deferred Ideas (OUT OF SCOPE)
-- None beyond the folded SECURITY.md sentence; discussion stayed within phase scope.
+- (Updated 2026-11-18 to match 127-CONTEXT.md.) Accepting a webhook authentication method Sonarr/Radarr can send (fixed shared-secret header or basic auth): application change, backlog 999.8.
+- `docs/CONFIGURATION.md` gaps (no `webhook_require_secret` entry, no `encryption.enabled` defaults row): out of scope; README points to SECURITY.md.
 </user_constraints>
 
 <phase_requirements>
@@ -56,7 +59,7 @@
 
 This is a prose-only phase: README.md gets restructured and its security/cleanup claims qualified, and one sentence in SECURITY.md (line 40) changes. Every default the README will state was checked in code: `api_token` and `webhook_secret` default to empty, `webhook_require_secret` to `False`, `[Encryption] enabled` to `False`, `[AutoDelete] enabled` to `False`, `dry_run` to `False` and `delay_seconds` to `60`. The values agree across `seedsyncarr.py` `_create_default_config()`, `common/config.py` `from_dict()` backfills, `docs/CONFIGURATION.md` and `SECURITY.md`. All four "always-on" controls named in D-05 exist and have no config switch. Rate limiting covers exactly the endpoints SECURITY.md lists. The *arr IP guard applies only to the Test Connection endpoints, not to the live queue requests, so README wording must say "when testing a connection".
 
-**One finding conflicts with a locked decision and needs an owner decision before planning finalizes D-03 wording.** SeedSyncarr verifies webhooks by computing HMAC-SHA256 over the request body and comparing it with an `X-Webhook-Signature` header (`webhook.py:73-104`). Sonarr's webhook sender does no signing. It can only send Basic-auth credentials and static custom headers (Sonarr source `WebhookProxy.cs`; PR #7371). A static header cannot match a per-body HMAC. So a user who follows D-03's "set a secret" advice with Sonarr/Radarr pointed directly at SeedSyncarr will get every import webhook rejected with 401. Setting `webhook_require_secret = true` without a secret rejects every call with 503. Either way, import confirmation and pruning stop working. The README must not recommend these settings without saying what the sender must do. SECURITY.md:43 has the same implied assumption, but D-08 limits SECURITY.md edits to one sentence.
+**One finding conflicted with a locked decision; the owner resolved it on 2026-11-18 by revising D-03 and widening D-08 (see Open Questions (RESOLVED)).** SeedSyncarr verifies webhooks by computing HMAC-SHA256 over the request body and comparing it with an `X-Webhook-Signature` header (`webhook.py:73-104`). Sonarr's webhook sender does no signing. It can only send Basic-auth credentials and static custom headers (Sonarr source `WebhookProxy.cs`; PR #7371). A static header cannot match a per-body HMAC. So a user who follows D-03's "set a secret" advice with Sonarr/Radarr pointed directly at SeedSyncarr will get every import webhook rejected with 401. Setting `webhook_require_secret = true` without a secret rejects every call with 503. Either way, import confirmation and pruning stop working. The README must not recommend these settings without saying what the sender must do. SECURITY.md:43 has the same implied assumption, but D-08 limits SECURITY.md edits to one sentence.
 
 Docs-only. No CI job lints Markdown or checks links (`.github/workflows/ci.yml` is the only workflow; no markdown/lychee step). No test pins README or SECURITY.md text (grep of `src/python/tests`, `src/angular/src` and `src/e2e` found no references). pytest and whole-tree `ruff check src/python/` are unaffected but still run in CI.
 
@@ -181,7 +184,7 @@ It introduces the bullet list at lines 42-48, which mixes opt-in items (encrypti
 Suggested replacement (one line, discretionary wording):
 > SeedSyncarr is designed to be self-hosted on a private network. Some of the protections below are always on (connection-URL guard, CSP headers, rate limiting, log-injection protection); others are off until you configure them (encryption at rest, Bearer auth, webhook verification):
 
-Constraint: the `git diff --numstat SECURITY.md` result must be `1	1	SECURITY.md`.
+Constraint (SUPERSEDED 2026-11-18): ~~the `git diff --numstat SECURITY.md` result must be `1	1	SECURITY.md`.~~ Under the widened D-08 two spots change: this intro sentence and the "HMAC-verified import webhooks" bullet. `127-check.py security` enforces that by content (only those two baseline lines are replaced).
 
 ### Finding 6 (CRITICAL, affects D-03): Sonarr/Radarr cannot produce SeedSyncarr's webhook signature
 
@@ -229,7 +232,7 @@ Existing links are inline relative (`[SECURITY.md](SECURITY.md)`). Use the same 
 
 ### Pitfall 1: Recommending a webhook secret that Sonarr/Radarr can't satisfy
 **What goes wrong:** Users set `webhook_secret` (or `webhook_require_secret = true`), all imports are rejected, and pruning silently stops.
-**How to avoid:** Resolve Open Question 1 before writing D-03 prose. Whatever the outcome, state what the sender must send (`X-Webhook-Signature` = hex HMAC-SHA256 of the raw body).
+**How to avoid:** Open Question 1 is resolved (revised D-03: no recommendation). State what the sender must send (`X-Webhook-Signature` = hex HMAC-SHA256 of the raw body).
 **Warning signs:** Prose that says "set a secret in Sonarr".
 
 ### Pitfall 2: Over-claiming always-on controls
@@ -241,7 +244,7 @@ Existing links are inline relative (`[SECURITY.md](SECURITY.md)`). Use the same 
 **How to avoid:** Run the anchor check in Validation Architecture.
 
 ### Pitfall 4: SECURITY.md diff larger than one sentence
-**How to avoid:** `git diff --numstat SECURITY.md` must show `1 1`.
+**How to avoid (SUPERSEDED 2026-11-18):** ~~`git diff --numstat SECURITY.md` must show `1 1`.~~ Two approved spots change under the widened D-08; `127-check.py security` checks that nothing else in SECURITY.md differs from the baseline.
 
 ### Pitfall 5: Memory note "Badge labels: three sites" doesn't apply
 README changes don't touch UI badges. No e2e or fixture coupling: no test references README/SECURITY.md.
@@ -270,18 +273,23 @@ provided_signature = request.headers.get("X-Webhook-Signature", "")
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | Radarr's webhook sender behaves like Sonarr's (no payload signing) | Finding 6 | Low. Shared *arr codebase lineage; the third-party guide says the form is identical. Verify by reading Radarr `WebhookProxy.cs` if the owner wants certainty |
+| A1 | Radarr's webhook sender behaves like Sonarr's (no payload signing) | Finding 6 | **CONFIRMED 2026-11-18** (Codex cross-AI review read Radarr `src/NzbDrone.Core/Notifications/Webhook/WebhookProxy.cs`, develop: it serializes the body and adds configured headers/basic credentials; no body HMAC). No longer an assumption |
 | A2 | Sonarr's "On Import"/"On File Import" label maps to `eventType: "Download"` | Finding 4, line 172 | Low. Label naming only |
 | A3 | No user currently runs a signing proxy in front of SeedSyncarr (so "Sonarr can't sign" is the common case) | Finding 6 | Medium. Affects tone of the D-03 wording only |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All three questions are closed. No open question remains for planning or execution.
 
 1. **D-03 recommendation vs Sonarr's inability to sign (owner decision, product).**
    - What we know: SeedSyncarr requires a per-body HMAC; Sonarr/Radarr send only static headers or Basic auth. Following "set `webhook_secret`" or "set `webhook_require_secret = true`" disables import confirmation for direct Sonarr/Radarr webhooks.
    - What's unclear: whether the owner wants the README to (a) state the limitation and recommend network restriction as the practical protection for direct *arr webhooks, keeping the secret for setups with a signing sender/proxy, or (b) keep the D-03 recommendation as written (not recommended: it misleads users into breaking pruning).
    - Recommendation: **(a)**. Keep D-03's consequence sentence. Replace "recommend setting a secret" with: "Webhook verification needs a sender that signs each request (HMAC-SHA256 of the body in `X-Webhook-Signature`); Sonarr and Radarr don't sign natively, so for direct *arr webhooks, restrict who can reach port 8800." Separately, consider a backlog item to accept a static shared-secret header or Basic auth, which Sonarr can send. That would be a behaviour change, out of scope here. SECURITY.md:43 implies Sonarr can sign; D-08 forbids editing it, so it stays inconsistent unless the owner extends scope.
+   - **RESOLVED (owner, 2026-11-18): option (a).** D-03 was revised in 127-CONTEXT.md (state the limit; do not recommend a secret or `webhook_require_secret = true` for Sonarr/Radarr; name restricting access to port 8800). D-08 was widened to also correct the SECURITY.md webhook bullet, so the two files agree. Accepting an authentication method Sonarr/Radarr can send is captured as backlog 999.8 (not in this phase).
 2. **CONFIGURATION.md omits `webhook_require_secret` and the `encryption.enabled` default row.** The new Documentation section sends readers there. Options: leave as-is and point README's `webhook_require_secret` mention at SECURITY.md (in scope), or have the owner approve a small CONFIGURATION.md addition (scope extension). Recommendation: in-scope option now, and note it for a later docs pass.
+   - **RESOLVED (owner, 2026-11-18): in-scope option.** Recorded under Deferred Ideas in 127-CONTEXT.md. No `docs/CONFIGURATION.md` edits in this phase; the README points to SECURITY.md for `webhook_require_secret`.
 3. **Phase-40 SUMMARY guidance** (`40-03-SUMMARY.md:142`) is archival and not user-facing; no action.
+   - **RESOLVED: no action.** Archived planning history is not edited.
 
 ## Environment Availability
 
@@ -309,11 +317,14 @@ provided_signature = request.headers.get("X-Webhook-Signature", "")
 | DOC-02 | "Security by default" gone; `api_token`, `webhook_secret`, `webhook_require_secret`, `[Encryption]` stated with off/False defaults | grep | `! grep -qi "security by default" README.md` + presence greps | n/a |
 | DOC-03 | No "never delete(s)"/"safely reclaim"/"maximum transfer speed"; How It Works mentions off by default, 60, dry-run | grep | absence + presence greps | n/a |
 | DOC-04 | Network-exposure note in Quick Start (between `## Quick Start` and the next `##`) mentions all interfaces, reverse proxy, UI contains token | grep/awk | section-scoped grep below | n/a |
-| D-08 | SECURITY.md one-line change; "several protections are active by default" gone | git/grep | `git diff --numstat main -- SECURITY.md` → `1 1` | n/a |
+| D-08 | (SUPERSEDED row: was "one-line change, numstat `1 1`".) Widened D-08: only the intro sentence and the webhook bullet change; "several protections are active by default" gone | git/python | `python3 .planning/phases/127-readme-accuracy/127-check.py security` | yes |
 | Scope | Only README.md, SECURITY.md (+ .planning) changed | git | `git diff --name-only main -- . ':!.planning'` | n/a |
 | Claims review (D-04) | Human/LLM read-through against Finding 4 table | manual | checklist in PLAN verify | — |
 
-### Verification block (copy into PLAN `<verify>`)
+### Verification block (SUPERSEDED: replaced by `127-check.py`; kept for history, do not copy)
+
+The block below predates the revised D-03 and widened D-08. Its last lines expect `1  1  SECURITY.md`, which is no longer correct. Use `.planning/phases/127-readme-accuracy/127-check.py` instead.
+
 ```bash
 cd /Users/julianamacbook/seedsyncarr
 # 1. Relative links, images and same-file anchors resolve
@@ -355,9 +366,8 @@ git diff --name-only main -- . ':!.planning' # expect: README.md SECURITY.md
 ```
 
 ### Sampling Rate
-- **Per task commit:** run the verification block.
-- **Per wave merge:** same, plus `ruff check src/python/` (expect clean, unchanged).
-- **Phase gate:** block green and the D-04 claims read-through done before `/bm:verify-work`.
+- (Updated 2026-11-18; see 127-VALIDATION.md.) **Per task commit:** that task's `127-check.py` group (`structure`, then `claims`, then `all`).
+- **Phase gate:** `127-check.py all` green, `ruff check src/python/` clean, and the manual read-through in 127-VALIDATION.md done before `/bm:verify-work`.
 
 ### Wave 0 Gaps
 None. No test infrastructure is needed; checks are inline.
@@ -377,7 +387,7 @@ Docs-only, so no ASVS control changes. The relevant risk is **misinformation**: 
 |--------|--------|--------------------------|
 | Forged import webhook when no secret is set | Spoofing | State plainly (D-03); recommend network restriction |
 | Over-trusting `api_token` as UI protection | Elevation of privilege | DOC-04 note |
-| Secret-recommendation breaking pruning (Finding 6) | Denial of service (self-inflicted) | Accurate wording per Open Question 1 |
+| Secret-recommendation breaking pruning (Finding 6) | Denial of service (self-inflicted) | Accurate wording per the revised D-03 (Open Question 1, resolved) |
 
 ## Project Constraints (from CLAUDE.md)
 
