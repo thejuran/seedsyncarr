@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-README.md documentation correction (DOC-01..04): make the six repository guides discoverable, and state security defaults, HMAC/cleanup behavior and Quick Start network exposure as they actually behave. No application behavior changes, no new application tests. One owner-approved scope extension: a one-sentence fix in SECURITY.md (D-08).
+README.md documentation correction (DOC-01..04): make the six repository guides discoverable, and state security defaults, HMAC/cleanup behavior and Quick Start network exposure as they actually behave. No application behavior changes, no new application tests. Owner-approved scope extension: two SECURITY.md fixes (line ~40 sentence and line ~43 webhook bullet, D-08).
 
 </domain>
 
@@ -16,14 +16,14 @@ README.md documentation correction (DOC-01..04): make the six repository guides 
 ### Headline pitch and cleanup claims (DOC-03)
 - **D-01:** Tagline keeps the differentiator as a *conditioned* promise — auto-delete only runs after Sonarr/Radarr confirms the import (e.g. "...where auto-delete waits for Sonarr/Radarr to confirm the import"). No absolute "never deletes" wording anywhere.
 - **D-02:** Say it once fully. Tagline = one-line conditioned pitch; the full explanation (import confirmation via inbound webhook → optional Post-Import Pruning, **off by default** → safety delay, default 60 s → dry-run option) lives once in **How It Works**. About This Fork and the Features bullet are shortened and point there instead of repeating the promise.
-- **D-03:** State the no-secret consequence plainly: without `webhook_secret`, webhook calls are not verified, so anything that can reach the endpoint can report an import. Recommend setting a secret, and `webhook_require_secret = true` to reject calls when no secret is configured.
+- **D-03 (revised 2026-11-18 after research):** State the no-secret consequence plainly: without `webhook_secret`, webhook calls are not verified, so anything that can reach the endpoint can report an import. Do NOT recommend setting `webhook_secret` or `webhook_require_secret = true` for Sonarr/Radarr: SeedSyncarr verifies an HMAC of each request body (`X-Webhook-Signature`), and Sonarr/Radarr cannot compute one (they send only fixed headers or basic auth), so doing so rejects every import webhook (401/503) and pruning silently stops. Instead state factually: verification requires a sender that signs each request; Sonarr/Radarr do not, so the practical protection is restricting who can reach port 8800. Owner chose this 2026-11-18.
 - **D-04:** Review the entire README for remaining unconditional claims (e.g. "maximum transfer speed", "safely reclaim") and qualify or soften them.
 
 ### Security wording (DOC-02)
 - **D-05:** Replace the "Security by default" Features bullet with a "Security controls" bullet listing only always-on controls (CSP headers, rate limiting on named endpoints, log-injection sanitizing, *arr connection-URL IP guard) and linking to the Security section.
 - **D-06:** Expand the existing `## Security` section (currently a single link) into a short "what's off until you configure it" list: API auth off when `api_token` empty; webhook verification off when `webhook_secret` empty; `webhook_require_secret` defaults to `False`; encryption at rest off by default (stored secrets plaintext; enable via `[Encryption] enabled = True`). Keep the vulnerability-reporting link. Link SECURITY.md for full posture — don't duplicate it as a table.
 - **D-07:** Recheck every stated default against current code (`src/python/common/config.py` and the pruning/auto-delete config) and SECURITY.md at implementation time; the wording must match code, not this file.
-- **D-08 (scope extension, owner-approved):** Fix the single SECURITY.md sentence "several protections are active by default" so it no longer contradicts the opt-in items it lists. No other SECURITY.md edits.
+- **D-08 (scope extension, owner-approved; widened 2026-11-18):** Fix the SECURITY.md sentence "several protections are active by default" (line ~40) so it no longer contradicts the opt-in items it lists, AND correct the "HMAC-verified import webhooks" bullet (line ~43) so it states that Sonarr/Radarr do not sign requests and that a secret or `webhook_require_secret` would reject their webhooks. No other SECURITY.md edits.
 
 ### Quick Start exposure (DOC-04)
 - **D-09:** Keep `8800:8800` in both the compose and `docker run` examples (no localhost-bind change).
@@ -93,7 +93,8 @@ README.md documentation correction (DOC-01..04): make the six repository guides 
 <deferred>
 ## Deferred Ideas
 
-- None beyond the folded SECURITY.md sentence; discussion stayed within phase scope.
+- Accepting a webhook authentication method Sonarr/Radarr can actually send (fixed shared-secret header or basic auth) — application change, captured as backlog 999.8 on 2026-11-18. Not in this phase.
+- `docs/CONFIGURATION.md` gaps (no `webhook_require_secret` entry, no `encryption.enabled` row) — out of scope; README points to SECURITY.md.
 
 </deferred>
 

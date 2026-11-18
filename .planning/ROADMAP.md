@@ -206,6 +206,10 @@ Plans:
 
 **Scope:** Two small changes first: (1) build the Angular stage once on the build platform (`FROM --platform=$BUILDPLATFORM node:22-slim AS seedsyncarr_build_angular_env` in `src/docker/build/docker-image/Dockerfile`) instead of running `npm install` + the Angular build under QEMU for arm64 (its output is architecture-independent JS); (2) let the `build-docker-image` job in `.github/workflows/ci.yml` start in parallel with the unit-test/lint jobs instead of `needs:`-ing all seven, keeping the end-to-end and publish jobs gated on tests passing. Evidence (last 30 CI runs, 2026-10-27): build job 0–5 min when the registry cache hits, outliers 16/23/27 min on cache misses; Python unit tests (~5–6 min) sit on the critical path before the build starts. Further options only if needed: amd64-only PR images (NAS is x86_64; arm64 E2E already skipped on PRs; main/tags still build both), or native arm64 builds on `ubuntu-24.04-arm` plus a manifest merge. Not a Reliability gate.
 
+### 999.8: Webhook authentication Sonarr/Radarr can send
+
+**Captured:** 2026-11-18 (Phase 127 research). SeedSyncarr verifies inbound import webhooks only via an HMAC-SHA256 of the request body in `X-Webhook-Signature` (`src/python/web/handler/webhook.py`). Sonarr (confirmed in `WebhookProxy.cs`, PR #7371) and Radarr (assumed same) send only fixed custom headers or basic auth and never compute a signature, so setting `webhook_secret` or `webhook_require_secret = true` rejects every import webhook (401/503) and pruning silently stops (fail-safe, nothing deleted). **Scope:** accept an authentication method the *arrs can send (e.g. a fixed shared-secret header or basic-auth credentials, constant-time compared) alongside or instead of body HMAC, then update README/SECURITY.md advice. Owner chose backlog 2026-11-18. Not in v1.8.1.
+
 ## Following milestone: Performance and Usability (conditional)
 
 **Activation:** Complete the corrective milestone, then demonstrate meaningful resource pressure, repeated redundant work or recurring user friction. Cancel or defer if representative evidence shows no worthwhile opportunity.
