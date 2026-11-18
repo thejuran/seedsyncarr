@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: Phase 127 planned (1 plan, 3 tasks); ready to execute. Phases 128–130 not yet planned.
-stopped_at: Phase 127 planned (plan-checker passed, Codex review LOW risk)
-last_updated: "2026-11-18T23:11:25.000Z"
-last_activity: 2026-11-18 — Phase 127 planned
+status: executing
+stopped_at: Completed 127-01-PLAN.md (awaiting phase verification)
+last_updated: "2026-11-18T23:16:24.807Z"
+last_activity: 2026-11-18 -- Phase 127 plan 01 executed; awaiting verification
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 1
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 20
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Milestone v1.8.1 Configuration and Shutdown Correctness: roadmap drafted (Phases 127–130); Phase 127 README Accuracy planned, next execute it
+**Current focus:** Phase 127: readme-accuracy
 
 ## Current Position
 
-Phase: 127 (README Accuracy) — planned, ready to execute
-Plan: 127-01 (0/1 complete)
-Status: Phase 127 planned (1 plan, 3 tasks); ready to execute. Phases 128–130 not yet planned.
-Last activity: 2026-11-18 — Phase 127 planned
+Phase: 127 (readme-accuracy) — EXECUTING
+Plan: 1 of 1
+Status: Plan 01 complete; ready for phase verification
+Last activity: 2026-11-18 -- Phase 127 plan 01 executed; awaiting verification
 
 ## Accumulated Context
 
@@ -130,6 +130,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 126]: 126-04: owner approved publishing 1.8.0 as drafted; merge of PR #142 surfaced two new post-merge Dependabot alerts (#106 qs, #107 setuptools) not visible on the release branch -- owner chose fix-both-then-tag ('1'), resolved via follow-up PR #143 (setuptools 84.2.1, qs 6.16.2), merged with CI green; 0 open Dependabot alerts, v1.8.0 tagged on PR #143's merge commit; GHCR/GitHub release/PyPI published, RELEASE_DIGEST=sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7 (amd64+arm64) cross-checked by two methods; wud stays exited, production untouched
 - [Phase 126]: Phase 126-05: owner verbatim "deploy" authorizes the production deploy; sandbox copy of production Radarr credentials (URL/key) cleared from settings.cfg on disk at owner-sanctioned addendum, verified by sha256 count-only comparison; REL-06 stays open pending Plan 126-06 production deploy
 - [Phase 126]: 126-06: production deployed by digest to `:1.8.0@sha256:6e8d453f...4879aa7` (container `34470550b27f`, `.Image` == smoked sandbox image ID); CLEAN_STOP, four `.pre-1.8.0-<TS>` backups sha256-recorded, loader check PASS (`PARSE_OK`/`EXIT=0`) in both the 1.7.6 and 1.8.0 images with `AutoDelete.enabled=True` noted for the rollback runbook; compose pin was inode-preserving (one-line diff, wud labels unchanged); first remote scan succeeded 31s after start with no warm-up error; Sonarr (4.0.20.3014) and Radarr (6.4.4.10685) both reachable; 309s steady-state window showed 0 unavailable/Traceback/ERROR lines and 0 restarts; no-secrets count-only check matched 0/3 values in both the container log and the plain-file logs; wud restored last and a 195s-later re-fingerprint confirmed it changed nothing; D-16 rollback was not triggered. Owner verbatim "confirmed" closes D-17. Post-deploy: 0 open Dependabot alerts, 0 open Dependabot PRs, none opened after the `v1.8.0` tag. REL-06 complete; Phase 126 complete; the v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) is fully delivered. Post-tag `.planning` docs commits remain local on `main`, not pushed (pushing `main` publishes the `:dev` image tag; the owner decides when to push).
+- [Phase 127]: README states Sonarr/Radarr webhook signing limit (401/503) as fact, no recommendation to set webhook_secret/webhook_require_secret
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -189,7 +190,7 @@ Credential rotations remain operator follow-ups; one-time Done-group cleanup was
 
 ## Session Continuity
 
-Last session: 2026-11-18T22:28:05.682Z
+Last session: 2026-11-18T23:16:19.341Z
 Stopped at: Phase 127 context gathered
 Next action: Review the roadmap draft; once approved, plan Phase 127 (README Accuracy) with `/bm:plan-phase 127`.
 

@@ -11,10 +11,10 @@ Scope agreed 2026-11-18 (ROADMAP "Next milestone"). Research skipped: small, cod
 
 Absorbs backlog item 999.6. README.md only; no application behavior changes.
 
-- [ ] **DOC-01**: User can reach all six repository guides (`docs/GETTING-STARTED.md`, `docs/CONFIGURATION.md`, `SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/TESTING.md`) from a prominent README Documentation section; the installation section links repository guides instead of website-only docs; every relative link resolves.
-- [ ] **DOC-02**: User reading the README sees accurate default security posture, replacing "Security by default": API authentication off when `api_token` is empty, webhook verification off when `webhook_secret` is empty, `webhook_require_secret` defaults to `False`, encryption at rest off by default (stored secrets plaintext). Defaults rechecked against current code and SECURITY.md at implementation time.
-- [ ] **DOC-03**: User reading the README sees HMAC and cleanup claims stated with their conditions: absolute "never deletes" promises replaced by an explanation of import confirmation, optional pruning (off by default) and the safety delay; the whole README reviewed for remaining unconditional claims.
-- [ ] **DOC-04**: User following Quick Start is told that the Docker examples publish port 8800 on all host interfaces, that untrusted access needs an authenticating reverse proxy and restricted network access, and that the API token does not protect the UI (which contains that token).
+- [x] **DOC-01**: User can reach all six repository guides (`docs/GETTING-STARTED.md`, `docs/CONFIGURATION.md`, `SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/TESTING.md`) from a prominent README Documentation section; the installation section links repository guides instead of website-only docs; every relative link resolves.
+- [x] **DOC-02**: User reading the README sees accurate default security posture, replacing "Security by default": API authentication off when `api_token` is empty, webhook verification off when `webhook_secret` is empty, `webhook_require_secret` defaults to `False`, encryption at rest off by default (stored secrets plaintext). Defaults rechecked against current code and SECURITY.md at implementation time.
+- [x] **DOC-03**: User reading the README sees HMAC and cleanup claims stated with their conditions: absolute "never deletes" promises replaced by an explanation of import confirmation, optional pruning (off by default) and the safety delay; the whole README reviewed for remaining unconditional claims.
+- [x] **DOC-04**: User following Quick Start is told that the Docker examples publish port 8800 on all host interfaces, that untrusted access needs an authenticating reverse proxy and restricted network access, and that the API token does not protect the UI (which contains that token).
 
 ### Arr key handling (ARR)
 
@@ -61,10 +61,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DOC-01 | Phase 127 | Pending |
-| DOC-02 | Phase 127 | Pending |
-| DOC-03 | Phase 127 | Pending |
-| DOC-04 | Phase 127 | Pending |
+| DOC-01 | Phase 127 | Complete |
+| DOC-02 | Phase 127 | Complete |
+| DOC-03 | Phase 127 | Complete |
+| DOC-04 | Phase 127 | Complete |
 | ARR-01 | Phase 128 | Pending |
 | ARR-02 | Phase 128 | Pending |
 | ARR-03 | Phase 128 | Pending |

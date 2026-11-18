@@ -41,7 +41,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 
 **CI gate (every phase):** full Python suite green AND whole-tree `ruff check src/python/` clean (CI runs ruff as a separate gate from pytest, so build-verify must run it on the whole tree, not just touched files); Python `fail_under` ≥ 88 holds; every targeted regression shown to fail before its fix and pass after.
 
-- [ ] **Phase 127: README Accuracy** - Setup, security and documentation-discoverability claims in the README match current defaults, SECURITY.md and the repository guides
+- [x] **Phase 127: README Accuracy** - Setup, security and documentation-discoverability claims in the README match current defaults, SECURITY.md and the repository guides (completed 2026-11-18)
 - [ ] **Phase 128: Arr Key Normalization** - Sonarr/Radarr API keys normalize the same way on save and on read for queue requests, matching Test Connection
 - [ ] **Phase 129: Web-Service Cleanup Isolation** - Each web-service shutdown step runs independently so one failure never skips the rest
 - [ ] **Phase 130: Release 1.8.1** - Targeted regressions, required gates, release-image smoke test and NAS production deploy pinned to the tag
@@ -58,10 +58,10 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
   2. "Security by default" is replaced with accurate wording: API authentication is off when `api_token` is empty, webhook verification is off when `webhook_secret` is empty, `webhook_require_secret` defaults to `False`, and encryption at rest is off by default (stored secrets plaintext) — rechecked against current code and SECURITY.md at implementation time
   3. Absolute "never deletes" claims are replaced by an explanation of import confirmation, optional pruning (off by default) and the safety delay, and the whole README is reviewed for remaining unconditional claims
   4. The Quick Start section tells the reader that the Docker examples publish port 8800 on all host interfaces, that untrusted access needs an authenticating reverse proxy and restricted network access, and that the API token does not protect the UI (which contains that token)
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 127-01-PLAN.md — README structure, guide links and exposure note; conditioned cleanup and security wording; SECURITY.md posture intro sentence and webhook bullet
+- [x] 127-01-PLAN.md — README structure, guide links and exposure note; conditioned cleanup and security wording; SECURITY.md posture intro sentence and webhook bullet
 
 ### Phase 128: Arr Key Normalization
 
@@ -102,7 +102,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 127. README Accuracy | 0/1 | Planned | - |
+| 127. README Accuracy | 1/1 | Complete   | 2026-11-18 |
 | 128. Arr Key Normalization | 0/TBD | Not started | - |
 | 129. Web-Service Cleanup Isolation | 0/TBD | Not started | - |
 | 130. Release 1.8.1 | 0/TBD | Not started | - |
