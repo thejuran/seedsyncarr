@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: planning
-stopped_at: "v1.8.1 roadmap drafted (Phases 127–130); ready to plan Phase 127 README Accuracy"
-last_updated: "2026-11-18T22:21:12Z"
-last_activity: 2026-11-18 -- v1.8.1 roadmap drafted
+status: Roadmap drafted for Phases 127–130 (11/11 requirements mapped). No implementation started.
+stopped_at: Phase 127 context gathered
+last_updated: "2026-11-18T22:28:05.687Z"
+last_activity: 2026-11-18 — v1.8.1 roadmap drafted
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -187,8 +187,8 @@ Credential rotations remain operator follow-ups; one-time Done-group cleanup was
 
 ## Session Continuity
 
-Last session: 2026-11-18T23:10:00Z
-Stopped at: v1.8.1 roadmap drafted (Phases 127–130, 11/11 requirements mapped)
+Last session: 2026-11-18T22:28:05.682Z
+Stopped at: Phase 127 context gathered
 Next action: Review the roadmap draft; once approved, plan Phase 127 (README Accuracy) with `/bm:plan-phase 127`.
 
 **Prior session (2026-10-28):** Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
