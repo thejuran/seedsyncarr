@@ -58,7 +58,10 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
   2. "Security by default" is replaced with accurate wording: API authentication is off when `api_token` is empty, webhook verification is off when `webhook_secret` is empty, `webhook_require_secret` defaults to `False`, and encryption at rest is off by default (stored secrets plaintext) — rechecked against current code and SECURITY.md at implementation time
   3. Absolute "never deletes" claims are replaced by an explanation of import confirmation, optional pruning (off by default) and the safety delay, and the whole README is reviewed for remaining unconditional claims
   4. The Quick Start section tells the reader that the Docker examples publish port 8800 on all host interfaces, that untrusted access needs an authenticating reverse proxy and restricted network access, and that the API token does not protect the UI (which contains that token)
-**Plans**: TBD
+**Plans:** 1 plan
+
+Plans:
+- [ ] 127-01-PLAN.md — README structure, guide links and exposure note; conditioned cleanup and security wording; SECURITY.md lines 40 and 43
 
 ### Phase 128: Arr Key Normalization
 
@@ -99,7 +102,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 127. README Accuracy | 0/TBD | Not started | - |
+| 127. README Accuracy | 0/1 | Planned | - |
 | 128. Arr Key Normalization | 0/TBD | Not started | - |
 | 129. Web-Service Cleanup Isolation | 0/TBD | Not started | - |
 | 130. Release 1.8.1 | 0/TBD | Not started | - |

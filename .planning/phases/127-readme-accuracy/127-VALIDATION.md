@@ -19,7 +19,7 @@ created: 2026-11-18
 |----------|-------|
 | **Framework** | None for prose. Mechanical python3/grep/awk/git checks (see 127-RESEARCH.md "Validation Architecture"). Existing CI (pytest, `ruff check src/python/`, Angular, e2e) unaffected |
 | **Config file** | none |
-| **Quick run command** | the verification block in 127-RESEARCH.md §Validation Architecture, adjusted for the widened D-08 (SECURITY.md has two edited spots, not one) |
+| **Quick run command** | `python3 .planning/phases/127-readme-accuracy/127-check.py all` (replaces the verification block in 127-RESEARCH.md; covers the widened D-08: SECURITY.md lines 40 and 43) |
 | **Full suite command** | quick block + `ruff check src/python/` (expect clean, unchanged) |
 | **Estimated runtime** | ~2 seconds |
 
@@ -38,7 +38,9 @@ created: 2026-11-18
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| (filled by planner) | — | — | DOC-01..04, D-08 | T-127-xx | README/SECURITY.md state defaults and limits accurately | mechanical | link resolver + phrase absence/presence greps + section-order awk + scope git diff | n/a (inline) | ⬜ pending |
+| 127-01-T1 | 01 | 1 | DOC-01, DOC-04 | T-127-02 | Guides linked; Quick Start states port exposure and that `api_token` does not protect the UI | mechanical | `python3 .planning/phases/127-readme-accuracy/127-check.py structure` | yes | ⬜ pending |
+| 127-01-T2 | 01 | 1 | DOC-02, DOC-03 | T-127-01, T-127-03, T-127-04 | Defaults and cleanup conditions stated as the code behaves; no webhook-secret recommendation | mechanical | `python3 .planning/phases/127-readme-accuracy/127-check.py claims` | yes | ⬜ pending |
+| 127-01-T3 | 01 | 1 | DOC-02, DOC-03 (D-08) | T-127-03, T-127-06 | SECURITY.md changed on lines 40 and 43 only; scope limited to README.md and SECURITY.md | mechanical | `python3 .planning/phases/127-readme-accuracy/127-check.py all && ruff check src/python/` | yes | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
