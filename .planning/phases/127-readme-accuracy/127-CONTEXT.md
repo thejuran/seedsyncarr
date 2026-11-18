@@ -63,7 +63,7 @@ README.md documentation correction (DOC-01..04): make the six repository guides 
 
 ### Files under edit
 - `README.md` — the target
-- `SECURITY.md` — source of truth for security posture; one sentence edited (D-08)
+- `SECURITY.md` — source of truth for security posture; two spots edited, line ~40 sentence and line ~43 webhook bullet (D-08)
 
 ### Guides to link (must exist and resolve)
 - `docs/GETTING-STARTED.md`, `docs/CONFIGURATION.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/TESTING.md`, `SECURITY.md`
