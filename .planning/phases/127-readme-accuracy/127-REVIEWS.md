@@ -69,3 +69,87 @@ The plan covers DOC-01 through DOC-04 and correctly follows the revised D-03/D-0
 ## Risk Assessment
 
 **MEDIUM.** Runtime regression risk is low because the deliverable is documentation only. The remaining risk is accepting inaccurate security or cleanup guidance because the mechanical gate passes. Tightening the manual acceptance checklist, correcting the cleanup conditions, and making scope handling non-destructive would reduce overall risk to **LOW**.
+
+---
+
+## Codex Re-review (round 2, after revision bc02e508)
+
+## Summary
+
+The revised plan should achieve DOC-01 through DOC-04. Defaults and webhook-signing guidance match the implementation, and the mandatory manual claims ledger substantially improves acceptance quality.
+
+Four prior concerns are **RESOLVED**; two are **PARTIAL**. No HIGH concerns remain. Tighten the remaining link-check coverage and reconcile one new gate inconsistency before execution.
+
+## Strengths
+
+- All four requirements have explicit tasks and acceptance evidence.
+- First-run defaults and upgrade backfills agree: API token and webhook secret empty; secret requirement, encryption, pruning, and dry-run `False`; pruning delay `60` seconds.
+- Signing guidance is accurate: SeedSyncarr requires a body HMAC, while the current [Sonarr sender](https://raw.githubusercontent.com/Sonarr/Sonarr/develop/src/NzbDrone.Core/Notifications/Webhook/WebhookProxy.cs) and [Radarr sender](https://raw.githubusercontent.com/Radarr/Radarr/develop/src/NzbDrone.Core/Notifications/Webhook/WebhookProxy.cs) add configured headers/basic credentials without calculating that signature.
+- The API-token caveats match `web_app.py`: webhook routes are exempt, and the UI receives the token.
+- Cleanup wording now reflects ownership evidence, completion/import safeguards, deferral, and local-only deletion.
+- Scope remains appropriate: README and the two approved SECURITY spots, with application changes and guide expansion deferred.
+
+## Concerns
+
+1. **[MEDIUM — RESOLVED] Prior concern: false security claims could pass keyword checks.**
+
+   The script now expressly limits its claims, adds negative fixtures, and requires manual verification of security defaults, exposure, signing, and cleanup. That addresses the original concern without pretending regex can establish prose truth.
+
+   **Fix status:** Implemented. Retain the mandatory ledger as an acceptance requirement.
+
+2. **[MEDIUM — PARTIAL] Prior concern: “every relative link resolves” exceeds checker coverage.**
+
+   The three original failures are fixed: my probes now reject nonexistent titled links, reference-link targets, and Markdown fragments.
+
+   However, `link_problems()` silently passes both:
+
+   ```html
+   <img src='doc/MISSING.png'>
+   <a href=docs/MISSING.md>x</a>
+   ```
+
+   HTML extraction only recognizes double-quoted attributes. The plan’s assertion that unsupported syntax is reported is broader than the implementation: unsupported detection only counts unparsed `](` forms.
+
+   **Concrete fix:** Parse HTML attributes with the standard-library `HTMLParser`, or explicitly reject unsupported attribute quoting. Add these negative fixtures and narrow the documented syntax guarantee accordingly.
+
+3. **[MEDIUM — RESOLVED] Prior concern: cleanup implies automatic deletion after timer expiry.**
+
+   Task 2 and validation now require attempted deletion subject to safeguards, restricted to releases SeedSyncarr downloaded. The Usage Examples correction is explicitly permitted and documented. This matches `Controller.__execute_auto_delete()`.
+
+   **Fix status:** Implemented.
+
+4. **[MEDIUM — RESOLVED] Prior concern: scope handling could erase unrelated work.**
+
+   The plan records initial state and explicitly prohibits reverting, deleting, or stashing pre-existing/concurrent changes. It distinguishes those from accidental phase edits.
+
+   **Fix status:** Implemented.
+
+5. **[LOW — PARTIAL] Prior concern: brittle acceptance conditions.**
+
+   Task-specific groups, baseline comparisons, and wrapping-independent keyword checks resolve most issues. However, `security_diff_problems()` still rejects a correctly wrapped webhook bullet, and its selftest explicitly enforces that rejection.
+
+   **Concrete fix:** Allow indented continuation lines within the single approved bullet while preserving surrounding content. Alternatively, acknowledge single-line formatting as an intentional constraint rather than claiming acceptance is independent of physical lines.
+
+6. **[LOW — RESOLVED] Prior concern: “setting `webhook_require_secret`” is imprecise.**
+
+   The output instructions now distinguish unsigned requests encountering a configured secret from `webhook_require_secret = true` with no secret, and scope incompatibility to direct unsigned Sonarr/Radarr webhooks.
+
+   **Fix status:** Implemented.
+
+7. **[LOW — NEW] The permitted checker-fix exception contradicts the automated gate.**
+
+   Task 3 permits a justified checker correction with the full diff recorded in SUMMARY, but its automated command ends with `git diff --exit-code f9a166c8 -- …/127-check.py`. Any permitted correction necessarily fails that command.
+
+   **Concrete fix:** Define separate acceptance paths: unchanged checker passes the integrity comparison; a changed checker requires the documented diff review and passing selftests. Make the automated command and acceptance text agree.
+
+## Suggestions
+
+- Update the remaining stale research summary passages referring to one SECURITY sentence and unresolved owner input. Source precedence prevents a blocker, but the document still gives mixed signals.
+- Keep the checker narrowly focused; completing a general Markdown parser would exceed this phase’s needs.
+- Preserve the new requirements for explicit webhook API-token exemption and precisely scoped rate limiting.
+
+Verification: checker integrity matches `f9a166c8`; structure, claims, and security groups fail on the unedited documents as expected. Full selftest execution was blocked by this session’s read-only filesystem because it creates temporary fixtures; targeted read-only probes ran successfully.
+
+## Risk Assessment
+
+**LOW.** The revised plan has sound factual guidance, bounded documentation scope, and mandatory manual verification. Remaining risks concern incomplete link validation and acceptance friction, rather than application behavior or misleading security defaults.
