@@ -204,8 +204,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 These protections are off until you configure them in `settings.cfg` (Docker: `/config/settings.cfg`):
 
-- **API authentication** is off while `api_token` is empty. `api_token` does not
-  authenticate the webhook endpoints, which are exempt from the Bearer check.
+- **API authentication** is off while `api_token` is empty. Even when it is set, three
+  routes are exempt from the Bearer check: the webhook endpoints, the health check
+  (`/server/status`) and the live event stream (`/server/stream`). The stream carries the
+  application log and the full seedbox and local file list, so anyone who can reach port
+  8800 can read them with or without `api_token`.
 - **Webhook verification** is off while `webhook_secret` is empty, so anything that
   can reach the endpoint can report an import.
 - **`webhook_require_secret`** defaults to `False`; on its own that value rejects nothing.

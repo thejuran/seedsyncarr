@@ -92,6 +92,9 @@ FORBIDDEN_README = [
 OLD_INTRO = ("SeedSyncarr is designed to be self-hosted on a private network, "
              "and several protections are active by default:")
 OLD_BULLET_PREFIX = "- **HMAC-verified import webhooks**"
+# Third approved spot (owner ruling 2026-11-18 on code review WR-01): the Bearer
+# auth bullet overclaimed what `api_token` covers; it may be replaced in place.
+OLD_BEARER_PREFIX = "- **Bearer auth**"
 
 failures = []
 
@@ -393,13 +396,25 @@ def security_diff_problems(old, new):
 
     Passes only when the difference is exactly two replacements: the baseline
     intro sentence (OLD_INTRO) and the baseline webhook bullet
-    (OLD_BULLET_PREFIX). Every other baseline line must survive unchanged and
+    (OLD_BULLET_PREFIX), plus optionally a one-line replacement of the Bearer
+    auth bullet (OLD_BEARER_PREFIX, approved after code review WR-01). Every
+    other baseline line must survive unchanged and
     nothing may be added elsewhere. The replacement bullet is one list item:
     a first line starting with "- ", optionally followed by continuation lines
     indented by two or more spaces (a wrapped bullet); an unindented line or a
     nested list item there is rejected. Returns (problems, intro_text,
-    bullet_text) with wrapped lines joined by single spaces.
+    bullet_text, bearer_text) with wrapped lines joined by single spaces;
+    bearer_text is "" when the Bearer bullet was not replaced.
     """
+    bearer_text = ""
+    old_b = [i for i, line in enumerate(old) if line.startswith(OLD_BEARER_PREFIX)]
+    new_b = [i for i, line in enumerate(new) if line.startswith(OLD_BEARER_PREFIX)]
+    if len(old_b) == 1 and len(new_b) == 1 and old[old_b[0]] != new[new_b[0]]:
+        # The Bearer bullet stays one line, replaced in place; set it aside so
+        # the remaining diff must be exactly the two original approved spots.
+        bearer_text = new[new_b[0]]
+        old = old[:old_b[0]] + old[old_b[0] + 1:]
+        new = new[:new_b[0]] + new[new_b[0] + 1:]
     ops = [op for op in difflib.SequenceMatcher(None, old, new, autojunk=False).get_opcodes()
            if op[0] != "equal"]
     removed = [line for _, i1, i2, _, _ in ops for line in old[i1:i2]]
@@ -411,9 +426,9 @@ def security_diff_problems(old, new):
         other = [line[:60] for line in removed if line != OLD_INTRO and not line.startswith(OLD_BULLET_PREFIX)]
         problems.append(
             "SECURITY.md must differ from the baseline in exactly two places: the intro sentence of the "
-            "Security posture list and the 'HMAC-verified import webhooks' bullet. Found {} changed "
-            "region(s); other baseline lines removed or altered: {}".format(len(ops), other))
-        return problems, "", ""
+            "Security posture list and the 'HMAC-verified import webhooks' bullet (plus, optionally, the "
+            "'Bearer auth' bullet). Found {} changed region(s); other baseline lines removed or altered: {}".format(len(ops), other))
+        return problems, "", "", ""
     intro_lines = new[intro_ops[0][3]:intro_ops[0][4]]
     bullet_lines = new[bullet_ops[0][3]:bullet_ops[0][4]]
     if any(not line.strip() for line in intro_lines + bullet_lines):
@@ -425,7 +440,7 @@ def security_diff_problems(old, new):
             problems.append("the replaced webhook bullet must stay one list item: lines after the first must be "
                             "continuation lines indented by two or more spaces, not new text or list items")
             break
-    return problems, " ".join(intro_lines), " ".join(line.strip() for line in bullet_lines)
+    return problems, " ".join(intro_lines), " ".join(line.strip() for line in bullet_lines), bearer_text
 
 
 # --------------------------------------------------------------------------
@@ -664,7 +679,7 @@ def group_security(security_text):
     if base.returncode != 0:
         fail("D-08", "cannot read baseline SECURITY.md from commit " + PIN[:8])
         return
-    problems, intro, bullet = security_diff_problems(base.stdout.split("\n"), security_text.split("\n"))
+    problems, intro, bullet, bearer = security_diff_problems(base.stdout.split("\n"), security_text.split("\n"))
     for problem in problems:
         fail("D-08", problem)
     if not intro or not bullet:
@@ -695,7 +710,11 @@ def group_security(security_text):
     need("X-Webhook-Signature" in bullet, "D-08", "the webhook bullet must name the X-Webhook-Signature header")
     need(re.search(r"\b8800\b|network", bullet, re.I), "D-08", "the webhook bullet must name network restriction as the practical protection")
 
-    changed = intro + "\n\n" + bullet
+    need(bearer, "WR-01", "the Bearer auth bullet must be corrected to name the routes `api_token` does not cover")
+    for route in ("/server/status", "/server/stream", "webhook"):
+        need(route in bearer, "WR-01", "the Bearer auth bullet must name {} as exempt from the token".format(route))
+
+    changed = intro + "\n\n" + bullet + "\n\n" + bearer
     for problem in recommend_problems(changed):
         fail("D-08", "SECURITY.md " + problem)
     for problem in contradiction_problems(changed):
@@ -853,6 +872,12 @@ def group_selftest():
     good[2] = "SeedSyncarr is designed to be self-hosted on a private network. New:"
     good[5] = "- **Webhook signature verification (opt-in)** new text"
     need(not diff(good), "SELFTEST", "the two approved SECURITY.md replacements should be accepted")
+    old_b = old[:7] + [OLD_BEARER_PREFIX + " old"] + old[7:]
+    good_b = good[:7] + [OLD_BEARER_PREFIX + " new"] + good[7:]
+    need(not security_diff_problems(old_b, good_b)[0], "SELFTEST", "an in-place Bearer auth bullet replacement should be accepted")
+    need(security_diff_problems(old_b, good_b)[3] == OLD_BEARER_PREFIX + " new", "SELFTEST", "the Bearer bullet text should be returned")
+    renamed = good[:7] + ["- **Other** new"] + good[7:]
+    need(security_diff_problems(old_b, renamed)[0], "SELFTEST", "replacing the Bearer bullet with a different bullet should be rejected")
     wrapped = good[:2] + ["SeedSyncarr is designed to be self-hosted", "on a private network. New:"] + good[3:]
     need(not diff(wrapped), "SELFTEST", "a wrapped intro replacement should be accepted")
     wrapped_bullet = good[:6] + ["  continuation line one", "  continuation line two"] + good[6:]
