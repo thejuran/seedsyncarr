@@ -61,7 +61,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 **Plans:** 1 plan
 
 Plans:
-- [ ] 127-01-PLAN.md — README structure, guide links and exposure note; conditioned cleanup and security wording; SECURITY.md lines 40 and 43
+- [ ] 127-01-PLAN.md — README structure, guide links and exposure note; conditioned cleanup and security wording; SECURITY.md posture intro sentence and webhook bullet
 
 ### Phase 128: Arr Key Normalization
 
