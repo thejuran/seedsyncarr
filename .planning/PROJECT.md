@@ -310,7 +310,19 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Current State
 
-v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126, 13/13 requirements, PRs #132/#134/#137/#139/#140/#142/#143). 1.8.0 is published to GHCR, GitHub and PyPI and runs on NAS production at `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f…`. The milestone is archived (`milestones/v1.8.0-ROADMAP.md`, `v1.8.0-REQUIREMENTS.md`). No milestone is active. Configuration and Shutdown Correctness is the agreed next milestone (2026-11-18): README accuracy, Arr-key normalization and isolated web cleanup. Performance and Usability and narrow Pipeline Visibility remain conditional on evidence. No new version or phases are assigned. Other review findings remain in the ROADMAP Backlog.
+v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126, 13/13 requirements, PRs #132/#134/#137/#139/#140/#142/#143). 1.8.0 is published to GHCR, GitHub and PyPI and runs on NAS production at `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f…`. The milestone is archived (`milestones/v1.8.0-ROADMAP.md`, `v1.8.0-REQUIREMENTS.md`). Milestone v1.8.1 Configuration and Shutdown Correctness started 2026-11-18. Performance and Usability and narrow Pipeline Visibility remain conditional on evidence. Other review findings remain in the ROADMAP Backlog.
+
+## Current Milestone: v1.8.1 Configuration and Shutdown Correctness
+
+**Goal:** Make setup guidance accurate, Sonarr/Radarr connection diagnostics agree with real queue requests, and web-service cleanup complete after failures; release and deploy 1.8.1.
+
+**Target features:**
+- Accurate setup and security documentation (absorbs backlog 999.6): README links existing guides, explains conditional authentication/encryption/webhook protection and network exposure, and qualifies cleanup promises; agrees with current defaults and SECURITY.md; all guide links resolve.
+- Consistent Sonarr/Radarr key handling: keys normalized on save and when previously saved values are read for queue requests, using the same rules as Test Connection; invalid credentials still fail safely with no secrets in logs.
+- Complete web-service cleanup after failures: each cleanup step isolated; uninitialized server or unstarted thread handled (confirmed 2026-11-18: an injected `app.stop` failure skips `server.stop` and `thread.join`).
+- Release 1.8.1: targeted regressions, required repository gates, release-image smoke (setup, queue completion checks, stop/restart), Dependabot triage at release planning, NAS deploy pinned to the release tag.
+
+**Key context:** Scope agreed 2026-11-18 from a code review of current local code; research skipped (small, code-confirmed fixes). Boundaries: no transfer-architecture replacement, runtime auto-restart expansion, blanket test project, UI redesign or speculative optimization; existing completion/import/deletion safeguards stay intact.
 
 ## Previous Milestone: v1.8.0 Reliability (Shipped 2026-10-28, tagged v1.8.0)
 
@@ -387,7 +399,10 @@ v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126, 13/13 requirements, PRs
 
 ### Active
 
-- [ ] No active milestone. Next agreed scope: Configuration and Shutdown Correctness; formal requirements and plans are set by `$gsd-new-milestone`. See ROADMAP.md for finish lines and conditional follow-ups.
+- [ ] README setup and security guidance matches current defaults and SECURITY.md (v1.8.1)
+- [ ] Sonarr/Radarr keys normalized consistently on save and on read for queue requests (v1.8.1)
+- [ ] Web-service cleanup completes every step after a failure (v1.8.1)
+- [ ] 1.8.1 released and deployed to NAS production (v1.8.1)
 
 
 <!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
@@ -524,7 +539,7 @@ v1.4.0 hardened SeedSyncarr's public face for a Reddit launch: bounded hostile-r
 
 ## Project Status
 
-**Status:** Between milestones. v1.8.0 Reliability shipped 2026-10-28 and is running on NAS production. Next milestone not yet started.
+**Status:** Milestone v1.8.1 Configuration and Shutdown Correctness in progress (defining requirements). v1.8.0 Reliability shipped 2026-10-28 and is running on NAS production.
 
 Shipped milestone history: `.planning/MILESTONES.md`.
 
@@ -546,4 +561,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-18 after roadmap prioritization; no milestone activated*
+*Last updated: 2026-11-18 after starting milestone v1.8.1*

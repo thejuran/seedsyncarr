@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.8.0
-milestone_name: Reliability
-status: Awaiting next milestone
-stopped_at: "v1.8.0 Reliability milestone closed and archived (Phases 121-126, 13/13 requirements); 1.8.0 running on NAS production"
-last_updated: "2026-11-18T22:00:31Z"
-last_activity: 2026-11-18 — Next corrective milestone scoped; not activated
+milestone: v1.8.1
+milestone_name: Configuration and Shutdown Correctness
+status: planning
+last_updated: "2026-11-18T22:05:14.938Z"
+last_activity: 2026-11-18
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 52
-  completed_plans: 52
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Configuration and Shutdown Correctness is the agreed next milestone; not activated. v1.8.0 remains shipped and archived.
+**Current focus:** Milestone v1.8.1 Configuration and Shutdown Correctness — defining requirements
 
 ## Current Position
 
-Phase: Milestone v1.8.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-11-18 — Roadmap prioritized and stale backlog reconciled; no implementation
+Status: Defining requirements
+Last activity: 2026-11-18 — Milestone v1.8.1 started
 
 ## Accumulated Context
 
