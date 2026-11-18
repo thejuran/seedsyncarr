@@ -73,7 +73,13 @@ Plans:
   2. A previously saved whitespace-padded key works for queue completion checks **without the user resaving it** (normalized on read), so Test Connection and queue requests agree on the same stored key (regression test fails before the fix, passes after)
   3. Invalid keys still fail safely: an empty or invalid key in queue completion checks produces no unsafe import or deletion decision, and no key value ever appears in logs
 **Scope note (2026-11-18 discuss):** owner added that the config save confirmation stops echoing values of `secret=True` settings (all secrets, not only Arr keys) — 128-CONTEXT D-07.
-**Plans**: TBD
+**Plans**: 4 plans (3 waves)
+
+Plans:
+- [ ] 128-01-PLAN.md — shared Sonarr/Radarr key rule in `common/` (trim, then printable ASCII without space) with rule-table tests
+- [ ] 128-02-PLAN.md — Save trims or refuses Arr keys, save responses stop echoing secrets, Test Connection moved onto the shared rule
+- [ ] 128-03-PLAN.md — queue checks normalize the key on read and skip safely on a missing or invalid key (fail-before/pass-after regression)
+- [ ] 128-04-PLAN.md — cross-path parity tests and phase gate (full pytest, whole-tree ruff, coverage 88)
 
 ### Phase 129: Web-Service Cleanup Isolation
 
@@ -104,7 +110,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 127. README Accuracy | 1/1 | Complete    | 2026-11-18 |
-| 128. Arr Key Normalization | 0/TBD | Not started | - |
+| 128. Arr Key Normalization | 0/4 | Not started | - |
 | 129. Web-Service Cleanup Isolation | 0/TBD | Not started | - |
 | 130. Release 1.8.1 | 0/TBD | Not started | - |
 
