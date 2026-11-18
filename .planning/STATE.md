@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: ready_to_plan
-stopped_at: Phase 127 complete (1/1) — ready to discuss Phase 128
-last_updated: "2026-11-18T23:24:52.000Z"
-last_activity: 2026-11-18 -- Phase 127 verified (passed 8/8) and complete; review WR-01 fixed, WR-02 owner-deferred to backlog 999.9
+status: planning
+stopped_at: Phase 128 context gathered
+last_updated: "2026-11-18T23:34:21.645Z"
+last_activity: 2026-11-18
 progress:
   total_phases: 5
   completed_phases: 1
@@ -190,8 +190,8 @@ Credential rotations remain operator follow-ups; one-time Done-group cleanup was
 
 ## Session Continuity
 
-Last session: 2026-11-18T23:16:19.341Z
-Stopped at: Phase 127 context gathered
+Last session: 2026-11-18T23:34:21.631Z
+Stopped at: Phase 128 context gathered
 Next action: Review the roadmap draft; once approved, plan Phase 127 (README Accuracy) with `/bm:plan-phase 127`.
 
 **Prior session (2026-10-28):** Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
