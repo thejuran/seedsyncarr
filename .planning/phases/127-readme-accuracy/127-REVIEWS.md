@@ -153,3 +153,93 @@ Verification: checker integrity matches `f9a166c8`; structure, claims, and secur
 ## Risk Assessment
 
 **LOW.** The revised plan has sound factual guidance, bounded documentation scope, and mandatory manual verification. Remaining risks concern incomplete link validation and acceptance friction, rather than application behavior or misleading security defaults.
+
+---
+
+## Codex Re-review (round 3, after revision e7eaa681)
+
+## Summary
+
+The revised plan should achieve **DOC-01 through DOC-04** and follows the revised D-03/D-08 decisions. All three round-2 PARTIAL/NEW concerns are **RESOLVED**.
+
+No HIGH concerns remain. The narrowed detectors still accept some false statements and reject some accurate prose. These are bounded validation weaknesses because the plan explicitly requires a manual claims ledger and permits justified checker corrections.
+
+## Strengths
+
+- **Requirements coverage is complete:** Task 1 covers guide discoverability and exposure; Task 2 covers defaults and conditional cleanup; Task 3 aligns the two approved SECURITY.md passages.
+- **Defaults match code:** first-run configuration and upgrade backfills agree on empty API token/webhook secret; `webhook_require_secret`, encryption, pruning and dry-run defaulting to `False`; pruning delay of `60` seconds.
+- **Signing guidance is accurate:** SeedSyncarr verifies a body HMAC. Current native [Sonarr](https://raw.githubusercontent.com/Sonarr/Sonarr/develop/src/NzbDrone.Core/Notifications/Webhook/WebhookProxy.cs) and [Radarr](https://raw.githubusercontent.com/Radarr/Radarr/develop/src/NzbDrone.Core/Notifications/Webhook/WebhookProxy.cs) send configured headers/basic credentials without calculating that signature. Distinguishing direct unsigned requests, configured-secret rejection, and require-secret-without-secret rejection is appropriate.
+- **Cleanup wording matches the controller:** deletion is attempted subject to ownership, lifecycle and import safeguards; it affects the local copy.
+- Scope remains bounded to README and two SECURITY spots. Manual verification, preservation of unrelated work, and explicit checker-integrity acceptance paths are good safeguards.
+
+## Concerns
+
+### Round-2 follow-up
+
+| Prior concern | Status | Evidence and disposition |
+|---|---|---|
+| **[MEDIUM] HTML link coverage** | **RESOLVED** | `HTMLParser` now extracts single-quoted and unquoted attributes. Both previously missed missing-target probes are rejected. Unsupported-form limitations are documented. Retain these fixtures. |
+| **[LOW] Wrapped SECURITY bullet rejected** | **RESOLVED** | An in-memory replacement with an indented continuation line passes and is flattened correctly for content checks. Keep the surrounding-content checks. |
+| **[LOW] Checker-fix exception contradicts gate** | **RESOLVED** | The automated command now reports unchanged/changed paths; changed-checker acceptance requires the complete justified diff and passing selftests. No further fix needed. |
+
+### New findings
+
+1. **[LOW — NEW] Contradiction detectors still miss false statements.**
+
+   Direct probes of `contradiction_problems()` returned no problems for:
+
+   ```text
+   Sonarr and Radarr do sign every request.
+   Sonarr signs every request without a proxy.
+   Pruning deletes the remote copy and leaves the local copy alone.
+   Encryption is enabled by default, so secrets are never stored as plaintext.
+   ```
+
+   The first misses the narrowed signing pattern. The others demonstrate that sentence-wide negation, `REMOTE_KEPT`, and plaintext exceptions can suppress an unrelated false assertion.
+
+   These are **detector-level false passes**, not evidence that each sentence alone satisfies the complete phase gate.
+
+   **Concrete fix:** Add these as negative fixtures and scope exceptions to the relevant assertion where practical. Otherwise explicitly retain them as known manual-review cases. Do not broaden this into a general prose parser.
+
+2. **[LOW — NEW] Accurate prose still triggers false rejection.**
+
+   These probes were rejected:
+
+   ```text
+   The API token protects the API, while an authenticating reverse proxy protects the UI.
+   ```
+
+   `TOKEN_PROTECTS_UI` incorrectly connects the token to the proxy’s action.
+
+   ```text
+   With `webhook_secret` configured, you should restrict access to port 8800.
+   ```
+
+   `recommend_problems()` treats any non-negated “should” beside a secret setting as advice to enable that setting—even when the advised action is network restriction.
+
+   **Concrete fix:** Add both as acceptance fixtures. Restrict recommendation detection to advice about changing the secret setting, and prevent token/UI matching across an explicit subject change. The plan’s existing correction path makes these nonblocking.
+
+3. **[LOW — NEW] Explicit HTML anchors have inconsistent quoting support.**
+
+   This valid same-file link is rejected:
+
+   ```html
+   <a id='custom'></a>
+   [x](#custom)
+   ```
+
+   Link attributes use `HTMLParser`, but `anchors_of()` still recognizes only double-quoted `<a name/id>` attributes.
+
+   **Concrete fix:** Reuse HTML attribute parsing for explicit anchors, or document their narrower supported syntax. This does not affect the planned heading-based links.
+
+## Suggestions
+
+- Preserve mandatory manual acceptance; a green checker remains supporting evidence, not proof of accurate prose.
+- Correct the stale research/context assertion that `docs/CONFIGURATION.md` lacks an encryption-enabled default row: the current guide contains `[Encryption] enabled`, default `False`. No guide edit is needed.
+- Avoid further checker expansion unless the actual README draft exposes a concrete issue.
+
+Verification: the checker matches baseline `33c50bfc`; structure, claims and security groups fail on the unedited documents as expected. Targeted read-only probes confirmed the findings above. Existing recommendation/contradiction selftests passed before temporary-file creation; the complete selftest could not finish because this session’s filesystem is read-only. No files were changed.
+
+## Risk Assessment
+
+**LOW.** The plan’s factual guidance, requirement coverage and scope are sound. Remaining risks are checker false positives and incomplete contradiction detection, mitigated by mandatory source-backed manual review and the documented checker-correction process.
