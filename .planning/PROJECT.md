@@ -310,7 +310,7 @@ Dependency security fixes (hono/node-server overrides) and CI verification.
 
 ## Current State
 
-v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126, 13/13 requirements, PRs #132/#134/#137/#139/#140/#142/#143). 1.8.0 is published to GHCR, GitHub and PyPI and runs on NAS production at `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f…`. The milestone is archived (`milestones/v1.8.0-ROADMAP.md`, `v1.8.0-REQUIREMENTS.md`). No milestone is active. Performance and Usability (conditional) is next in the roadmap, and UI Redesign (pipeline-first) comes after it, with order and scope set when activated. Minor review findings from Phases 122–124 are parked in the ROADMAP Backlog.
+v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126, 13/13 requirements, PRs #132/#134/#137/#139/#140/#142/#143). 1.8.0 is published to GHCR, GitHub and PyPI and runs on NAS production at `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f…`. The milestone is archived (`milestones/v1.8.0-ROADMAP.md`, `v1.8.0-REQUIREMENTS.md`). No milestone is active. Configuration and Shutdown Correctness is the agreed next milestone (2026-11-18): README accuracy, Arr-key normalization and isolated web cleanup. Performance and Usability and narrow Pipeline Visibility remain conditional on evidence. No new version or phases are assigned. Other review findings remain in the ROADMAP Backlog.
 
 ## Previous Milestone: v1.8.0 Reliability (Shipped 2026-10-28, tagged v1.8.0)
 
@@ -387,7 +387,7 @@ v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126, 13/13 requirements, PRs
 
 ### Active
 
-- [ ] Next milestone not yet defined. Candidates in ROADMAP.md: Performance and Usability (conditional on measured need) and UI Redesign (pipeline-first). Requirements are set by `/bm:new-milestone`.
+- [ ] No active milestone. Next agreed scope: Configuration and Shutdown Correctness; formal requirements and plans are set by `$gsd-new-milestone`. See ROADMAP.md for finish lines and conditional follow-ups.
 
 
 <!-- v1.7.4 (shipped 2026-10-09) — Safety Patch. Three Python phases: deletion safety → transfer-state safety → durable state. -->
@@ -546,4 +546,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-28 after v1.8.0 milestone*
+*Last updated: 2026-11-18 after roadmap prioritization; no milestone activated*

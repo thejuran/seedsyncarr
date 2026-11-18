@@ -7,4 +7,4 @@ Handle only while touching the relevant dependency or test code:
 - Clean up cosmetic test imports/style opportunistically.
 - Replace harmless test sleeps for speed only when convenient. Demonstrated flaky tests remain actionable correctness work.
 
-The dev/test dependency advisory 999.4 is an explicit bounded side task in ROADMAP.md: recheck current status/exposure and apply the smallest supported fix if relevant. It is not automatically a Reliability completion gate; material exposure may justify reprioritization.
+The dev/test advisory 999.4 was rechecked in Phase 126 and recorded no fix needed (braces@3.0.3). Its original entry and reopening conditions are preserved in [the reconciliation archive](archive/2026-11-18/README.md). Reopen only for new applicable evidence; current remote advisory status was not refreshed on 2026-11-18.

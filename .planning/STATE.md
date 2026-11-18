@@ -4,8 +4,8 @@ milestone: v1.8.0
 milestone_name: Reliability
 status: Awaiting next milestone
 stopped_at: "v1.8.0 Reliability milestone closed and archived (Phases 121-126, 13/13 requirements); 1.8.0 running on NAS production"
-last_updated: "2026-10-28T23:54:26.000Z"
-last_activity: 2026-10-28 — Milestone v1.8.0 completed and archived
+last_updated: "2026-11-18T22:00:31Z"
+last_activity: 2026-11-18 — Next corrective milestone scoped; not activated
 progress:
   total_phases: 6
   completed_phases: 6
@@ -18,21 +18,23 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-28)
+See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Planning next milestone (v1.8.0 Reliability shipped and archived 2026-10-28)
+**Current focus:** Configuration and Shutdown Correctness is the agreed next milestone; not activated. v1.8.0 remains shipped and archived.
 
 ## Current Position
 
 Phase: Milestone v1.8.0 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-28 — Milestone v1.8.0 completed and archived
+Last activity: 2026-11-18 — Roadmap prioritized and stale backlog reconciled; no implementation
 
 ## Accumulated Context
 
 ### Roadmap Evolution
+
+- 2026-11-18: Owner requested the review guidance be applied. Next milestone: Configuration and Shutdown Correctness (README accuracy, Arr-key normalization, isolated web cleanup). Performance and pipeline visibility remain evidence-gated. Symlink filtering already exists; 999.4 recorded no-fix at release. No milestone activated or version/phase assigned.
 
 - 2026-10-21: Milestone v1.8.0 Reliability roadmap approved by owner: six phases, 121–126, mapping all 13 requirements (SEC-02; SAFE-01/02 + LOG-01/02; LIFE-01/02; STRM-01/02; LAN-01/02; REL-05/06). Owner priority order kept; the two Phase 120 logging fixes sit in Phase 122 with the safety acceptance checks (same webhook/completion-gate paths are exercised there). Release 1.8.0 is Phase 126 and depends on 121–125; 999.4 is rechecked within REL-05. Nothing implemented.
 
@@ -150,11 +152,11 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ## Future Work
 
-The authoritative future work list is ROADMAP.md. Milestone v1.8.0 Reliability is active with Phases 121–126 in owner-approved order: credential forwarding (121), safety acceptance plus the two Phase 120 logging fixes (122), startup/shutdown lifecycle (123), model-stream overflow recovery (124), LAN connection tests (125), then release 1.8.0 (126: Dependabot review incl. 999.4, publish, NAS digest smoke, production deploy by digest). Phase plans are not yet written. Moving the Sonarr integration to API v5 is backlog 999.5.
+ROADMAP.md is authoritative. v1.8.0 is complete and archived; no milestone is active. Configuration and Shutdown Correctness is next: accurate README setup/security guidance, consistent Arr API keys, and complete web-service cleanup after failures. Activate with `$gsd-new-milestone`.
 
-Scanner buffering, residual import/restart gaps, memory measurements and UI/webhook efficiency are separate conditional investigations, not promised fixes or completion gates. Performance and Usability activates only when evidence justifies it. Dependency item 999.4 is a bounded maintenance side task.
+Performance and Usability and Pipeline Visibility remain conditional on measured need or recurring friction. Scanner buffering is a bounded investigation; residual recovery needs a specific reproducible failure. Sonarr API v5 remains backlog 999.5. Symlink filtering is already delivered and 999.4 was closed with no fix needed at release; see the 2026-11-18 reconciliation archive.
 
-Credential rotation and one-time Done-group cleanup remain operator follow-ups. Routine maintenance: `backlog/MAINTENANCE.md`. Earlier decisions and historical findings: `backlog/archive/2026-10-18/README.md`.
+Credential rotations remain operator follow-ups; one-time Done-group cleanup was confirmed complete. Routine maintenance: `backlog/MAINTENANCE.md`.
 
 ## Milestones Shipped
 
@@ -184,7 +186,7 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 
 Last session: 2026-10-28T23:34:31.282Z
 Stopped at: Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
-Next action: Start the next milestone with /bm:new-milestone. v1.8.0 is closed and archived (`milestones/v1.8.0-ROADMAP.md`, `v1.8.0-REQUIREMENTS.md`). Remaining items are operator follow-ups (api_token rotation, credential rotation confirmation, sandbox test-torrent removal; see Deferred Items).
+Next action: Use `$gsd-new-milestone` for Configuration and Shutdown Correctness. No implementation, release version or phase numbers assigned by this roadmap update.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -197,7 +199,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Start the next milestone with /bm:new-milestone
+- Activate Configuration and Shutdown Correctness with `$gsd-new-milestone`; no implementation has started.
 
 ## Deferred Items
 
@@ -209,7 +211,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 | Deferred fix (Phase 120) | Webhook handler logger not attached to app log ("Sonarr webhook test event received" never written) | Promoted to LOG-01, Phase 122 |
 | Deferred fix (Phase 120) | CompletionGate prune path logs "Completion hold cleared" when a hold is merely dropped (no release; no early transfer) | Promoted to LOG-02, Phase 122 |
 | Deferred fix (Phase 122-06) | `seedsyncarr-test` restart: lftp's pexpect child fails to terminate within the `docker restart` SIGTERM window ("Could not terminate the child"); controller still exits and the container restarts cleanly ~5s later | Logged to `122-safety-acceptance-and-logging-fixes/deferred-items.md`; candidate for Phase 123 |
-| Deferred fix (Phase 122-07) | `ExtractDispatch.__coalesce_extractions` only filters legacy `.r00`/`.r01` WinRAR volume naming, not modern RAR `.partN.rar` naming where every volume ends in `.rar`; a multi-volume archive runs one fully redundant (but still safe, staging-then-publish) extraction pass per volume | Logged to `122-safety-acceptance-and-logging-fixes/deferred-items.md`; candidate for Phase 123 or later maintenance |
+| Deferred fix (Phase 122-07) | `ExtractDispatch.__coalesce_extractions` only filters legacy `.r00`/`.r01` WinRAR volume naming, not modern RAR `.partN.rar` naming where every volume ends in `.rar`; a multi-volume archive runs one fully redundant (but still safe, staging-then-publish) extraction pass per volume | Logged to `122-safety-acceptance-and-logging-fixes/deferred-items.md`; conditional on recurring multipart RAR workload; Phase 123 is complete |
 
 Open audit artifacts acknowledged at v1.7.7 close (2026-10-20), all from earlier milestones and assigned to Phase 122 (SAFE-01/SAFE-02):
 

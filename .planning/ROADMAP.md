@@ -1,6 +1,6 @@
 # Roadmap: SeedSyncarr
 
-Updated 2026-10-28. Milestone v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126; 1.8.0 published and running on NAS production by digest). No milestone is active; the next one starts with `/bm:new-milestone`. Existing implementation must be checked before planning any carried-forward fix.
+Updated 2026-11-18. Milestone v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126; 1.8.0 published and running on NAS production by digest). No milestone is active; the next one starts with `$gsd-new-milestone`. Existing implementation must be checked before planning any carried-forward fix.
 
 ## Milestones
 
@@ -34,7 +34,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 
 ## Backlog
 
-These are bounded evidence-gathering candidates, not promised fixes or additional phases. Promote a fix only for a demonstrated gap, recording the evidence, smallest scope and finish line. A reproduced data-loss risk or measured resource problem may change the priority order.
+Items marked Narrow feed the agreed next milestone; Deferred items remain conditional candidates, not promised fixes or additional phases. Promote a fix only for a demonstrated gap, recording the evidence, smallest scope and finish line. A reproduced data-loss risk or measured resource problem may change the priority order.
 
 ### Deferred: Scanner buffering (first investigation candidate)
 
@@ -52,13 +52,7 @@ add only the measurements needed to resolve the buffering investigation, disting
 
 measure realistic update/idle workloads before proposing optimization. Initial model delivery already uses one snapshot; examine remaining per-update serialization and repeated lookup construction. Stop with a baseline and worthwhile target, or defer. Preserve pending-notice revalidation and correctness; no speculative caching or rendering rewrite.
 
-### 999.4: Recheck the braces/karma dev-test advisory
 
-**Scope:** Bounded maintenance side task, separate from milestone scope. recheck the recorded braces/karma dev-test advisory and related deferred PRs (#128/#125/#117), including current affected versions and runtime/build exposure. Apply the smallest supported fix if still relevant, with the affected build/test checks. Records classify it as dev/test-only; current advisory status has not been refreshed. This is not a separate milestone or a general test-runner rewrite. It is rechecked within REL-05 (Phase 126) as part of the pre-tag Dependabot review; that recheck records the outcome, and the item is rolled into 1.8.0 only if the fix is cheap or current evidence establishes material exposure.
-
-### Deferred: Extract-staging symlink hardening
-
-Refuse symlink entries at publish time in `ExtractDispatch.__publish_staged_output` (skip with a WARNING), closing a pre-existing exposure where patool could write a symlink straight into the release folder. Security HIGH, CWE-59. Source: `.planning/debug/extract-staging-autodel-rearm.md` item C.
 
 ### Deferred: Extract-staging max-deferrals config key
 
@@ -76,7 +70,9 @@ Apply `sanitize_log_value` to archive-derived paths in the new dispatch log line
 
 Add tests for the three cleanup OSError handlers, a lock-order recorder across a re-arm cycle, and the dispatch loop stop path. Source: `.planning/debug/extract-staging-autodel-rearm.md` item G.
 
-### Deferred: Arr API key normalization (Phase 122 review WR-04)
+### Narrow: Arr API key normalization (Phase 122 review WR-04)
+
+**Disposition (2026-11-18):** Selected for the next corrective milestone; not implemented or activated.
 
 Test Connection strips and validates the Arr API key before testing (122-14), but the saved key is never normalized and `controller/arr_queue.py` sends it as stored. A key pasted with a stray space or newline passes Test Connection while every real queue check fails, so completions stay held as "Sonarr unavailable" (fail-safe; no wrong deletes, but a false all-clear from the diagnostic). Fix: normalize on save and in `arr_queue.py` so already-saved keys keep working. Owner chose backlog 2026-10-25. Source: `.planning/phases/122-safety-acceptance-and-logging-fixes/122-REVIEW.md` WR-04.
 
@@ -86,13 +82,15 @@ Fail-safe edge cases of the 120 s post-transfer grace window (122-13): a STOP ha
 
 ### Deferred: Modern RAR volume coalescing (found in Phase 122-07)
 
-`ExtractDispatch.__coalesce_extractions` (`src/python/controller/extract/dispatch.py`) only filters legacy `.rNN` continuation volumes, so a RAR 5+ archive named `.partN.rar` runs one redundant extraction-and-publish pass per volume. Output is still complete and correct (staging-then-publish holds), so this is efficiency, not safety. Source: `.planning/phases/122-safety-acceptance-and-logging-fixes/deferred-items.md` second section. Kept out of Phase 123 (not a lifecycle issue).
+`ExtractDispatch.__coalesce_extractions` (`src/python/controller/extract/dispatch.py`) only filters legacy `.rNN` continuation volumes, so a RAR 5+ archive named `.partN.rar` runs one redundant extraction-and-publish pass per volume. Output is still complete and correct (staging-then-publish holds), so this is efficiency, not safety. Source: `.planning/phases/122-safety-acceptance-and-logging-fixes/deferred-items.md` second section. Still deferred. Promote only if `.partN.rar` archives recur in the actual workload; measure redundant passes and validate one complete extraction per archive set. Not a lifecycle issue.
 
 ### 999.5: Move Sonarr integration to API v5
 
 **Scope:** Sonarr 5 lists the v3 API as deprecated (still served as of 5.0.0.2701). Move SeedSyncarr's two Sonarr API calls (`system/status` connection test, `queue/details` completion evidence; the webhook payload is version-independent) to `/api/v5` when Sonarr 4 support can be dropped, or with version detection that keeps v3 for Sonarr 4. Note the v5 queue model differences: one tracked item can cover multiple episodes (`episodeIds`/`episodes` lists), `timeLeft` casing, and `includeSubresources`. Activate when Sonarr announces v3 removal, Sonarr 5 goes stable and prod upgrades, or v1.7.7 finds a v3 gap. Radarr unaffected. Not a Reliability gate.
 
-### Deferred: WebAppJob cleanup per-step isolation (Phase 123 PR #137 review)
+### Narrow: WebAppJob cleanup per-step isolation (Phase 123 PR #137 review)
+
+**Disposition (2026-11-18):** Selected for the next corrective milestone; not implemented or activated.
 
 `WebAppJob.cleanup()` (`src/python/web/web_app_job.py`) does not get the per-step stop isolation Phase 123 added elsewhere: if `self.__app.stop()` raises, `self.__server.stop()` and `self.__server_thread.join()` are skipped, and `MyWSGIRefServer.stop()` can raise AttributeError while its inner server is still None (123-REVIEW IN-01 is the related thread-never-started guard). Fix: wrap each stop step in its own try/except + `logger.exception`, mirroring ScanManager/FileOperationManager/Controller. Owner chose backlog 2026-10-26. Source: `.planning/phases/123-startup-and-shutdown-lifecycle/deferred-items.md` item 7.
 
@@ -110,9 +108,9 @@ In `ModelStreamHandler.get_value()` (`src/python/web/handler/stream_model.py` ~l
 
 ### Phase 999.6: README documentation discoverability and accurate security defaults (BACKLOG)
 
-**Captured:** 2026-10-26. Owner requested backlog only; do not implement yet.
+**Captured:** 2026-10-26. Selected for the next corrective milestone on 2026-11-18; implementation has not started.
 **Goal:** Make existing guides easy to find and make README security and cleanup claims match actual defaults and limitations.
-**Scope:** README.md only; no application behavior changes. This is a concrete candidate for the following Performance and Usability milestone's setup/configuration documentation work, not an active Reliability gate.
+**Scope:** README.md only; no application behavior changes. This is the documentation item in the next corrective milestone.
 **Requirements:** TBD
 **Plans:** 0 plans
 
@@ -128,30 +126,54 @@ Acceptance criteria:
 
 Plans:
 
-- [ ] TBD (promote with $gsd-review-backlog when ready)
+- [ ] Define during `$gsd-new-milestone`; no phase or version assigned yet.
 
 ### 999.7: Speed up the CI Docker image build
 
 **Scope:** Two small changes first: (1) build the Angular stage once on the build platform (`FROM --platform=$BUILDPLATFORM node:22-slim AS seedsyncarr_build_angular_env` in `src/docker/build/docker-image/Dockerfile`) instead of running `npm install` + the Angular build under QEMU for arm64 (its output is architecture-independent JS); (2) let the `build-docker-image` job in `.github/workflows/ci.yml` start in parallel with the unit-test/lint jobs instead of `needs:`-ing all seven, keeping the end-to-end and publish jobs gated on tests passing. Evidence (last 30 CI runs, 2026-10-27): build job 0–5 min when the registry cache hits, outliers 16/23/27 min on cache misses; Python unit tests (~5–6 min) sit on the critical path before the build starts. Further options only if needed: amd64-only PR images (NAS is x86_64; arm64 E2E already skipped on PRs; main/tags still build both), or native arm64 builds on `ubuntu-24.04-arm` plus a manifest merge. Not a Reliability gate.
 
-## Next milestone: Performance and Usability (conditional)
+## Next milestone: Configuration and Shutdown Correctness
 
-**Activation:** v1.8.0 Reliability is complete and measurements or recurring user friction justify a bounded follow-up. If no material opportunity is demonstrated, defer this milestone.
+**Goal:** Make setup guidance accurate, Sonarr/Radarr connection diagnostics agree with real queue requests, and web-service cleanup complete after failures.
 
-**Goal:** Remove demonstrated unnecessary work and remaining setup friction without changing the transfer architecture.
+**Scope:** Agreed roadmap direction on 2026-11-18. Not active; no version or phase numbers assigned. Activate with `$gsd-new-milestone` to define requirements and plans. v1.8.0 remains closed.
 
-1. [ ] **Measured UI/webhook efficiency.** Select only improvements supported by the backlog investigations, with agreed baseline and before/after targets.
-2. [ ] **Setup/configuration documentation.** Correct concrete discrepancies not already fixed in Phase 119 or alongside Reliability work.
+1. [ ] **Accurate setup and security documentation.** Deliver README item 999.6 above: link existing guides, explain conditional authentication/encryption/webhook protection and network exposure, and qualify cleanup promises. Done when the README agrees with current defaults and SECURITY.md and all guide links resolve. Small effort; high confidence; affects everyone following setup guidance.
+2. [ ] **Consistent Sonarr/Radarr key handling.** Normalize keys on save and when reading previously saved values for queue requests, using the same rules as Test Connection. Done when whitespace-padded keys work consistently through both paths and invalid credentials still fail safely without secrets in logs. Small effort; code-confirmed mismatch, recurrence unknown.
+3. [ ] **Complete web-service cleanup after failures.** Isolate cleanup steps and handle an uninitialized server or unstarted thread. Done when failure in one step does not skip the others and partial-startup/shutdown tests show clean termination. Small-to-medium effort; the current method was exercised with an injected app.stop failure on 2026-11-18, confirming that server.stop and thread.join are skipped. Production recurrence unknown.
 
-Credential forwarding and LAN connection tests belong to v1.8.0 Reliability, not this milestone.
+**Done when:** all three outcomes are verified, targeted regression/integration checks and required repository gates pass, and a release-image smoke check covers setup, queue completion checks and stop/restart. Release and deployment remain future execution work, not claims made by this roadmap update.
 
-**Done when:** selected improvements meet their agreed before/after targets, relevant integration/UI checks pass, and affected documentation matches delivered behavior. Scope, phase numbers and release version are assigned only after activation.
+**Boundaries:** No transfer-architecture replacement, runtime auto-restart expansion, blanket test project, UI redesign, or speculative optimization. Existing completion/import/deletion safeguards must remain intact. This small corrective scope takes priority over broader feature work.
 
-## Future milestone: UI Redesign (pipeline-first)
+## Following milestone: Performance and Usability (conditional)
 
-**Activation:** after v1.8.0 Reliability (shipped 2026-10-28); set its order relative to Performance and Usability when activated. Not active; no phases or version assigned.
+**Activation:** Complete the corrective milestone, then demonstrate meaningful resource pressure, repeated redundant work or recurring user friction. Cancel or defer if representative evidence shows no worthwhile opportunity.
 
-**Goal:** Make the import-driven safe-delete pipeline visible: show each file's lifecycle (seedbox → local → imported → local copy cleaned up), surface problems with per-row actions, regroup Settings around the pipeline, and add phone and iPhone Duo layouts. Full scope, backend dependencies, component change list and finish line: [UI Redesign brief](backlog/UI-REDESIGN.md). Design canvas linked there.
+**Goal:** Remove demonstrated unnecessary work without changing transfer architecture.
+
+1. [ ] **Bounded scanner investigation.** Measure queue growth, parent/child memory and recovery under a representative scan workload with a deliberately stalled consumer. Stop with a demonstrated need for a safe bound or a documented no-fix conclusion; preserve successful-scan and deletion evidence.
+2. [ ] **Measured efficiency improvements.** Select UI/webhook changes only from realistic baseline measurements. Consider modern multipart RAR coalescing only if those archives recur in the user's workload. Agree before/after targets before implementation.
+
+**Done when:** selected improvements meet their agreed targets and preserve correctness under relevant integration checks. Setup documentation belongs to the preceding corrective milestone. No standalone diagnostics project or speculative caching/rendering rewrite.
+
+## Future milestone: Pipeline Visibility (conditional)
+
+**Activation:** After the corrective milestone, validate recurring confusion about why a completed transfer awaits import or cleanup. Set its order relative to performance work from that evidence; neither follow-up is promised.
+
+**Goal:** Help users understand import and cleanup state with a narrowly scoped dashboard improvement.
+
+1. [ ] **Explain import and cleanup progress.** Start with existing status, import_status and hold_reason data. Confirm deletion/restart semantics before adding a minimal field if needed. Done when a walkthrough can explain a held transfer, a completed transfer awaiting import and an imported file awaiting cleanup without guessing from logs.
+
+**Boundaries:** The UI already displays Waiting and a hold reason. Do not rebuild that safeguard. Settings restructuring, phone/iPhone Duo layouts, onboarding, release-name parsing and global visual changes stay deferred. The [original UI Redesign brief](backlog/UI-REDESIGN.md) preserves those ideas, not an approved delivery scope.
+
+## Review evidence and reconciled items
+
+The 2026-11-18 prioritization used current local code and the recorded October 28 release acceptance. GitHub access failed; present-day remote issues, advisory status and production health were not reverified. No full test suite was run for this planning review.
+
+- Extraction symlink filtering already exists in `ExtractDispatch.__strip_symlinks`, called before publication, with a regression test. Remove this stale proposed fix from active consideration.
+- Phase 126 records braces/karma item 999.4 as **no fix needed** (`braces@3.0.3`). This is historical release evidence, not a claim about today's advisory database.
+- Original entries, evidence and reopening conditions are retained in [the reconciliation archive](backlog/archive/2026-11-18/README.md).
 
 ## Operator follow-ups (not development milestones)
 
