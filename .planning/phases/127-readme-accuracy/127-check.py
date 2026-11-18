@@ -40,6 +40,7 @@ Environment overrides:
                                 parent of the phase's first commit.
 """
 import difflib
+import html.parser
 import os
 import re
 import subprocess
@@ -215,14 +216,36 @@ REF_DEF = re.compile(r"""(?m)^ {0,3}\[([^\]]+)\]:\s*<?(\S+?)>?(?:\s+["'(].*)?\s*
 REF_USE = re.compile(r"\[([^\]]+)\]\[([^\]]*)\]")
 
 
+class _AttributeLinks(html.parser.HTMLParser):
+    """Collect src, srcset and href values from HTML tags, whatever the quoting
+    (double, single or none)."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.found = []
+
+    def handle_starttag(self, tag, attrs):
+        for name, value in attrs:
+            if not value:
+                continue
+            if name in ("src", "href"):
+                self.found.append(value.strip())
+            elif name == "srcset":
+                self.found += [part.strip().split()[0] for part in value.split(",") if part.strip()]
+
+
 def link_problems(text, root):
     """Problems with relative links, images and anchors in a Markdown text.
 
-    Supported: inline links and images (with or without a title), reference
+    Checked: inline links and images (with or without a title), reference
     links ([text][label], [label][]) and their definitions, HTML src / srcset /
-    href attributes, same-file anchors, and fragments on linked .md files.
-    Anything of the form '](' that is not parsed is reported as unsupported
-    instead of being skipped.
+    href attributes in any quoting (parsed with html.parser), same-file
+    anchors, and fragments on linked .md files. An inline link ('](') that
+    cannot be parsed is reported as unsupported instead of being skipped.
+
+    Not checked: any other way of writing a link (autolinks such as <path>,
+    bare paths in prose, HTML attributes other than src / srcset / href).
+    The README must keep to the checked forms.
     """
     problems = []
     body = prose(text)
@@ -240,8 +263,10 @@ def link_problems(text, root):
         if key not in definitions:
             problems.append("reference link has no definition: [{}]".format(label or shown))
 
-    for attr in re.findall(r'(?:src|srcset|href)="([^"]+)"', body):
-        targets += [part.strip().split(" ")[0] for part in attr.split(",") if part.strip()]
+    attributes = _AttributeLinks()
+    attributes.feed(body)
+    attributes.close()
+    targets += attributes.found
 
     for link in targets:
         if re.match(r"(?i)(https?:|mailto:)", link):
@@ -266,7 +291,9 @@ def link_problems(text, root):
 
 SECRET = r"webhook_(?:require_)?secret"
 ADVICE = re.compile(
-    r"recommend\w*|advis\w*|suggest\w*|consider\w*|encourag\w*|best[- ]practices?"
+    r"recommend\w*|advis\w*|suggest\w*|\bconsider\b"
+    r"|\bconsidering (?:setting|enabling|using|adding|configuring|turning)\b"
+    r"|encourag\w*|best[- ]practices?"
     r"|\bshould\b(?!\s+not\b)(?!n't)|\bought to\b|\bbe sure to\b|\bmake sure to\b"
     r"|\bfor (?:better|extra|added|more|stronger|improved) (?:security|protection)\b",
     re.I,
@@ -285,6 +312,8 @@ def recommend_problems(text):
 
     A negation excuses an advisory word only when it sits immediately before
     that word ("do not recommend"); a "not" elsewhere in the sentence does not.
+    "consider" counts only as advice ("consider setting", "considering
+    enabling"), not as description ("a call is considered unverified").
     """
     problems = []
     for sentence in units(text):
@@ -301,6 +330,26 @@ def recommend_problems(text):
 EMPTY = r"\b(?:empty|unset|not set|blank|no token|no secret|without a (?:token|secret))\b"
 NEG = r"\b(?:off|not|no|never|disabled|skipped|without|unprotected|neither|nor|cannot|unsigned)\b|n't"
 ON = r"\b(?:on|enabled|active|enforced|required|verified|protected|checked)\b"
+ARR = r"(?:Sonarr|Radarr)(?:\s*(?:and|or|/|&)\s*(?:Sonarr|Radarr))?"
+# Sonarr/Radarr as the grammatical subject of signing, or their webhooks
+# described as signed. A sentence that merely names them next to "a sender
+# that signs each request" or "the signed header" is not a claim that they sign.
+ARR_SIGNS = re.compile(
+    r"\b" + ARR + r"(?:\s+(?:both|each|also|always|now|can|will|natively))*\s+"
+    r"(?:sign(?:s|ed)?\b|HMAC-sign|comput\w+\s+(?:an?|the)\s+(?:HMAC|signature)|adds?\s+(?:an?|the)\s+(?:HMAC|signature))"
+    r"|\b" + ARR + r"\s+(?:import\s+)?(?:webhooks?|requests?|calls?|payloads?)\s+(?:are|is|come|arrive)\s+(?:\w+\s+)?signed\b"
+    r"|\bsigned by (?:Sonarr|Radarr)\b",
+    re.I,
+)
+# The token said to protect the UI (either word order). Naming the UI, the
+# token and an authenticating reverse proxy in one sentence is not that claim.
+TOKEN_PROTECTS_UI = re.compile(
+    r"token\b[^.;]*?\b(?:protect|secur|authenticat|gate)\w*[^.;]*?\bUI\b"
+    r"|\bUI\b[^.;]*?\b(?:is|are|stays?|remains?)\s+(?:\w+\s+)?(?:protected|secured|gated|authenticated)\b[^.;]*?token",
+    re.I,
+)
+ENCRYPTION_OFF = r"\bopt-in\b|\bplaintext\b|\bplain text\b|\bunencrypted\b"
+REMOTE_KEPT = r"\buntouched\b|\bleft\b|\bkept\b|\bstays?\b|\bleav(?:es?|ing)\b|\balone\b"
 
 
 def contradiction_problems(text):
@@ -323,18 +372,18 @@ def contradiction_problems(text):
             flag("says API authentication is on while `api_token` is empty")
         if re.search(r"webhook_secret", unit) and re.search(EMPTY, unit, re.I) and positive and not negated:
             flag("says webhook verification is on while `webhook_secret` is empty")
-        if re.search(r"encrypt", unit, re.I) and re.search(r"by default", unit, re.I) and positive and not negated:
+        if re.search(r"encrypt", unit, re.I) and re.search(r"by default", unit, re.I) and positive and not negated \
+                and not re.search(ENCRYPTION_OFF, unit, re.I):
             flag("says encryption at rest is on by default")
         if re.search(r"verif|signature", unit, re.I) and re.search(r"by default", unit, re.I) \
                 and positive and not negated:
             flag("says webhook verification is on by default")
-        if re.search(r"Sonarr|Radarr", unit) and re.search(r"\bsign(?:s|ed|ing)?\b", unit, re.I) and not negated:
+        if ARR_SIGNS.search(unit) and not negated:
             flag("says Sonarr/Radarr sign their webhook requests")
         if re.search(r"remote cop(?:y|ies)", unit, re.I) and re.search(r"delet|remov|prun|clean", unit, re.I) \
-                and not re.search(NEG + r"|\buntouched\b|\bleft\b|\bkept\b|\bstays?\b", unit, re.I):
+                and not re.search(NEG + "|" + REMOTE_KEPT, unit, re.I):
             flag("says pruning deletes the remote copy")
-        if re.search(r"\bUI\b", unit) and re.search(r"token", unit, re.I) \
-                and re.search(r"protect|secur|authenticat|gate", unit, re.I) and not negated:
+        if TOKEN_PROTECTS_UI.search(unit) and not negated:
             flag("says the API token protects the UI")
     return problems
 
@@ -345,7 +394,11 @@ def security_diff_problems(old, new):
     Passes only when the difference is exactly two replacements: the baseline
     intro sentence (OLD_INTRO) and the baseline webhook bullet
     (OLD_BULLET_PREFIX). Every other baseline line must survive unchanged and
-    nothing may be added elsewhere. Returns (problems, intro_text, bullet_text).
+    nothing may be added elsewhere. The replacement bullet is one list item:
+    a first line starting with "- ", optionally followed by continuation lines
+    indented by two or more spaces (a wrapped bullet); an unindented line or a
+    nested list item there is rejected. Returns (problems, intro_text,
+    bullet_text) with wrapped lines joined by single spaces.
     """
     ops = [op for op in difflib.SequenceMatcher(None, old, new, autojunk=False).get_opcodes()
            if op[0] != "equal"]
@@ -365,9 +418,14 @@ def security_diff_problems(old, new):
     bullet_lines = new[bullet_ops[0][3]:bullet_ops[0][4]]
     if any(not line.strip() for line in intro_lines + bullet_lines):
         problems.append("the two SECURITY.md replacements must not introduce blank lines")
-    if len(bullet_lines) != 1:
-        problems.append("the replaced webhook bullet must stay a single list item on one line, like its siblings")
-    return problems, " ".join(intro_lines), " ".join(bullet_lines)
+    if not bullet_lines or not bullet_lines[0].startswith("- "):
+        problems.append("the replaced webhook bullet must stay one list item starting with '- '")
+    for line in bullet_lines[1:]:
+        if not re.match(r"^ {2,}\S", line) or re.match(r"^\s+(?:[-*+]|\d+\.)\s", line):
+            problems.append("the replaced webhook bullet must stay one list item: lines after the first must be "
+                            "continuation lines indented by two or more spaces, not new text or list items")
+            break
+    return problems, " ".join(intro_lines), " ".join(line.strip() for line in bullet_lines)
 
 
 # --------------------------------------------------------------------------
@@ -562,8 +620,8 @@ def group_claims(readme):
     need(re.search(r"`webhook_require_secret`.{0,120}`False`", security), "DOC-02",
          "Security must say `webhook_require_secret` defaults to `False`")
     need("`[Encryption] enabled = True`" in security, "DOC-02", "Security must give `[Encryption] enabled = True` as the way to enable encryption")
-    need(block_with(r"encrypt", r"\boff\b", r"plaintext|plain text"), "DOC-02",
-         "Security must say, in one list item, that encryption at rest is off by default and stored secrets are plaintext")
+    need(block_with(r"encrypt", r"\boff\b|\bopt-in\b|\bdisabled\b", r"plaintext|plain text"), "DOC-02",
+         "Security must say, in one list item, that encryption at rest is off by default (or opt-in) and stored secrets are plaintext")
     need("settings.cfg" in security, "D-06", "Security must say these are set in settings.cfg")
     need("](SECURITY.md)" in security, "D-06", "Security must link SECURITY.md")
     need(re.search(r"report", security, re.I), "D-06", "Security must keep the vulnerability-reporting pointer")
@@ -685,6 +743,8 @@ def group_selftest():
         "To lock this down, turn on `webhook_require_secret`.",
         "Open settings.cfg, then configure `webhook_secret`.",
         "Do not leave it empty: use a `webhook_secret`.",
+        "You may want to consider a `webhook_secret`.",
+        "It is worth considering enabling `webhook_require_secret`.",
     ):
         expect(True, recommend_problems, text, "recommendation")
     for text in (
@@ -696,6 +756,8 @@ def group_selftest():
         "`webhook_require_secret` defaults to `False`.",
         "With `webhook_require_secret = true` and no secret, every call is rejected with 503.",
         "You should restrict who can reach port 8800.",
+        "A call is considered unverified whenever `webhook_secret` is empty.",
+        "With a direct Sonarr/Radarr webhook, a configured `webhook_secret` rejects every call (401) because the signed header is missing.",
     ):
         expect(False, recommend_problems, text, "factual statement")
 
@@ -713,6 +775,10 @@ def group_selftest():
         "When enabled, pruning also removes remote copies.",
         "`api_token` protects the API and the UI.",
         "Setting a token secures the UI as well.",
+        "Sonarr/Radarr webhooks are signed with the secret.",
+        "Requests signed by Sonarr are accepted.",
+        "Sonarr can sign each request once a secret is configured.",
+        "The UI is protected by the token.",
     ):
         expect(True, contradiction_problems, text, "contradiction")
     for text in (
@@ -724,6 +790,15 @@ def group_selftest():
         "Pruning deletes the local copy only; the remote copy is not deleted by it.",
         "`api_token` protects the API but not the UI, and the UI contains that token.",
         "`api_token` does not authenticate the webhook endpoints.",
+        # Accurate, decision-compliant sentences that earlier, broader rules rejected.
+        "Verification therefore needs a sender that signs each request, and for direct Sonarr/Radarr webhooks the practical protection is restricting network access to port 8800.",
+        "Only a sender that signs each request can pass verification, so for Sonarr and Radarr the practical protection is restricting who can reach port 8800.",
+        "With a direct Sonarr/Radarr webhook, a configured `webhook_secret` rejects every call (401) because the signed header is missing.",
+        "Sonarr and Radarr do not sign requests (they send only fixed headers or basic auth), so with a direct Sonarr/Radarr webhook either of those configurations rejects their import webhooks and pruning stops.",
+        "The UI contains that token, so put an authenticating reverse proxy in front of it.",
+        "Pruning removes only the local copy and leaves the remote copy alone.",
+        "Encryption at rest is opt-in: by default stored secrets are plaintext, and encryption is enabled with `[Encryption] enabled = True`.",
+        "A call is considered unverified whenever `webhook_secret` is empty.",
     ):
         expect(False, contradiction_problems, text, "accurate statement")
 
@@ -750,6 +825,9 @@ def group_selftest():
             "[x](docs/MISSING.md)",
             '<img src="doc/missing.png">',
             '<a href="docs/MISSING.md">x</a>',
+            "<img src='doc/MISSING.png'>",
+            "<a href=docs/MISSING.md>x</a>",
+            '<source srcset="LICENSE 1x, doc/MISSING.png 2x">',
             '[x](docs/GUIDE.md "unterminated)',
             "```\ncode\n```\n[x]( docs/MISSING.md )",
         ):
@@ -762,6 +840,7 @@ def group_selftest():
             "[x](#section-one) and [y](#top)",
             "[x](LICENSE) and [y](https://example.com/nope) and [z](<docs/GUIDE.md>)",
             "```\n[x](docs/MISSING.md)\n```",
+            "<a href=docs/GUIDE.md>x</a> and <img src='LICENSE'> and <a href='#section-one'>y</a>",
         ):
             expect(False, links, text, "valid link")
 
@@ -776,12 +855,19 @@ def group_selftest():
     need(not diff(good), "SELFTEST", "the two approved SECURITY.md replacements should be accepted")
     wrapped = good[:2] + ["SeedSyncarr is designed to be self-hosted", "on a private network. New:"] + good[3:]
     need(not diff(wrapped), "SELFTEST", "a wrapped intro replacement should be accepted")
+    wrapped_bullet = good[:6] + ["  continuation line one", "  continuation line two"] + good[6:]
+    need(not diff(wrapped_bullet), "SELFTEST", "a webhook bullet wrapped onto indented continuation lines should be accepted")
+    need(security_diff_problems(old, wrapped_bullet)[2] == good[5] + " continuation line one continuation line two",
+         "SELFTEST", "a wrapped webhook bullet should be joined into one line of text for the content checks")
     for label, mutate in (
         ("a third changed line", lambda new: new.__setitem__(4, "- **A** changed")),
         ("an added bullet", lambda new: new.insert(7, "- **D** four")),
         ("a deleted line", lambda new: new.__delitem__(6)),
         ("only one of the two edits", lambda new: new.__setitem__(5, old[5])),
-        ("a two-line webhook bullet", lambda new: new.insert(6, "  continuation")),
+        ("an unindented line after the webhook bullet", lambda new: new.insert(6, "continuation")),
+        ("a nested list item under the webhook bullet", lambda new: new.insert(6, "  - nested item")),
+        ("a new sibling bullet right after the webhook bullet", lambda new: new.insert(6, "- **D** four")),
+        ("a blank line inside the webhook bullet", lambda new: new.__setitem__(slice(6, 6), ["", "  continuation"])),
     ):
         candidate = list(good)
         mutate(candidate)
