@@ -21,7 +21,7 @@ Absorbs backlog item 999.6. README.md only; no application behavior changes.
 Code-confirmed mismatch: Test Connection strips the key (`src/python/web/handler/config.py`), queue requests use the stored value as-is. Recurrence in production unknown.
 
 - [ ] **ARR-01**: A Sonarr/Radarr API key entered with leading/trailing whitespace is saved normalized, using the same rule as Test Connection.
-- [ ] **ARR-02**: A previously saved whitespace-padded key is normalized when read for queue requests, so Test Connection and queue completion checks agree for the same stored key.
+- [ ] **ARR-02**: A previously saved whitespace-padded key is works for queue requests without the user resaving it (normalized on read); save, Test Connection and queue completion checks use one consistent normalization rule.
 - [ ] **ARR-03**: An empty or invalid key still fails safely in queue completion checks (no unsafe import or deletion decision), and no key value appears in logs.
 
 ### Web-service shutdown (WEB)
@@ -29,12 +29,12 @@ Code-confirmed mismatch: Test Connection strips the key (`src/python/web/handler
 Confirmed 2026-11-18: an injected `app.stop` failure in `WebAppJob.cleanup` (`src/python/web/web_app_job.py`) skips `server.stop` and `thread.join`.
 
 - [ ] **WEB-01**: When any one web-service cleanup step (`app.stop`, `server.stop`, `thread.join`) fails, the remaining steps still run and the failure is logged.
-- [ ] **WEB-02**: Cleanup after a partial startup (server never created, or thread never started) completes without raising, with tests showing clean termination.
+- [ ] **WEB-02**: Cleanup after a partial startup (server never created, or thread never started) completes without raising; after any failure, cleanup attempts every applicable step and terminates cleanly, with tests showing it.
 
 ### Release (REL)
 
-- [ ] **REL-07**: Release 1.8.1 passes its gates: fail-before/pass-after regressions for ARR and WEB, full test suite, whole-tree `ruff check src/python/`, release CI; open Dependabot alerts and PRs triaged and rolled in by scope and surfaced to the owner before the tag.
-- [ ] **REL-08**: The 1.8.1 release image is smoke-tested by digest (setup, queue completion check with a whitespace-padded key, stop/restart), then deployed to NAS production pinned to `:1.8.1`, with a successful scan after deploy.
+- [ ] **REL-07**: Release 1.8.1 passes its gates: fail-before/pass-after regressions for ARR and WEB, full test suite, whole-tree `ruff check src/python/`, release CI; dependency work limited to triage and justified fixes: open Dependabot alerts and PRs triaged and surfaced to the owner before the tag, only justified fixes rolled in.
+- [ ] **REL-08**: The 1.8.1 release image is smoke-tested by digest (setup, queue completion check with a whitespace-padded key, stop/restart), then deployed to NAS production using that exact smoke-tested image digest (`:1.8.1@sha256:…`), followed by a successful scan and queue check and owner confirmation.
 
 ## Future Requirements
 
@@ -61,12 +61,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| DOC-01 | Phase 127 | Pending |
+| DOC-02 | Phase 127 | Pending |
+| DOC-03 | Phase 127 | Pending |
+| DOC-04 | Phase 127 | Pending |
+| ARR-01 | Phase 128 | Pending |
+| ARR-02 | Phase 128 | Pending |
+| ARR-03 | Phase 128 | Pending |
+| WEB-01 | Phase 129 | Pending |
+| WEB-02 | Phase 129 | Pending |
+| REL-07 | Phase 130 | Pending |
+| REL-08 | Phase 130 | Pending |
 
 **Coverage:**
 - v1.8.1 requirements: 11 total
-- Mapped to phases: 0
-- Unmapped: 11 ⚠️
+- Mapped to phases: 11
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-11-18*
-*Last updated: 2026-11-18 after initial definition*
+*Last updated: 2026-11-18 after roadmap creation (Phases 127–130; 11/11 requirements mapped)*

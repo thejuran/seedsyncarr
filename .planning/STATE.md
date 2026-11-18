@@ -3,10 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
 status: planning
-last_updated: "2026-11-18T22:05:14.938Z"
-last_activity: 2026-11-18
+stopped_at: "v1.8.1 roadmap drafted (Phases 127–130); ready to plan Phase 127 README Accuracy"
+last_updated: "2026-11-18T22:21:12Z"
+last_activity: 2026-11-18 -- v1.8.1 roadmap drafted
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,18 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Milestone v1.8.1 Configuration and Shutdown Correctness — defining requirements
+**Current focus:** Milestone v1.8.1 Configuration and Shutdown Correctness: roadmap drafted (Phases 127–130); next plan Phase 127 README Accuracy
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 127 (README Accuracy) — not started (ready to plan)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-11-18 — Milestone v1.8.1 started
+Status: Roadmap drafted for Phases 127–130 (11/11 requirements mapped). No implementation started.
+Last activity: 2026-11-18 — v1.8.1 roadmap drafted
 
 ## Accumulated Context
 
 ### Roadmap Evolution
+
+- 2026-11-18: Milestone v1.8.1 Configuration and Shutdown Correctness roadmap drafted: four phases, 127–130, mapping all 11 requirements (DOC-01..04 → 127 README Accuracy; ARR-01..03 → 128 Arr Key Normalization; WEB-01/02 → 129 Web-Service Cleanup Isolation; REL-07/08 → 130 Release 1.8.1, depends on 127–129). Backlog items promoted into phases: 999.6 (README discoverability/security defaults) → 127; the Phase 122 review Narrow item (Arr key normalization, WR-04) → 128; the Phase 123 review Narrow item (WebAppJob cleanup isolation) → 129; all three retained in the ROADMAP Backlog for provenance only, not as separate backlog phases. Nothing implemented.
 
 - 2026-11-18: Owner requested the review guidance be applied. Next milestone: Configuration and Shutdown Correctness (README accuracy, Arr-key normalization, isolated web cleanup). Performance and pipeline visibility remain evidence-gated. Symlink filtering already exists; 999.4 recorded no-fix at release. No milestone activated or version/phase assigned.
 
@@ -138,8 +141,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ### Blockers/Concerns
 
-- None at v1.8.0 roadmap creation. Watch-out for Phase 126's deploy gate: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — deploy the CI-published multi-arch `:1.8.0` image pinned by digest, never a local build and never `:dev`.
-- Phase 123 D-01 live check: GAP-1 (scanner false ERROR) CLOSED live on DEV_PIN_GAP (123-11/12, 2026-10-26, 0 occurrences in 6 restarts). GAP-2 (lftp `Error stopping lftp during controller exit` / `Could not terminate the child`) also now CLOSED live on DEV_PIN_GAP2 (123-16/123-17, 2026-10-26): zero occurrences of the old detector strings across 5 restarts (I1, I2, A1, A2, I3) plus the A1r rerun; A2 independently confirmed the 123-13 fallback genuinely reaping lftp out of a live `state=D` condition during an actual active-transfer restart (0.35s, well inside the 2.0s bound). `CHECK_STATUS_GAP2=PASS` recorded in 123-LIFE-EVIDENCE.md. 123-07 wrote the Phase 123 final verdict (PASSED) and restored the sandbox to 1.7.6 (`IMAGE_PIN_L0`) via `teardown.sh --final`, fresh-session verified; the owner reviewed an independent PR #137 deep review and replied verbatim "approve, backlog both items", closing LIFE-01/LIFE-02. Phase 123 closed 2026-10-27: verified (7/7 must-haves; `gaps_found` with one minor, non-blocking gap — 123-REVIEW WR-01 SIGINT grace — auto-parked to the ROADMAP backlog together with the two owner-backlogged PR #137 items). PR #137 remains a draft awaiting the owner's merge decision; local docs commits after its head (4074b0c) are unpushed.
+- None at v1.8.1 roadmap creation. Watch-out carried from v1.8.0: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — Phase 130 deploys the CI-published multi-arch `:1.8.1` image pinned by digest, never a local build and never `:dev`.
+- Phase 123 D-01 live check: GAP-1 (scanner false ERROR) CLOSED live on DEV_PIN_GAP (123-11/12, 2026-10-26, 0 occurrences in 6 restarts). GAP-2 (lftp `Error stopping lftp during controller exit` / `Could not terminate the child`) also now CLOSED live on DEV_PIN_GAP2 (123-16/123-17, 2026-10-26): zero occurrences of the old detector strings across 5 restarts (I1, I2, A1, A2, I3) plus the A1r rerun; A2 independently confirmed the 123-13 fallback genuinely reaping lftp out of a live `state=D` condition during an actual active-transfer restart (0.35s, well inside the 2.0s bound). `CHECK_STATUS_GAP2=PASS` recorded in 123-LIFE-EVIDENCE.md. 123-07 wrote the Phase 123 final verdict (PASSED) and restored the sandbox to 1.7.6 (`IMAGE_PIN_L0`) via `teardown.sh --final`, fresh-session verified; the owner reviewed an independent PR #137 deep review and replied verbatim "approve, backlog both items", closing LIFE-01/LIFE-02. Phase 123 closed 2026-10-27: verified (7/7 must-haves; `gaps_found` with one minor, non-blocking gap — 123-REVIEW WR-01 SIGINT grace — auto-parked to the ROADMAP backlog together with the two owner-backlogged PR #137 items, one of which — WebAppJob cleanup per-step isolation — is now promoted into Phase 129). PR #137 remains a draft awaiting the owner's merge decision; local docs commits after its head (4074b0c) are unpushed.
 
 ### Quick Tasks Completed
 
@@ -151,7 +154,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ## Future Work
 
-ROADMAP.md is authoritative. v1.8.0 is complete and archived; no milestone is active. Configuration and Shutdown Correctness is next: accurate README setup/security guidance, consistent Arr API keys, and complete web-service cleanup after failures. Activate with `$gsd-new-milestone`.
+ROADMAP.md is authoritative. v1.8.0 is complete and archived. Milestone v1.8.1 Configuration and Shutdown Correctness now has a drafted roadmap (Phases 127–130): README accuracy, Arr API key normalization, web-service cleanup isolation, then release 1.8.1. Next: plan Phase 127 (README Accuracy) with `/bm:plan-phase 127`.
 
 Performance and Usability and Pipeline Visibility remain conditional on measured need or recurring friction. Scanner buffering is a bounded investigation; residual recovery needs a specific reproducible failure. Sonarr API v5 remains backlog 999.5. Symlink filtering is already delivered and 999.4 was closed with no fix needed at release; see the 2026-11-18 reconciliation archive.
 
@@ -180,12 +183,15 @@ Credential rotations remain operator follow-ups; one-time Done-group cleanup was
 | v1.7.4 Safety Patch | Phases 116-118 | 2026-10-08 to 2026-10-09 (tagged v1.7.4) |
 | v1.7.5 Safety Release | Phases 119, 119.1 | 2026-10-09 to 2026-10-15 (tagged v1.7.5, v1.7.6) |
 | v1.7.7 Sonarr 5 Compatibility | Phase 120 | 2026-10-20 (verified; no release, no tag) |
+| v1.8.0 Reliability | Phases 121-126 | 2026-10-21 to 2026-10-28 (tagged v1.8.0) |
 
 ## Session Continuity
 
-Last session: 2026-10-28T23:34:31.282Z
-Stopped at: Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
-Next action: Use `$gsd-new-milestone` for Configuration and Shutdown Correctness. No implementation, release version or phase numbers assigned by this roadmap update.
+Last session: 2026-11-18T23:10:00Z
+Stopped at: v1.8.1 roadmap drafted (Phases 127–130, 11/11 requirements mapped)
+Next action: Review the roadmap draft; once approved, plan Phase 127 (README Accuracy) with `/bm:plan-phase 127`.
+
+**Prior session (2026-10-28):** Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -198,7 +204,8 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Activate Configuration and Shutdown Correctness with `$gsd-new-milestone`; no implementation has started.
+- Review and approve the v1.8.1 roadmap (Phases 127–130)
+- Then plan Phase 127 (README Accuracy) with `/bm:plan-phase 127`
 
 ## Deferred Items
 
@@ -227,3 +234,11 @@ Open artifacts acknowledged at v1.8.0 close (2026-10-28):
 | verification | Phase 119 119-VERIFICATION.md (`human_needed`) | Stale frontmatter only: both human checks passed 2026-10-18 (`119-HUMAN-UAT.md` status complete) |
 | verification | Phase 123 123-VERIFICATION.md (`gaps_found`, minor) | SIGINT shutdown-grace gap (review WR-01); parked in ROADMAP Backlog 2026-10-27 |
 | verification | Phase 124 124-VERIFICATION.md (`gaps_found`, minor) | Resync comment accuracy and test tightening (review WR-01/WR-02); parked in ROADMAP Backlog 2026-10-27 |
+
+Backlog items promoted into the v1.8.1 roadmap (2026-11-18), retained above for provenance only:
+
+| Category | Item | Status |
+|----------|------|--------|
+| Backlog 999.6 | README documentation discoverability and accurate security defaults | Promoted into Phase 127 (README Accuracy) |
+| Backlog Narrow (Phase 122 review WR-04) | Arr API key normalization | Promoted into Phase 128 (Arr Key Normalization) |
+| Backlog Narrow (Phase 123 PR #137 review) | WebAppJob cleanup per-step isolation | Promoted into Phase 129 (Web-Service Cleanup Isolation) |

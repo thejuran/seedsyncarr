@@ -1,6 +1,6 @@
 # Roadmap: SeedSyncarr
 
-Updated 2026-11-18. Milestone v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126; 1.8.0 published and running on NAS production by digest). No milestone is active; the next one starts with `$gsd-new-milestone`. Existing implementation must be checked before planning any carried-forward fix.
+Updated 2026-11-18. Milestone v1.8.1 Configuration and Shutdown Correctness is active (Phases 127–130, started 2026-11-18; nothing implemented yet). Milestone v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126; 1.8.0 published and running on NAS production by digest). Existing implementation must be checked before planning any carried-forward fix.
 
 ## Milestones
 
@@ -8,6 +8,7 @@ Updated 2026-11-18. Milestone v1.8.0 Reliability shipped 2026-10-28 (Phases 121�
 - ✅ v1.7.5 Safety Release -- Phases 119 and 119.1; includes release 1.7.6 (shipped 2026-10-15)
 - ✅ v1.7.7 Sonarr 5 Compatibility -- Phase 120 (closed 2026-10-20; verified, no release needed)
 - ✅ v1.8.0 Reliability -- Phases 121–126 (shipped 2026-10-28)
+- 🔨 v1.8.1 Configuration and Shutdown Correctness -- Phases 127–130 (in progress)
 
 Future milestone names and scope are below; their versions remain unassigned. Earlier release history remains in STATE.md and milestone archives.
 
@@ -32,9 +33,82 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 
 </details>
 
+### 🔨 v1.8.1 Configuration and Shutdown Correctness (Phases 127–130, in progress)
+
+**Goal:** Make setup guidance accurate, Sonarr/Radarr connection diagnostics agree with real queue requests, and web-service cleanup complete after failures; release and deploy 1.8.1.
+
+**Requirements:** `REQUIREMENTS.md` (11: DOC-01..04, ARR-01..03, WEB-01..02, REL-07..08). Scope agreed 2026-11-18 from a code review of current local code; research skipped (small, code-confirmed fixes). Boundaries: no transfer-architecture replacement, runtime auto-restart expansion, blanket test project, UI redesign or speculative optimization; existing completion/import/deletion safeguards stay intact.
+
+**CI gate (every phase):** full Python suite green AND whole-tree `ruff check src/python/` clean (CI runs ruff as a separate gate from pytest, so build-verify must run it on the whole tree, not just touched files); Python `fail_under` ≥ 88 holds; every targeted regression shown to fail before its fix and pass after.
+
+- [ ] **Phase 127: README Accuracy** - Setup, security and documentation-discoverability claims in the README match current defaults, SECURITY.md and the repository guides
+- [ ] **Phase 128: Arr Key Normalization** - Sonarr/Radarr API keys normalize the same way on save and on read for queue requests, matching Test Connection
+- [ ] **Phase 129: Web-Service Cleanup Isolation** - Each web-service shutdown step runs independently so one failure never skips the rest
+- [ ] **Phase 130: Release 1.8.1** - Targeted regressions, required gates, release-image smoke test and NAS production deploy pinned to the tag
+
+#### Phase Details
+
+### Phase 127: README Accuracy
+
+**Goal**: A reader following the README reaches every existing guide and sees setup, security and cleanup claims stated as they actually behave
+**Depends on**: Nothing (first phase of the milestone; follows Phase 126)
+**Requirements**: DOC-01, DOC-02, DOC-03, DOC-04
+**Success Criteria** (what must be TRUE):
+  1. A prominent README Documentation section links `docs/GETTING-STARTED.md`, `docs/CONFIGURATION.md`, `SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md` and `docs/TESTING.md`, the installation section links repository guides instead of website-only docs, and every relative link resolves
+  2. "Security by default" is replaced with accurate wording: API authentication is off when `api_token` is empty, webhook verification is off when `webhook_secret` is empty, `webhook_require_secret` defaults to `False`, and encryption at rest is off by default (stored secrets plaintext) — rechecked against current code and SECURITY.md at implementation time
+  3. Absolute "never deletes" claims are replaced by an explanation of import confirmation, optional pruning (off by default) and the safety delay, and the whole README is reviewed for remaining unconditional claims
+  4. The Quick Start section tells the reader that the Docker examples publish port 8800 on all host interfaces, that untrusted access needs an authenticating reverse proxy and restricted network access, and that the API token does not protect the UI (which contains that token)
+**Plans**: TBD
+
+### Phase 128: Arr Key Normalization
+
+**Goal**: A Sonarr/Radarr API key behaves the same whether it is being saved, tested, or used for a live queue check, regardless of incidental whitespace
+**Depends on**: Nothing (independent of Phase 127; disjoint code paths)
+**Requirements**: ARR-01, ARR-02, ARR-03
+**Success Criteria** (what must be TRUE):
+  1. Save, Test Connection and queue completion checks all use one consistent normalization rule: a key entered with leading/trailing whitespace is saved normalized, using the same rule Test Connection already applies
+  2. A previously saved whitespace-padded key works for queue completion checks **without the user resaving it** (normalized on read), so Test Connection and queue requests agree on the same stored key (regression test fails before the fix, passes after)
+  3. Invalid keys still fail safely: an empty or invalid key in queue completion checks produces no unsafe import or deletion decision, and no key value ever appears in logs
+**Plans**: TBD
+
+### Phase 129: Web-Service Cleanup Isolation
+
+**Goal**: A failure in one web-service shutdown step never skips the remaining steps, matching the per-step isolation already present elsewhere in the lifecycle code
+**Depends on**: Nothing (independent of Phases 127–128; disjoint code paths)
+**Requirements**: WEB-01, WEB-02
+**Success Criteria** (what must be TRUE):
+  1. With a failure injected into `app.stop()`, `server.stop()` and `thread.join()` still run and the failure is logged (regression test fails before the fix, passes after — confirmed 2026-11-18 that today's code skips both)
+  2. With a failure injected into `server.stop()` or `thread.join()` instead, the other steps still run and the failure is logged
+  3. Cleanup handles an uninitialized server and an unstarted thread (partial startup) without raising, and still attempts every step that applies
+  4. After any failure, cleanup attempts every applicable step and terminates cleanly; tests demonstrate clean termination for both the per-step-failure and the partial-startup scenarios, mirroring the isolation pattern already used by ScanManager/FileOperationManager/Controller
+**Plans**: TBD
+
+### Phase 130: Release 1.8.1
+
+**Goal**: 1.8.1 passes its release gates and is running on NAS production, pinned to the released digest
+**Depends on**: Phases 127, 128, 129 (all milestone work complete)
+**Requirements**: REL-07, REL-08
+**Success Criteria** (what must be TRUE):
+  1. Fail-before/pass-after regressions exist for the ARR and WEB fixes; full test suite, whole-tree `ruff check src/python/` and release CI are all green on the release commit
+  2. Dependency work stays limited to triage and justified fixes: before the tag, open Dependabot alerts and PRs are triaged and surfaced to the owner in plain terms; only justified fixes are rolled in (runtime/shipped fixes in-release; cheap dev-only ones folded in), with no broader dependency upgrades
+  3. The release image is smoke-tested by exact digest: setup, a queue completion check using a whitespace-padded key, and stop/restart
+  4. NAS production is deployed using the **exact smoke-tested image digest** (pinned `:1.8.1@sha256:…`), followed by a successful scan and queue check, and owner confirmation
+**Plans**: TBD
+
+#### Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 127. README Accuracy | 0/TBD | Not started | - |
+| 128. Arr Key Normalization | 0/TBD | Not started | - |
+| 129. Web-Service Cleanup Isolation | 0/TBD | Not started | - |
+| 130. Release 1.8.1 | 0/TBD | Not started | - |
+
+**Done when:** all four success-criteria sets are verified, targeted regression/integration checks and required repository gates pass, a release-image smoke check covers setup, queue completion checks and stop/restart, and 1.8.1 is deployed to NAS production. Boundaries: no transfer-architecture replacement, runtime auto-restart expansion, blanket test project, UI redesign or speculative optimization; existing completion/import/deletion safeguards stay intact.
+
 ## Backlog
 
-Items marked Narrow feed the agreed next milestone; Deferred items remain conditional candidates, not promised fixes or additional phases. Promote a fix only for a demonstrated gap, recording the evidence, smallest scope and finish line. A reproduced data-loss risk or measured resource problem may change the priority order.
+Items marked Narrow fed the now-active v1.8.1 milestone (promoted into phases 127–129 below); Deferred items remain conditional candidates, not promised fixes or additional phases. Promote a fix only for a demonstrated gap, recording the evidence, smallest scope and finish line. A reproduced data-loss risk or measured resource problem may change the priority order.
 
 ### Deferred: Scanner buffering (first investigation candidate)
 
@@ -72,7 +146,7 @@ Add tests for the three cleanup OSError handlers, a lock-order recorder across a
 
 ### Narrow: Arr API key normalization (Phase 122 review WR-04)
 
-**Disposition (2026-11-18):** Selected for the next corrective milestone; not implemented or activated.
+**Disposition (2026-11-18):** Selected for the corrective milestone; promoted into Phase 128 (v1.8.1) on 2026-11-18 at roadmap creation. Retained here for provenance only; plan and track implementation in Phase 128, not as a separate backlog phase.
 
 Test Connection strips and validates the Arr API key before testing (122-14), but the saved key is never normalized and `controller/arr_queue.py` sends it as stored. A key pasted with a stray space or newline passes Test Connection while every real queue check fails, so completions stay held as "Sonarr unavailable" (fail-safe; no wrong deletes, but a false all-clear from the diagnostic). Fix: normalize on save and in `arr_queue.py` so already-saved keys keep working. Owner chose backlog 2026-10-25. Source: `.planning/phases/122-safety-acceptance-and-logging-fixes/122-REVIEW.md` WR-04.
 
@@ -90,7 +164,7 @@ Fail-safe edge cases of the 120 s post-transfer grace window (122-13): a STOP ha
 
 ### Narrow: WebAppJob cleanup per-step isolation (Phase 123 PR #137 review)
 
-**Disposition (2026-11-18):** Selected for the next corrective milestone; not implemented or activated.
+**Disposition (2026-11-18):** Selected for the corrective milestone; promoted into Phase 129 (v1.8.1) on 2026-11-18 at roadmap creation. Retained here for provenance only; plan and track implementation in Phase 129, not as a separate backlog phase.
 
 `WebAppJob.cleanup()` (`src/python/web/web_app_job.py`) does not get the per-step stop isolation Phase 123 added elsewhere: if `self.__app.stop()` raises, `self.__server.stop()` and `self.__server_thread.join()` are skipped, and `MyWSGIRefServer.stop()` can raise AttributeError while its inner server is still None (123-REVIEW IN-01 is the related thread-never-started guard). Fix: wrap each stop step in its own try/except + `logger.exception`, mirroring ScanManager/FileOperationManager/Controller. Owner chose backlog 2026-10-26. Source: `.planning/phases/123-startup-and-shutdown-lifecycle/deferred-items.md` item 7.
 
@@ -108,10 +182,10 @@ In `ModelStreamHandler.get_value()` (`src/python/web/handler/stream_model.py` ~l
 
 ### Phase 999.6: README documentation discoverability and accurate security defaults (BACKLOG)
 
-**Captured:** 2026-10-26. Selected for the next corrective milestone on 2026-11-18; implementation has not started.
+**Captured:** 2026-10-26. Selected for the corrective milestone on 2026-11-18; promoted into Phase 127 (v1.8.1) on 2026-11-18 at roadmap creation. Retained here for provenance only; plan and track implementation in Phase 127, not as a separate backlog phase.
 **Goal:** Make existing guides easy to find and make README security and cleanup claims match actual defaults and limitations.
-**Scope:** README.md only; no application behavior changes. This is the documentation item in the next corrective milestone.
-**Requirements:** TBD
+**Scope:** README.md only; no application behavior changes. This is the documentation item in the corrective milestone.
+**Requirements:** DOC-01, DOC-02, DOC-03, DOC-04 (Phase 127)
 **Plans:** 0 plans
 
 Acceptance criteria:
@@ -126,25 +200,11 @@ Acceptance criteria:
 
 Plans:
 
-- [ ] Define during `$gsd-new-milestone`; no phase or version assigned yet.
+- [x] Defined: Phase 127 (v1.8.1), 2026-11-18. No phase or version assigned before this roadmap; see Phase 127 above for plans.
 
 ### 999.7: Speed up the CI Docker image build
 
 **Scope:** Two small changes first: (1) build the Angular stage once on the build platform (`FROM --platform=$BUILDPLATFORM node:22-slim AS seedsyncarr_build_angular_env` in `src/docker/build/docker-image/Dockerfile`) instead of running `npm install` + the Angular build under QEMU for arm64 (its output is architecture-independent JS); (2) let the `build-docker-image` job in `.github/workflows/ci.yml` start in parallel with the unit-test/lint jobs instead of `needs:`-ing all seven, keeping the end-to-end and publish jobs gated on tests passing. Evidence (last 30 CI runs, 2026-10-27): build job 0–5 min when the registry cache hits, outliers 16/23/27 min on cache misses; Python unit tests (~5–6 min) sit on the critical path before the build starts. Further options only if needed: amd64-only PR images (NAS is x86_64; arm64 E2E already skipped on PRs; main/tags still build both), or native arm64 builds on `ubuntu-24.04-arm` plus a manifest merge. Not a Reliability gate.
-
-## Next milestone: Configuration and Shutdown Correctness
-
-**Goal:** Make setup guidance accurate, Sonarr/Radarr connection diagnostics agree with real queue requests, and web-service cleanup complete after failures.
-
-**Scope:** Agreed roadmap direction on 2026-11-18. Not active; no version or phase numbers assigned. Activate with `$gsd-new-milestone` to define requirements and plans. v1.8.0 remains closed.
-
-1. [ ] **Accurate setup and security documentation.** Deliver README item 999.6 above: link existing guides, explain conditional authentication/encryption/webhook protection and network exposure, and qualify cleanup promises. Done when the README agrees with current defaults and SECURITY.md and all guide links resolve. Small effort; high confidence; affects everyone following setup guidance.
-2. [ ] **Consistent Sonarr/Radarr key handling.** Normalize keys on save and when reading previously saved values for queue requests, using the same rules as Test Connection. Done when whitespace-padded keys work consistently through both paths and invalid credentials still fail safely without secrets in logs. Small effort; code-confirmed mismatch, recurrence unknown.
-3. [ ] **Complete web-service cleanup after failures.** Isolate cleanup steps and handle an uninitialized server or unstarted thread. Done when failure in one step does not skip the others and partial-startup/shutdown tests show clean termination. Small-to-medium effort; the current method was exercised with an injected app.stop failure on 2026-11-18, confirming that server.stop and thread.join are skipped. Production recurrence unknown.
-
-**Done when:** all three outcomes are verified, targeted regression/integration checks and required repository gates pass, and a release-image smoke check covers setup, queue completion checks and stop/restart. Release and deployment remain future execution work, not claims made by this roadmap update.
-
-**Boundaries:** No transfer-architecture replacement, runtime auto-restart expansion, blanket test project, UI redesign, or speculative optimization. Existing completion/import/deletion safeguards must remain intact. This small corrective scope takes priority over broader feature work.
 
 ## Following milestone: Performance and Usability (conditional)
 
