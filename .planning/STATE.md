@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: Roadmap drafted for Phases 127–130 (11/11 requirements mapped). No implementation started.
-stopped_at: Phase 127 context gathered
-last_updated: "2026-11-18T23:11:07.567Z"
-last_activity: 2026-11-18 — v1.8.1 roadmap drafted
+status: Phase 127 planned (1 plan, 3 tasks); ready to execute. Phases 128–130 not yet planned.
+stopped_at: Phase 127 planned (plan-checker passed, Codex review LOW risk)
+last_updated: "2026-11-18T23:11:25.000Z"
+last_activity: 2026-11-18 — Phase 127 planned
 progress:
   total_phases: 5
   completed_phases: 0
@@ -21,18 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Milestone v1.8.1 Configuration and Shutdown Correctness: roadmap drafted (Phases 127–130); next plan Phase 127 README Accuracy
+**Current focus:** Milestone v1.8.1 Configuration and Shutdown Correctness: roadmap drafted (Phases 127–130); Phase 127 README Accuracy planned, next execute it
 
 ## Current Position
 
-Phase: 127 (README Accuracy) — not started (ready to plan)
-Plan: —
-Status: Roadmap drafted for Phases 127–130 (11/11 requirements mapped). No implementation started.
-Last activity: 2026-11-18 — v1.8.1 roadmap drafted
+Phase: 127 (README Accuracy) — planned, ready to execute
+Plan: 127-01 (0/1 complete)
+Status: Phase 127 planned (1 plan, 3 tasks); ready to execute. Phases 128–130 not yet planned.
+Last activity: 2026-11-18 — Phase 127 planned
 
 ## Accumulated Context
 
 ### Roadmap Evolution
+
+- 2026-11-18: Phase 127 planned. Research found Sonarr/Radarr cannot compute the body HMAC SeedSyncarr verifies; owner chose to state the limit (no webhook_secret recommendation for *arr) and widened D-08 to fix SECURITY.md lines ~40 and ~43. Backlog 999.8 (webhook auth the *arrs can send) captured. D-14 annotated: three Usage Examples accuracy corrections.
 
 - 2026-11-18: Milestone v1.8.1 Configuration and Shutdown Correctness roadmap drafted: four phases, 127–130, mapping all 11 requirements (DOC-01..04 → 127 README Accuracy; ARR-01..03 → 128 Arr Key Normalization; WEB-01/02 → 129 Web-Service Cleanup Isolation; REL-07/08 → 130 Release 1.8.1, depends on 127–129). Backlog items promoted into phases: 999.6 (README discoverability/security defaults) → 127; the Phase 122 review Narrow item (Arr key normalization, WR-04) → 128; the Phase 123 review Narrow item (WebAppJob cleanup isolation) → 129; all three retained in the ROADMAP Backlog for provenance only, not as separate backlog phases. Nothing implemented.
 
