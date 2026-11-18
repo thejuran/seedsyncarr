@@ -213,6 +213,10 @@ Plans:
 
 **Captured:** 2026-11-18 (Phase 127 research). SeedSyncarr verifies inbound import webhooks only via an HMAC-SHA256 of the request body in `X-Webhook-Signature` (`src/python/web/handler/webhook.py`). Sonarr (confirmed in `WebhookProxy.cs`, PR #7371) and Radarr (assumed same) send only fixed custom headers or basic auth and never compute a signature, so setting `webhook_secret` or `webhook_require_secret = true` rejects every import webhook (401/503) and pruning silently stops (fail-safe, nothing deleted). **Scope:** accept an authentication method the *arrs can send (e.g. a fixed shared-secret header or basic-auth credentials, constant-time compared) alongside or instead of body HMAC, then update README/SECURITY.md advice. Owner chose backlog 2026-11-18. Not in v1.8.1.
 
+### 999.9: Prune only files SeedSyncarr transferred
+
+**Captured:** 2026-11-18 (Phase 127 code review WR-02 / SA-01). The README (How It Works, the Security section's forged-import sentence) and `docs/CONFIGURATION.md:169` say pruning applies only to releases SeedSyncarr itself downloaded. The code does not check that: an item is treated as downloaded when a local entry has the same name as a seedbox entry and is at least as large (`src/python/controller/model_builder.py:510-525`, `model_pipeline.py:205-227`, `controller.py:828-970`), so a copy placed in the downloads folder by hand or by another tool can be pruned after a real or forged import webhook. **Owner ruling 2026-11-18:** keep the docs' promise and make the code true (record which files SeedSyncarr transferred and prune only those), rather than weakening the wording. The README ships with this claim ahead of the code until the fix lands. Also fix the stale comment at `controller.py:31-32` (says 300 s default safety delay; actual 60 s, review SA-02). Milestone placement is the owner's call.
+
 ## Following milestone: Performance and Usability (conditional)
 
 **Activation:** Complete the corrective milestone, then demonstrate meaningful resource pressure, repeated redundant work or recurring user friction. Cancel or defer if representative evidence shows no worthwhile opportunity.

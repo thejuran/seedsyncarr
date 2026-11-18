@@ -147,3 +147,10 @@ Make the same change in README:222-223: "…and the name matches an item with a 
 _Reviewed: 2026-11-18T00:00:00Z_
 _Reviewer: Claude (bm-code-reviewer)_
 _Depth: standard_
+
+## Resolution (orchestrator, 2026-11-18)
+
+- **WR-01:** fixed in fbc954ec. README Security section and the SECURITY.md Bearer auth bullet now name all three routes exempt from `api_token` (webhooks, `/server/status`, `/server/stream`). Owner approved a third SECURITY.md spot; `127-check.py` updated to accept it and require the route names (self-test extended).
+- **WR-02 / SA-01:** owner chose to change the code rather than the wording. Recorded as backlog 999.9 in ROADMAP.md. README wording unchanged in this phase.
+- **SA-02:** folded into 999.9.
+- **Info 1–5:** not acted on in this phase.
