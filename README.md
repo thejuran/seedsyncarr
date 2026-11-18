@@ -46,6 +46,27 @@ services:
 > `1000:1000`. A mismatch here is the most common cause of "files show as active
 > but never download" — the container can't write the destination.
 
+> **Network exposure.** Both examples publish port 8800 on all host interfaces,
+> so the web UI, the API and the webhook endpoints are reachable from any network
+> the host is on. For any untrusted network, put SeedSyncarr behind an
+> authenticating reverse proxy and restrict network access to the port.
+> `api_token` protects the API but not the UI, and the UI contains that token.
+> See [Security](#security).
+
+## Documentation
+
+**Using SeedSyncarr**
+
+- [Getting Started](docs/GETTING-STARTED.md) — prerequisites, installing with Docker Compose or `docker run`, first run and common setup issues
+- [Configuration](docs/CONFIGURATION.md) — every `settings.cfg` option, required vs optional settings, CLI arguments and defaults
+- [Security](SECURITY.md) — how to report a vulnerability, the security posture and deployment best practices
+
+**Contributing / internals**
+
+- [Architecture](docs/ARCHITECTURE.md) — system overview, component diagram, data flow and key abstractions
+- [Development](docs/DEVELOPMENT.md) — local setup, build commands, code style, branch conventions and the PR process
+- [Testing](docs/TESTING.md) — the pytest, Angular unit and Playwright end-to-end suites, how to run them, coverage and CI integration
+
 ## Features
 
 - **LFTP-based transfers** — built on [LFTP](http://lftp.tech/) for maximum transfer speed with parallel connections and segmented downloads
@@ -108,7 +129,7 @@ seedsyncarr
 
 Requires Python 3.11 or 3.12.
 
-For detailed setup instructions, see the [documentation](https://thejuran.github.io/seedsyncarr).
+For detailed setup instructions, see [Getting Started](docs/GETTING-STARTED.md) and [Configuration](docs/CONFIGURATION.md).
 
 ## Configuration
 
@@ -120,30 +141,6 @@ Key configuration areas in **Settings**:
 - **Local Path** — where files are downloaded to on your local machine
 - **Sonarr / Radarr** — webhook URLs and API keys for automated media imports
 - **AutoQueue** — define patterns to automatically queue matching files for sync
-
-## Screenshots
-
-The dashboard — live transfers, sync progress, storage stats, and controls:
-
-<p align="center">
-  <img src="doc/images/screenshot-dashboard.png" alt="SeedSyncarr Dashboard" width="800" />
-</p>
-
-## Related Projects
-
-- [**Triggarr**](https://github.com/thejuran/triggarr) — lightweight search automation daemon for Radarr, Sonarr, and Lidarr. SeedSyncarr handles the download-to-sync side; Triggarr handles the search-to-trigger side.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## Security
-
-See [SECURITY.md](SECURITY.md) for reporting vulnerabilities and the full security posture.
-
-## License
-
-Apache License 2.0 — see [LICENSE](LICENSE).
 
 ## Usage Examples
 
@@ -182,3 +179,27 @@ Enable Post-Import Pruning in Settings. Once Sonarr or Radarr confirms an import
 waits for the configured safety delay (default: 60 seconds) and then deletes the local copy
 from the downloads directory. Enable dry-run mode first to verify which files would be removed
 before committing to automatic deletion.
+
+## Screenshots
+
+The dashboard — live transfers, sync progress, storage stats, and controls:
+
+<p align="center">
+  <img src="doc/images/screenshot-dashboard.png" alt="SeedSyncarr Dashboard" width="800" />
+</p>
+
+## Related Projects
+
+- [**Triggarr**](https://github.com/thejuran/triggarr) — lightweight search automation daemon for Radarr, Sonarr, and Lidarr. SeedSyncarr handles the download-to-sync side; Triggarr handles the search-to-trigger side.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for reporting vulnerabilities and the full security posture.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).
