@@ -92,7 +92,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 128-04-PLAN.md — cross-path parity tests and phase gate (full pytest, whole-tree ruff, coverage 88)
+- [x] 128-04-PLAN.md — cross-path parity tests and phase gate (full pytest, whole-tree ruff, coverage 88)
 
 ### Phase 129: Web-Service Cleanup Isolation
 
@@ -127,7 +127,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 127. README Accuracy | 1/1 | Complete    | 2026-11-18 |
-| 128. Arr Key Normalization | 3/4 | In Progress|  |
+| 128. Arr Key Normalization | 4/4 | In Progress|  |
 | 129. Web-Service Cleanup Isolation | 0/TBD | Not started | - |
 | 130. Release 1.8.1 | 0/TBD | Not started | - |
 

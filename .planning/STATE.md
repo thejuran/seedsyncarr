@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: executing
-stopped_at: Completed 128-03-PLAN.md (queue check key normalization and fail-safe skip)
-last_updated: "2026-11-19T00:33:33.058Z"
-last_activity: 2026-11-19 -- Completed 128-03 (queue check key normalization and fail-safe skip)
+status: verifying
+stopped_at: Completed 128-04-PLAN.md (cross-path parity tests and phase gate)
+last_updated: "2026-11-19T11:25:48.000Z"
+last_activity: 2026-11-19 -- Completed 128-04 (cross-path parity tests; local coverage 86.47%, CI-only modules excluded)
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 20
 ---
 
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-11-18)
 
 ## Current Position
 
-Phase: 128 (arr-key-normalization) — EXECUTING
-Plan: 4 of 4
-Status: Executing Phase 128
-Last activity: 2026-11-19 -- Completed 128-03 (queue check key normalization and fail-safe skip)
+Phase: 128 (arr-key-normalization) — VERIFYING
+Plan: 4 of 4 (all plans complete)
+Status: Ready for phase verification; coverage gate awaits Linux CI (local 86.47% with CI-only modules excluded, base 86.39%)
+Last activity: 2026-11-19 -- Completed 128-04 (cross-path parity tests and phase gate)
 
 ## Accumulated Context
 
@@ -136,6 +136,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 128]: 128-02: save-time trimming applies only to sonarr/radarr API keys; other properties stored verbatim
 - [Phase 128]: Queue checks trim the stored arr key on read; a missing/invalid key makes start_fetch skip after the URL check and the unchanged gate holds as <code>_unavailable
 - [Phase 128]: ArrQueueClient warn-once state resets when a valid key is seen, so a key broken again warns again
+- [Phase 128]: Local coverage 86.47% (base 86.39%) with CI-only modules excluded; Linux CI is the authoritative coverage gate
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -195,9 +196,9 @@ Credential rotations remain operator follow-ups; one-time Done-group cleanup was
 
 ## Session Continuity
 
-Last session: 2026-11-19T00:33:28.968Z
-Stopped at: Completed 128-03-PLAN.md
-Next action: Execute plan 128-04.
+Last session: 2026-11-19T11:25:26.873Z
+Stopped at: Completed 128-04-PLAN.md
+Next action: Verify Phase 128 (confirm coverage >= 88 on Linux CI).
 
 **Prior session (2026-10-28):** Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
 
