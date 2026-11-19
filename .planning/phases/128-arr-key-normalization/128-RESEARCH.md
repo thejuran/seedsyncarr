@@ -394,12 +394,14 @@ One padded key, `"\t" + K + "  "`, goes through all three paths. Save it via the
 |---|-------|---------|---------------|
 | A1 | Sonarr/Radarr (Kestrel) trims trailing OWS in header values, so trailing-space keys may have authenticated before this fix | Pitfall 7 | Low. It affects only the wording of the summary or release notes, not the design or tests. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the warn-once memory reset after a successful (valid-key) start?**
    - What we know: D-06 says "warn once per key value (again only after the key changes)".
    - Recommendation: clear `__key_skip_warned[code]` when `start_fetch` passes validation. It is the simplest reading and costs nothing. Either choice satisfies D-06.
+   - **RESOLVED:** yes, reset on a valid start. Planned in 128-03 Task 2 (`self.__key_skip_warned.pop(target.code, None)` when the key passes validation) and pinned by `test_invalid_key_warns_again_after_valid_key_seen` (128-03 Task 1).
 2. **Clearing a stored Arr key.** After D-04 there is still no way to clear a key through Save (empty was already refused). That is pre-existing behaviour, and the owner explicitly accepted it in D-04. No action.
+   - **RESOLVED:** no action. Accepted by the owner in D-04; no plan changes how a key is cleared.
 
 ## Environment Availability
 
@@ -431,7 +433,7 @@ Baseline in this session: `pytest -q -p no:cacheprovider` over `test_arr_queue.p
 | ARR-01 / D-01 | Test Connection behaviour unchanged after refactor | unit (existing) | `pytest tests/unittests/test_web -k "whitespace_stripped or newline_never" -q` | ✅ |
 | ARR-02 | In-memory padded key sent normalized by the queue client (**fail-before/pass-after**) | unit | `pytest tests/unittests/test_controller/test_arr_queue.py -k padded -q` | ✅ / ❌ |
 | ARR-02 | Padded vs trimmed key give the same `identity` (no spurious gate reset) | unit | `pytest tests/unittests/test_controller/test_arr_queue.py -k identity -q` | ✅ / ❌ |
-| ARR-02 | One rule across the three paths (parity) | unit | `pytest tests/unittests/test_common/test_arr_api_key.py -q` | ❌ Wave 0 |
+| ARR-02 | One rule across the three paths (string-input parity) | integration + unit | `pytest tests/integration/test_web/test_handler/test_arr_key_parity.py tests/unittests/test_common/test_arr_api_key.py -q` | ❌ Wave 0 (128-01, 128-04) |
 | ARR-03 | Empty/invalid key → `start_fetch` None, no request, no thread | unit | `pytest tests/unittests/test_controller/test_arr_queue.py -k "invalid_key or missing_key" -q` | ✅ / ❌ |
 | ARR-03 | Warn once per key token, debug thereafter, warn again on change | unit | same | ✅ / ❌ |
 | ARR-03 | Gate holds `<code>_unavailable` with a bad key (no unsafe decision) | unit | `pytest tests/unittests/test_controller/test_completion_gate.py -k bad_key -q` | ✅ / ❌ |
