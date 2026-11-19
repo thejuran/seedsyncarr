@@ -1,38 +1,44 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.8.0
-milestone_name: Reliability
-status: Awaiting next milestone
-stopped_at: "v1.8.0 Reliability milestone closed and archived (Phases 121-126, 13/13 requirements); 1.8.0 running on NAS production"
-last_updated: "2026-10-28T23:54:26.000Z"
-last_activity: 2026-10-28 — Milestone v1.8.0 completed and archived
+milestone: v1.8.1
+milestone_name: Configuration and Shutdown Correctness
+status: "Phase 128 verified — PR #155 (with Phase 127) open, in review (not merged)"
+stopped_at: "Phase 128 shipped to PR #155; awaiting CI and merge"
+last_updated: "2026-11-19T23:37:56Z"
+last_activity: 2026-11-19 -- Phase 128 PR #155 updated (verification passed, UAT and threat review complete)
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 52
-  completed_plans: 52
-  percent: 100
+  total_phases: 5
+  completed_phases: 1
+  total_plans: 5
+  completed_plans: 5
+  percent: 20
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-28)
+See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Planning next milestone (v1.8.0 Reliability shipped and archived 2026-10-28)
+**Current focus:** Phase 128: arr-key-normalization
 
 ## Current Position
 
-Phase: Milestone v1.8.0 complete
-Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-28 — Milestone v1.8.0 completed and archived
+Phase: 128 (arr-key-normalization) — IN REVIEW
+Plan: 4 of 4 (all plans complete)
+Status: Phase 128 verified — PR #155 open, in review (not merged)
+Last activity: 2026-11-19 -- PR #155 body refreshed with CI, coverage, UAT and threat results
 
 ## Accumulated Context
 
 ### Roadmap Evolution
+
+- 2026-11-18: Phase 127 planned. Research found Sonarr/Radarr cannot compute the body HMAC SeedSyncarr verifies; owner chose to state the limit (no webhook_secret recommendation for *arr) and widened D-08 to fix SECURITY.md lines ~40 and ~43. Backlog 999.8 (webhook auth the *arrs can send) captured. D-14 annotated: three Usage Examples accuracy corrections.
+
+- 2026-11-18: Milestone v1.8.1 Configuration and Shutdown Correctness roadmap drafted: four phases, 127–130, mapping all 11 requirements (DOC-01..04 → 127 README Accuracy; ARR-01..03 → 128 Arr Key Normalization; WEB-01/02 → 129 Web-Service Cleanup Isolation; REL-07/08 → 130 Release 1.8.1, depends on 127–129). Backlog items promoted into phases: 999.6 (README discoverability/security defaults) → 127; the Phase 122 review Narrow item (Arr key normalization, WR-04) → 128; the Phase 123 review Narrow item (WebAppJob cleanup isolation) → 129; all three retained in the ROADMAP Backlog for provenance only, not as separate backlog phases. Nothing implemented.
+
+- 2026-11-18: Owner requested the review guidance be applied. Next milestone: Configuration and Shutdown Correctness (README accuracy, Arr-key normalization, isolated web cleanup). Performance and pipeline visibility remain evidence-gated. Symlink filtering already exists; 999.4 recorded no-fix at release. No milestone activated or version/phase assigned.
 
 - 2026-10-21: Milestone v1.8.0 Reliability roadmap approved by owner: six phases, 121–126, mapping all 13 requirements (SEC-02; SAFE-01/02 + LOG-01/02; LIFE-01/02; STRM-01/02; LAN-01/02; REL-05/06). Owner priority order kept; the two Phase 120 logging fixes sit in Phase 122 with the safety acceptance checks (same webhook/completion-gate paths are exercised there). Release 1.8.0 is Phase 126 and depends on 121–125; 999.4 is rechecked within REL-05. Nothing implemented.
 
@@ -124,6 +130,13 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 126]: 126-04: owner approved publishing 1.8.0 as drafted; merge of PR #142 surfaced two new post-merge Dependabot alerts (#106 qs, #107 setuptools) not visible on the release branch -- owner chose fix-both-then-tag ('1'), resolved via follow-up PR #143 (setuptools 84.2.1, qs 6.16.2), merged with CI green; 0 open Dependabot alerts, v1.8.0 tagged on PR #143's merge commit; GHCR/GitHub release/PyPI published, RELEASE_DIGEST=sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7 (amd64+arm64) cross-checked by two methods; wud stays exited, production untouched
 - [Phase 126]: Phase 126-05: owner verbatim "deploy" authorizes the production deploy; sandbox copy of production Radarr credentials (URL/key) cleared from settings.cfg on disk at owner-sanctioned addendum, verified by sha256 count-only comparison; REL-06 stays open pending Plan 126-06 production deploy
 - [Phase 126]: 126-06: production deployed by digest to `:1.8.0@sha256:6e8d453f...4879aa7` (container `34470550b27f`, `.Image` == smoked sandbox image ID); CLEAN_STOP, four `.pre-1.8.0-<TS>` backups sha256-recorded, loader check PASS (`PARSE_OK`/`EXIT=0`) in both the 1.7.6 and 1.8.0 images with `AutoDelete.enabled=True` noted for the rollback runbook; compose pin was inode-preserving (one-line diff, wud labels unchanged); first remote scan succeeded 31s after start with no warm-up error; Sonarr (4.0.20.3014) and Radarr (6.4.4.10685) both reachable; 309s steady-state window showed 0 unavailable/Traceback/ERROR lines and 0 restarts; no-secrets count-only check matched 0/3 values in both the container log and the plain-file logs; wud restored last and a 195s-later re-fingerprint confirmed it changed nothing; D-16 rollback was not triggered. Owner verbatim "confirmed" closes D-17. Post-deploy: 0 open Dependabot alerts, 0 open Dependabot PRs, none opened after the `v1.8.0` tag. REL-06 complete; Phase 126 complete; the v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) is fully delivered. Post-tag `.planning` docs commits remain local on `main`, not pushed (pushing `main` publishes the `:dev` image tag; the owner decides when to push).
+- [Phase 127]: README states Sonarr/Radarr webhook signing limit (401/503) as fact, no recommendation to set webhook_secret/webhook_require_secret
+- [Phase 128]: shared arr key rule lives in common/arr_api_key.py; is_valid_arr_api_key does not trim and returns False for non-str (fail-safe, never raises)
+- [Phase 128]: 128-02: refused saves of secret settings answer fixed 'Invalid value for <section>.<key>' and log only section, key and exception class (D-07)
+- [Phase 128]: 128-02: save-time trimming applies only to sonarr/radarr API keys; other properties stored verbatim
+- [Phase 128]: Queue checks trim the stored arr key on read; a missing/invalid key makes start_fetch skip after the URL check and the unchanged gate holds as <code>_unavailable
+- [Phase 128]: ArrQueueClient warn-once state resets when a valid key is seen, so a key broken again warns again
+- [Phase 128]: Local coverage 86.47% (base 86.39%) with CI-only modules excluded; Linux CI is the authoritative coverage gate
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -137,8 +150,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ### Blockers/Concerns
 
-- None at v1.8.0 roadmap creation. Watch-out for Phase 126's deploy gate: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — deploy the CI-published multi-arch `:1.8.0` image pinned by digest, never a local build and never `:dev`.
-- Phase 123 D-01 live check: GAP-1 (scanner false ERROR) CLOSED live on DEV_PIN_GAP (123-11/12, 2026-10-26, 0 occurrences in 6 restarts). GAP-2 (lftp `Error stopping lftp during controller exit` / `Could not terminate the child`) also now CLOSED live on DEV_PIN_GAP2 (123-16/123-17, 2026-10-26): zero occurrences of the old detector strings across 5 restarts (I1, I2, A1, A2, I3) plus the A1r rerun; A2 independently confirmed the 123-13 fallback genuinely reaping lftp out of a live `state=D` condition during an actual active-transfer restart (0.35s, well inside the 2.0s bound). `CHECK_STATUS_GAP2=PASS` recorded in 123-LIFE-EVIDENCE.md. 123-07 wrote the Phase 123 final verdict (PASSED) and restored the sandbox to 1.7.6 (`IMAGE_PIN_L0`) via `teardown.sh --final`, fresh-session verified; the owner reviewed an independent PR #137 deep review and replied verbatim "approve, backlog both items", closing LIFE-01/LIFE-02. Phase 123 closed 2026-10-27: verified (7/7 must-haves; `gaps_found` with one minor, non-blocking gap — 123-REVIEW WR-01 SIGINT grace — auto-parked to the ROADMAP backlog together with the two owner-backlogged PR #137 items). PR #137 remains a draft awaiting the owner's merge decision; local docs commits after its head (4074b0c) are unpushed.
+- None at v1.8.1 roadmap creation. Watch-out carried from v1.8.0: NAS local-build is blocked by the QEMU limitation (deploy-environment, not a code defect) — Phase 130 deploys the CI-published multi-arch `:1.8.1` image pinned by digest, never a local build and never `:dev`.
+- Phase 123 D-01 live check: GAP-1 (scanner false ERROR) CLOSED live on DEV_PIN_GAP (123-11/12, 2026-10-26, 0 occurrences in 6 restarts). GAP-2 (lftp `Error stopping lftp during controller exit` / `Could not terminate the child`) also now CLOSED live on DEV_PIN_GAP2 (123-16/123-17, 2026-10-26): zero occurrences of the old detector strings across 5 restarts (I1, I2, A1, A2, I3) plus the A1r rerun; A2 independently confirmed the 123-13 fallback genuinely reaping lftp out of a live `state=D` condition during an actual active-transfer restart (0.35s, well inside the 2.0s bound). `CHECK_STATUS_GAP2=PASS` recorded in 123-LIFE-EVIDENCE.md. 123-07 wrote the Phase 123 final verdict (PASSED) and restored the sandbox to 1.7.6 (`IMAGE_PIN_L0`) via `teardown.sh --final`, fresh-session verified; the owner reviewed an independent PR #137 deep review and replied verbatim "approve, backlog both items", closing LIFE-01/LIFE-02. Phase 123 closed 2026-10-27: verified (7/7 must-haves; `gaps_found` with one minor, non-blocking gap — 123-REVIEW WR-01 SIGINT grace — auto-parked to the ROADMAP backlog together with the two owner-backlogged PR #137 items, one of which — WebAppJob cleanup per-step isolation — is now promoted into Phase 129). PR #137 remains a draft awaiting the owner's merge decision; local docs commits after its head (4074b0c) are unpushed.
 
 ### Quick Tasks Completed
 
@@ -150,11 +163,11 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ## Future Work
 
-The authoritative future work list is ROADMAP.md. Milestone v1.8.0 Reliability is active with Phases 121–126 in owner-approved order: credential forwarding (121), safety acceptance plus the two Phase 120 logging fixes (122), startup/shutdown lifecycle (123), model-stream overflow recovery (124), LAN connection tests (125), then release 1.8.0 (126: Dependabot review incl. 999.4, publish, NAS digest smoke, production deploy by digest). Phase plans are not yet written. Moving the Sonarr integration to API v5 is backlog 999.5.
+ROADMAP.md is authoritative. v1.8.0 is complete and archived. Milestone v1.8.1 Configuration and Shutdown Correctness now has a drafted roadmap (Phases 127–130): README accuracy, Arr API key normalization, web-service cleanup isolation, then release 1.8.1. Next: plan Phase 127 (README Accuracy) with `/bm:plan-phase 127`.
 
-Scanner buffering, residual import/restart gaps, memory measurements and UI/webhook efficiency are separate conditional investigations, not promised fixes or completion gates. Performance and Usability activates only when evidence justifies it. Dependency item 999.4 is a bounded maintenance side task.
+Performance and Usability and Pipeline Visibility remain conditional on measured need or recurring friction. Scanner buffering is a bounded investigation; residual recovery needs a specific reproducible failure. Sonarr API v5 remains backlog 999.5. Symlink filtering is already delivered and 999.4 was closed with no fix needed at release; see the 2026-11-18 reconciliation archive.
 
-Credential rotation and one-time Done-group cleanup remain operator follow-ups. Routine maintenance: `backlog/MAINTENANCE.md`. Earlier decisions and historical findings: `backlog/archive/2026-10-18/README.md`.
+Credential rotations remain operator follow-ups; one-time Done-group cleanup was confirmed complete. Routine maintenance: `backlog/MAINTENANCE.md`.
 
 ## Milestones Shipped
 
@@ -179,12 +192,15 @@ Credential rotation and one-time Done-group cleanup remain operator follow-ups. 
 | v1.7.4 Safety Patch | Phases 116-118 | 2026-10-08 to 2026-10-09 (tagged v1.7.4) |
 | v1.7.5 Safety Release | Phases 119, 119.1 | 2026-10-09 to 2026-10-15 (tagged v1.7.5, v1.7.6) |
 | v1.7.7 Sonarr 5 Compatibility | Phase 120 | 2026-10-20 (verified; no release, no tag) |
+| v1.8.0 Reliability | Phases 121-126 | 2026-10-21 to 2026-10-28 (tagged v1.8.0) |
 
 ## Session Continuity
 
-Last session: 2026-10-28T23:34:31.282Z
-Stopped at: Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
-Next action: Start the next milestone with /bm:new-milestone. v1.8.0 is closed and archived (`milestones/v1.8.0-ROADMAP.md`, `v1.8.0-REQUIREMENTS.md`). Remaining items are operator follow-ups (api_token rotation, credential rotation confirmation, sandbox test-torrent removal; see Deferred Items).
+Last session: 2026-11-19T11:25:26.873Z
+Stopped at: Completed 128-04-PLAN.md
+Next action: Verify Phase 128 (confirm coverage >= 88 on Linux CI).
+
+**Prior session (2026-10-28):** Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
 
 **Owner execution notes for Phase 120 (2026-10-20):**
 
@@ -197,7 +213,8 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Start the next milestone with /bm:new-milestone
+- Wait for CI on PR #155 (Phases 127 + 128), then merge
+- Then Phase 129 with `/bm:next`
 
 ## Deferred Items
 
@@ -209,7 +226,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 | Deferred fix (Phase 120) | Webhook handler logger not attached to app log ("Sonarr webhook test event received" never written) | Promoted to LOG-01, Phase 122 |
 | Deferred fix (Phase 120) | CompletionGate prune path logs "Completion hold cleared" when a hold is merely dropped (no release; no early transfer) | Promoted to LOG-02, Phase 122 |
 | Deferred fix (Phase 122-06) | `seedsyncarr-test` restart: lftp's pexpect child fails to terminate within the `docker restart` SIGTERM window ("Could not terminate the child"); controller still exits and the container restarts cleanly ~5s later | Logged to `122-safety-acceptance-and-logging-fixes/deferred-items.md`; candidate for Phase 123 |
-| Deferred fix (Phase 122-07) | `ExtractDispatch.__coalesce_extractions` only filters legacy `.r00`/`.r01` WinRAR volume naming, not modern RAR `.partN.rar` naming where every volume ends in `.rar`; a multi-volume archive runs one fully redundant (but still safe, staging-then-publish) extraction pass per volume | Logged to `122-safety-acceptance-and-logging-fixes/deferred-items.md`; candidate for Phase 123 or later maintenance |
+| Deferred fix (Phase 122-07) | `ExtractDispatch.__coalesce_extractions` only filters legacy `.r00`/`.r01` WinRAR volume naming, not modern RAR `.partN.rar` naming where every volume ends in `.rar`; a multi-volume archive runs one fully redundant (but still safe, staging-then-publish) extraction pass per volume | Logged to `122-safety-acceptance-and-logging-fixes/deferred-items.md`; conditional on recurring multipart RAR workload; Phase 123 is complete |
 
 Open audit artifacts acknowledged at v1.7.7 close (2026-10-20), all from earlier milestones and assigned to Phase 122 (SAFE-01/SAFE-02):
 
@@ -226,3 +243,11 @@ Open artifacts acknowledged at v1.8.0 close (2026-10-28):
 | verification | Phase 119 119-VERIFICATION.md (`human_needed`) | Stale frontmatter only: both human checks passed 2026-10-18 (`119-HUMAN-UAT.md` status complete) |
 | verification | Phase 123 123-VERIFICATION.md (`gaps_found`, minor) | SIGINT shutdown-grace gap (review WR-01); parked in ROADMAP Backlog 2026-10-27 |
 | verification | Phase 124 124-VERIFICATION.md (`gaps_found`, minor) | Resync comment accuracy and test tightening (review WR-01/WR-02); parked in ROADMAP Backlog 2026-10-27 |
+
+Backlog items promoted into the v1.8.1 roadmap (2026-11-18), retained above for provenance only:
+
+| Category | Item | Status |
+|----------|------|--------|
+| Backlog 999.6 | README documentation discoverability and accurate security defaults | Promoted into Phase 127 (README Accuracy) |
+| Backlog Narrow (Phase 122 review WR-04) | Arr API key normalization | Promoted into Phase 128 (Arr Key Normalization) |
+| Backlog Narrow (Phase 123 PR #137 review) | WebAppJob cleanup per-step isolation | Promoted into Phase 129 (Web-Service Cleanup Isolation) |

@@ -17,6 +17,8 @@ from controller.arr_queue import (
 from controller.completion_gate import REASON_LABELS, CompletionGate, Verdict
 from tests.unittests.test_controller.test_arr_queue import (  # noqa: F401 (TrickleHandler re-exported)
     TrickleHandler,
+    _bind_exceptions,
+    _response,
     settle,
     start_trickle_server,
     stop_trickle_server,
@@ -493,6 +495,99 @@ class TestRealClientNonBlocking(unittest.TestCase):
         self.assertEqual(1, len(info))
         self.assertTrue(self.client.in_flight("sonarr"))
         self.assertTrue(self.client.in_flight("radarr"))
+
+
+class TestBadKeyFailsSafe(unittest.TestCase):
+    """A missing or invalid stored arr key holds the completion as unavailable."""
+
+    SKIP_TEXT = "queue check skipped: API key is missing or invalid"
+
+    def setUp(self):
+        self.context = MagicMock()
+        self.logger = MagicMock()
+        self.context.logger.getChild.return_value = self.logger
+        cfg = self.context.config
+        cfg.sonarr.enabled = True
+        cfg.sonarr.sonarr_url = "http://sonarr.internal.example:8989"
+        cfg.radarr.enabled = False
+        cfg.radarr.radarr_url = "http://radarr.internal.example:7878"
+        self.cfg = cfg
+        self.client = ArrQueueClient(self.context)
+        self.gate = CompletionGate(self.context, self.client)
+
+    def tearDown(self):
+        for code in ("sonarr", "radarr"):
+            settle(self.client, code, timeout=5.0)
+
+    def _all_lines(self) -> List[str]:
+        out = []
+        for level in ("debug", "info", "warning", "error", "exception"):
+            out.extend(_fmt(c) for c in getattr(self.logger, level).call_args_list)
+        return out
+
+    @patch("controller.arr_queue.requests")
+    def test_bad_key_whitespace_only_holds_unavailable(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        self.cfg.sonarr.sonarr_api_key = "   "
+        self.assertEqual(HOLD("sonarr_unavailable"), self.gate.evaluate({ROOT: SIZE})[ROOT])
+        settle(self.client, "sonarr")
+        mock_requests.get.assert_not_called()
+        self.assertFalse(self.client.in_flight("sonarr"))
+
+    @patch("controller.arr_queue.requests")
+    def test_bad_key_invalid_characters_holds_unavailable(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        self.cfg.sonarr.sonarr_api_key = "abc def"
+        self.assertEqual(HOLD("sonarr_unavailable"), self.gate.evaluate({ROOT: SIZE})[ROOT])
+        settle(self.client, "sonarr")
+        mock_requests.get.assert_not_called()
+        self.assertFalse(self.client.in_flight("sonarr"))
+
+    @patch("controller.arr_queue.requests")
+    def test_bad_key_radarr_holds_unavailable(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        self.cfg.sonarr.enabled = False
+        self.cfg.radarr.enabled = True
+        self.cfg.radarr.radarr_api_key = None
+        self.assertEqual(HOLD("radarr_unavailable"), self.gate.evaluate({ROOT: SIZE})[ROOT])
+        settle(self.client, "radarr")
+        mock_requests.get.assert_not_called()
+        self.assertFalse(self.client.in_flight("radarr"))
+        warnings = [_fmt(c) for c in self.logger.warning.call_args_list]
+        self.assertTrue(any("Radarr " + self.SKIP_TEXT in w for w in warnings))
+        self.assertFalse(any("URL must use http or https" in w for w in warnings))
+
+    @patch("controller.arr_queue.requests")
+    def test_bad_key_logs_reason_without_key(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        self.cfg.sonarr.sonarr_api_key = "LEAKPROBE inner"
+        self.assertEqual(HOLD("sonarr_unavailable"), self.gate.evaluate({ROOT: SIZE})[ROOT])
+        settle(self.client, "sonarr")
+        warnings = [_fmt(c) for c in self.logger.warning.call_args_list]
+        self.assertTrue(any("API key is missing or invalid" in w for w in warnings))
+        for line in self._all_lines():
+            self.assertNotIn("LEAKPROBE", line)
+        mock_requests.get.assert_not_called()
+
+    @patch("controller.arr_queue.requests")
+    def test_bad_key_after_valid_key_discards_cached_evidence(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        mock_requests.get.return_value = _response(200, [b"[]"])
+        self.cfg.sonarr.sonarr_api_key = "goodKEY1"
+
+        first = self.gate.evaluate({ROOT: SIZE})[ROOT]
+        self.assertEqual(HOLD("sonarr_unavailable"), first)
+        self.assertTrue(settle(self.client, "sonarr"))
+        self.assertEqual(HOLD("no_queue_entry"), self.gate.evaluate({ROOT: SIZE})[ROOT])
+        self.assertEqual(1, mock_requests.get.call_count)
+
+        self.cfg.sonarr.sonarr_api_key = "abc def"
+        verdict = self.gate.evaluate({ROOT: SIZE})[ROOT]
+        settle(self.client, "sonarr")
+        self.assertEqual(HOLD("sonarr_unavailable"), verdict)
+        self.assertEqual(1, mock_requests.get.call_count)
+        self.assertFalse(self.client.in_flight("sonarr"))
+        self.assertIsNone(self.gate._snapshots.get("sonarr"))
 
 
 # ---------------------------------------------------------------------------

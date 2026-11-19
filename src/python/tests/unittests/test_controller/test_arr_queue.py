@@ -234,6 +234,30 @@ class TestArrQueueTargets(BaseArrQueueTestCase):
         identity = ArrTarget("Sonarr", "sonarr", "http://h", API_KEY).identity
         self.assertFalse(any(API_KEY in part for part in identity))
 
+    def test_padded_key_and_trimmed_key_share_identity(self):
+        cfg = self.context.config
+        cfg.sonarr.sonarr_api_key = "  " + API_KEY + "\n"
+        targets = self.client.enabled_targets()
+        padded_identity = targets[0].identity
+        self.assertEqual(API_KEY, targets[0].api_key)
+
+        cfg.sonarr.sonarr_api_key = API_KEY
+        self.assertEqual(padded_identity, self.client.enabled_targets()[0].identity)
+
+        cfg.sonarr.sonarr_api_key = "other-KEY-1"
+        self.assertNotEqual(padded_identity, self.client.enabled_targets()[0].identity)
+
+    def test_enabled_targets_non_string_key_becomes_empty(self):
+        cfg = self.context.config
+        cfg.sonarr.enabled = False
+        cfg.radarr.enabled = True
+        for raw in (None, MagicMock(), 12345):
+            with self.subTest(raw=type(raw).__name__):
+                cfg.radarr.radarr_api_key = raw
+                targets = self.client.enabled_targets()
+                self.assertEqual(["radarr"], [t.code for t in targets])
+                self.assertEqual("", targets[0].api_key)
+
 
 @patch("controller.arr_queue.requests")
 class TestArrQueueFetch(BaseArrQueueTestCase):
@@ -619,6 +643,129 @@ class TestArrQueueFetch(BaseArrQueueTestCase):
         self.assertNotIn(SONARR_URL.rstrip("/"), text)
         self.assertNotIn("sonarr.internal.example", text)
         self.assertNotIn("X-Api-Key", text)
+
+    # -- Stored key normalization and missing/invalid key skip ---------------
+
+    SKIP_TEXT = "queue check skipped: API key is missing or invalid"
+
+    def _skip_warnings(self) -> List[str]:
+        return [m for m in _calls(self.logger, "warning") if self.SKIP_TEXT in m]
+
+    def _skip_debugs(self) -> List[str]:
+        return [m for m in _calls(self.logger, "debug") if self.SKIP_TEXT in m]
+
+    def _assert_skipped_without_worker(self, mock_requests, api_key):
+        client = ArrQueueClient(self.context, clock=self.clock)
+        target = ArrTarget("Sonarr", "sonarr", SONARR_URL, api_key)
+        with patch("controller.arr_queue.threading.Thread") as mock_thread:
+            fid = client.start_fetch(target)
+        self.assertIsNone(fid)
+        mock_thread.assert_not_called()
+        mock_requests.get.assert_not_called()
+        self.assertFalse(client.in_flight("sonarr"))
+        self.assertEqual(FETCH_IDLE, client.poll("sonarr").state)
+
+    def test_padded_in_memory_key_is_sent_normalized(self, mock_requests):
+        self.context.config.sonarr.sonarr_api_key = "  " + API_KEY + "\n"
+        _bind_exceptions(mock_requests)
+        mock_requests.get.return_value = _response(200, [b"[]"])
+
+        target = self.client.enabled_targets()[0]
+        fid = self.client.start_fetch(target)
+        self.assertIsNotNone(fid)
+        self.assertTrue(settle(self.client, "sonarr"))
+        self.assertEqual([], self.client.poll("sonarr").records)
+        mock_requests.get.assert_called_once_with(
+            "http://sonarr.internal.example:8989/api/v3/queue/details",
+            headers={"X-Api-Key": API_KEY},
+            timeout=(3.05, 10),
+            allow_redirects=False,
+            stream=True,
+        )
+
+    def test_invalid_key_skips_request_and_starts_no_thread(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        for bad in ("abc def", "a\tb", "a\nb", "a\x00b", "clé", "  " + API_KEY):
+            with self.subTest(bad=repr(bad)):
+                mock_requests.reset_mock()
+                self._assert_skipped_without_worker(mock_requests, bad)
+
+    def test_missing_key_skips_request(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        for bad in ("", "   ", None):
+            with self.subTest(bad=repr(bad)):
+                mock_requests.reset_mock()
+                self._assert_skipped_without_worker(mock_requests, bad)
+
+    def test_invalid_key_warns_once_per_key_then_debug(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        probe = ArrTarget("Sonarr", "sonarr", SONARR_URL, "LEAKPROBE inner space")
+        with patch("controller.arr_queue.threading.Thread"):
+            self.assertIsNone(self.client.start_fetch(probe))
+            self.assertIsNone(self.client.start_fetch(probe))
+            self.assertEqual(["Sonarr " + self.SKIP_TEXT], self._skip_warnings())
+            self.assertGreaterEqual(len(self._skip_debugs()), 1)
+            self.assertEqual("Sonarr " + self.SKIP_TEXT, self._skip_debugs()[0])
+
+            self.assertIsNone(self.client.start_fetch(probe._replace(api_key="")))
+            self.assertEqual(2, len(self._skip_warnings()))
+
+            self.assertIsNone(self.client.start_fetch(probe))
+            self.assertEqual(3, len(self._skip_warnings()))
+        mock_requests.get.assert_not_called()
+
+    def test_invalid_key_warns_again_after_valid_key_seen(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        mock_requests.get.return_value = _response(200, [b"[]"])
+        bad = ArrTarget("Sonarr", "sonarr", SONARR_URL, "LEAKPROBE inner space")
+
+        self.assertIsNone(self.client.start_fetch(bad))
+        self.assertEqual(1, len(self._skip_warnings()))
+
+        self.assertIsNotNone(self.client.start_fetch(self.sonarr))
+        self.assertTrue(settle(self.client, "sonarr"))
+        self.assertEqual(FETCH_DONE, self.client.poll("sonarr").state)
+
+        self.assertIsNone(self.client.start_fetch(bad))
+        self.assertEqual(2, len(self._skip_warnings()))
+
+    def test_invalid_key_warning_is_tracked_per_arr(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        bad = "LEAKPROBE inner space"
+        with patch("controller.arr_queue.threading.Thread"):
+            self.assertIsNone(self.client.start_fetch(ArrTarget("Sonarr", "sonarr", SONARR_URL, bad)))
+            self.assertIsNone(self.client.start_fetch(ArrTarget("Radarr", "radarr", RADARR_URL, bad)))
+        self.assertEqual(["Sonarr " + self.SKIP_TEXT, "Radarr " + self.SKIP_TEXT],
+                         self._skip_warnings())
+        mock_requests.get.assert_not_called()
+
+    def test_invalid_key_never_appears_in_logs(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        with patch("controller.arr_queue.threading.Thread"):
+            for bad in ("LEAKPROBE inner space", "LEAKPROBE\nline"):
+                for code, label, url in (("sonarr", "Sonarr", SONARR_URL), ("radarr", "Radarr", RADARR_URL)):
+                    target = ArrTarget(label, code, url, bad)
+                    self.client.start_fetch(target)
+                    self.client.start_fetch(target)
+        self.assertGreaterEqual(len(self._skip_warnings()), 1)
+        for level in ("debug", "info", "warning", "error", "exception"):
+            for line in _calls(self.logger, level):
+                self.assertNotIn("LEAKPROBE", line, level)
+        self.assertNotIn("LEAKPROBE", _log_text(self.logger))
+        for logged in self.logger.mock_calls:
+            self.assertFalse(any(isinstance(a, ArrTarget) for a in logged[1]))
+        mock_requests.get.assert_not_called()
+
+    def test_invalid_key_check_runs_after_url_check(self, mock_requests):
+        _bind_exceptions(mock_requests)
+        with patch("controller.arr_queue.threading.Thread") as mock_thread:
+            self.assertIsNone(self.client.start_fetch(ArrTarget("Sonarr", "sonarr", "ftp://x", "abc def")))
+        mock_thread.assert_not_called()
+        warnings = _calls(self.logger, "warning")
+        self.assertEqual(1, len(warnings))
+        self.assertIn("URL must use http or https", warnings[0])
+        self.assertEqual([], self._skip_warnings())
+        self.assertEqual([], self._skip_debugs())
 
 
 class TestArrQueueRealSocket(unittest.TestCase):

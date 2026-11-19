@@ -35,6 +35,12 @@ QUERY_MSG = "Invalid URL: a query string or fragment (? or #) is not allowed"
 BAD_HOSTNAME_MSG = "Invalid URL: malformed hostname"
 UNRESOLVABLE_MSG = "Cannot resolve hostname"
 
+# Locked save-path refusal strings for the Sonarr/Radarr API keys -- same
+# convention: literals pinned here, not imported from config.py.
+SONARR_KEY_INVALID_MSG = "Sonarr API key contains invalid characters"
+RADARR_KEY_INVALID_MSG = "Radarr API key contains invalid characters"
+INVALID_BODY_MSG = "Invalid request body"
+
 
 def _resolve_all(mock_socket, *ips):
     """Stub getaddrinfo so the hostname resolves to one or more addresses."""
@@ -184,6 +190,128 @@ class TestConfigHandlerSet(unittest.TestCase):
         # The has_section check for section="general" is reached (section IS a valid str),
         # but has_property must NOT be reached (key is non-string — isinstance guard fires)
         mock_inner.has_property.assert_not_called()
+
+    def _wire_inner(self, section: str) -> MagicMock:
+        self.mock_config.has_section.return_value = True
+        mock_inner = MagicMock()
+        mock_inner.has_property.return_value = True
+        setattr(self.mock_config, section, mock_inner)
+        return mock_inner
+
+    def _post_set(self, section: str, key: str, value):
+        with patch('web.handler.config.bottle') as mock_bottle:
+            mock_bottle.request.json = {"section": section, "key": key, "value": value}
+            return self.handler._ConfigHandler__handle_set_config()
+
+    def test_set_arr_key_sonarr_padded_is_trimmed(self):
+        mock_inner = self._wire_inner("sonarr")
+        response = self._post_set("sonarr", "sonarr_api_key", "  abcDEF123\n")
+        mock_inner.set_property.assert_called_once_with("sonarr_api_key", "abcDEF123")
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("sonarr.sonarr_api_key updated", response.body)
+
+    def test_set_arr_key_radarr_padded_is_trimmed(self):
+        mock_inner = self._wire_inner("radarr")
+        response = self._post_set("radarr", "radarr_api_key", "\tabcDEF123  ")
+        mock_inner.set_property.assert_called_once_with("radarr_api_key", "abcDEF123")
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("radarr.radarr_api_key updated", response.body)
+
+    def test_set_arr_key_whitespace_only_refused(self):
+        for section in ("sonarr", "radarr"):
+            with self.subTest(section=section):
+                mock_inner = self._wire_inner(section)
+                response = self._post_set(section, "{}_api_key".format(section), "   ")
+                self.assertEqual(400, response.status_code)
+                self.assertEqual(INVALID_BODY_MSG, response.body)
+                mock_inner.set_property.assert_not_called()
+
+    def test_set_arr_key_invalid_refused_with_test_connection_wording(self):
+        cases = [
+            ("sonarr", "abc def", SONARR_KEY_INVALID_MSG),
+            ("sonarr", "abc\tdef", SONARR_KEY_INVALID_MSG),
+            ("sonarr", "abc\ndef", SONARR_KEY_INVALID_MSG),
+            ("sonarr", "a\x00b", SONARR_KEY_INVALID_MSG),
+            ("sonarr", "clé", SONARR_KEY_INVALID_MSG),
+            ("radarr", "abc def", RADARR_KEY_INVALID_MSG),
+        ]
+        for section, value, expected in cases:
+            with self.subTest(section=section, value=repr(value)):
+                mock_inner = self._wire_inner(section)
+                response = self._post_set(section, "{}_api_key".format(section), value)
+                self.assertEqual(400, response.status_code)
+                self.assertEqual(expected, response.body)
+                self.assertNotIn(value, response.body)
+                mock_inner.set_property.assert_not_called()
+
+    def test_set_arr_key_non_string_value_is_refused(self):
+        # WR-01: a non-text value must never be stringified into a stored key
+        # (true -> "True", ["abc"] -> "['abc']" would replace a working key).
+        for section in ("sonarr", "radarr"):
+            for value in (12345, True, False, [], ["abc"], {}, {"k": "v"}, 1.5):
+                with self.subTest(section=section, value=repr(value)):
+                    mock_inner = self._wire_inner(section)
+                    response = self._post_set(section, "{}_api_key".format(section), value)
+                    self.assertEqual(400, response.status_code)
+                    self.assertEqual("Invalid request body", response.body)
+                    mock_inner.set_property.assert_not_called()
+
+    def test_set_secret_success_does_not_echo_value(self):
+        mock_inner = self._wire_inner("general")
+        response = self._post_set("general", "api_token", "Probe-SECRET-128x")
+        mock_inner.set_property.assert_called_once_with("api_token", "Probe-SECRET-128x")
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("general.api_token updated", response.body)
+        self.assertNotIn("Probe-SECRET-128x", response.body)
+
+    def test_set_secret_config_error_does_not_echo_value(self):
+        mock_inner = self._wire_inner("lftp")
+        mock_inner.set_property.side_effect = ConfigError(
+            "Bad config: Lftp.remote_password (Probe-SECRET-128x) is wrong"
+        )
+        response = self._post_set("lftp", "remote_password", "Probe-SECRET-128x")
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("Invalid value for lftp.remote_password", response.body)
+        self.assertNotIn("Probe-SECRET-128x", response.body)
+
+        logger = self.mock_context.logger.getChild.return_value
+        for level in ("debug", "info", "warning", "error", "exception", "critical"):
+            for call in getattr(logger, level).call_args_list:
+                if call.args and len(call.args) > 1:
+                    message = call.args[0] % call.args[1:]
+                elif call.args:
+                    message = str(call.args[0])
+                else:
+                    message = ""
+                rendered = message + repr(call.args) + repr(call.kwargs)
+                with self.subTest(level=level, call=repr(call)):
+                    self.assertNotIn("Probe-SECRET-128x", rendered)
+                    self.assertNotIn("is wrong", rendered)
+                    for arg in list(call.args) + list(call.kwargs.values()):
+                        self.assertNotIsInstance(arg, ConfigError)
+                    self.assertNotIn("exc_info", call.kwargs)
+
+        self.assertEqual(1, logger.warning.call_count)
+        warn_call = logger.warning.call_args
+        self.assertEqual(
+            "Config set refused for lftp.remote_password: ConfigError",
+            warn_call.args[0] % warn_call.args[1:],
+        )
+
+    def test_set_non_secret_still_echoes_value(self):
+        self._wire_inner("lftp")
+        response = self._post_set("lftp", "remote_address", "192.168.1.1")
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("lftp.remote_address set to 192.168.1.1", response.body)
+
+    def test_set_non_secret_config_error_text_unchanged(self):
+        mock_inner = self._wire_inner("web")
+        mock_inner.set_property.side_effect = ConfigError(
+            "Bad config: Web.port (abc) must be an integer value"
+        )
+        response = self._post_set("web", "port", "abc")
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("Bad config: Web.port (abc) must be an integer value", response.body)
 
 
 class TestConfigHandlerTestSonarrConnection(unittest.TestCase):

@@ -230,3 +230,86 @@ class TestConfigHandler(BaseTestWebApp):
         # Assert: GET does NOT return 200 (route is not accessible via GET).
         resp = self.test_app.get("/server/config/set", expect_errors=True)
         self.assertNotEqual(200, resp.status_int)
+
+    def _post_set(self, section, key, value, expect_errors=False):
+        return self.test_app.post_json(
+            "/server/config/set",
+            {"section": section, "key": key, "value": value},
+            expect_errors=expect_errors
+        )
+
+    def test_set_arr_key_trimmed_and_not_echoed(self):
+        resp = self._post_set("sonarr", "sonarr_api_key", "  abcDEF123\n")
+        self.assertEqual(200, resp.status_int)
+        self.assertEqual("abcDEF123", self.context.config.sonarr.sonarr_api_key)
+        self.assertEqual("sonarr.sonarr_api_key updated", str(resp.html))
+        self.assertNotIn("abcDEF123", str(resp.html))
+
+    def test_set_arr_key_radarr_trimmed_and_not_echoed(self):
+        resp = self._post_set("radarr", "radarr_api_key", "\tabcDEF123  ")
+        self.assertEqual(200, resp.status_int)
+        self.assertEqual("abcDEF123", self.context.config.radarr.radarr_api_key)
+        self.assertEqual("radarr.radarr_api_key updated", str(resp.html))
+        self.assertNotIn("abcDEF123", str(resp.html))
+
+    def test_set_arr_key_whitespace_only_refused_keeps_stored_key(self):
+        for section in ("sonarr", "radarr"):
+            key = "{}_api_key".format(section)
+            with self.subTest(section=section):
+                resp = self._post_set(section, key, "goodKEY1")
+                self.assertEqual(200, resp.status_int)
+                resp = self._post_set(section, key, "   ", expect_errors=True)
+                self.assertEqual(400, resp.status_int)
+                self.assertEqual("Invalid request body", str(resp.html))
+                self.assertEqual("goodKEY1", getattr(getattr(self.context.config, section), key))
+
+    def test_set_arr_key_invalid_refused_keeps_stored_key(self):
+        for section, label in (("sonarr", "Sonarr"), ("radarr", "Radarr")):
+            key = "{}_api_key".format(section)
+            for value in ("abc def", "abc\ndef"):
+                with self.subTest(section=section, value=repr(value)):
+                    resp = self._post_set(section, key, "goodKEY1")
+                    self.assertEqual(200, resp.status_int)
+                    resp = self._post_set(section, key, value, expect_errors=True)
+                    self.assertEqual(400, resp.status_int)
+                    self.assertEqual(
+                        "{} API key contains invalid characters".format(label), str(resp.html)
+                    )
+                    self.assertNotIn(value, str(resp.html))
+                    self.assertEqual("goodKEY1", getattr(getattr(self.context.config, section), key))
+
+    def test_set_arr_key_trim_applies_only_to_arr_keys(self):
+        resp = self._post_set("lftp", "remote_path", " /padded ")
+        self.assertEqual(200, resp.status_int)
+        self.assertEqual(" /padded ", self.context.config.lftp.remote_path)
+
+    def test_set_secret_fields_never_echo_value(self):
+        from common import Config
+        probe = "Probe-SECRET-128x"
+        visited = 0
+        for attr, field, _ini in Config.secret_fields():
+            with self.subTest(attr=attr, field=field):
+                # Saving general.api_token turns on API authentication for every
+                # later request, so that one property is put back afterwards.
+                restore_token = (attr, field) == ("general", "api_token")
+                previous_token = self.context.config.general.api_token
+                resp = self._post_set(attr, field, probe)
+                self.assertEqual(200, resp.status_int)
+                self.assertEqual("{}.{} updated".format(attr, field), str(resp.html))
+                self.assertNotIn(probe, str(resp.html))
+                self.assertEqual(probe, getattr(getattr(self.context.config, attr), field))
+                if restore_token:
+                    self.context.config.general.api_token = previous_token
+            visited += 1
+        self.assertGreaterEqual(visited, 5)
+
+    def test_set_secret_refusal_does_not_echo_value(self):
+        resp = self._post_set("lftp", "remote_password", "   ", expect_errors=True)
+        self.assertEqual(400, resp.status_int)
+        self.assertEqual("Invalid value for lftp.remote_password", str(resp.html))
+        self.assertIsNone(self.context.config.lftp.remote_password)
+
+    def test_set_non_secret_still_echoes_value(self):
+        resp = self._post_set("general", "debug", "True")
+        self.assertEqual(200, resp.status_int)
+        self.assertEqual("general.debug set to True", str(resp.html))

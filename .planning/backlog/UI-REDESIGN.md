@@ -1,8 +1,12 @@
 # Future milestone: UI Redesign (pipeline-first)
 
-Drafted 2026-10-21. **Not active.** No phase numbers or release version assigned. Activate only after Reliability, and decide its order relative to Performance and Usability at that time.
+Drafted 2026-10-21. **Not active.** No phase numbers or release version assigned. The 2026-11-18 disposition below supersedes this original activation proposal; consult ROADMAP.md for current order and scope.
 
 **Design source:** Claude Design canvas "SeedSyncarr Dashboard Redesign": https://claude.ai/artifact/GEwUAJppnyCFWUNM7V1kcr. It is private to the owner, so share it before handing it to anyone else. The canvas holds desktop, phone and iPhone Duo screens, a states board and a style sheet. Board names below refer to it.
+
+## Disposition — 2026-11-18
+
+Preserved as a design idea inventory. The roadmap now prioritizes the small corrective milestone, then evidence-gated performance or narrow Pipeline Visibility work. This full redesign is not approved delivery scope. The current transfer row already shows Waiting and hold reasons; the original claim below that import/auto-delete are invisible must not be read as absence of all hold feedback. Start with demonstrated confusion about import/cleanup, and validate deletion/restart semantics before extending the model. Settings restructuring, new mobile layouts, onboarding and global styling remain deferred.
 
 ## Goal
 

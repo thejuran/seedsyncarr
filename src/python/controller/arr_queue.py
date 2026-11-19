@@ -26,7 +26,7 @@ from typing import Callable, Dict, List, NamedTuple, Optional, Tuple
 
 import requests
 
-from common import Context, sanitize_log_value
+from common import Context, is_valid_arr_api_key, normalize_arr_api_key, sanitize_log_value
 
 
 FETCH_IDLE = "idle"
@@ -160,6 +160,9 @@ class ArrQueueClient:
         self.__results: Dict[str, Tuple[int, Optional[List[QueueRecord]]]] = {}
         self.__results_lock = threading.Lock()
         self.__fetch_seq = 0
+        # Arr code -> opaque token of the key last warned about as missing or
+        # invalid. Controller-thread only like __fetches, so no lock.
+        self.__key_skip_warned: Dict[str, str] = {}
 
     def enabled_targets(self) -> List[ArrTarget]:
         """Enabled arrs, Sonarr first. Read from config on every call."""
@@ -168,11 +171,11 @@ class ArrQueueClient:
         if config.sonarr.enabled:
             targets.append(ArrTarget("Sonarr", "sonarr",
                                      config.sonarr.sonarr_url or "",
-                                     config.sonarr.sonarr_api_key or ""))
+                                     normalize_arr_api_key(config.sonarr.sonarr_api_key)))
         if config.radarr.enabled:
             targets.append(ArrTarget("Radarr", "radarr",
                                      config.radarr.radarr_url or "",
-                                     config.radarr.radarr_api_key or ""))
+                                     normalize_arr_api_key(config.radarr.radarr_api_key)))
         return targets
 
     def start_fetch(self, target: ArrTarget) -> Optional[int]:
@@ -185,13 +188,23 @@ class ArrQueueClient:
         abandons it after FETCH_DEADLINE_SECS and its target stays reported as
         not startable until it exits.
 
-        Returns None without starting anything when the URL is not http/https
-        or when a worker for the same target is still alive (abandoned or not).
+        Returns None without starting anything when the URL is not http/https,
+        when the API key is missing or invalid, or when a worker for the same
+        target is still alive (abandoned or not).
         """
         scheme = urllib.parse.urlsplit(target.url).scheme.lower()
         if scheme not in ("http", "https"):
             self.logger.warning("%s queue check skipped: URL must use http or https", target.label)
             return None
+        if not is_valid_arr_api_key(target.api_key):
+            token = _key_token(target.api_key if isinstance(target.api_key, str) else "")
+            if self.__key_skip_warned.get(target.code) != token:
+                self.__key_skip_warned[target.code] = token
+                self.logger.warning("%s queue check skipped: API key is missing or invalid", target.label)
+            else:
+                self.logger.debug("%s queue check skipped: API key is missing or invalid", target.label)
+            return None
+        self.__key_skip_warned.pop(target.code, None)
         code = target.code
         prior = self.__fetches.get(code)
         if prior is not None and prior.thread.is_alive():
