@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
 status: executing
-stopped_at: Completed 128-02-PLAN.md (arr key save normalization, secret-free save responses)
-last_updated: "2026-11-19T00:19:51.274Z"
-last_activity: 2026-11-19 -- Completed 128-02 (arr key save normalization)
+stopped_at: Completed 128-03-PLAN.md (queue check key normalization and fail-safe skip)
+last_updated: "2026-11-19T00:33:33.058Z"
+last_activity: 2026-11-19 -- Completed 128-03 (queue check key normalization and fail-safe skip)
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 20
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-11-18)
 ## Current Position
 
 Phase: 128 (arr-key-normalization) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Executing Phase 128
-Last activity: 2026-11-19 -- Completed 128-02 (arr key save normalization)
+Last activity: 2026-11-19 -- Completed 128-03 (queue check key normalization and fail-safe skip)
 
 ## Accumulated Context
 
@@ -134,6 +134,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 128]: shared arr key rule lives in common/arr_api_key.py; is_valid_arr_api_key does not trim and returns False for non-str (fail-safe, never raises)
 - [Phase 128]: 128-02: refused saves of secret settings answer fixed 'Invalid value for <section>.<key>' and log only section, key and exception class (D-07)
 - [Phase 128]: 128-02: save-time trimming applies only to sonarr/radarr API keys; other properties stored verbatim
+- [Phase 128]: Queue checks trim the stored arr key on read; a missing/invalid key makes start_fetch skip after the URL check and the unchanged gate holds as <code>_unavailable
+- [Phase 128]: ArrQueueClient warn-once state resets when a valid key is seen, so a key broken again warns again
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -193,9 +195,9 @@ Credential rotations remain operator follow-ups; one-time Done-group cleanup was
 
 ## Session Continuity
 
-Last session: 2026-11-19T00:19:47.091Z
-Stopped at: Completed 128-02-PLAN.md
-Next action: Execute plan 128-03 (queue-request key handling in controller/arr_queue.py).
+Last session: 2026-11-19T00:33:28.968Z
+Stopped at: Completed 128-03-PLAN.md
+Next action: Execute plan 128-04.
 
 **Prior session (2026-10-28):** Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
 
