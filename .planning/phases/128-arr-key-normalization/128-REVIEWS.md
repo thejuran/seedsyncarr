@@ -3,7 +3,7 @@ phase: 128
 reviewers: [codex]
 reviewed_at: 2026-11-18
 plans_reviewed: [128-01-PLAN.md, 128-02-PLAN.md, 128-03-PLAN.md, 128-04-PLAN.md]
-cycle: 2
+cycle: 3
 ---
 
 # Cross-AI Plan Review — Phase 128
@@ -167,3 +167,37 @@ The production design is sound. Repository inspection confirms configuration ide
 ## Consensus Summary (cycle 2)
 
 HIGH: none. MEDIUM: 1 — 128-03 TestBadKeyFailsSafe Radarr test lacks a valid radarr_url (MagicMock URL would fail parsing before the key check). LOW: 128-01 Task 2 <done> still says rule 'exists once' in wave 1; 128-04 verify reruns coverage; optional stronger transition test.
+
+---
+
+## Codex Review — Cycle 3 (after revision 150d24c6)
+
+## 1. Summary
+
+The cycle-2 **MEDIUM Radarr fixture issue is resolved**. The diff introduces **no new HIGH, MEDIUM, or LOW findings**.
+
+The premature single-definition claim and duplicate phase-gate verification are corrected. Some previously noted LOW concerns remain nonblocking. This was a read-only review against the supplied plans and relevant repository files; tests were not run.
+
+## 2. Status of cycle-2 concerns
+
+| Concern | Status | Assessment |
+|---|---|---|
+| **MEDIUM:** Radarr fixture lacks a valid URL | **Resolved** | Setup now supplies a real HTTP URL. The test also requires the key-specific warning and excludes the URL-scheme warning, proving it exercises the intended branch. |
+| **LOW:** Plan 01 claims a single definition too early | **Resolved** | Task 2 now explicitly defers caller migration and removal of the old constant to plan 02, with the invariant checked in plan 04. |
+| **LOW:** Repeated full-suite runs | **Resolved for task verification; partially outstanding overall** | The explicit reuse rule removes the action/verification duplicate when Python files are unchanged. `128-VALIDATION.md` still requires full-suite runs after every wave; that broader sampling cost remains. |
+| **LOW:** Restrictive source-layout assertions | **Retained, nonblocking** | The new assignment instructions make the existing AST check predictable, but preserve rather than remove its implementation constraints. |
+| Optional stronger transition test | **Unchanged, nonblocking** | The empty-queue transition proves cached snapshot invalidation. Previously authorizing evidence or an outstanding request would provide stronger coverage, but was an optional suggestion. |
+
+## 3. New Concerns
+
+**None identified in the diff.**
+
+The corrected Test Connection routes match repository registration. The pending-row pattern excludes the status legend, and the separate Approval check covers the remaining pending marker. The gate-result reuse instructions require recorded evidence and unchanged Python files.
+
+## 4. Risk Assessment
+
+**LOW.** The localized fixture blocker is fixed, and the revisions add no apparent correctness or security regression. The plans are ready for execution; remaining concerns concern test-maintenance flexibility and verification cost.
+
+## Consensus Summary (cycle 3)
+
+HIGH: none. MEDIUM: none. Cycle-2 MEDIUM (Radarr fixture URL) resolved. Remaining LOWs nonblocking (AST source-layout constraint, per-wave full-suite sampling cost, optional stronger transition test). Risk LOW; plans ready for execution.
