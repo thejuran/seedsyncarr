@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
 status: verifying
-stopped_at: Phase 128 UAT complete (4 pass, 1 skipped with reason, 0 issues; CI #440 green, coverage 92.63% in Linux test image); next /bm:secure-phase 128 before ship
-last_updated: "2026-11-19T23:36:00.000Z"
+stopped_at: Phase 128 UAT complete and threat-secure (20/20 threats closed); ready to ship PR #155
+last_updated: "2026-11-19T23:50:00.000Z"
 last_activity: 2026-11-19 -- Completed 128-04 (cross-path parity tests; local coverage 86.47%, CI-only modules excluded)
 progress:
   total_phases: 5
