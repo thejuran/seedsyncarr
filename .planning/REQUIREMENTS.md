@@ -21,7 +21,7 @@ Absorbs backlog item 999.6. README.md only; no application behavior changes.
 Code-confirmed mismatch: Test Connection strips the key (`src/python/web/handler/config.py`), queue requests use the stored value as-is. Recurrence in production unknown.
 
 - [ ] **ARR-01**: A Sonarr/Radarr API key entered with leading/trailing whitespace is saved normalized, using the same rule as Test Connection.
-- [ ] **ARR-02**: A previously saved whitespace-padded key is works for queue requests without the user resaving it (normalized on read); save, Test Connection and queue completion checks use one consistent normalization rule.
+- [ ] **ARR-02**: A previously saved whitespace-padded key works for queue requests without the user resaving it (normalized on read); save, Test Connection and queue completion checks use one consistent normalization rule.
 - [ ] **ARR-03**: An empty or invalid key still fails safely in queue completion checks (no unsafe import or deletion decision), and no key value appears in logs.
 
 ### Web-service shutdown (WEB)

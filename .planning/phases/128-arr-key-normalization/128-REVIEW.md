@@ -93,3 +93,9 @@ Then update the `12345` assertions, and add bool, list and dict cases that check
 _Reviewed: 2026-11-19_
 _Reviewer: Claude (bm-code-reviewer)_
 _Depth: standard_
+
+## Resolution (orchestrator, 2026-11-19)
+
+- **WR-01: fixed.** Save now refuses non-text Sonarr/Radarr key values with 400 "Invalid request body" and keeps the stored key (ebb52e1f test, 31d013e0 fix). This supersedes the plan's "stringify 12345" behaviour.
+- **IN-01, IN-02: accepted as-is** (no live bug; informational).
+- **Set-aside items: open for the owner's ruling** (UI shows untrimmed key until reload; save echoes non-secret hidden fields).
