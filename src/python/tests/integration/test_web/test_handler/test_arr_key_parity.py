@@ -220,12 +220,15 @@ class TestArrKeyParity(BaseTestWebApp):
                 self.assertEqual("Invalid request body", resp.text)
                 self.assertEqual(GOOD_KEY, self._stored("sonarr"))
 
-        # Save turns a number into text before applying the rule.
-        self._store("sonarr", GOOD_KEY)
-        resp = self._save("sonarr", 12345)
-        self.assertEqual(200, resp.status_int)
-        self.assertEqual("sonarr.sonarr_api_key updated", resp.text)
-        self.assertEqual("12345", self._stored("sonarr"))
+        # Save refuses non-text values and keeps the stored key (WR-01),
+        # matching the queue client, which treats a non-text key as missing.
+        for value in (12345, True, ["abc"], {}):
+            with self.subTest(save_non_text=repr(value)):
+                self._store("sonarr", GOOD_KEY)
+                resp = self._save("sonarr", value)
+                self.assertEqual(400, resp.status_int)
+                self.assertEqual("Invalid request body", resp.text)
+                self.assertEqual(GOOD_KEY, self._stored("sonarr"))
 
         # Test Connection: a null or empty key is reported as required.
         for value in (None, ""):

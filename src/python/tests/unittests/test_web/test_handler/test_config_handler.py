@@ -244,12 +244,17 @@ class TestConfigHandlerSet(unittest.TestCase):
                 self.assertNotIn(value, response.body)
                 mock_inner.set_property.assert_not_called()
 
-    def test_set_arr_key_non_string_value_is_stringified(self):
-        mock_inner = self._wire_inner("sonarr")
-        response = self._post_set("sonarr", "sonarr_api_key", 12345)
-        mock_inner.set_property.assert_called_once_with("sonarr_api_key", "12345")
-        self.assertEqual(200, response.status_code)
-        self.assertEqual("sonarr.sonarr_api_key updated", response.body)
+    def test_set_arr_key_non_string_value_is_refused(self):
+        # WR-01: a non-text value must never be stringified into a stored key
+        # (true -> "True", ["abc"] -> "['abc']" would replace a working key).
+        for section in ("sonarr", "radarr"):
+            for value in (12345, True, False, [], ["abc"], {}, {"k": "v"}, 1.5):
+                with self.subTest(section=section, value=repr(value)):
+                    mock_inner = self._wire_inner(section)
+                    response = self._post_set(section, "{}_api_key".format(section), value)
+                    self.assertEqual(400, response.status_code)
+                    self.assertEqual("Invalid request body", response.body)
+                    mock_inner.set_property.assert_not_called()
 
     def test_set_secret_success_does_not_echo_value(self):
         mock_inner = self._wire_inner("general")
