@@ -98,4 +98,4 @@ _Depth: standard_
 
 - **WR-01: fixed.** Save now refuses non-text Sonarr/Radarr key values with 400 "Invalid request body" and keeps the stored key (ebb52e1f test, 31d013e0 fix). This supersedes the plan's "stringify 12345" behaviour.
 - **IN-01, IN-02: accepted as-is** (no live bug; informational).
-- **Set-aside items: open for the owner's ruling** (UI shows untrimmed key until reload; save echoes non-secret hidden fields).
+- **Set-aside items: accepted by the owner (2026-11-19).** UI shows the untrimmed key until reload; save echoes non-secret hidden fields. No follow-up.
