@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
 status: verifying
-stopped_at: Phase 128 verified human_needed (15/16); awaiting Linux CI on PR #155 for full pytest + 88% coverage gate
-last_updated: "2026-11-19T23:02:39.000Z"
+stopped_at: Phase 128 UAT complete (4 pass, 1 skipped with reason, 0 issues; CI #440 green, coverage 92.63% in Linux test image); next /bm:secure-phase 128 before ship
+last_updated: "2026-11-19T23:36:00.000Z"
 last_activity: 2026-11-19 -- Completed 128-04 (cross-path parity tests; local coverage 86.47%, CI-only modules excluded)
 progress:
   total_phases: 5
