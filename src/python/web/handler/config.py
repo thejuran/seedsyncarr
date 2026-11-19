@@ -346,7 +346,12 @@ class ConfigHandler(IHandler):
 
         arr_service = _ARR_KEY_PROPS.get((section, key))
         if arr_service is not None:
-            value_str = normalize_arr_api_key(value_str)
+            # Only text is a key. str() would turn true/[]/{} into "True"/"[]"/"{}"
+            # and silently replace a working key (review WR-01); the queue client
+            # likewise treats a non-text key as missing.
+            if not isinstance(value, str):
+                return HTTPResponse(body="Invalid request body", status=400)
+            value_str = normalize_arr_api_key(value)
             if not value_str:
                 return HTTPResponse(body="Invalid request body", status=400)
             if not is_valid_arr_api_key(value_str):
