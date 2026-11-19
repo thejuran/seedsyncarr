@@ -83,7 +83,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 128-01-PLAN.md — shared Sonarr/Radarr key rule in `common/` (trim, then printable ASCII without space) with rule-table tests
+- [x] 128-01-PLAN.md — shared Sonarr/Radarr key rule in `common/` (trim, then printable ASCII without space) with rule-table tests
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -127,7 +127,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 127. README Accuracy | 1/1 | Complete    | 2026-11-18 |
-| 128. Arr Key Normalization | 0/4 | Not started | - |
+| 128. Arr Key Normalization | 1/4 | In Progress|  |
 | 129. Web-Service Cleanup Isolation | 0/TBD | Not started | - |
 | 130. Release 1.8.1 | 0/TBD | Not started | - |
 

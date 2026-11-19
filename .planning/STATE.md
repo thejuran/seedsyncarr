@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: ready_to_execute
-stopped_at: Phase 128 planned (4 plans, 3 waves; plan-checker + Codex passed)
-last_updated: "2026-11-19T00:08:49.000Z"
-last_activity: 2026-11-19 -- Phase 128 planning complete
+status: executing
+stopped_at: Completed 128-01-PLAN.md (shared arr key rule)
+last_updated: "2026-11-19T00:13:50.000Z"
+last_activity: 2026-11-19 -- Completed 128-01 (shared arr key rule)
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
   percent: 20
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 128 — arr key normalization
+**Current focus:** Phase 128: arr-key-normalization
 
 ## Current Position
 
-Phase: 128
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-11-19 -- Phase 128 planning complete
+Phase: 128 (arr-key-normalization) — EXECUTING
+Plan: 2 of 4
+Status: Executing Phase 128
+Last activity: 2026-11-19 -- Completed 128-01 (shared arr key rule)
 
 ## Accumulated Context
 
@@ -131,6 +131,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 126]: Phase 126-05: owner verbatim "deploy" authorizes the production deploy; sandbox copy of production Radarr credentials (URL/key) cleared from settings.cfg on disk at owner-sanctioned addendum, verified by sha256 count-only comparison; REL-06 stays open pending Plan 126-06 production deploy
 - [Phase 126]: 126-06: production deployed by digest to `:1.8.0@sha256:6e8d453f...4879aa7` (container `34470550b27f`, `.Image` == smoked sandbox image ID); CLEAN_STOP, four `.pre-1.8.0-<TS>` backups sha256-recorded, loader check PASS (`PARSE_OK`/`EXIT=0`) in both the 1.7.6 and 1.8.0 images with `AutoDelete.enabled=True` noted for the rollback runbook; compose pin was inode-preserving (one-line diff, wud labels unchanged); first remote scan succeeded 31s after start with no warm-up error; Sonarr (4.0.20.3014) and Radarr (6.4.4.10685) both reachable; 309s steady-state window showed 0 unavailable/Traceback/ERROR lines and 0 restarts; no-secrets count-only check matched 0/3 values in both the container log and the plain-file logs; wud restored last and a 195s-later re-fingerprint confirmed it changed nothing; D-16 rollback was not triggered. Owner verbatim "confirmed" closes D-17. Post-deploy: 0 open Dependabot alerts, 0 open Dependabot PRs, none opened after the `v1.8.0` tag. REL-06 complete; Phase 126 complete; the v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) is fully delivered. Post-tag `.planning` docs commits remain local on `main`, not pushed (pushing `main` publishes the `:dev` image tag; the owner decides when to push).
 - [Phase 127]: README states Sonarr/Radarr webhook signing limit (401/503) as fact, no recommendation to set webhook_secret/webhook_require_secret
+- [Phase 128]: shared arr key rule lives in common/arr_api_key.py; is_valid_arr_api_key does not trim and returns False for non-str (fail-safe, never raises)
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -190,7 +191,7 @@ Credential rotations remain operator follow-ups; one-time Done-group cleanup was
 
 ## Session Continuity
 
-Last session: 2026-11-18T23:34:21.631Z
+Last session: 2026-11-19T00:13:28.733Z
 Stopped at: Phase 128 planned (4 plans, 3 waves; plan-checker + Codex passed)
 Next action: Review the roadmap draft; once approved, plan Phase 127 (README Accuracy) with `/bm:plan-phase 127`.
 
