@@ -54,13 +54,16 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 **Depends on**: Nothing (first phase of the milestone; follows Phase 126)
 **Requirements**: DOC-01, DOC-02, DOC-03, DOC-04
 **Success Criteria** (what must be TRUE):
+
   1. A prominent README Documentation section links `docs/GETTING-STARTED.md`, `docs/CONFIGURATION.md`, `SECURITY.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md` and `docs/TESTING.md`, the installation section links repository guides instead of website-only docs, and every relative link resolves
   2. "Security by default" is replaced with accurate wording: API authentication is off when `api_token` is empty, webhook verification is off when `webhook_secret` is empty, `webhook_require_secret` defaults to `False`, and encryption at rest is off by default (stored secrets plaintext) — rechecked against current code and SECURITY.md at implementation time
   3. Absolute "never deletes" claims are replaced by an explanation of import confirmation, optional pruning (off by default) and the safety delay, and the whole README is reviewed for remaining unconditional claims
   4. The Quick Start section tells the reader that the Docker examples publish port 8800 on all host interfaces, that untrusted access needs an authenticating reverse proxy and restricted network access, and that the API token does not protect the UI (which contains that token)
+
 **Plans:** 1/1 plans complete
 
 Plans:
+
 - [x] 127-01-PLAN.md — README structure, guide links and exposure note; conditioned cleanup and security wording; SECURITY.md posture intro sentence and webhook bullet
 
 ### Phase 128: Arr Key Normalization
@@ -69,16 +72,26 @@ Plans:
 **Depends on**: Nothing (independent of Phase 127; disjoint code paths)
 **Requirements**: ARR-01, ARR-02, ARR-03
 **Success Criteria** (what must be TRUE):
+
   1. Save, Test Connection and queue completion checks all use one consistent normalization rule: a key entered with leading/trailing whitespace is saved normalized, using the same rule Test Connection already applies
   2. A previously saved whitespace-padded key works for queue completion checks **without the user resaving it** (normalized on read), so Test Connection and queue requests agree on the same stored key (regression test fails before the fix, passes after)
   3. Invalid keys still fail safely: an empty or invalid key in queue completion checks produces no unsafe import or deletion decision, and no key value ever appears in logs
+
 **Scope note (2026-11-18 discuss):** owner added that the config save confirmation stops echoing values of `secret=True` settings (all secrets, not only Arr keys) — 128-CONTEXT D-07.
 **Plans**: 4 plans (3 waves)
 
 Plans:
+**Wave 1**
+
 - [ ] 128-01-PLAN.md — shared Sonarr/Radarr key rule in `common/` (trim, then printable ASCII without space) with rule-table tests
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 128-02-PLAN.md — Save trims or refuses Arr keys, save responses stop echoing secrets, Test Connection moved onto the shared rule
 - [ ] 128-03-PLAN.md — queue checks normalize the key on read and skip safely on a missing or invalid key (fail-before/pass-after regression)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 128-04-PLAN.md — cross-path parity tests and phase gate (full pytest, whole-tree ruff, coverage 88)
 
 ### Phase 129: Web-Service Cleanup Isolation
@@ -87,10 +100,12 @@ Plans:
 **Depends on**: Nothing (independent of Phases 127–128; disjoint code paths)
 **Requirements**: WEB-01, WEB-02
 **Success Criteria** (what must be TRUE):
+
   1. With a failure injected into `app.stop()`, `server.stop()` and `thread.join()` still run and the failure is logged (regression test fails before the fix, passes after — confirmed 2026-11-18 that today's code skips both)
   2. With a failure injected into `server.stop()` or `thread.join()` instead, the other steps still run and the failure is logged
   3. Cleanup handles an uninitialized server and an unstarted thread (partial startup) without raising, and still attempts every step that applies
   4. After any failure, cleanup attempts every applicable step and terminates cleanly; tests demonstrate clean termination for both the per-step-failure and the partial-startup scenarios, mirroring the isolation pattern already used by ScanManager/FileOperationManager/Controller
+
 **Plans**: TBD
 
 ### Phase 130: Release 1.8.1
@@ -99,10 +114,12 @@ Plans:
 **Depends on**: Phases 127, 128, 129 (all milestone work complete)
 **Requirements**: REL-07, REL-08
 **Success Criteria** (what must be TRUE):
+
   1. Fail-before/pass-after regressions exist for the ARR and WEB fixes; full test suite, whole-tree `ruff check src/python/` and release CI are all green on the release commit
   2. Dependency work stays limited to triage and justified fixes: before the tag, open Dependabot alerts and PRs are triaged and surfaced to the owner in plain terms; only justified fixes are rolled in (runtime/shipped fixes in-release; cheap dev-only ones folded in), with no broader dependency upgrades
   3. The release image is smoke-tested by exact digest: setup, a queue completion check using a whitespace-padded key, and stop/restart
   4. NAS production is deployed using the **exact smoke-tested image digest** (pinned `:1.8.1@sha256:…`), followed by a successful scan and queue check, and owner confirmation
+
 **Plans**: TBD
 
 #### Progress
@@ -135,8 +152,6 @@ add only the measurements needed to resolve the buffering investigation, disting
 ### Deferred: UI and webhook efficiency
 
 measure realistic update/idle workloads before proposing optimization. Initial model delivery already uses one snapshot; examine remaining per-update serialization and repeated lookup construction. Stop with a baseline and worthwhile target, or defer. Preserve pending-notice revalidation and correctness; no speculative caching or rendering rewrite.
-
-
 
 ### Deferred: Extract-staging max-deferrals config key
 
