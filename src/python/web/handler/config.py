@@ -9,15 +9,21 @@ import bottle
 from bottle import HTTPResponse
 from urllib3.util import parse_url
 
-from common import Context, overrides, Config, ConfigError
+from common import (
+    Context, overrides, Config, ConfigError, normalize_arr_api_key, is_valid_arr_api_key
+)
 from ..web_app import IHandler, WebApp
 from ..serialize import SerializeConfig
 from ..rate_limit import rate_limit
 
-# Printable ASCII without space -- the only characters `requests` accepts in
-# a header value without raising InvalidHeader, whose message would embed
-# the raw key (122-14, CR-01).
-_API_KEY_CHARS = re.compile(r"[\x21-\x7e]+")
+# The two settings that get the shared Sonarr/Radarr API-key rule on save:
+# surrounding whitespace is trimmed, and a key that is empty or still contains
+# invalid characters after trimming is refused, using the same wording as
+# Test Connection. Maps (section, key) to the service label used in messages.
+_ARR_KEY_PROPS = {
+    ("sonarr", "sonarr_api_key"): "Sonarr",
+    ("radarr", "radarr_api_key"): "Radarr",
+}
 
 # Printable ASCII without space -- rejects whitespace, control characters and
 # non-ASCII (internationalised) hosts up front, before urlparse or urllib3
@@ -337,11 +343,35 @@ class ConfigHandler(IHandler):
             return HTTPResponse(
                 body="Section '{}' in config has no option '{}'".format(section, key), status=404
             )
+
+        arr_service = _ARR_KEY_PROPS.get((section, key))
+        if arr_service is not None:
+            value_str = normalize_arr_api_key(value_str)
+            if not value_str:
+                return HTTPResponse(body="Invalid request body", status=400)
+            if not is_valid_arr_api_key(value_str):
+                return HTTPResponse(
+                    body="{} API key contains invalid characters".format(arr_service), status=400
+                )
+
+        # Secret values are never repeated back, neither in the confirmation
+        # nor in a refusal (the checker's own message may quote the value).
+        secret_props = {(attr, field) for attr, field, _ini in Config.secret_fields()}
+        is_secret = (section, key) in secret_props
         try:
             inner_config.set_property(key, value_str)
-            return HTTPResponse(body="{}.{} set to {}".format(section, key, value_str))
         except ConfigError as e:
+            if is_secret:
+                self.logger.warning(
+                    "Config set refused for %s.%s: %s", section, key, type(e).__name__
+                )
+                return HTTPResponse(
+                    body="Invalid value for {}.{}".format(section, key), status=400
+                )
             return HTTPResponse(body=str(e), status=400)
+        if is_secret:
+            return HTTPResponse(body="{}.{} updated".format(section, key))
+        return HTTPResponse(body="{}.{} set to {}".format(section, key, value_str))
 
     def _test_arr_connection(self, service_name: str, raw_url: str | None, api_key: str | None) -> HTTPResponse:
         """Shared logic for testing Sonarr/Radarr API connections."""
@@ -356,8 +386,8 @@ class ConfigHandler(IHandler):
                 content_type="application/json"
             )
 
-        api_key = api_key.strip()
-        if not _API_KEY_CHARS.fullmatch(api_key):
+        api_key = normalize_arr_api_key(api_key)
+        if not is_valid_arr_api_key(api_key):
             return HTTPResponse(
                 body=json.dumps({"success": False, "error": "{} API key contains invalid characters".format(service_name)}),
                 content_type="application/json"
