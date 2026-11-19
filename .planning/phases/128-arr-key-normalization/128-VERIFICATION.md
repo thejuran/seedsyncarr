@@ -1,9 +1,10 @@
 ---
 phase: 128-arr-key-normalization
 verified: 2026-11-19T11:33:31Z
-status: human_needed
+status: passed
 score: 15/16 must-haves verified
 has_blocking_gaps: false
+human_verification_resolved: "2026-11-19 via 128-HUMAN-UAT.md: PR #155 CI run 44634159326 green (2181 passed); coverage 92.63% in the Linux test image (floor 88%)"
 overrides_applied: 0
 human_verification:
   - test: "Push the branch (or open the phase PR) and read the Linux CI result for the Python job: full pytest, whole-tree `ruff check src/python/`, and the coverage gate (`fail_under = 88`)."
@@ -15,7 +16,7 @@ human_verification:
 
 **Phase Goal:** A Sonarr/Radarr API key behaves the same whether it is being saved, tested, or used for a live queue check, regardless of incidental whitespace
 **Verified:** 2026-11-19T11:33:31Z
-**Status:** human_needed
+**Status:** passed (human item closed by 128-HUMAN-UAT.md, 2026-11-19)
 **Re-verification:** No (initial verification)
 
 ## Goal Achievement

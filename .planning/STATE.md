@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: verifying
-stopped_at: Phase 128 UAT complete and threat-secure (20/20 threats closed); ready to ship PR #155
-last_updated: "2026-11-19T23:50:00.000Z"
-last_activity: 2026-11-19 -- Completed 128-04 (cross-path parity tests; local coverage 86.47%, CI-only modules excluded)
+status: "Phase 128 verified — PR #155 (with Phase 127) open, in review (not merged)"
+stopped_at: "Phase 128 shipped to PR #155; awaiting CI and merge"
+last_updated: "2026-11-19T23:37:56Z"
+last_activity: 2026-11-19 -- Phase 128 PR #155 updated (verification passed, UAT and threat review complete)
 progress:
   total_phases: 5
   completed_phases: 1
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-11-18)
 
 ## Current Position
 
-Phase: 128 (arr-key-normalization) — VERIFYING
+Phase: 128 (arr-key-normalization) — IN REVIEW
 Plan: 4 of 4 (all plans complete)
-Status: Ready for phase verification; coverage gate awaits Linux CI (local 86.47% with CI-only modules excluded, base 86.39%)
-Last activity: 2026-11-19 -- Completed 128-04 (cross-path parity tests and phase gate)
+Status: Phase 128 verified — PR #155 open, in review (not merged)
+Last activity: 2026-11-19 -- PR #155 body refreshed with CI, coverage, UAT and threat results
 
 ## Accumulated Context
 
@@ -213,8 +213,8 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Review and approve the v1.8.1 roadmap (Phases 127–130)
-- Then plan Phase 127 (README Accuracy) with `/bm:plan-phase 127`
+- Wait for CI on PR #155 (Phases 127 + 128), then merge
+- Then Phase 129 with `/bm:next`
 
 ## Deferred Items
 
