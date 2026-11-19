@@ -3,7 +3,7 @@ phase: 128
 reviewers: [codex]
 reviewed_at: 2026-11-18
 plans_reviewed: [128-01-PLAN.md, 128-02-PLAN.md, 128-03-PLAN.md, 128-04-PLAN.md]
-cycle: 1
+cycle: 2
 ---
 
 # Cross-AI Plan Review — Phase 128
@@ -113,3 +113,57 @@ Single external reviewer. HIGH: none. MEDIUM concerns fed into the revision loop
 3. 128-02: new ConfigError warning path for secrets lacks a log-leak assertion.
 4. 128-04: "identical verdicts for every rule-table row" overstates parity (non-string / None / "" rows differ by boundary); state the string-input contract precisely.
 5. 128-04: validation map "one rule across three paths" points only at helper tests; cells with `same`/prose must become executable commands including `test_arr_key_parity.py`.
+
+---
+
+## Codex Review — Cycle 2 (after revision 61494c3a)
+
+## 1. Summary
+
+The revised plans address all five MEDIUM concerns from cycle 1 and should achieve ARR-01 through ARR-03 and D-07. Normalization occurs at the appropriate boundaries, secret refusals use fixed messages, and the existing completion gate supports safe holds without production changes.
+
+One new MEDIUM test-fixture issue remains. No HIGH concerns or architectural blockers found. This was a read-only review; tests were not run.
+
+## 2. Status of previous concerns
+
+| Previous concern | Status | Assessment |
+|---|---|---|
+| 01: Single-definition invariant claimed too early | **Not resolved fully** | Frontmatter correctly defers it, but Task 2’s `<done>` still says the rule “exists once” before plan 02 removes the original. |
+| 01: Inaccurate comment about headers accepted by `requests` | **Resolved** | Replacement describes the application’s chosen policy. |
+| 01: Overly restrictive row/import/source-layout assertions | **Not resolved — LOW** | Exact counts and regex-source assertions remain. They constrain implementation unnecessarily but do not block correctness. |
+| 02: Secret `ConfigError` warning lacks leak assertions | **Resolved** | Explicit formatted-message and argument checks cover values, exception text, exception objects, and `exc_info`. |
+| 02: Non-string parity needs qualification | **Resolved** | Numeric coercion and null/empty handling are explicitly separated from string parity. |
+| 03: `code` referenced before assignment | **Resolved** | New instructions consistently use `target.code`. |
+| 03: Process-wide thread counting is nondeterministic | **Resolved** | Skip tests patch the thread constructor and use fresh clients. |
+| 03: Missing valid-to-invalid transition coverage | **Resolved** | Added transition test checks cached snapshot removal and unavailable hold. |
+| 04: Every-row parity claim contradicts exclusions | **Resolved** | Contract now covers the 15 non-empty-string rows, with separate boundary tests. |
+| 04: Validation map omits parity and contains non-executable cells | **Resolved** | Commands explicitly include the parity module; zero-test selections fail validation. |
+| 04: Valid outcomes asserted too weakly | **Resolved** | Positive Test Connection success and successful queue records are required. |
+| 04: Repeated full-suite runs | **Not resolved fully — LOW** | Task action says to reuse one coverage run, but `<verify>` executes it again; validation sampling also mandates full-suite runs after waves. |
+
+## 3. New concerns
+
+**MEDIUM — Plan 03’s Radarr bad-key fixture lacks a valid URL.**
+
+`TestBadKeyFailsSafe` setup specifies only the Sonarr URL. Its Radarr test then enables Radarr, sets its key to `None`, and disables Sonarr without assigning `radarr_url`.
+
+With the specified `MagicMock` config, the unset URL remains a mock. The existing [`start_fetch()`](/Users/julianamacbook/seedsyncarr/src/python/controller/arr_queue.py:178) parses the URL before validating the key. Consequently, the test can fail during URL parsing instead of exercising the missing-key skip. Giving it an empty URL would also exercise the wrong branch.
+
+Set `cfg.radarr.radarr_url = "http://radarr.internal.example:7878"` in setup or that test.
+
+## 4. Suggestions
+
+- Fix the Radarr fixture before execution.
+- Change plan 01’s completion wording to “shared module is available; caller migration follows in wave 2.”
+- Explicitly allow recorded coverage/lint results to satisfy verification when the tested code has not changed.
+- Optionally strengthen the transition test with a previously authorizing snapshot or an outstanding request. The current empty-queue test proves snapshot invalidation, but starts from evidence that already holds completion.
+
+## 5. Risk assessment
+
+**LOW overall; MEDIUM localized test-execution risk until the Radarr fixture is corrected.**
+
+The production design is sound. Repository inspection confirms configuration identity changes clear gate evidence, and a refused fetch becomes an unavailable hold. Remaining issues concern test setup and execution instructions rather than unsafe completion decisions.
+
+## Consensus Summary (cycle 2)
+
+HIGH: none. MEDIUM: 1 — 128-03 TestBadKeyFailsSafe Radarr test lacks a valid radarr_url (MagicMock URL would fail parsing before the key check). LOW: 128-01 Task 2 <done> still says rule 'exists once' in wave 1; 128-04 verify reruns coverage; optional stronger transition test.
