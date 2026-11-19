@@ -1,6 +1,6 @@
 # Roadmap: SeedSyncarr
 
-Updated 2026-11-18. Milestone v1.8.1 Configuration and Shutdown Correctness is active (Phases 127–130, started 2026-11-18; nothing implemented yet). Milestone v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126; 1.8.0 published and running on NAS production by digest). Existing implementation must be checked before planning any carried-forward fix.
+Updated 2026-11-18. Milestone v1.8.1 Configuration and Shutdown Correctness is active (Phases 127–130, started 2026-11-18; Phases 127–128 complete and merged via PR #155 on 2026-11-19). Milestone v1.8.0 Reliability shipped 2026-10-28 (Phases 121–126; 1.8.0 published and running on NAS production by digest). Existing implementation must be checked before planning any carried-forward fix.
 
 ## Milestones
 
@@ -42,7 +42,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 **CI gate (every phase):** full Python suite green AND whole-tree `ruff check src/python/` clean (CI runs ruff as a separate gate from pytest, so build-verify must run it on the whole tree, not just touched files); Python `fail_under` ≥ 88 holds; every targeted regression shown to fail before its fix and pass after.
 
 - [x] **Phase 127: README Accuracy** - Setup, security and documentation-discoverability claims in the README match current defaults, SECURITY.md and the repository guides (completed 2026-11-18)
-- [ ] **Phase 128: Arr Key Normalization** - Sonarr/Radarr API keys normalize the same way on save and on read for queue requests, matching Test Connection
+- [x] **Phase 128: Arr Key Normalization** - Sonarr/Radarr API keys normalize the same way on save and on read for queue requests, matching Test Connection (completed 2026-11-19)
 - [ ] **Phase 129: Web-Service Cleanup Isolation** - Each web-service shutdown step runs independently so one failure never skips the rest
 - [ ] **Phase 130: Release 1.8.1** - Targeted regressions, required gates, release-image smoke test and NAS production deploy pinned to the tag
 
@@ -127,7 +127,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 127. README Accuracy | 1/1 | Complete    | 2026-11-18 |
-| 128. Arr Key Normalization | 4/4 | In Progress|  |
+| 128. Arr Key Normalization | 4/4 | Complete    | 2026-11-19 |
 | 129. Web-Service Cleanup Isolation | 0/TBD | Not started | - |
 | 130. Release 1.8.1 | 0/TBD | Not started | - |
 

@@ -20,9 +20,9 @@ Absorbs backlog item 999.6. README.md only; no application behavior changes.
 
 Code-confirmed mismatch: Test Connection strips the key (`src/python/web/handler/config.py`), queue requests use the stored value as-is. Recurrence in production unknown.
 
-- [ ] **ARR-01**: A Sonarr/Radarr API key entered with leading/trailing whitespace is saved normalized, using the same rule as Test Connection.
-- [ ] **ARR-02**: A previously saved whitespace-padded key works for queue requests without the user resaving it (normalized on read); save, Test Connection and queue completion checks use one consistent normalization rule.
-- [ ] **ARR-03**: An empty or invalid key still fails safely in queue completion checks (no unsafe import or deletion decision), and no key value appears in logs.
+- [x] **ARR-01**: A Sonarr/Radarr API key entered with leading/trailing whitespace is saved normalized, using the same rule as Test Connection.
+- [x] **ARR-02**: A previously saved whitespace-padded key works for queue requests without the user resaving it (normalized on read); save, Test Connection and queue completion checks use one consistent normalization rule.
+- [x] **ARR-03**: An empty or invalid key still fails safely in queue completion checks (no unsafe import or deletion decision), and no key value appears in logs.
 
 ### Web-service shutdown (WEB)
 
@@ -65,9 +65,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-02 | Phase 127 | Complete |
 | DOC-03 | Phase 127 | Complete |
 | DOC-04 | Phase 127 | Complete |
-| ARR-01 | Phase 128 | Pending |
-| ARR-02 | Phase 128 | Pending |
-| ARR-03 | Phase 128 | Pending |
+| ARR-01 | Phase 128 | Complete |
+| ARR-02 | Phase 128 | Complete |
+| ARR-03 | Phase 128 | Complete |
 | WEB-01 | Phase 129 | Pending |
 | WEB-02 | Phase 129 | Pending |
 | REL-07 | Phase 130 | Pending |

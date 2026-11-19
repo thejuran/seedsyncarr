@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: "Phase 128 verified — PR #155 (with Phase 127) open, in review (not merged)"
-stopped_at: "Phase 128 shipped to PR #155; awaiting CI and merge"
-last_updated: "2026-11-19T23:37:56Z"
-last_activity: 2026-11-19 -- Phase 128 PR #155 updated (verification passed, UAT and threat review complete)
+status: "Phase 128 complete — PR #155 merged 2026-11-19; Phase 129 next"
+stopped_at: "Phase 128 merged via PR #155 (with Phase 127); Phase 129 not yet planned"
+last_updated: "2026-11-19T23:48:18Z"
+last_activity: 2026-11-19 -- PR #155 merged to main (Phases 127 + 128), CI green
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
   completed_plans: 5
-  percent: 20
+  percent: 40
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 128: arr-key-normalization
+**Current focus:** Phase 129: web-service cleanup isolation (next)
 
 ## Current Position
 
-Phase: 128 (arr-key-normalization) — IN REVIEW
+Phase: 128 (arr-key-normalization) — COMPLETE
 Plan: 4 of 4 (all plans complete)
-Status: Phase 128 verified — PR #155 open, in review (not merged)
-Last activity: 2026-11-19 -- PR #155 body refreshed with CI, coverage, UAT and threat results
+Status: Phase 128 complete — PR #155 merged 2026-11-19 (merge commit 8fbe8c5b); Phase 129 next
+Last activity: 2026-11-19 -- PR #155 merged to main with CI green
 
 ## Accumulated Context
 
@@ -213,8 +213,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Wait for CI on PR #155 (Phases 127 + 128), then merge
-- Then Phase 129 with `/bm:next`
+- Plan Phase 129 (Web-Service Cleanup Isolation) with `/bm:next`
 
 ## Deferred Items
 
