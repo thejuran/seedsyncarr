@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: "Phase 128 complete — PR #155 merged 2026-11-19; Phase 129 next"
-stopped_at: "Phase 128 merged via PR #155 (with Phase 127); Phase 129 not yet planned"
-last_updated: "2026-11-19T23:48:18Z"
-last_activity: 2026-11-19 -- PR #155 merged to main (Phases 127 + 128), CI green
+status: "Phase 129 planning — context gathered, ready for /bm:plan-phase 129"
+stopped_at: Phase 129 context gathered
+last_updated: "2026-11-19T23:55:19Z"
+last_activity: 2026-11-19 -- Phase 129 context gathered (bounded web-server wait; tests now, live check in Phase 130)
 progress:
   total_phases: 5
   completed_phases: 2
@@ -196,8 +196,8 @@ Credential rotations remain operator follow-ups; one-time Done-group cleanup was
 
 ## Session Continuity
 
-Last session: 2026-11-19T11:25:26.873Z
-Stopped at: Completed 128-04-PLAN.md
+Last session: 2026-11-19T23:55:19.164Z
+Stopped at: Phase 129 context gathered
 Next action: Verify Phase 128 (confirm coverage >= 88 on Linux CI).
 
 **Prior session (2026-10-28):** Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
@@ -213,7 +213,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Plan Phase 129 (Web-Service Cleanup Isolation) with `/bm:next`
+- Plan Phase 129 with `/bm:plan-phase 129` (Codex plan review alongside the plan checker)
 
 ## Deferred Items
 
