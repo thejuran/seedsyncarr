@@ -1,4 +1,5 @@
 import logging
+import threading
 from threading import Thread
 
 import bottle
@@ -18,6 +19,13 @@ class WebAppJob(Job):
     # the shutdown work that follows (controller exit, final state save)
     # before docker escalates to SIGKILL. A class attribute rather than a
     # Constants entry so tests can patch it.
+    # Web cleanup budget: app.stop() sets a flag, server.stop() closes the
+    # listening socket and returns at once (paste's worker teardown runs on
+    # the server thread, not here), and the join waits at most this many
+    # seconds. The web service's share of shutdown is therefore limited to
+    # about this many seconds, which leaves the rest of docker's default 10 s
+    # stop grace for the shutdown work that follows (controller exit, final
+    # state save).
     _SERVER_THREAD_JOIN_TIMEOUT_IN_SECS = 5.0
 
     def __init__(self, context: Context, web_app: WebApp):
@@ -91,8 +99,12 @@ class MyWSGIHandler(httpserver.WSGIHandler):
 
 class MyWSGIRefServer(bottle.ServerAdapter):
     """
-    Extend bottle's default server to support programatic stopping of server
-    Copied from: https://stackoverflow.com/a/16056443
+    Extend bottle's default server to support programatic stopping of server.
+    stop() may arrive before or during startup, in which case the server is
+    closed as soon as it is created and never serves. stop() returns
+    immediately; the server thread finishes winding down on its own.
+    Originally copied from: https://stackoverflow.com/a/16056443
+    (the stop mechanism no longer follows that answer)
     """
     quiet = True  # disable logging to stdout
 
@@ -100,16 +112,50 @@ class MyWSGIRefServer(bottle.ServerAdapter):
         super().__init__(*args, **kwargs)
         self.logger = logger
         self.server = None
+        # Serializes stop() (called from the job thread) against run() (the
+        # server thread) storing self.server, so a stop that arrives during
+        # startup is never lost.
+        self.__stop_requested = False
+        self.__lock = threading.Lock()
 
     @overrides(bottle.ServerAdapter)
     def run(self, handler):
         self.logger.debug("Starting web server")
         handler = TransLogger(handler, logger=self.logger, setup_console_handler=(not self.quiet))
-        self.server = httpserver.serve(handler, host=self.host, port=str(self.port), start_loop=False,
-                                       handler=MyWSGIHandler,
-                                       **self.options)
-        self.server.serve_forever()
+        # paste's pool workers are non-daemon by default and would keep the
+        # interpreter alive at exit when the server was not stopped cleanly.
+        server = httpserver.serve(handler, host=self.host, port=str(self.port), start_loop=False,
+                                  handler=MyWSGIHandler,
+                                  daemon_threads=True,
+                                  **self.options)
+        with self.__lock:
+            self.server = server
+            stop_requested = self.__stop_requested
+        if stop_requested:
+            # stop() arrived during startup. Closing with paste's full
+            # teardown is safe only here: nothing has been accepted yet, so
+            # every worker is idle and the pool drains in milliseconds, and
+            # this is the server thread, which cleanup() waits on for a
+            # bounded time only. Without a serve loop nothing else would
+            # drain the idle workers.
+            server.server_close()
+            return
+        server.serve_forever()
 
     def stop(self):
+        with self.__lock:
+            self.__stop_requested = True
+            server = self.server
+        if server is None:
+            self.logger.debug("Web server not started yet; stop deferred to startup")
+            return
         self.logger.debug("Stopping web server")
-        self.server.server_close()
+        # This is everything paste's server_close() does except the
+        # worker-pool teardown. paste's own serve loop sees the flag within
+        # about a second and drains the pool on the server thread. Calling
+        # server_close() here would run that teardown on the job thread, where
+        # it costs about half a second per stuck request before the bounded
+        # join even starts and can enter paste's force-quit branch. Closing
+        # the socket here frees the port for an immediate restart.
+        server.running = False
+        server.socket.close()
