@@ -51,6 +51,9 @@ Filled in by the planner per task. Requirement → test mapping (from 129-RESEAR
 | WEB-02e | Stuck thread: bounded join, WARNING, returns | unit | `-k stuck` | ✅ extend | ⬜ pending |
 | WEB-02f | Subprocess with never-stopped real server exits (red first) | integration (subprocess) | `-k process_exits` | ✅ extend | ⬜ pending |
 | WEB-02g | Real server clean stop; port rebinds | unit (real socket) | `-k real_server_stop` | ✅ extend | ⬜ pending |
+| WEB-02h | Real cleanup against a real server with four stuck requests returns within the bound, warns, never calls `os._exit` (red first) | integration (real socket) | `-k stuck_requests` | ✅ extend | ⬜ pending |
+| WEB-02i | `stop()` while the server is still being constructed (event barrier): closed, never serves | unit | `-k stop_during_server_construction` | ✅ extend | ⬜ pending |
+| WEB-02j | `stop()` right after the server is published (event barrier): loop ended through running flag and socket close | unit | `-k stop_right_after_publication` | ✅ extend | ⬜ pending |
 | LINT | Whole-tree lint | static | `ruff check src/python/` | n/a | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -59,7 +62,7 @@ Filled in by the planner per task. Requirement → test mapping (from 129-RESEAR
 
 ## Wave 0 Requirements
 
-Existing infrastructure covers all phase requirements. TDD: WEB-01a and WEB-02f are written first and must fail on current code.
+Existing infrastructure covers all phase requirements. TDD: WEB-01a, WEB-02f and WEB-02h are written first and must fail on current code. Each red reason is confirmed from the captured output of a run of that one selector (expected failure text, `1 failed`, no import or collection error), not from the exit status.
 
 ---
 

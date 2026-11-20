@@ -115,7 +115,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 129-02-PLAN.md — web server adapter safe to stop during startup and unable to hold the process open (child-process exit proof), then the phase gate (full unit suite, whole-tree ruff)
+- [ ] 129-02-PLAN.md — web server adapter stops immediately (no worker teardown on the job thread; proven with stuck requests), is safe to stop during startup and cannot hold the process open (child-process exit proof), then the phase gate (full unit suite, whole-tree ruff)
 
 ### Phase 130: Release 1.8.1
 
