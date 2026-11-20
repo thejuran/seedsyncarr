@@ -1382,14 +1382,14 @@ markers = {main = "extra == \"dev\""}
 
 [[package]]
 name = "soupsieve"
-version = "2.9.1"
+version = "4.1.3"
 description = "A modern CSS selector implementation for Beautiful Soup."
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.11.5"
 groups = ["main", "dev"]
 files = [
-    {file = "soupsieve-2.9.1-py3-none-any.whl", hash = "sha256:4f4477399246b7a0c720a88ca2454b11cd6bb9ae4c9d170140786e916776c14c"},
-    {file = "soupsieve-2.9.1.tar.gz", hash = "sha256:c33e6605bbc71dd628b00c632d58ae607c22bade247e52553928f83bbb75b4ba"},
+    {file = "soupsieve-4.1.3-py3-none-any.whl", hash = "sha256:7a390d1a57d1ab7bb228531e9b8a750a5ebf87db774e0ef6faeeac057d22a5bf"},
+    {file = "soupsieve-4.1.3.tar.gz", hash = "sha256:13f70186c8f40bf8d0ff7bbab09a18fb149600b465269207b5e5b588f55fda08"},
 ]
 markers = {main = "extra == \"dev\""}
 
@@ -1571,5 +1571,5 @@ dev = ["mkdocs", "mkdocs-material", "pyinstaller", "pytest", "pytest-cov", "pyte
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.11,<3.13"
-content-hash = "b55c201c9f1255d85e48b717fb5f51f7daf197506f6119273d254829b629b9cf"
+python-versions = ">=3.11.5,<3.13"
+content-hash = "6b89d7455fb4cfc741e1f45c48cc1dd02495aced12cc1588c6a5d55c2e154763"

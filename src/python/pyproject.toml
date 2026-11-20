@@ -50,7 +50,7 @@ authors = ["thejuran"]
 package-mode = false
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.13"
+python = ">=3.11.5,<3.13"
 bottle = "^0.13.4"
 paste = "^3.10.1"
 patool = "^4.0.3"
