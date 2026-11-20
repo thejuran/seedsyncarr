@@ -464,6 +464,80 @@ class TestMyWSGIRefServer(unittest.TestCase):
         thread.join(5.0)
         self.assertFalse(thread.is_alive())
 
+    def test_socket_error_after_stop_ends_run_cleanly(self):
+        """WEB-02: a socket error from the serve loop after stop() is a normal exit."""
+        for error in (ValueError("Invalid file descriptor: -1"), OSError(9, "Bad file descriptor")):
+            with self.subTest(error=type(error).__name__):
+                srv, logger = self._new_mock_logged_server()
+                server = MagicMock()
+                server.running = True
+
+                def _serve_forever():
+                    # stop() closes the socket between the loop's running
+                    # check and the next accept, as on the real server.
+                    srv.stop()
+                    raise error
+
+                server.serve_forever.side_effect = _serve_forever
+                with patch("web.web_app_job.httpserver") as mock_httpserver:
+                    mock_httpserver.serve.return_value = server
+                    srv.run(MagicMock())  # must not raise
+
+                server.serve_forever.assert_called_once()
+                logger.exception.assert_not_called()
+                logger.error.assert_not_called()
+
+    def test_socket_error_without_stop_propagates(self):
+        """WEB-02: a socket error from the serve loop without a stop() is not swallowed."""
+        for error in (ValueError("Invalid file descriptor: -1"), OSError(9, "Bad file descriptor")):
+            with self.subTest(error=type(error).__name__):
+                srv, _ = self._new_mock_logged_server()
+                server = MagicMock()
+                server.running = True
+                server.serve_forever.side_effect = error
+                with patch("web.web_app_job.httpserver") as mock_httpserver:
+                    mock_httpserver.serve.return_value = server
+                    with self.assertRaises(type(error)):
+                        srv.run(MagicMock())
+
+    def test_real_server_stop_racing_serve_loop_exits_cleanly(self):
+        """WEB-02: stop() closing the socket just before handle_request() does not kill the server thread."""
+        from paste import httpserver as paste_httpserver
+        real_serve = paste_httpserver.serve
+        srv = MyWSGIRefServer(LOGGER, host="127.0.0.1", port=0)
+        raced = threading.Event()
+        errors = []
+
+        def _serve(*args, **kwargs):
+            server = real_serve(*args, **kwargs)
+            real_handle_request = server.handle_request
+
+            def _handle_request():
+                # The loop has passed its running check; stop() lands now.
+                if not raced.is_set():
+                    raced.set()
+                    srv.stop()
+                return real_handle_request()
+
+            server.handle_request = _handle_request
+            return server
+
+        def _run():
+            try:
+                bottle.run(app=bottle.Bottle(), server=srv, quiet=True)
+            except BaseException as e:
+                errors.append(e)
+
+        thread = threading.Thread(target=_run, daemon=True)
+        self._register_real_server_teardown(srv, thread)
+        with patch("web.web_app_job.httpserver.serve", side_effect=_serve):
+            thread.start()
+            thread.join(5.0)
+
+        self.assertFalse(thread.is_alive())
+        self.assertTrue(raced.is_set(), "the race was not exercised")
+        self.assertEqual(errors, [])
+
     def test_real_server_stop_frees_port(self):
         """WEB-02: a real server stops through stop(), its thread ends and the port is free."""
         srv = MyWSGIRefServer(LOGGER, host="127.0.0.1", port=0)

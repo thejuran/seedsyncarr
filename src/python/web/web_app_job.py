@@ -140,7 +140,21 @@ class MyWSGIRefServer(bottle.ServerAdapter):
             # drain the idle workers.
             server.server_close()
             return
-        server.serve_forever()
+        try:
+            server.serve_forever()
+        except (OSError, ValueError):
+            # stop() closes the listening socket from the job thread, which
+            # can land after paste's loop has checked its running flag but
+            # before the next accept. handle_request() then fails on the
+            # closed socket (ValueError: Invalid file descriptor: -1). paste
+            # has already drained the pool in its finally block, so after a
+            # requested stop this is a normal exit. Without a stop it is a
+            # real failure and must propagate.
+            with self.__lock:
+                stop_requested = self.__stop_requested
+            if not stop_requested:
+                raise
+            self.logger.debug("Web server loop ended after stop()")
 
     def stop(self):
         with self.__lock:
