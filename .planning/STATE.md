@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: "Phase 129 executed and verified (13/14; 4/4 success criteria) — awaiting Linux CI on the PR (human_needed)"
-stopped_at: Phase 129 verification human_needed (PR CI)
-last_updated: "2026-11-20T04:26:53Z"
-last_activity: "2026-11-20 -- Phase 129 executed: 2/2 plans, code review WR-01/IN-01 fixed, verifier human_needed (PR CI)"
+status: "Phase 129 shipped as PR #156 — awaiting Linux CI to close verification"
+stopped_at: Phase 129 shipped (PR #156), awaiting CI
+last_updated: "2026-11-20T04:29:39Z"
+last_activity: "2026-11-20 -- Phase 129 shipped as PR #156; awaiting Linux CI (last verification item)"
 progress:
   total_phases: 5
   completed_phases: 2
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-11-18)
 
 Phase: 129 (web-service-cleanup-isolation) — VERIFYING
 Plan: 2 of 2 complete
-Status: Phase 129 executed; verification human_needed — Linux CI green on the phase PR is the remaining item (129-HUMAN-UAT.md)
-Last activity: 2026-11-20 -- Phase 129 executed; code review WR-01/IN-01 fixed; verifier 13/14 (4/4 success criteria)
+Status: Phase 129 shipped, PR #156 — awaiting Linux CI to close verification (129-HUMAN-UAT.md)
+Last activity: 2026-11-20 -- Phase 129 shipped as PR #156; awaiting Linux CI (last verification item)
 
 ## Accumulated Context
 
