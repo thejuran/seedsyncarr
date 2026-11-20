@@ -148,3 +148,41 @@ ModuleNotFoundError: No module named 'soupsieve'
 
 **Owner wording:**
 "The 4 soupsieve alerts are in a tool used only for running the test suite. It is not in the Docker image, and a normal pip install does not include it. Someone who installed the optional developer extras (`seedsyncarr[dev]`) to run the tests would have it; that is a development setup, not a running SeedSyncarr. We are updating our own pinned copy so the alerts close."
+
+## Package legitimacy: @isaacs/nonrecursive-glob-match
+
+Recorded 2026-11-20 (Plan 130-02 Task 1). Nothing installed; no file under `src/angular/` changed.
+
+**Exact version the resolver selects.** Scratch copy of `src/angular/package.json` and `src/angular/package-lock.json` outside the repo; npm 11.12.1; `npm update --package-lock-only --ignore-scripts eslint @eslint/config-array @typescript-eslint/parser @typescript-eslint/eslint-plugin @typescript-eslint/typescript-estree typescript-eslint` (no `node_modules` created, no script run). Scratch lock entry `node_modules/@isaacs/nonrecursive-glob-match`:
+
+PKG_VERSION=1.1.0
+PKG_INTEGRITY=sha512-GPm/Dbvk5RLmhRnxXIa7nTpK0xtl4E0wj0MslsuNiJ1FIROU+2+9lgUC/dgF7Ey4QCWhfEsgxilMRMCdHPfDfw==
+
+- `resolved`: https://registry.npmjs.org/@isaacs/nonrecursive-glob-match/-/nonrecursive-glob-match-1.1.0.tgz
+- `dev: true`, license BlueOak-1.0.0
+- Same scratch lock: hoisted `node_modules/minimatch` 10.2.6 -> 11.0.9; karma, karma-coverage and glob keep minimatch 3.1.5. minimatch 11.0.9 declares `"@isaacs/nonrecursive-glob-match": "^1.1.0"` (11.0.1 declared `^1.0.1`), so every fixed minimatch needs this package.
+
+**Registry facts for exactly 1.1.0** (`npm view @isaacs/nonrecursive-glob-match@1.1.0 name version dist.integrity dist.tarball dist.signatures dist.attestations time maintainers repository.url scripts --json`):
+
+| Fact | Value |
+|------|-------|
+| `dist.integrity` | sha512-GPm/Dbvk5RLmhRnxXIa7nTpK0xtl4E0wj0MslsuNiJ1FIROU+2+9lgUC/dgF7Ey4QCWhfEsgxilMRMCdHPfDfw== (equals the scratch lock integrity: YES) |
+| `dist.tarball` | equals the scratch lock `resolved`: YES |
+| Tarball checked by hand | downloaded to an isolated scratch dir (not extracted into the repo, nothing run); computed sha512 equals the integrity above; 36 files: `dist/`, `src/` (TypeScript source), README, LICENSE, package.json; no dependencies |
+| Package created | 2026-10-26T23:53:21Z |
+| This version published | 2026-11-05T21:38:25Z (versions: 0.0.0-stage, 1.0.0, 1.0.1, 1.0.2, 1.0.3, 1.1.0; `latest` = 1.1.0) |
+| Maintainers | `isaacs <i@izs.me>` (only maintainer); published by `_npmUser` isaacs (a manual publish, not a CI trusted-publisher publish) |
+| `repository.url` | **ABSENT** (no `repository` or `homepage` field in the published metadata) |
+| Script names | snap, test, format, prepare, presnap, pretest, typedoc, preversion, postversion, prepublishOnly. No `preinstall`, `install` or `postinstall` (`prepare` does not run when installed from the registry) |
+| Registry signatures (`dist.signatures`) | PRESENT (2 ECDSA signatures, keyid SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U) |
+| Provenance attestation (`dist.attestations`) | **ABSENT** for 1.1.0, and for every other published version (1.0.0 to 1.0.3). The registry attestation endpoint `/-/npm/v1/attestations/@isaacs%2fnonrecursive-glob-match@1.1.0` returns `{"error":"Not found"}` |
+| Comparison: minimatch 11.0.9 | HAS a SLSA v1 provenance attestation, `repository.url` git+ssh://git@github.com/isaacs/minimatch.git, published through GitHub Actions trusted publishing approved by isaacs |
+| Source repo outside the registry | `github.com/isaacs/nonrecursive-glob-match` exists, public, created 2026-03-06, tag `v1.1.0` present. The registry metadata does not link to it and no attestation ties the tarball to it |
+
+**Findings (stated plainly, not a clean result):**
+1. No provenance attestation exists for this package at any version, so the plan's Task 2 legitimacy check ("the new package with a verified attestation from its recorded source repository") cannot pass. Under the plan's rule this is not waivable: an approve would reach Task 2 step 4 and stop there.
+2. No source repository is recorded in the registry metadata.
+3. Integrity matches, registry signatures are present, the publisher is minimatch's own author, and there is no install-time script.
+4. The research note "SLSA provenance attestation present" is wrong for this package; it holds for minimatch itself, not for this helper.
+
+**Recommendation to the owner: decline.** Alert #110 (minimatch, dev-only, medium) stays open for a later release when the helper package carries provenance or has more history.
