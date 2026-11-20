@@ -134,7 +134,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 130-01-PLAN.md — merge PR #156, cut `release/1.8.1`, Dependabot snapshot and triage reasons, soupsieve fix to 4.x (Poetry Python floor + lock regeneration)
+- [x] 130-01-PLAN.md — merge PR #156, cut `release/1.8.1`, Dependabot snapshot and triage reasons, soupsieve fix to 4.x (Poetry Python floor + lock regeneration)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -163,7 +163,7 @@ Plans:
 | 127. README Accuracy | 1/1 | Complete    | 2026-11-18 |
 | 128. Arr Key Normalization | 4/4 | Complete    | 2026-11-19 |
 | 129. Web-Service Cleanup Isolation | 2/2 | Complete    | 2026-11-20 |
-| 130. Release 1.8.1 | 0/6 | Not started | - |
+| 130. Release 1.8.1 | 1/6 | In Progress|  |
 
 **Done when:** all four success-criteria sets are verified, targeted regression/integration checks and required repository gates pass, a release-image smoke check covers setup, queue completion checks and stop/restart, and 1.8.1 is deployed to NAS production. Boundaries: no transfer-architecture replacement, runtime auto-restart expansion, blanket test project, UI redesign or speculative optimization; existing completion/import/deletion safeguards stay intact.
 

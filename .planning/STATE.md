@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
 status: executing
-stopped_at: Phase 130 context gathered
-last_updated: "2026-11-20T22:32:45.728Z"
-last_activity: 2026-11-20 -- Phase 130 execution started
+stopped_at: Completed 130-01-PLAN.md
+last_updated: "2026-11-20T22:36:20.045Z"
+last_activity: 2026-11-20 -- 130-01 complete (PR #156 merged, release/1.8.1 cut locally, soupsieve 4.1.3)
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 13
-  completed_plans: 7
-  percent: 54
+  completed_plans: 8
+  percent: 60
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-11-18)
 ## Current Position
 
 Phase: 130 (release-1-8-1) — EXECUTING
-Plan: 1 of 6
+Plan: 2 of 6
 Status: Executing Phase 130
-Last activity: 2026-11-20 -- Phase 130 execution started
+Last activity: 2026-11-20 -- 130-01 complete (PR #156 merged, release/1.8.1 cut locally, soupsieve 4.1.3)
 
 ## Accumulated Context
 
@@ -137,6 +137,8 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 128]: Queue checks trim the stored arr key on read; a missing/invalid key makes start_fetch skip after the URL check and the unchanged gate holds as <code>_unavailable
 - [Phase 128]: ArrQueueClient warn-once state resets when a valid key is seen, so a key broken again warns again
 - [Phase 128]: Local coverage 86.47% (base 86.39%) with CI-only modules excluded; Linux CI is the authoritative coverage gate
+- [Phase 130]: 130-01: soupsieve rolled to 4.1.3 via Poetry-only python floor >=3.11.5; [project] requires-python unchanged
+- [Phase 130]: 130-01: paste #146 and pytz #145 left out of 1.8.1 (paste.session unused; pytz test-only)
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -202,9 +204,9 @@ Credential rotations remain operator follow-ups; one-time Done-group cleanup was
 
 ## Session Continuity
 
-Last session: 2026-11-20T04:55:38.453Z
-Stopped at: Phase 130 context gathered
-Next action: Verify Phase 128 (confirm coverage >= 88 on Linux CI).
+Last session: 2026-11-20T22:36:16.090Z
+Stopped at: Completed 130-01-PLAN.md
+Next action: Execute 130-02 on release/1.8.1.
 
 **Prior session (2026-10-28):** Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
 
