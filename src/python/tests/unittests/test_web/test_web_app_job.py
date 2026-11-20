@@ -1,17 +1,55 @@
+import logging
+import os
+import socket
+import subprocess
+import sys
+import textwrap
 import threading
 import time
 import unittest
 from unittest.mock import MagicMock, patch
 
-import bottle  # noqa: F401  (imported so the bottle.run patch target resolves)
+import bottle
 
-from web.web_app_job import WebAppJob
+from web.web_app_job import MyWSGIHandler, MyWSGIRefServer, WebAppJob
 
 
 APP_STOP_ERROR_MSG = "Error stopping web app during web service cleanup"
 SERVER_STOP_ERROR_MSG = "Error stopping web server during web service cleanup"
 THREAD_JOIN_ERROR_MSG = "Error joining web server thread during web service cleanup"
 STUCK_WARNING_MSG = "Web server did not stop within 5.0 seconds; continuing shutdown"
+
+# Pool size of the real server in the stuck-requests test and the number of
+# requests held open in it, so that every worker is stuck and none is idle.
+# Five is the smallest pool paste accepts with its default options.
+STUCK_WORKER_COUNT = 5
+
+LOGGER = logging.getLogger("test_web_app_job")
+
+# Child process for the process-exit test: starts a real web server on a
+# daemon thread and ends without stopping it, as when server.stop() failed or
+# never ran. The interpreter must still exit by itself.
+NEVER_STOPPED_SERVER_SCRIPT = textwrap.dedent("""
+    import logging
+    import sys
+    import threading
+    import time
+
+    import bottle
+
+    from web.web_app_job import MyWSGIRefServer
+
+    srv = MyWSGIRefServer(logging.getLogger("child"), host="127.0.0.1", port=0)
+    thread = threading.Thread(target=bottle.run,
+                              kwargs={"app": bottle.Bottle(), "server": srv, "quiet": True},
+                              daemon=True)
+    thread.start()
+    deadline = time.monotonic() + 10.0
+    while srv.server is None:
+        if time.monotonic() > deadline:
+            sys.exit(2)
+        time.sleep(0.01)
+""")
 
 
 def _joins_in_time(thread):
@@ -243,3 +281,306 @@ class TestWebAppJobCleanup(unittest.TestCase):
         """WEB-02: the join bound is 5 s, below Docker's 10 s stop grace."""
         self.assertEqual(WebAppJob._SERVER_THREAD_JOIN_TIMEOUT_IN_SECS, 5.0)
         self.assertLess(WebAppJob._SERVER_THREAD_JOIN_TIMEOUT_IN_SECS, 10.0)
+
+
+class _BlockingWebApp(bottle.Bottle):
+    """A servable web app whose /block route holds its worker until released."""
+
+    def __init__(self, entered: threading.Semaphore, release: threading.Event):
+        super().__init__()
+        self._entered = entered
+        self._release = release
+        self.route("/block", callback=self._block)
+
+    def _block(self):
+        self._entered.release()
+        self._release.wait(30.0)
+        return "released"
+
+    def stop(self):
+        pass
+
+    def process(self):
+        pass
+
+
+def _make_server_thread(srv: MyWSGIRefServer) -> threading.Thread:
+    """Build (but do not start) a daemon thread that runs a real adapter."""
+    return threading.Thread(target=bottle.run,
+                            kwargs={"app": bottle.Bottle(), "server": srv, "quiet": True},
+                            daemon=True)
+
+
+class TestMyWSGIRefServer(unittest.TestCase):
+    def _new_mock_logged_server(self):
+        logger = MagicMock()
+        srv = MyWSGIRefServer(logger, host="127.0.0.1", port=0)
+        return srv, logger
+
+    def _patch_httpserver(self):
+        patcher = patch("web.web_app_job.httpserver")
+        mock_httpserver = patcher.start()
+        self.addCleanup(patcher.stop)
+        return mock_httpserver
+
+    def _wait_for_server(self, srv: MyWSGIRefServer):
+        deadline = time.monotonic() + 5.0
+        while srv.server is None:
+            if time.monotonic() > deadline:
+                self.fail("web server was not created within 5 s")
+            time.sleep(0.01)
+
+    def _stop_quietly(self, srv: MyWSGIRefServer):
+        # Teardown must never add an error next to a test failure.
+        if srv.server is not None:
+            try:
+                srv.stop()
+            except Exception:
+                LOGGER.debug("teardown stop() failed", exc_info=True)
+
+    def _register_real_server_teardown(self, srv: MyWSGIRefServer, thread: threading.Thread):
+        # One function: cleanups run last-registered-first.
+        def _teardown():
+            self._stop_quietly(srv)
+            if thread.ident is not None:
+                thread.join(5.0)
+                self.assertFalse(thread.is_alive())
+
+        self.addCleanup(_teardown)
+
+    def _register_barrier_teardown(self, release: threading.Event, thread: threading.Thread):
+        # One function: cleanups run last-registered-first, so a separate
+        # release cleanup would run after the join and stall a failed run.
+        def _teardown():
+            release.set()
+            if thread.ident is not None:
+                thread.join(5.0)
+            self.assertFalse(thread.is_alive())
+
+        self.addCleanup(_teardown)
+
+    def test_stop_before_run_closes_instead_of_serving(self):
+        """WEB-02: stop() before run() is a quiet no-op and run() then closes instead of serving."""
+        srv, logger = self._new_mock_logged_server()
+        mock_httpserver = self._patch_httpserver()
+
+        srv.stop()  # must not raise
+        srv.run(MagicMock())
+
+        server = mock_httpserver.serve.return_value
+        server.server_close.assert_called_once()
+        server.serve_forever.assert_not_called()
+        logger.exception.assert_not_called()
+        logger.error.assert_not_called()
+
+    def test_run_serves_with_daemon_threads(self):
+        """WEB-02: run() asks paste for daemon worker threads and serves."""
+        srv, _ = self._new_mock_logged_server()
+        mock_httpserver = self._patch_httpserver()
+
+        srv.run(MagicMock())
+
+        mock_httpserver.serve.assert_called_once()
+        kwargs = mock_httpserver.serve.call_args.kwargs
+        self.assertIs(kwargs.get("daemon_threads"), True, "daemon_threads=True not passed to httpserver.serve")
+        self.assertIs(kwargs.get("start_loop"), False)
+        self.assertIs(kwargs.get("handler"), MyWSGIHandler)
+        server = mock_httpserver.serve.return_value
+        server.serve_forever.assert_called_once()
+        server.server_close.assert_not_called()
+
+    def test_stop_after_run_closes_server(self):
+        """WEB-02: stop() on a running server only clears the running flag and closes the socket."""
+        srv, _ = self._new_mock_logged_server()
+        mock_httpserver = self._patch_httpserver()
+        server = mock_httpserver.serve.return_value
+        server.running = True
+
+        srv.run(MagicMock())
+        srv.stop()
+
+        # The job thread must never run paste's worker-pool teardown.
+        server.server_close.assert_not_called()
+        server.thread_pool.shutdown.assert_not_called()
+        self.assertIs(server.running, False)
+        server.socket.close.assert_called_once()
+
+    def test_stop_during_server_construction_closes_instead_of_serving(self):
+        """WEB-02: a stop() while httpserver.serve is still constructing the server is honoured."""
+        srv, logger = self._new_mock_logged_server()
+        in_serve = threading.Event()
+        release_serve = threading.Event()
+        server = MagicMock()
+
+        def _serve(*args, **kwargs):
+            in_serve.set()
+            release_serve.wait(5.0)
+            return server
+
+        mock_httpserver = self._patch_httpserver()
+        mock_httpserver.serve.side_effect = _serve
+        thread = threading.Thread(target=srv.run, args=(MagicMock(),), daemon=True)
+        self._register_barrier_teardown(release_serve, thread)
+        thread.start()
+
+        self.assertTrue(in_serve.wait(5.0))
+        self.assertIsNone(srv.server)
+        srv.stop()  # must not raise
+        release_serve.set()
+        thread.join(5.0)
+        self.assertFalse(thread.is_alive())
+
+        server.server_close.assert_called_once()
+        server.serve_forever.assert_not_called()
+        logger.exception.assert_not_called()
+        logger.error.assert_not_called()
+
+    def test_stop_right_after_publication_ends_serve_loop(self):
+        """WEB-02: a stop() right after the server is published ends the loop via flag and socket."""
+        srv, _ = self._new_mock_logged_server()
+        at_loop = threading.Event()
+        release_loop = threading.Event()
+        server = MagicMock()
+        server.running = True
+
+        def _serve_forever():
+            at_loop.set()
+            release_loop.wait(5.0)
+
+        server.serve_forever.side_effect = _serve_forever
+        mock_httpserver = self._patch_httpserver()
+        mock_httpserver.serve.return_value = server
+        thread = threading.Thread(target=srv.run, args=(MagicMock(),), daemon=True)
+        self._register_barrier_teardown(release_loop, thread)
+        thread.start()
+
+        self.assertTrue(at_loop.wait(5.0))
+        srv.stop()
+
+        server.server_close.assert_not_called()
+        self.assertIs(server.running, False)
+        server.socket.close.assert_called_once()
+        release_loop.set()
+        thread.join(5.0)
+        self.assertFalse(thread.is_alive())
+
+    def test_real_server_stop_frees_port(self):
+        """WEB-02: a real server stops through stop(), its thread ends and the port is free."""
+        srv = MyWSGIRefServer(LOGGER, host="127.0.0.1", port=0)
+        thread = _make_server_thread(srv)
+        self._register_real_server_teardown(srv, thread)
+        thread.start()
+        self._wait_for_server(srv)
+        port = srv.server.server_address[1]
+
+        srv.stop()
+        thread.join(3.0)
+        self.assertFalse(thread.is_alive())
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind(("127.0.0.1", port))
+        finally:
+            sock.close()
+
+    def test_real_server_stop_before_start_never_serves(self):
+        """WEB-02: a real server stopped before its thread starts closes without serving."""
+        srv = MyWSGIRefServer(LOGGER, host="127.0.0.1", port=0)
+        thread = _make_server_thread(srv)
+        self._register_real_server_teardown(srv, thread)
+
+        srv.stop()
+        thread.start()
+        thread.join(3.0)
+
+        self.assertFalse(thread.is_alive())
+        self.assertIsNotNone(srv.server)
+        with self.assertRaises(OSError):
+            conn = socket.create_connection(("127.0.0.1", srv.server.server_address[1]), timeout=1)
+            conn.close()
+
+    def test_cleanup_returns_within_bound_with_stuck_requests(self):
+        """WEB-02: with every worker stuck in a request, WebAppJob.cleanup() stays within the bound."""
+        entered = threading.Semaphore(0)
+        release = threading.Event()
+        adapters = []
+        real_threads = []
+        clients = []
+
+        # Registered first so it is undone last, after the server has wound down.
+        exit_patcher = patch("os._exit")
+        mock_exit = exit_patcher.start()
+        self.addCleanup(exit_patcher.stop)
+
+        def _make_adapter(logger, host, port):
+            srv = MyWSGIRefServer(logger, host="127.0.0.1", port=0,
+                                  threadpool_workers=STUCK_WORKER_COUNT)
+            adapters.append(srv)
+            return srv
+
+        def _make_thread(*args, **kwargs):
+            t = threading.Thread(*args, **kwargs)
+            real_threads.append(t)
+            return t
+
+        def _teardown():
+            release.set()
+            for c in clients:
+                c.close()
+            for srv in adapters:
+                self._stop_quietly(srv)
+            for t in real_threads:
+                if t.ident is not None:
+                    t.join(10.0)
+            for t in real_threads:
+                self.assertFalse(t.is_alive())
+
+        self.addCleanup(_teardown)
+
+        context = MagicMock()
+        context.args.debug = False
+        app = _BlockingWebApp(entered, release)
+        job = WebAppJob(context=context, web_app=app)
+
+        with patch("web.web_app_job.MyWSGIRefServer", side_effect=_make_adapter), \
+                patch("web.web_app_job.Thread", side_effect=_make_thread), \
+                patch.object(WebAppJob, "_SERVER_THREAD_JOIN_TIMEOUT_IN_SECS", 0.2):
+            job.setup()
+            adapter = adapters[0]
+            self._wait_for_server(adapter)
+            port = adapter.server.server_address[1]
+            for _ in range(STUCK_WORKER_COUNT):
+                c = socket.create_connection(("127.0.0.1", port), timeout=5)
+                clients.append(c)
+                c.sendall(b"GET /block HTTP/1.0\r\n\r\n")
+            # Entry barrier: every handler must have reported in before cleanup.
+            for _ in range(STUCK_WORKER_COUNT):
+                self.assertTrue(entered.acquire(timeout=5.0), "request did not reach the handler")
+
+            server = adapter.server
+            self.assertEqual(len(server.thread_pool.workers), STUCK_WORKER_COUNT,
+                             "the pool must be fully blocked before cleanup")
+            self.assertEqual(server.thread_pool.idle_workers, [],
+                             "the pool must be fully blocked before cleanup")
+
+            t = time.monotonic()
+            job.cleanup()  # must not raise
+            elapsed = time.monotonic() - t
+
+        self.assertLess(elapsed, 1.5, "cleanup exceeded the shutdown bound: {:.2f}s".format(elapsed))
+        job.logger.warning.assert_called_once()
+        self.assertIn("did not stop within 0.2 seconds", job.logger.warning.call_args[0][0])
+        job.logger.exception.assert_not_called()
+        mock_exit.assert_not_called()
+
+    def test_process_exits_when_web_server_never_stopped(self):
+        """WEB-02: a process whose web server was never stopped still exits by itself."""
+        src_python_dir = os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__)))))
+        try:
+            proc = subprocess.run([sys.executable, "-c", NEVER_STOPPED_SERVER_SCRIPT],
+                                  cwd=src_python_dir, capture_output=True, text=True, timeout=20)
+        except subprocess.TimeoutExpired:
+            self.fail("process did not exit: web server threads kept the interpreter alive")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
