@@ -14,18 +14,15 @@ class WebAppJob(Job):
     Web interface service
     """
 
-    # Bounds how long shutdown waits for the web-server thread. It must stay
-    # well below docker's default 10 s stop grace so that time is left for
-    # the shutdown work that follows (controller exit, final state save)
-    # before docker escalates to SIGKILL. A class attribute rather than a
-    # Constants entry so tests can patch it.
-    # Web cleanup budget: app.stop() sets a flag, server.stop() closes the
-    # listening socket and returns at once (paste's worker teardown runs on
-    # the server thread, not here), and the join waits at most this many
-    # seconds. The web service's share of shutdown is therefore limited to
-    # about this many seconds, which leaves the rest of docker's default 10 s
-    # stop grace for the shutdown work that follows (controller exit, final
-    # state save).
+    # Bounds how long shutdown waits for the web-server thread. In cleanup(),
+    # app.stop() sets a flag, server.stop() closes the listening socket and
+    # returns at once (paste's worker teardown runs on the server thread, not
+    # here), and the join waits at most this many seconds. The web service's
+    # share of shutdown is therefore about this bound, which stays well below
+    # docker's default 10 s stop grace and leaves time for the shutdown work
+    # that follows (controller exit, final state save) before docker
+    # escalates to SIGKILL. A class attribute rather than a Constants entry
+    # so tests can patch it.
     _SERVER_THREAD_JOIN_TIMEOUT_IN_SECS = 5.0
 
     def __init__(self, context: Context, web_app: WebApp):
