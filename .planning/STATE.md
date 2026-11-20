@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: "Phase 129 planned — 2 plans verified (plan checker + Codex), ready for /bm:execute-phase 129"
-stopped_at: Phase 129 planned
-last_updated: "2026-11-20T00:44:49Z"
-last_activity: "2026-11-19 -- Phase 129 planned: 2 plans in 2 waves; plan checker passed, Codex review LOW risk after 3 rounds"
+status: executing
+stopped_at: Phase 129 context gathered
+last_updated: "2026-11-20T03:49:13.793Z"
+last_activity: 2026-11-20 -- Phase 129 execution started
 progress:
   total_phases: 5
   completed_phases: 2
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 129: web-service cleanup isolation (planned, ready to execute)
+**Current focus:** Phase 129: web-service-cleanup-isolation
 
 ## Current Position
 
-Phase: 129 (web-service-cleanup-isolation) — PLANNED
-Plan: 0 of 2 (ready to execute)
-Status: Phase 129 planned — 129-01 (cleanup isolation, wave 1), 129-02 (adapter stop + daemon workers + phase gate, wave 2); Phase 128 complete (PR #155 merged 2026-11-19)
-Last activity: 2026-11-19 -- Phase 129 planned; plan checker passed, Codex round 3 LOW risk (129-REVIEWS.md)
+Phase: 129 (web-service-cleanup-isolation) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 129
+Last activity: 2026-11-20 -- Phase 129 execution started
 
 ## Accumulated Context
 
