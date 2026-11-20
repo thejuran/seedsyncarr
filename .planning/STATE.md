@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: "Phase 130 planned — ready to execute"
-stopped_at: Phase 130 planned (6 plans, plan-checker + Codex review passed)
-last_updated: "2026-11-20T06:21:27.000Z"
-last_activity: 2026-11-20 -- Phase 130 planning complete
+status: executing
+stopped_at: Phase 130 context gathered
+last_updated: "2026-11-20T22:32:45.728Z"
+last_activity: 2026-11-20 -- Phase 130 execution started
 progress:
   total_phases: 5
   completed_phases: 3
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 130 — release 1.8.1
+**Current focus:** Phase 130: release-1-8-1
 
 ## Current Position
 
-Phase: 130
-Plan: 0 of 6
-Status: Ready to execute
-Last activity: 2026-11-20 -- Phase 130 planning complete
+Phase: 130 (release-1-8-1) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 130
+Last activity: 2026-11-20 -- Phase 130 execution started
 
 ## Accumulated Context
 
