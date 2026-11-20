@@ -43,7 +43,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 
 - [x] **Phase 127: README Accuracy** - Setup, security and documentation-discoverability claims in the README match current defaults, SECURITY.md and the repository guides (completed 2026-11-18)
 - [x] **Phase 128: Arr Key Normalization** - Sonarr/Radarr API keys normalize the same way on save and on read for queue requests, matching Test Connection (completed 2026-11-19)
-- [x] **Phase 129: Web-Service Cleanup Isolation** - Each web-service shutdown step runs independently so one failure never skips the rest (completed 2026-11-20)
+- [ ] **Phase 129: Web-Service Cleanup Isolation** - Each web-service shutdown step runs independently so one failure never skips the rest
 - [ ] **Phase 130: Release 1.8.1** - Targeted regressions, required gates, release-image smoke test and NAS production deploy pinned to the tag
 
 #### Phase Details
@@ -137,7 +137,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 127. README Accuracy | 1/1 | Complete    | 2026-11-18 |
 | 128. Arr Key Normalization | 4/4 | Complete    | 2026-11-19 |
-| 129. Web-Service Cleanup Isolation | 2/2 | Complete   | 2026-11-20 |
+| 129. Web-Service Cleanup Isolation | 2/2 | Verifying (awaiting PR CI) | - |
 | 130. Release 1.8.1 | 0/TBD | Not started | - |
 
 **Done when:** all four success-criteria sets are verified, targeted regression/integration checks and required repository gates pass, a release-image smoke check covers setup, queue completion checks and stop/restart, and 1.8.1 is deployed to NAS production. Boundaries: no transfer-architecture replacement, runtime auto-restart expansion, blanket test project, UI redesign or speculative optimization; existing completion/import/deletion safeguards stay intact.

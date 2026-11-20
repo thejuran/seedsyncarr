@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: executing
-stopped_at: Phase 129 context gathered
-last_updated: "2026-11-20T03:49:13.793Z"
-last_activity: 2026-11-20 -- Phase 129 execution started
+status: "Phase 129 executed and verified (13/14; 4/4 success criteria) — awaiting Linux CI on the PR (human_needed)"
+stopped_at: Phase 129 verification human_needed (PR CI)
+last_updated: "2026-11-20T04:21:51Z"
+last_activity: "2026-11-20 -- Phase 129 executed: 2/2 plans, code review WR-01/IN-01 fixed, verifier human_needed (PR CI)"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 7
   percent: 40
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 129: web-service-cleanup-isolation
+**Current focus:** Phase 129: web-service-cleanup-isolation (verifying — awaiting PR CI)
 
 ## Current Position
 
-Phase: 129 (web-service-cleanup-isolation) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 129
-Last activity: 2026-11-20 -- Phase 129 execution started
+Phase: 129 (web-service-cleanup-isolation) — VERIFYING
+Plan: 2 of 2 complete
+Status: Phase 129 executed; verification human_needed — Linux CI green on the phase PR is the remaining item (129-HUMAN-UAT.md)
+Last activity: 2026-11-20 -- Phase 129 executed; code review WR-01/IN-01 fixed; verifier 13/14 (4/4 success criteria)
 
 ## Accumulated Context
 
