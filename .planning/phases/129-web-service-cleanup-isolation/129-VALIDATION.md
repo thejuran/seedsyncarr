@@ -21,7 +21,7 @@ created: 2026-11-19
 | **Config file** | `src/python/pyproject.toml` `[tool.pytest.ini_options]` |
 | **Quick run command** | `cd src/python && poetry run pytest tests/unittests/test_web/test_web_app_job.py -q -p no:cacheprovider` |
 | **Full suite command** | `cd src/python && poetry run pytest tests/unittests -q -p no:cacheprovider` then, from repo root, `ruff check src/python/` |
-| **Estimated runtime** | ~3 seconds quick (22 tests); full unittests a few minutes |
+| **Estimated runtime** | ~3 seconds quick (27 tests); full unittests a few minutes |
 
 ---
 
@@ -46,7 +46,7 @@ Every command runs from the repo root as written.
 | WEB-01d | All three raise; all attempted and logged; no raise | unit | `cd src/python && poetry run pytest tests/unittests/test_web/test_web_app_job.py -q -p no:cacheprovider -k all_steps_fail` | ✅ | ✅ green |
 | WEB-02a | Cleanup without setup: no raise, no exception logged | unit | `cd src/python && poetry run pytest tests/unittests/test_web/test_web_app_job.py -q -p no:cacheprovider -k cleanup_without_setup` | ✅ | ✅ green |
 | WEB-02b | Thread never started: join skipped, no error | unit | `cd src/python && poetry run pytest tests/unittests/test_web/test_web_app_job.py -q -p no:cacheprovider -k thread_not_started` | ✅ | ✅ green |
-| WEB-02c | `stop()` before `run()` assigns server: no raise; run closes instead of serving | unit | `cd src/python && poetry run pytest tests/unittests/test_web/test_web_app_job.py -q -p no:cacheprovider -k stop_before_run` | ✅ | ✅ green |
+| WEB-02c | `stop()` before `run()` assigns server: no raise; run never constructs the server or binds the port (IN-02) | unit | `cd src/python && poetry run pytest tests/unittests/test_web/test_web_app_job.py -q -p no:cacheprovider -k stop_before_run` | ✅ | ✅ green |
 | WEB-02d | `daemon_threads=True` and `daemon=True` | unit | `cd src/python && poetry run pytest tests/unittests/test_web/test_web_app_job.py -q -p no:cacheprovider -k daemon` | ✅ | ✅ green |
 | WEB-02e | Stuck thread: bounded join, WARNING, returns | unit | `cd src/python && poetry run pytest tests/unittests/test_web/test_web_app_job.py -q -p no:cacheprovider -k stuck` | ✅ | ✅ green |
 | WEB-02f | Subprocess with never-stopped real server exits (red first) | integration (subprocess) | `cd src/python && poetry run pytest tests/unittests/test_web/test_web_app_job.py -q -p no:cacheprovider -k process_exits` | ✅ | ✅ green |
@@ -59,6 +59,8 @@ Every command runs from the repo root as written.
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
 Each selector was run alone on 2026-11-19 and selected at least one test (`daemon` 2, `stuck` 3, `real_server_stop` 2, all others 1); all exited 0. The whole file passed three runs in a row (22 passed each, 2.41 s, 2.41 s, 2.50 s).
+
+After the code-review fixes (WR-01, IN-01 to IN-04) the file has 27 tests. It passed three runs in a row (27 passed, 4 subtests passed each, 2.67 s, 2.36 s, 2.29 s). Re-run selector counts: `stop_before_run` 2, `real_server_stop` 3, `daemon` 2, `stuck` 3. `tests/unittests/test_web` plus `tests/integration/test_web`: 564 passed, 95 subtests passed. `ruff check .` from `src/python`: clean.
 
 ### Local environment notes
 
