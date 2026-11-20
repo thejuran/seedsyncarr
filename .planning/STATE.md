@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: ready_to_plan
-stopped_at: Phase 129 complete (2/2, PR #156 CI green, awaiting owner merge) — ready to discuss Phase 130
-last_updated: "2026-11-20T04:48:32Z"
-last_activity: "2026-11-20 -- Phase 129 complete: PR #156 CI all green, verification passed; ready for Phase 130 (release 1.8.1)"
+status: planning
+stopped_at: Phase 130 context gathered
+last_updated: "2026-11-20T04:55:38.469Z"
+last_activity: 2026-11-20
 progress:
   total_phases: 5
   completed_phases: 3
@@ -202,8 +202,8 @@ Credential rotations remain operator follow-ups; one-time Done-group cleanup was
 
 ## Session Continuity
 
-Last session: 2026-11-19T23:55:19.164Z
-Stopped at: Phase 129 context gathered
+Last session: 2026-11-20T04:55:38.453Z
+Stopped at: Phase 130 context gathered
 Next action: Verify Phase 128 (confirm coverage >= 88 on Linux CI).
 
 **Prior session (2026-10-28):** Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
