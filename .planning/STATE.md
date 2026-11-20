@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: "Phase 129 planning — context gathered, ready for /bm:plan-phase 129"
-stopped_at: Phase 129 context gathered
-last_updated: "2026-11-20T00:20:00Z"
-last_activity: 2026-11-19 -- Phase 129 context gathered (bounded web-server wait; tests now, live check in Phase 130)
+status: "Phase 129 planned — 2 plans verified (plan checker + Codex), ready for /bm:execute-phase 129"
+stopped_at: Phase 129 planned
+last_updated: "2026-11-20T00:44:49Z"
+last_activity: "2026-11-19 -- Phase 129 planned: 2 plans in 2 waves; plan checker passed, Codex review LOW risk after 3 rounds"
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 5
+  total_plans: 7
   completed_plans: 5
   percent: 40
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 129: web-service cleanup isolation (next)
+**Current focus:** Phase 129: web-service cleanup isolation (planned, ready to execute)
 
 ## Current Position
 
-Phase: 128 (arr-key-normalization) — COMPLETE
-Plan: 4 of 4 (all plans complete)
-Status: Phase 128 complete — PR #155 merged 2026-11-19 (merge commit 8fbe8c5b); Phase 129 next
-Last activity: 2026-11-19 -- PR #155 merged to main with CI green
+Phase: 129 (web-service-cleanup-isolation) — PLANNED
+Plan: 0 of 2 (ready to execute)
+Status: Phase 129 planned — 129-01 (cleanup isolation, wave 1), 129-02 (adapter stop + daemon workers + phase gate, wave 2); Phase 128 complete (PR #155 merged 2026-11-19)
+Last activity: 2026-11-19 -- Phase 129 planned; plan checker passed, Codex round 3 LOW risk (129-REVIEWS.md)
 
 ## Accumulated Context
 

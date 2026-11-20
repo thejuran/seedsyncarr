@@ -134,3 +134,41 @@ The central design matches installed Paste: [`serve_forever()` drains the pool i
 The revised implementation approach addresses the phase goal. Correct the timing-test assumption and cleanup ordering before relying on the required fail-before evidence and validation sign-off.
 
 ---
+
+## Codex Review — Round 3 (after revision 2)
+
+## Summary
+
+**The revised plans are ready to execute. No new HIGH or MEDIUM issues found.** The round-2 timing-test and teardown-order concerns are resolved. Only the previously noted LOW concern about brittle source-count checks remains.
+
+I checked the repository and installed Paste source read-only. I did not run tests or reproduce the reported measurements; this is approval of the plan design, not implementation verification.
+
+## Concerns
+
+| Prior concern | Severity | Status | Assessment |
+|---|---|---|---|
+| Synchronous stop consumes the budget before joining | HIGH | **RESOLVED** | Wave 2 removes worker teardown from `stop()`; Wave 1 explicitly documents its temporary limitation. |
+| Timing test excludes the blocking operation | MEDIUM | **RESOLVED** | The stuck-request test measures the real `WebAppJob.cleanup()` call, including `server.stop()`. |
+| Subprocess exit proof bypasses blocking cleanup | HIGH | **RESOLVED** | Separate tests now cover bounded cleanup and interpreter exit. Both mechanisms have direct coverage. |
+| Concurrent startup is not directly tested | MEDIUM | **RESOLVED** | Event barriers exercise stop during construction and after publication. |
+| Research understates teardown latency | MEDIUM | **RESOLVED** | The plans acknowledge worker-dependent teardown costs and move them behind the bounded join. |
+| Four blocked requests do not establish the required RED timing minimum | MEDIUM | **RESOLVED** | The revised test uses exactly five workers and five blocked handlers, with explicit worker-count and empty-idle-list assertions. This removes the idle-worker list mutation that undermined the previous timing argument. |
+| Event-barrier teardown may execute in reverse order | LOW | **RESOLVED** | Each teardown is now one function that releases the barrier, joins, and checks termination. |
+| Budget comment overpromises persistence within Docker’s deadline | LOW | **RESOLVED** | Comments and summaries explicitly limit the claim to the web service’s contribution and disclaim any guarantee for subsequent shutdown work. |
+| Source-count gates constrain harmless refactoring | LOW | **STILL OPEN** | Exact counts and prescribed spellings remain. This is a maintenance concern, not an execution blocker; behavioral tests provide the substantive evidence. |
+
+The production approach matches [Paste’s implementation](/Users/julianamacbook/Library/Caches/pypoetry/virtualenvs/seedsyncarr-5QbP0KwB-py3.12/lib/python3.12/site-packages/paste/httpserver.py:1096): `serve_forever()` drains the pool in `finally`, whereas `server_close()` performs synchronous teardown with a force-quit timeout. The revised stop path correctly avoids the latter on the job thread.
+
+The fully blocked pool also addresses the specific issue in [Paste’s shutdown iteration](/Users/julianamacbook/Library/Caches/pypoetry/virtualenvs/seedsyncarr-5QbP0KwB-py3.12/lib/python3.12/site-packages/paste/httpserver.py:939). The direct mock assertion prohibiting teardown remains a useful timing-independent regression check.
+
+## Suggestions
+
+- Proceed with both plans in the same pull request.
+- Treat source-count checks as supplementary; consider relaxing them in future maintenance.
+- The previously suggested lifecycle test proving an earlier setup/execute exception survives cleanup failures remains optional.
+
+## Risk Assessment
+
+**LOW for the production design and LOW residual execution risk.**
+
+Real-thread timing still requires the planned repeat runs and CI verification. The revised preconditions, cleanup ordering, explicit RED reasons, and separate process-exit proof provide an adequate validation plan.
