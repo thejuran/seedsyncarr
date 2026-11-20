@@ -46,7 +46,8 @@ created: 2026-11-20
 | REL-07 SC2 | minimatch fixed; UI bundle unchanged | script | `npm ls minimatch --all`; bundle sha256 identity vs 1.8.0; diff limited to `package-lock.json` | ✅ | ⬜ pending |
 | REL-07 SC2 | Alerts triaged and surfaced | API + owner | alert count before → after; D-07 list + owner reply recorded | evidence | ⬜ pending |
 | REL-08 SC3 | Smoke by exact digest | manual-live | SMOKE evidence verdict table | evidence | ⬜ pending |
-| REL-08 SC4 | Prod by same digest; scan + queue check + owner | manual-live | DEPLOY evidence verdict table | evidence | ⬜ pending |
+| REL-08 SC3 | Sandbox Arr fields restored exactly (six fields) | script-live | `130-l0-fingerprint.sh verify <capture-dir>` prints `L0_VERIFY ok` | evidence | ⬜ pending |
+| REL-08 SC4 | Prod by same digest; scan + production queue check (real probe: `QUEUE_CHECK_RESULT=probe-pass`) + owner | manual-live | DEPLOY evidence verdict table; an owner-approved `passive-deviation` is reported as SC4 not proven, never as PASS | evidence | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -54,7 +55,7 @@ created: 2026-11-20
 
 ## Wave 0 Requirements
 
-Existing infrastructure covers all phase requirements. Smoke harness prep (`130-teardown.sh` from `126-teardown.sh`, `bash -n` + `shellcheck`) happens at the start of the smoke plan.
+Existing infrastructure covers all phase requirements. Smoke harness prep (`130-teardown.sh` derived from `126-teardown.sh`, `130-padded-key-post.sh`, `130-l0-fingerprint.sh`; `bash -n` + `shellcheck -S error`, both required, plus a fixture self-test of the fingerprint helper) happens in Plan 130-03 Task 2, before the release PR. The live sandbox teardown dry run happens at the start of the smoke plan (130-05 Task 1 step 3).
 
 ---
 
@@ -64,7 +65,7 @@ Existing infrastructure covers all phase requirements. Smoke harness prep (`130-
 |----------|-------------|------------|-------------------|
 | Sandbox smoke (setup, padded-key queue check on sonarr-v4 + radarr, container + in-app restart clean shutdown, one real transfer) | REL-08 | Needs live NAS, seedbox, arr instances | Per smoke plan; evidence in 130-SMOKE-EVIDENCE.md |
 | Production deploy (same digest, scan, queue check, wud restore, owner confirm) | REL-08 | Live production | Per deploy plan; evidence in 130-DEPLOY-EVIDENCE.md |
-| Owner checkpoints (pre-tag, pre-prod) | REL-07, REL-08 | Product decision | Verbatim owner replies recorded |
+| Owner checkpoints (new package, pre-tag, pre-prod, post-deploy confirmation) | REL-07, REL-08 | Product decision | `checkpoint:human-action`, never auto-approved (`workflow.auto_advance` ignored); verbatim owner replies recorded |
 
 ---
 

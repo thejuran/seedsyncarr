@@ -456,20 +456,25 @@ docker run --rm --entrypoint sh ghcr.io/thejuran/seedsyncarr:1.8.1@<RELEASE_DIGE
 | A3 | Narrowing only the `[tool.poetry.dependencies] python` constraint doesn't upset Dependabot's future Python PRs or CI | Standard Stack | Low. CI builds every Python path; scratch `poetry check` was unchanged |
 | A4 | Resolver results at execution time (soupsieve 4.x, minimatch 11.0.x) may be newer than at research time | Dependency triage | Low. Re-run the bundle-identity and lint checks on whatever resolves |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All three questions are resolved by the Phase 130 plans (revision 1, 2026-11-20). Each item keeps its original analysis and ends with a RESOLVED line naming the plan task that settles it.
 
 1. **What counts as "a queue check succeeds" in production (REL-08, D-20)?**
    - What we know: a queue fetch only happens when an auto-queue candidate exists (Pitfall 5). 126 accepted Test Connection success plus zero `unavailable` lines over a 309 s window. That proves reachability with the key, but not the queue endpoint.
    - What's unclear: whether the owner accepts passive evidence or wants an active probe.
    - Recommendation: the plan should take the active path if no real candidate appears within the steady-state window. Drop a tiny synthetic file named like `SSA130.ProdProbe` into production's seedbox watch dir. It will be **held** (`No matching queue entry`, which proves both queues answered with the stored keys) and can never transfer, because a synthetic name can't match a completed queue record. Then delete it from the seedbox and confirm the hold drops. This writes a file to the production seedbox area, so put the choice to the owner at checkpoint 2 in plain terms ("a harmless placeholder file that SeedSyncarr will look up in Sonarr/Radarr and refuse to download"). If declined, fall back to the 126 passive evidence and say that clearly in the evidence.
+   - **RESOLVED (130-05 Task 3, 130-06 Task 1 step 7):** the real production probe is the default and recommended path (orchestrator ruling after the Codex review). 130-06 Task 1 step 7 runs it with verified safety preconditions (an Arr integration enabled, auto-queue on and not patterns-only, no matching queue record), a session-unique name, guaranteed cleanup, and one accepted proof: `Completion hold for '<probe>': No matching queue entry` with zero queue-failure lines. Connection tests only are no longer a fallback. They exist solely as an explicitly labelled, owner-approved deviation offered at the 130-05 Task 3 checkpoint ("this would not prove the queue check works in production"), recorded verbatim against REL-08 SC4, never selected automatically. A probe that cannot run or is inconclusive stops for the owner.
 
 2. **Should the CHANGELOG mention that saving a secret no longer echoes its value (Phase 128 D-07)?**
    - What we know: D-12 to D-14 fix the release-notes lines and don't mention it. It's an API response change (`… updated` instead of `… set to <value>`) for every secret field.
    - Recommendation: leave it out of the GitHub release notes (owner-locked content). A one-line CHANGELOG `Changed`/`Security` mention is reasonable, but it's the owner's call. Ask at checkpoint 1 rather than adding it silently.
+   - **RESOLVED (130-03 Task 1, 130-04 Task 1 item 4, 130-04 Task 2 step 1):** the drafted CHANGELOG and release notes leave it out; the owner is asked at the pre-tag checkpoint; if the owner wants it, one `### Changed` CHANGELOG line is added on the release branch before the merge; if the owner does not answer the question, the drafted text stands and that is recorded.
 
 3. **Radarr credential copy into the sandbox (D-11)**
    - What we know: the padded-key Radarr check needs production Radarr's key in the sandbox again, and in 126 the owner sanctioned the on-disk clearing afterwards.
    - Recommendation: state the copy-then-clear plan in the Plan 04 objective so the owner sees it before the smoke. Treat it as covered by D-11's "restore … to their pre-smoke values".
+   - **RESOLVED (130-04 Task 1 item 5, 130-05 Task 1 step 2 and Task 2 step 5):** the owner is told about the copy before the tag; 130-05 captures a fingerprint of all six sandbox Arr fields before the first change, restores them (clearing originally empty fields on disk) and proves exact restoration with `130-l0-fingerprint.sh verify` (`L0_VERIFY ok`), so no copy of the production Radarr key remains unless the sandbox already held it before the smoke, which is then reported to the owner.
 
 ## Environment Availability
 
@@ -518,7 +523,7 @@ docker run --rm --entrypoint sh ghcr.io/thejuran/seedsyncarr:1.8.1@<RELEASE_DIGE
 - **Phase gate:** release PR CI all green; tag CI all green; smoke verdict table all PASS; deploy verdict PASS; owner confirmations recorded.
 
 ### Wave 0 Gaps
-None. Existing test infrastructure covers every automated requirement, and the live checks are evidence-based by nature. Harness prep (copying `126-teardown.sh` to `130-teardown.sh` with prefix changes, then `bash -n` + `shellcheck` + a sandbox dry run) belongs at the start of the smoke plan.
+None. Existing test infrastructure covers every automated requirement, and the live checks are evidence-based by nature. Harness prep (deriving `130-teardown.sh` from `126-teardown.sh`, plus `130-padded-key-post.sh` and `130-l0-fingerprint.sh`, with `bash -n` + `shellcheck -S error`) is done in Plan 130-03 Task 2, before the release PR, so the scripts are reviewed and committed with the release branch. The live sandbox dry run is the first step of the smoke plan (130-05 Task 1 step 3).
 
 ## Security Domain
 

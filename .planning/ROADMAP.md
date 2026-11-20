@@ -129,7 +129,32 @@ Plans:
   3. The release image is smoke-tested by exact digest: setup, a queue completion check using a whitespace-padded key, and stop/restart
   4. NAS production is deployed using the **exact smoke-tested image digest** (pinned `:1.8.1@sha256:…`), followed by a successful scan and queue check, and owner confirmation
 
-**Plans**: TBD
+**Plans**: 6 plans (6 waves)
+
+Plans:
+**Wave 1**
+
+- [ ] 130-01-PLAN.md — merge PR #156, cut `release/1.8.1`, Dependabot snapshot and triage reasons, soupsieve fix to 4.x (Poetry Python floor + lock regeneration)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 130-02-PLAN.md — owner check of the one new helper package, lockfile-only minimatch fix, UI bundle proven identical to 1.8.0, draft owner dependency list
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 130-03-PLAN.md — version bump to 1.8.1, CHANGELOG and release notes with rollback to 1.8.0, smoke harness, ARR/WEB regression confirmation, local gate, release PR with CI green
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 130-04-PLAN.md — owner checkpoint 1 (notes, dependency list, CI), wud pause, merge, post-merge Dependabot polls, `v1.8.1` tag, publish verification and release digest
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 130-05-PLAN.md — sandbox smoke on the exact digest (in-place upgrade, padded key on Sonarr v4 and Radarr, queue check, real transfer, clean stop and restarts), restore, owner checkpoint 2
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 130-06-PLAN.md — production deploy by the smoked digest with backups, scan and queue-check verification, rollback rule, wud restored, owner confirmation, close-out
 
 #### Progress
 
@@ -138,7 +163,7 @@ Plans:
 | 127. README Accuracy | 1/1 | Complete    | 2026-11-18 |
 | 128. Arr Key Normalization | 4/4 | Complete    | 2026-11-19 |
 | 129. Web-Service Cleanup Isolation | 2/2 | Complete    | 2026-11-20 |
-| 130. Release 1.8.1 | 0/TBD | Not started | - |
+| 130. Release 1.8.1 | 0/6 | Not started | - |
 
 **Done when:** all four success-criteria sets are verified, targeted regression/integration checks and required repository gates pass, a release-image smoke check covers setup, queue completion checks and stop/restart, and 1.8.1 is deployed to NAS production. Boundaries: no transfer-architecture replacement, runtime auto-restart expansion, blanket test project, UI redesign or speculative optimization; existing completion/import/deletion safeguards stay intact.
 
