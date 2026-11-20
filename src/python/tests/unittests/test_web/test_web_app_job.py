@@ -359,17 +359,17 @@ class TestMyWSGIRefServer(unittest.TestCase):
 
         self.addCleanup(_teardown)
 
-    def test_stop_before_run_closes_instead_of_serving(self):
-        """WEB-02: stop() before run() is a quiet no-op and run() then closes instead of serving."""
+    def test_stop_before_run_never_constructs_server(self):
+        """WEB-02: stop() before run() is a quiet no-op and run() then never builds the server."""
         srv, logger = self._new_mock_logged_server()
         mock_httpserver = self._patch_httpserver()
 
         srv.stop()  # must not raise
         srv.run(MagicMock())
 
-        server = mock_httpserver.serve.return_value
-        server.server_close.assert_called_once()
-        server.serve_forever.assert_not_called()
+        # No server means no bound port and no worker pool.
+        mock_httpserver.serve.assert_not_called()
+        self.assertIsNone(srv.server)
         logger.exception.assert_not_called()
         logger.error.assert_not_called()
 
@@ -558,21 +558,24 @@ class TestMyWSGIRefServer(unittest.TestCase):
         finally:
             sock.close()
 
-    def test_real_server_stop_before_start_never_serves(self):
-        """WEB-02: a real server stopped before its thread starts closes without serving."""
+    def test_real_server_stop_before_start_never_binds(self):
+        """WEB-02: a real server stopped before its thread starts never binds the port or serves."""
+        from paste import httpserver as paste_httpserver
         srv = MyWSGIRefServer(LOGGER, host="127.0.0.1", port=0)
         thread = _make_server_thread(srv)
         self._register_real_server_teardown(srv, thread)
 
         srv.stop()
-        thread.start()
-        thread.join(3.0)
+        # Spy on the real constructor: binding happens only inside it, so an
+        # uncalled spy proves the port was never bound, without probing a
+        # released ephemeral port that another process could take.
+        with patch("web.web_app_job.httpserver.serve", wraps=paste_httpserver.serve) as serve_spy:
+            thread.start()
+            thread.join(3.0)
 
         self.assertFalse(thread.is_alive())
-        self.assertIsNotNone(srv.server)
-        with self.assertRaises(OSError):
-            conn = socket.create_connection(("127.0.0.1", srv.server.server_address[1]), timeout=1)
-            conn.close()
+        serve_spy.assert_not_called()
+        self.assertIsNone(srv.server)
 
     def test_cleanup_returns_within_bound_with_stuck_requests(self):
         """WEB-02: with every worker stuck in a request, WebAppJob.cleanup() stays within the bound."""

@@ -97,8 +97,9 @@ class MyWSGIHandler(httpserver.WSGIHandler):
 class MyWSGIRefServer(bottle.ServerAdapter):
     """
     Extend bottle's default server to support programatic stopping of server.
-    stop() may arrive before or during startup, in which case the server is
-    closed as soon as it is created and never serves. stop() returns
+    stop() may arrive before startup, in which case the server is never
+    created, or during startup, in which case it is closed as soon as it is
+    created and never serves. stop() returns
     immediately; the server thread finishes winding down on its own.
     Originally copied from: https://stackoverflow.com/a/16056443
     (the stop mechanism no longer follows that answer)
@@ -119,6 +120,13 @@ class MyWSGIRefServer(bottle.ServerAdapter):
     def run(self, handler):
         self.logger.debug("Starting web server")
         handler = TransLogger(handler, logger=self.logger, setup_console_handler=(not self.quiet))
+        # Fast path for a stop() that arrived before startup: never bind the
+        # port or start the worker pool. A stop() during construction is
+        # still caught by the check after publication below.
+        with self.__lock:
+            if self.__stop_requested:
+                self.logger.debug("Web server stop requested before startup; not starting")
+                return
         # paste's pool workers are non-daemon by default and would keep the
         # interpreter alive at exit when the server was not stopped cleanly.
         server = httpserver.serve(handler, host=self.host, port=str(self.port), start_loop=False,
