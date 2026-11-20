@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: ready_to_execute
+status: "Phase 130 planned — ready to execute"
 stopped_at: Phase 130 planned (6 plans, plan-checker + Codex review passed)
 last_updated: "2026-11-20T06:21:04.000Z"
 last_activity: 2026-11-20 -- Phase 130 planning complete
