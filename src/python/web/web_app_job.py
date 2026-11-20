@@ -12,6 +12,14 @@ class WebAppJob(Job):
     """
     Web interface service
     """
+
+    # Bounds how long shutdown waits for the web-server thread. It must stay
+    # well below docker's default 10 s stop grace so that time is left for
+    # the shutdown work that follows (controller exit, final state save)
+    # before docker escalates to SIGKILL. A class attribute rather than a
+    # Constants entry so tests can patch it.
+    _SERVER_THREAD_JOIN_TIMEOUT_IN_SECS = 5.0
+
     def __init__(self, context: Context, web_app: WebApp):
         super().__init__(name=self.__class__.__name__, context=context)
         self.web_access_logger = context.web_access_logger
@@ -26,12 +34,15 @@ class WebAppJob(Job):
         self.__server = MyWSGIRefServer(self.web_access_logger,
                                         host="0.0.0.0",
                                         port=self.__context.config.web.port)
+        # A server thread that outlives the bounded join in cleanup() must
+        # not keep the interpreter alive at exit.
         self.__server_thread = Thread(target=bottle.run,
                                       kwargs={
                                           'app': self.__app,
                                           'server': self.__server,
                                           'debug': self.__context.args.debug
-                                      })
+                                      },
+                                      daemon=True)
         self.__server_thread.start()
 
     @overrides(Job)
@@ -40,13 +51,34 @@ class WebAppJob(Job):
 
     @overrides(Job)
     def cleanup(self):
-        # Job.run now calls cleanup() after a setup() that may have raised
-        # before these were assigned.
-        self.__app.stop()
+        # Each step runs independently: a failure in one never skips the
+        # others. Job.run may call this after a setup() that raised partway,
+        # so steps that do not apply are skipped silently.
+        try:
+            self.__app.stop()
+        except Exception:
+            self.logger.exception("Error stopping web app during web service cleanup")
+
         if self.__server is not None:
-            self.__server.stop()
-        if self.__server_thread is not None:
-            self.__server_thread.join()
+            try:
+                self.__server.stop()
+            except Exception:
+                self.logger.exception("Error stopping web server during web service cleanup")
+
+        # Unlike ScanManager._terminate_and_join, the wait runs even when
+        # stopping the server failed: the timeout makes the wait safe, and it
+        # gives the server a chance to finish on its own.
+        thread = self.__server_thread
+        try:
+            # is_alive() skips a thread that was never started (join() on it
+            # raises RuntimeError) and one that already finished.
+            if thread is not None and thread.is_alive():
+                thread.join(timeout=self._SERVER_THREAD_JOIN_TIMEOUT_IN_SECS)
+                if thread.is_alive():
+                    self.logger.warning("Web server did not stop within {} seconds; continuing shutdown"
+                                        .format(self._SERVER_THREAD_JOIN_TIMEOUT_IN_SECS))
+        except Exception:
+            self.logger.exception("Error joining web server thread during web service cleanup")
 
 class MyWSGIHandler(httpserver.WSGIHandler):
     """
