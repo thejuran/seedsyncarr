@@ -191,7 +191,7 @@ Copy: `unittest.TestCase` class style, `@patch('<module>.<Name>')` decorators at
 
 Imports to add, following `test_scan_manager.py` lines 1-6: `import time`, `import threading`, `from unittest.mock import MagicMock, patch`, plus `os`, `subprocess`, `sys`, `textwrap`, `socket` for the subprocess and real-server tests.
 
-Mock-thread guidance (RESEARCH Pitfall 3): always set `thread.is_alive.side_effect = [True, False]` (joined in time) or `[True, True]` (timed out). Assert `thread.join.assert_called_once_with(timeout=WebAppJob._SERVER_THREAD_JOIN_TIMEOUT_IN_SECS)` and `mock_thread_cls.call_args.kwargs["daemon"] is True`.
+Mock-thread guidance (RESEARCH Pitfall 3). **Superseded by 129-01 Task 1 (model liveness by behaviour):** do not use `is_alive.side_effect` lists; set `is_alive.return_value` and let a `join` side_effect flip it. The original text is kept below for history. Original: always set `thread.is_alive.side_effect = [True, False]` (joined in time) or `[True, True]` (timed out). Assert `thread.join.assert_called_once_with(timeout=WebAppJob._SERVER_THREAD_JOIN_TIMEOUT_IN_SECS)` and `mock_thread_cls.call_args.kwargs["daemon"] is True`.
 
 **Constant-assertion analog** — `test_scan_manager.py` line 629:
 ```python
