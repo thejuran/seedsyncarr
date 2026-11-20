@@ -18,6 +18,8 @@ APP_STOP_ERROR_MSG = "Error stopping web app during web service cleanup"
 SERVER_STOP_ERROR_MSG = "Error stopping web server during web service cleanup"
 THREAD_JOIN_ERROR_MSG = "Error joining web server thread during web service cleanup"
 STUCK_WARNING_MSG = "Web server did not stop within 5.0 seconds; continuing shutdown"
+STOP_DEFERRED_MSG = "Web server not started yet; stop deferred to startup"
+NEVER_STARTED_MSG = "Web server never started; nothing to stop"
 
 # Pool size of the real server in the stuck-requests test and the number of
 # requests held open in it, so that every worker is stuck and none is idle.
@@ -372,6 +374,29 @@ class TestMyWSGIRefServer(unittest.TestCase):
         self.assertIsNone(srv.server)
         logger.exception.assert_not_called()
         logger.error.assert_not_called()
+
+    def test_stop_before_run_logs_deferred(self):
+        """WEB-02: stop() before run() has started reports the stop as deferred to startup."""
+        srv, logger = self._new_mock_logged_server()
+
+        srv.stop()
+
+        logger.debug.assert_called_with(STOP_DEFERRED_MSG)
+
+    def test_stop_after_failed_startup_logs_never_started(self):
+        """WEB-02: stop() after run() failed to build the server does not claim a startup is pending."""
+        srv, logger = self._new_mock_logged_server()
+        mock_httpserver = self._patch_httpserver()
+        mock_httpserver.serve.side_effect = OSError(98, "Address already in use")
+
+        with self.assertRaises(OSError):
+            srv.run(MagicMock())
+        srv.stop()  # must not raise
+
+        self.assertIsNone(srv.server)
+        logger.debug.assert_called_with(NEVER_STARTED_MSG)
+        debug_messages = [c.args[0] for c in logger.debug.call_args_list]
+        self.assertNotIn(STOP_DEFERRED_MSG, debug_messages)
 
     def test_run_serves_with_daemon_threads(self):
         """WEB-02: run() asks paste for daemon worker threads and serves."""

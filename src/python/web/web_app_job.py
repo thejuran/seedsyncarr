@@ -112,27 +112,39 @@ class MyWSGIRefServer(bottle.ServerAdapter):
         self.server = None
         # Serializes stop() (called from the job thread) against run() (the
         # server thread) storing self.server, so a stop that arrives during
-        # startup is never lost.
+        # startup is never lost. __ended_without_server lets stop() tell a
+        # pending startup apart from a run() that ended without a server.
         self.__stop_requested = False
+        self.__ended_without_server = False
         self.__lock = threading.Lock()
 
     @overrides(bottle.ServerAdapter)
     def run(self, handler):
         self.logger.debug("Starting web server")
-        handler = TransLogger(handler, logger=self.logger, setup_console_handler=(not self.quiet))
-        # Fast path for a stop() that arrived before startup: never bind the
-        # port or start the worker pool. A stop() during construction is
-        # still caught by the check after publication below.
-        with self.__lock:
-            if self.__stop_requested:
-                self.logger.debug("Web server stop requested before startup; not starting")
-                return
-        # paste's pool workers are non-daemon by default and would keep the
-        # interpreter alive at exit when the server was not stopped cleanly.
-        server = httpserver.serve(handler, host=self.host, port=str(self.port), start_loop=False,
-                                  handler=MyWSGIHandler,
-                                  daemon_threads=True,
-                                  **self.options)
+        server = None
+        try:
+            handler = TransLogger(handler, logger=self.logger, setup_console_handler=(not self.quiet))
+            # Fast path for a stop() that arrived before startup: never bind
+            # the port or start the worker pool. A stop() during construction
+            # is still caught by the check after publication below.
+            with self.__lock:
+                if self.__stop_requested:
+                    self.logger.debug("Web server stop requested before startup; not starting")
+                    return
+            # paste's pool workers are non-daemon by default and would keep
+            # the interpreter alive at exit when the server was not stopped
+            # cleanly.
+            server = httpserver.serve(handler, host=self.host, port=str(self.port), start_loop=False,
+                                      handler=MyWSGIHandler,
+                                      daemon_threads=True,
+                                      **self.options)
+        finally:
+            if server is None:
+                # run() is over without a server (stopped first, or
+                # construction raised, e.g. port in use), so a later stop()
+                # must not report a startup that will never happen.
+                with self.__lock:
+                    self.__ended_without_server = True
         with self.__lock:
             self.server = server
             stop_requested = self.__stop_requested
@@ -165,8 +177,12 @@ class MyWSGIRefServer(bottle.ServerAdapter):
         with self.__lock:
             self.__stop_requested = True
             server = self.server
+            ended_without_server = self.__ended_without_server
         if server is None:
-            self.logger.debug("Web server not started yet; stop deferred to startup")
+            if ended_without_server:
+                self.logger.debug("Web server never started; nothing to stop")
+            else:
+                self.logger.debug("Web server not started yet; stop deferred to startup")
             return
         self.logger.debug("Stopping web server")
         # This is everything paste's server_close() does except the
