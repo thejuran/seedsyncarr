@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: planning
-stopped_at: Phase 130 context gathered
-last_updated: "2026-11-20T06:20:50.742Z"
+status: ready_to_execute
+stopped_at: Phase 130 planned (6 plans, plan-checker + Codex review passed)
+last_updated: "2026-11-20T06:21:04.000Z"
 last_activity: 2026-11-20 -- Phase 130 planning complete
 progress:
   total_phases: 5
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-11-18)
 ## Current Position
 
 Phase: 130
-Plan: Not started
-Status: Ready to plan
+Plan: 0 of 6
+Status: Ready to execute
 Last activity: 2026-11-20 -- Phase 130 planning complete
 
 ## Accumulated Context
