@@ -4,7 +4,7 @@ milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
 status: "Phase 129 executed and verified (13/14; 4/4 success criteria) — awaiting Linux CI on the PR (human_needed)"
 stopped_at: Phase 129 verification human_needed (PR CI)
-last_updated: "2026-11-20T04:21:51Z"
+last_updated: "2026-11-20T04:26:53Z"
 last_activity: "2026-11-20 -- Phase 129 executed: 2/2 plans, code review WR-01/IN-01 fixed, verifier human_needed (PR CI)"
 progress:
   total_phases: 5
@@ -143,6 +143,11 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - **GUARD-02 warning-correctness gap confirmed:** `empty webhook_secret + require_secret=True` fires first startup warning saying "accept any caller" while the handler actually returns 503 (fail-closed). Phase 112 fixed warning text accuracy (v1.4.0).
 - **pip CVEs PARK grounded in image inspection:** Shipped runtime image uses `pip 24.0` (`python:3.11-slim` base), NOT the flagged `pip 26.0.1` (local dev venv). CVE range is `>= 26.0.x < 26.1` — pip 24.0 is NOT affected. PARK is evidence-based.
 - **npm CVEs PARK grounded in Dockerfile evidence:** `Dockerfile:123` copies only `/build/dist/browser` into runtime. `node_modules/` devDeps (`karma`, `eslint`, `ws`, `brace-expansion`) are build-stage-only. PARK is evidence-based.
+
+### Phase 129 Decisions (2026-11-20)
+
+- **SA-01 accepted (owner, 2026-11-20):** at an in-app restart, a web request still stuck in its handler is force-killed by paste and leaves one idle replacement worker thread that never exits; these can accumulate across in-app restarts until the next container restart. Accepted as is: pre-existing paste behaviour, rare (UI stream connections end cleanly on `app.stop()`), threads are idle daemons; the alternative (`kill_thread_limit: 0`) trades it for a permanently stuck thread.
+- **SA-02 deferred to backlog 999.10 (owner, 2026-11-20):** port-bind failure at web-server startup leaves the app running without a UI and logs only to stderr. Separate item, not in v1.8.1 unless promoted.
 
 ### Pending Todos
 
