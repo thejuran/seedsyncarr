@@ -106,7 +106,16 @@ Plans:
   3. Cleanup handles an uninitialized server and an unstarted thread (partial startup) without raising, and still attempts every step that applies
   4. After any failure, cleanup attempts every applicable step and terminates cleanly; tests demonstrate clean termination for both the per-step-failure and the partial-startup scenarios, mirroring the isolation pattern already used by ScanManager/FileOperationManager/Controller
 
-**Plans**: TBD
+**Plans**: 2 plans (2 waves)
+
+Plans:
+**Wave 1**
+
+- [ ] 129-01-PLAN.md — `WebAppJob.cleanup()` runs its three steps independently, skips steps that do not apply, waits at most 5 s for the web-server thread (fail-before/pass-after regression for `app.stop()`)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 129-02-PLAN.md — web server adapter safe to stop during startup and unable to hold the process open (child-process exit proof), then the phase gate (full unit suite, whole-tree ruff)
 
 ### Phase 130: Release 1.8.1
 
@@ -128,7 +137,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 127. README Accuracy | 1/1 | Complete    | 2026-11-18 |
 | 128. Arr Key Normalization | 4/4 | Complete    | 2026-11-19 |
-| 129. Web-Service Cleanup Isolation | 0/TBD | Not started | - |
+| 129. Web-Service Cleanup Isolation | 0/2 | Not started | - |
 | 130. Release 1.8.1 | 0/TBD | Not started | - |
 
 **Done when:** all four success-criteria sets are verified, targeted regression/integration checks and required repository gates pass, a release-image smoke check covers setup, queue completion checks and stop/restart, and 1.8.1 is deployed to NAS production. Boundaries: no transfer-architecture replacement, runtime auto-restart expansion, blanket test project, UI redesign or speculative optimization; existing completion/import/deletion safeguards stay intact.

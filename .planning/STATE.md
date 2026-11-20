@@ -4,7 +4,7 @@ milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
 status: "Phase 129 planning — context gathered, ready for /bm:plan-phase 129"
 stopped_at: Phase 129 context gathered
-last_updated: "2026-11-19T23:55:19Z"
+last_updated: "2026-11-20T00:20:00Z"
 last_activity: 2026-11-19 -- Phase 129 context gathered (bounded web-server wait; tests now, live check in Phase 130)
 progress:
   total_phases: 5
@@ -147,6 +147,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 ### Pending Todos
 
 - Phase 126 (carried from 121-CONTEXT D-08/D-09): 1.8.0 release notes disclose factually that since v1.0.0 a configured api_token was sent in an Authorization header to api.github.com (HTTPS) on each UI load, GitHub rejected it, no other destination received it; rotation optional, recommended mainly for instances reachable beyond the LAN (edit api_token in settings.cfg, restart). Release notes also mention the update notice now works for token users (D-07). Prod deploy: after 1.8.0 is live on the NAS, check nothing else on the NAS uses the current token, rotate the production api_token, confirm UI loads, authenticated calls succeed and a scan completes.
+- Phase 129 D-08 (hand-off to Phase 130): no live deploy in Phase 129. Phase 130's release-image smoke test must restart the 1.8.1 image and confirm a clean web-service shutdown in the logs: none of the three `Error ... during web service cleanup` lines, no `Web server did not stop within` warning, and no bind error after restart. Check container logs (stderr) as well as the app log file, because a server-thread bind failure is written to stderr.
 
 ### Blockers/Concerns
 
