@@ -76,3 +76,61 @@ The stop-requested flag and daemon worker configuration are sensible, narrowly s
 **MEDIUM for the adapter changes; HIGH for phase completion as claimed.** The startup flag and daemon settings are reasonable, but phase sign-off should wait for an end-to-end bounded-cleanup design and regression test.
 
 ---
+
+## Codex Review — Round 2 (after revision 1)
+
+## 1. Summary
+
+**The previous HIGH/MEDIUM concerns are resolved at the design level.** The revised adapter removes Paste’s worker teardown from the job thread, and the new tests cover actual stuck requests and concurrent startup.
+
+Two test-design details should be corrected before execution. Neither requires changing the production approach.
+
+I checked the repository and installed Paste source read-only. I did not run tests or reproduce the reported experiments.
+
+## 2. Strengths
+
+- `stop()` now performs only the listener-stop operations; potentially slow pool teardown runs on the daemon server thread.
+- The bounded join still runs after a stop failure.
+- Both the outer server thread and Paste workers become daemon threads, with subprocess coverage for interpreter exit.
+- The stop-requested flag handles construction and publication races without holding a lock across blocking operations.
+- The plans clearly distinguish Wave 1’s join bound from the combined phase’s cleanup bound.
+- Changes remain confined to the adapter, cleanup, tests, and validation documentation.
+
+The central design matches installed Paste: [`serve_forever()` drains the pool in `finally`, while `server_close()` invokes teardown synchronously](/Users/julianamacbook/Library/Caches/pypoetry/virtualenvs/seedsyncarr-5QbP0KwB-py3.12/lib/python3.12/site-packages/paste/httpserver.py:1096).
+
+## 3. Concerns
+
+### Previous HIGH/MEDIUM concerns
+
+| Previous concern | Status | Assessment |
+|---|---|---|
+| **HIGH — 129-01:** synchronous stop consumes the budget before joining | **RESOLVED** | Wave 2 removes pool teardown from `stop()`, and Wave 1 explicitly documents its intermediate limitation. |
+| **MEDIUM — 129-01:** timing test excludes the blocking operation | **RESOLVED** | The new real-server test drives `WebAppJob.cleanup()` with blocked request handlers. |
+| **HIGH — 129-02:** subprocess exit proof bypasses blocking cleanup | **RESOLVED** | The real cleanup test and separate subprocess exit test now cover the two distinct failure mechanisms. A single combined subprocess test is optional. |
+| **MEDIUM — 129-02:** concurrent startup is not directly tested | **RESOLVED** | Event barriers cover construction before publication and stopping after publication. |
+| **MEDIUM — 129-02:** research understates teardown latency | **RESOLVED** | Research now acknowledges worker-count-dependent latency and moves it behind the bounded join. |
+
+### Remaining/new concerns
+
+- **MEDIUM — Four blocked requests do not establish a strict two-second minimum for Paste shutdown.** The plan treats `4 × 0.5 s` as guaranteed and requires the old implementation to exceed 1.5 seconds. However, [Paste iterates the live `self.workers` list](/Users/julianamacbook/Library/Caches/pypoetry/virtualenvs/seedsyncarr-5QbP0KwB-py3.12/lib/python3.12/site-packages/paste/httpserver.py:939), while exiting idle workers remove themselves from that list. Depending on scheduling and worker placement, iteration can skip workers. The reported measurement is credible, but the required RED threshold is not deterministic. The mock assertion prohibiting `server_close()` remains a reliable regression check.
+
+- **LOW — Event-barrier teardown registration is ambiguous and potentially reversed.** The construction test says to register `release_serve.set` and then the thread join. `unittest.addCleanup()` executes in reverse order, so this would join before releasing the barrier. Matching five-second waits can produce delays or cleanup failures on the intended RED path. Use one cleanup function that releases, joins, and checks termination.
+
+- **LOW — The total-budget comment promises more than this phase proves.** Bounding web cleanup does not guarantee that final persistence completes before Docker’s deadline; controller shutdown and persistence have their own costs. State that the change limits the web cleanup contribution and leaves time for subsequent shutdown work.
+
+- **LOW — Source-count gates remain brittle.** Exact counts of logging calls and particular source spellings constrain harmless refactoring. Behavioral tests provide the stronger guarantees.
+
+## 4. Suggestions
+
+1. Make the stuck-request RED timing test deterministic—for example, configure exactly four Paste workers and ensure all four are blocked before cleanup. Keep the direct assertion that `stop()` never calls pool teardown.
+2. Use a single release-and-join cleanup function for each event-barrier test.
+3. Soften the Docker/persistence guarantee in comments and summaries.
+4. Optionally add the previously suggested lifecycle test confirming that `propagate_exception()` still surfaces an earlier setup/execute failure after cleanup failures.
+
+## 5. Risk Assessment
+
+**LOW for the production design; MEDIUM for executing the tests exactly as specified.**
+
+The revised implementation approach addresses the phase goal. Correct the timing-test assumption and cleanup ordering before relying on the required fail-before evidence and validation sign-off.
+
+---
