@@ -234,3 +234,19 @@ Consequently, by step 5(d), the original key files may already be gone, so the n
 Defer **all** `.l0` deletion to step 5(f), after successful fingerprint verification, and update the permitted teardown changes accordingly. Verify that a simulated final read failure leaves both originals intact.
 
 **Risk assessment: MEDIUM.** No new HIGH concern found. The dry-run revision is sound; close these two failure-path gaps before execution. This was a read-only plan review with inspection of the reused teardown, not live NAS validation.
+
+---
+
+## Codex Review (round 5, after revision 4)
+
+Reviewed HEAD `2320a86b` and the reused teardown.
+
+| Round-4 concern | Status | Assessment |
+|---|---|---|
+| MEDIUM — transport failure after HTTP headers | **RESOLVED** | Parsing now requires curl exit 0 and HTTP 2xx. The added HTTP-200 truncated-transfer fixture requires rejection in all three modes, even with valid JSON received. |
+| MEDIUM — premature deletion of restoration files | **RESOLVED** | All four teardown deletions are explicitly removed. Both originals remain until step 5(f), after successful fingerprint verification. Preservation fixtures and a pre-verification file listing reinforce this requirement. |
+| LOW — sandbox dry-run outcomes | **REMAINS RESOLVED** | Environmental failures remain acceptable only for sandbox validation; production still requires a strict pass. New evidence prefixes distinguish the runs. |
+
+**New HIGH/MEDIUM concerns:** None found in these edits.
+
+**Risk assessment: LOW for this revision.** Both round-4 MEDIUM concerns are resolved at the plan level. Read-only review; no harness execution or live NAS validation performed.
