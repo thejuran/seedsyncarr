@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: "Phase 128 complete — PR #155 merged 2026-11-19; Phase 129 next"
-stopped_at: "Phase 128 merged via PR #155 (with Phase 127); Phase 129 not yet planned"
-last_updated: "2026-11-19T23:48:18Z"
-last_activity: 2026-11-19 -- PR #155 merged to main (Phases 127 + 128), CI green
+status: ready_to_plan
+stopped_at: Phase 129 complete (2/2, PR #156 CI green, awaiting owner merge) — ready to discuss Phase 130
+last_updated: "2026-11-20T04:48:32Z"
+last_activity: "2026-11-20 -- Phase 129 complete: PR #156 CI all green, verification passed; ready for Phase 130 (release 1.8.1)"
 progress:
   total_phases: 5
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 40
+  completed_phases: 3
+  total_plans: 7
+  completed_plans: 7
+  percent: 60
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 129: web-service cleanup isolation (next)
+**Current focus:** Phase 130 — release 1.8.1
 
 ## Current Position
 
-Phase: 128 (arr-key-normalization) — COMPLETE
-Plan: 4 of 4 (all plans complete)
-Status: Phase 128 complete — PR #155 merged 2026-11-19 (merge commit 8fbe8c5b); Phase 129 next
-Last activity: 2026-11-19 -- PR #155 merged to main with CI green
+Phase: 130
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-20
 
 ## Accumulated Context
 
@@ -144,9 +144,15 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - **pip CVEs PARK grounded in image inspection:** Shipped runtime image uses `pip 24.0` (`python:3.11-slim` base), NOT the flagged `pip 26.0.1` (local dev venv). CVE range is `>= 26.0.x < 26.1` — pip 24.0 is NOT affected. PARK is evidence-based.
 - **npm CVEs PARK grounded in Dockerfile evidence:** `Dockerfile:123` copies only `/build/dist/browser` into runtime. `node_modules/` devDeps (`karma`, `eslint`, `ws`, `brace-expansion`) are build-stage-only. PARK is evidence-based.
 
+### Phase 129 Decisions (2026-11-20)
+
+- **SA-01 accepted (owner, 2026-11-20):** at an in-app restart, a web request still stuck in its handler is force-killed by paste and leaves one idle replacement worker thread that never exits; these can accumulate across in-app restarts until the next container restart. Accepted as is: pre-existing paste behaviour, rare (UI stream connections end cleanly on `app.stop()`), threads are idle daemons; the alternative (`kill_thread_limit: 0`) trades it for a permanently stuck thread.
+- **SA-02 deferred to backlog 999.10 (owner, 2026-11-20):** port-bind failure at web-server startup leaves the app running without a UI and logs only to stderr. Separate item, not in v1.8.1 unless promoted.
+
 ### Pending Todos
 
 - Phase 126 (carried from 121-CONTEXT D-08/D-09): 1.8.0 release notes disclose factually that since v1.0.0 a configured api_token was sent in an Authorization header to api.github.com (HTTPS) on each UI load, GitHub rejected it, no other destination received it; rotation optional, recommended mainly for instances reachable beyond the LAN (edit api_token in settings.cfg, restart). Release notes also mention the update notice now works for token users (D-07). Prod deploy: after 1.8.0 is live on the NAS, check nothing else on the NAS uses the current token, rotate the production api_token, confirm UI loads, authenticated calls succeed and a scan completes.
+- Phase 129 D-08 (hand-off to Phase 130): no live deploy in Phase 129. Phase 130's release-image smoke test must restart the 1.8.1 image and confirm a clean web-service shutdown in the logs: none of the three `Error ... during web service cleanup` lines, no `Web server did not stop within` warning, and no bind error after restart. Check container logs (stderr) as well as the app log file, because a server-thread bind failure is written to stderr.
 
 ### Blockers/Concerns
 
@@ -196,8 +202,8 @@ Credential rotations remain operator follow-ups; one-time Done-group cleanup was
 
 ## Session Continuity
 
-Last session: 2026-11-19T11:25:26.873Z
-Stopped at: Completed 128-04-PLAN.md
+Last session: 2026-11-19T23:55:19.164Z
+Stopped at: Phase 129 context gathered
 Next action: Verify Phase 128 (confirm coverage >= 88 on Linux CI).
 
 **Prior session (2026-10-28):** Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
@@ -213,7 +219,7 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Plan Phase 129 (Web-Service Cleanup Isolation) with `/bm:next`
+- Plan Phase 129 with `/bm:plan-phase 129` (Codex plan review alongside the plan checker)
 
 ## Deferred Items
 

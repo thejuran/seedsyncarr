@@ -43,7 +43,7 @@ Future milestone names and scope are below; their versions remain unassigned. Ea
 
 - [x] **Phase 127: README Accuracy** - Setup, security and documentation-discoverability claims in the README match current defaults, SECURITY.md and the repository guides (completed 2026-11-18)
 - [x] **Phase 128: Arr Key Normalization** - Sonarr/Radarr API keys normalize the same way on save and on read for queue requests, matching Test Connection (completed 2026-11-19)
-- [ ] **Phase 129: Web-Service Cleanup Isolation** - Each web-service shutdown step runs independently so one failure never skips the rest
+- [x] **Phase 129: Web-Service Cleanup Isolation** - Each web-service shutdown step runs independently so one failure never skips the rest (completed 2026-11-20)
 - [ ] **Phase 130: Release 1.8.1** - Targeted regressions, required gates, release-image smoke test and NAS production deploy pinned to the tag
 
 #### Phase Details
@@ -106,7 +106,16 @@ Plans:
   3. Cleanup handles an uninitialized server and an unstarted thread (partial startup) without raising, and still attempts every step that applies
   4. After any failure, cleanup attempts every applicable step and terminates cleanly; tests demonstrate clean termination for both the per-step-failure and the partial-startup scenarios, mirroring the isolation pattern already used by ScanManager/FileOperationManager/Controller
 
-**Plans**: TBD
+**Plans**: 2 plans (2 waves)
+
+Plans:
+**Wave 1**
+
+- [x] 129-01-PLAN.md — `WebAppJob.cleanup()` runs its three steps independently, skips steps that do not apply, waits at most 5 s for the web-server thread (fail-before/pass-after regression for `app.stop()`)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 129-02-PLAN.md — web server adapter stops immediately (no worker teardown on the job thread; proven with stuck requests), is safe to stop during startup and cannot hold the process open (child-process exit proof), then the phase gate (full unit suite, whole-tree ruff)
 
 ### Phase 130: Release 1.8.1
 
@@ -128,7 +137,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 127. README Accuracy | 1/1 | Complete    | 2026-11-18 |
 | 128. Arr Key Normalization | 4/4 | Complete    | 2026-11-19 |
-| 129. Web-Service Cleanup Isolation | 0/TBD | Not started | - |
+| 129. Web-Service Cleanup Isolation | 2/2 | Complete    | 2026-11-20 |
 | 130. Release 1.8.1 | 0/TBD | Not started | - |
 
 **Done when:** all four success-criteria sets are verified, targeted regression/integration checks and required repository gates pass, a release-image smoke check covers setup, queue completion checks and stop/restart, and 1.8.1 is deployed to NAS production. Boundaries: no transfer-architecture replacement, runtime auto-restart expansion, blanket test project, UI redesign or speculative optimization; existing completion/import/deletion safeguards stay intact.
@@ -238,6 +247,10 @@ Plans:
 ### 999.9: Prune only files SeedSyncarr transferred
 
 **Captured:** 2026-11-18 (Phase 127 code review WR-02 / SA-01). The README (How It Works, the Security section's forged-import sentence) and `docs/CONFIGURATION.md:169` say pruning applies only to releases SeedSyncarr itself downloaded. The code does not check that: an item is treated as downloaded when a local entry has the same name as a seedbox entry and is at least as large (`src/python/controller/model_builder.py:510-525`, `model_pipeline.py:205-227`, `controller.py:828-970`), so a copy placed in the downloads folder by hand or by another tool can be pruned after a real or forged import webhook. **Owner ruling 2026-11-18:** keep the docs' promise and make the code true (record which files SeedSyncarr transferred and prune only those), rather than weakening the wording. The README ships with this claim ahead of the code until the fix lands. Also fix the stale comment at `controller.py:31-32` (says 300 s default safety delay; actual 60 s, review SA-02). Milestone placement is the owner's call.
+
+### 999.10: Surface web-server startup failure (port in use) to the app log
+
+**Captured:** 2026-11-20 (Phase 129 code review SA-02). If the web server cannot bind its port at startup (e.g. port 8800 taken by another NAS service, or the old server still holding it during a fast in-app restart), `httpserver.serve()` raises on the daemon server thread in `MyWSGIRefServer.run()` (`src/python/web/web_app_job.py`). The traceback goes to container stderr via `threading.excepthook`, not the app log, and `WebAppJob` keeps running: syncing continues but the UI is unreachable with nothing in the app log to explain it. Pre-existing (not introduced by Phase 129). **Scope:** record the startup exception in `run()` and have `WebAppJob.execute()` raise it so `Job.run` logs a clear "web server could not start" error to the app log and the existing shutdown/restart path handles it; add a test with a pre-bound port. **Owner ruling 2026-11-20:** fix as its own backlog item, not inside Phase 129; not in v1.8.1 unless the owner promotes it.
 
 ## Following milestone: Performance and Usability (conditional)
 
