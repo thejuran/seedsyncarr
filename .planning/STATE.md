@@ -4,7 +4,7 @@ milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
 status: "Phase 130 planned — ready to execute"
 stopped_at: Phase 130 planned (6 plans, plan-checker + Codex review passed)
-last_updated: "2026-11-20T06:21:04.000Z"
+last_updated: "2026-11-20T06:21:27.000Z"
 last_activity: 2026-11-20 -- Phase 130 planning complete
 progress:
   total_phases: 5
@@ -219,7 +219,8 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Plan Phase 129 with `/bm:plan-phase 129` (Codex plan review alongside the plan checker)
+- Execute Phase 130 with `/bm:execute-phase 130` (6 sequential plans on the main working tree; owner checkpoints before package install, before tag, before prod deploy, and final confirmation)
+- Phase 130 runs with temporary config overrides `workflow.use_worktrees=false` and `git.branching_strategy=none` (set 2026-11-20). After Phase 130 closes, restore `workflow.use_worktrees=true` and `git.branching_strategy=phase`.
 
 ## Deferred Items
 
