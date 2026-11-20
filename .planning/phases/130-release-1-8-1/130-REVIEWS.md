@@ -209,3 +209,28 @@ A correctly implemented script can therefore return a legitimate `key`, `url`, `
 **MEDIUM.** The previous HIGH probe-input concern is closed, and no new HIGH concern was found.
 
 Before execution, tighten the fingerprint helper’s read-failure contract. The release otherwise retains appropriate controls for exact-artifact deployment, explicit approvals, rollback and truthful requirement completion.
+
+---
+
+## Codex Review (round 4, after revision 3)
+
+| Round-3 concern | Status | Assessment |
+|---|---|---|
+| **MEDIUM — config-read failures masquerading as empty values** | **PARTIAL** | Schema/type checks, missing-versus-null handling, redaction detection and failure fixtures substantially address it. Two gaps remain below: transport failures after HTTP headers, and premature deletion of restoration files. |
+| **LOW — sandbox dry-run outcomes** | **RESOLVED** | 130-06 now separates fixture validation from environmental readiness, accepts explained environmental failures on the sandbox, and still requires a strict production pass before probe creation. |
+
+**MEDIUM — 130-03 Task 2, step 4: reject every unsuccessful transport**
+
+The new contract classifies a nonzero curl exit as `transport` only **“without a status.”** Curl can receive HTTP 200 and subsequently fail—for example, a truncated transfer or timeout. If the received body happens to be valid, complete JSON, the remaining checks could permit an `ok` despite curl’s failure.
+
+Require curl exit 0 **and** HTTP 2xx before parsing. Preserve `http_<status>` for actual HTTP failures; classify other nonzero curl exits as `transport`, including HTTP 200 followed by a transfer error. Add that fixture. This is a remaining gap in the original MEDIUM concern.
+
+**New MEDIUM — 130-03 Task 2 / 130-05 Task 2, step 5: preservation instructions conflict with teardown**
+
+The new verification-failure path requires keeping both `.l0` files until `L0_VERIFY ok`. However, the reused teardown deletes each original key file immediately after its own successful comparison—see [126-teardown.sh](/Users/julianamacbook/seedsyncarr/.planning/phases/126-release-1-8-0/126-teardown.sh:296). Plan 03 preserves that behavior, including explicit deletion for empty originals.
+
+Consequently, by step 5(d), the original key files may already be gone, so the newly promised preservation cannot occur.
+
+Defer **all** `.l0` deletion to step 5(f), after successful fingerprint verification, and update the permitted teardown changes accordingly. Verify that a simulated final read failure leaves both originals intact.
+
+**Risk assessment: MEDIUM.** No new HIGH concern found. The dry-run revision is sound; close these two failure-path gaps before execution. This was a read-only plan review with inspection of the reused teardown, not live NAS validation.
