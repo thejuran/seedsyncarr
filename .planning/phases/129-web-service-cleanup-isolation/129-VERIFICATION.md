@@ -1,8 +1,8 @@
 ---
 phase: 129-web-service-cleanup-isolation
 verified: 2026-11-20T04:20:31Z
-status: human_needed
-score: 13/14 must-haves verified
+status: passed
+score: 14/14 must-haves verified
 has_blocking_gaps: false
 overrides_applied: 0
 human_verification:
@@ -15,7 +15,7 @@ human_verification:
 
 **Phase Goal:** A failure in one web-service shutdown step never skips the remaining steps, matching the per-step isolation already present elsewhere in the lifecycle code
 **Verified:** 2026-11-20T04:20:31Z (HEAD 4f50327c)
-**Status:** human_needed
+**Status:** passed (human_needed item resolved 2026-11-20: PR #156 CI all green)
 **Re-verification:** No (initial verification)
 
 ## Summary
@@ -159,3 +159,8 @@ No gaps. The goal and all four roadmap success criteria are verified in the code
 
 _Verified: 2026-11-20T04:20:31Z_
 _Verifier: Claude (bm-verifier)_
+
+
+## Human Verification Resolution (2026-11-20)
+
+PR #156 (https://github.com/thejuran/seedsyncarr/pull/156) Linux CI completed all green at branch head 6b06eae5: Python unit tests (full suite incl. the five macOS-excluded modules and the coverage gate), Lint (Python, whole-tree ruff), Lint/unit (Angular), Build Docker Image, End-to-end tests on Docker Image (amd64), CodeQL and release-metadata checks. Publish jobs skipped as expected on a PR. The remaining must-have (full unit suite green) is therefore verified; recorded in 129-HUMAN-UAT.md (status complete). Code at CI head includes the post-verification review fixes IN-02..IN-04 (129-REVIEW-FIX.md) and the security audit (129-SECURITY.md, threats_open 0).

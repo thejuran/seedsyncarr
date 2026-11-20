@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: "Phase 129 shipped as PR #156 — awaiting Linux CI to close verification"
-stopped_at: Phase 129 shipped (PR #156), awaiting CI
-last_updated: "2026-11-20T04:29:39Z"
-last_activity: "2026-11-20 -- Phase 129 shipped as PR #156; awaiting Linux CI (last verification item)"
+status: ready_to_plan
+stopped_at: Phase 129 complete (2/2, PR #156 CI green, awaiting owner merge) — ready to discuss Phase 130
+last_updated: "2026-11-20T04:48:32Z"
+last_activity: "2026-11-20 -- Phase 129 complete: PR #156 CI all green, verification passed; ready for Phase 130 (release 1.8.1)"
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
   completed_plans: 7
-  percent: 40
+  percent: 60
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 129: web-service-cleanup-isolation (verifying — awaiting PR CI)
+**Current focus:** Phase 130 — release 1.8.1
 
 ## Current Position
 
-Phase: 129 (web-service-cleanup-isolation) — VERIFYING
-Plan: 2 of 2 complete
-Status: Phase 129 shipped, PR #156 — awaiting Linux CI to close verification (129-HUMAN-UAT.md)
-Last activity: 2026-11-20 -- Phase 129 shipped as PR #156; awaiting Linux CI (last verification item)
+Phase: 130
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-20
 
 ## Accumulated Context
 

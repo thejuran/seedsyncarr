@@ -28,8 +28,8 @@ Code-confirmed mismatch: Test Connection strips the key (`src/python/web/handler
 
 Confirmed 2026-11-18: an injected `app.stop` failure in `WebAppJob.cleanup` (`src/python/web/web_app_job.py`) skips `server.stop` and `thread.join`.
 
-- [ ] **WEB-01**: When any one web-service cleanup step (`app.stop`, `server.stop`, `thread.join`) fails, the remaining steps still run and the failure is logged.
-- [ ] **WEB-02**: Cleanup after a partial startup (server never created, or thread never started) completes without raising; after any failure, cleanup attempts every applicable step and terminates cleanly, with tests showing it.
+- [x] **WEB-01**: When any one web-service cleanup step (`app.stop`, `server.stop`, `thread.join`) fails, the remaining steps still run and the failure is logged.
+- [x] **WEB-02**: Cleanup after a partial startup (server never created, or thread never started) completes without raising; after any failure, cleanup attempts every applicable step and terminates cleanly, with tests showing it.
 
 ### Release (REL)
 
@@ -68,8 +68,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ARR-01 | Phase 128 | Complete |
 | ARR-02 | Phase 128 | Complete |
 | ARR-03 | Phase 128 | Complete |
-| WEB-01 | Phase 129 | Pending |
-| WEB-02 | Phase 129 | Pending |
+| WEB-01 | Phase 129 | Complete |
+| WEB-02 | Phase 129 | Complete |
 | REL-07 | Phase 130 | Pending |
 | REL-08 | Phase 130 | Pending |
 
