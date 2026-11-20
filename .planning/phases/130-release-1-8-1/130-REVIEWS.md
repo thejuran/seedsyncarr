@@ -149,3 +149,63 @@ An enabled, unreachable original Radarr can block the expected hold; an enabled,
 ## 5. Risk Assessment
 
 **HIGH pending correction of the production probe precheck.** Most round-1 risks are now substantially reduced. After the probe and restoration gaps are closed and the deterministic sequencing blockers corrected, **MEDIUM** is appropriate for this release involving live credentials, production state and irreversible publication.
+
+---
+
+## Codex Review (round 3, after revision 2)
+
+## 1. Summary
+
+**The five round-2 execution gaps are resolved at the plan level.** The production probe now checks the application’s actual queue inputs; malformed original keys stop the smoke before mutation; evidence survives the branch transition; lockfile checks allow evidence edits; and the Sonarr-only test explicitly disables Radarr.
+
+One new **MEDIUM** concern remains in the fingerprint helper’s handling of failed config reads, plus one **LOW** ambiguity in the precheck dry run. Address the medium concern before execution.
+
+I inspected the repository’s queue client, completion gate, settings handler and reused teardown. This was read-only; I did not inspect live NAS state or refresh dependency advisories. The orchestrator’s branching/worktree ruling is accepted.
+
+## 2. Status of each round-2 concern
+
+| Concern | Status | Assessment |
+|---|---|---|
+| Passive checks accepted as REL-08 completion | **RESOLVED** | Passive evidence remains an explicit owner-approved deviation. REL-08 stays unchecked without `probe-pass` and owner confirmation. |
+| Probe precheck does not inspect actual queue inputs | **RESOLVED** | Uses production’s configured URLs from inside its container, checks application identity, requests `/api/v3/queue/details`, imports `_basename`, rejects malformed responses and acknowledges the snapshot race. These align with [arr_queue.py](/Users/julianamacbook/seedsyncarr/src/python/controller/arr_queue.py:149). |
+| Exact restoration excludes malformed nonempty keys | **RESOLVED** | Pre-mutation `precheck` rejects padded, malformed and non-text originals. Fixtures cover these cases. This addresses the normalization and validation in the [settings handler](/Users/julianamacbook/seedsyncarr/src/python/web/handler/config.py:348). |
+| Filenames alone insufficient for bundle proof | **RESOLVED** | Explicit main-bundle pairing and normalized byte equality remain intact, including published-image verification. |
+| Merge checks not bound to approved head | **RESOLVED** | Immediate rechecks, `--match-head-commit`, PR-derived merge SHAs and parent checks remain intact. |
+| Merge recording dirties the tree before checkout | **RESOLVED** | The merge record is committed before checkout; cleanliness and the replay range are recomputed immediately before transition. |
+| Package approval not tied to installed artifact | **RESOLVED** | Exact version/integrity binding and stop rules remain intact. |
+| wud can undo rollback | **RESOLVED** | Rollback leaves wud stopped pending an owner decision. |
+| Dependency exposure wording too absolute | **RESOLVED** | Docker, ordinary pip installation and developer extras remain distinguished. |
+| Weak automated acceptance checks | **PARTIAL** | Several verifiers still establish that evidence text exists rather than independently establish the outcome. Detailed action steps and acceptance criteria compensate, but `T*_OK` alone is not sufficient release evidence. |
+| Whole-tree cleanliness conflicts with evidence edits | **RESOLVED** | Plan 02 commits checkpoint evidence and scopes subsequent assertions to source manifests. |
+| “Sonarr only” not established | **RESOLVED** | Radarr’s restoration flag is written before disabling it; both enabled flags are read back before creating the first root. |
+
+## 3. New concerns
+
+### MEDIUM — 130-03 Task 2, step 4; 130-05 capture and restoration: Config-read failures can masquerade as empty values
+
+The fingerprint contract maps null/empty values to `EMPTY`, but does not explicitly require:
+
+- Successful HTTP status and JSON parsing.
+- Expected sections and field presence.
+- Boolean types for enabled flags.
+- Immediate failure when a field read fails.
+
+With ordinary `curl | jq` shell handling and only `set -u`, a failed request can yield empty output. A valid JSON error object can also produce null for every selected field. Consequently, `precheck` could incorrectly permit mutation, or capture/verification could mistake missing data for legitimate empty settings.
+
+This is particularly consequential because `L0_VERIFY ok` authorizes deletion of restoration backups and key files.
+
+**Fix:** Make all three modes fail closed on transport, HTTP, parsing, schema or type errors. Distinguish a present null field from a missing field. Never write a capture or emit an `ok` marker after any failed read. Add fixtures for `{}`, missing fields and wrong types, plus a simulated failed request. Preserve backups on verification read failure.
+
+### LOW — 130-06 Task 1, step 1a: Sandbox dry-run outcomes do not cover valid restored configurations
+
+Plan 05 deliberately restores the sandbox’s original wiring, including enabled integrations with empty or unreachable configuration. The new precheck dry run accepts only `PRECHECK ok` or `PRECHECK FAIL - no_targets`.
+
+A correctly implemented script can therefore return a legitimate `key`, `url`, `identity` or request failure against the restored sandbox. The plan does not clearly distinguish that environmental result from a script defect.
+
+**Fix:** Separate script validation from live-target readiness. Accept documented, correctly formatted environmental failures for the sandbox dry run, while retaining the strict `PRECHECK ok` requirement against production before probe creation. Use fixtures to exercise the successful parsing/matching path.
+
+## 4. Risk Assessment
+
+**MEDIUM.** The previous HIGH probe-input concern is closed, and no new HIGH concern was found.
+
+Before execution, tighten the fingerprint helper’s read-failure contract. The release otherwise retains appropriate controls for exact-artifact deployment, explicit approvals, rollback and truthful requirement completion.
