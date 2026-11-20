@@ -67,3 +67,85 @@ The six plans provide strong release sequencing, regression traceability, digest
 ## Risk Assessment
 
 **HIGH as written**, primarily because the production probe and restoration paths can violate their safety claims, and the completion path can mark REL-08 satisfied without a production queue request. With those corrected, overall risk should fall to **MEDIUM**, appropriate for an otherwise well-controlled release involving live credentials, production state and irreversible publication.
+
+---
+
+## Codex Review (round 2, after revision 1)
+
+## 1. Summary
+
+**Substantial improvement, but revise once more before execution.** The strongest fixes are the byte-level bundle comparison, merges bound to verified heads, explicit queue-check deviation reporting, and rollback-specific wud policy.
+
+Remaining gaps concern the production probe’s preconditions, restoration of nonempty malformed keys, and evidence handling across the branch switch. Two additional execution blockers are noted below.
+
+I checked the relevant repository code and reused teardown. I did not refresh external dependency advisories or inspect live NAS state.
+
+## 2. Status of round-1 concerns
+
+| Prior concern | Status | Assessment |
+|---|---|---|
+| **HIGH: Passive checks accepted as REL-08 completion** | **RESOLVED** | The probe is now the default, automatic fallback is forbidden, and passive evidence requires explicit owner acceptance with “not proven” propagated into evidence, SUMMARY and STATE. Keep REL-08 unmet unless the owner explicitly amends the requirement. |
+| **HIGH: Placeholder not guaranteed to remain held** | **PARTIAL** | Enabled Arrs, candidate eligibility, unique naming and cleanup are now specified. However, the precheck queries a different endpoint from the application, assumes one page is sufficient, and does not bind the queried Arr instances to production’s configured URLs. |
+| **HIGH: Incomplete sandbox restoration** | **PARTIAL** | Sonarr enabled, empty fields and mixed states are addressed well. Nonempty keys containing padding or invalid characters still cannot necessarily be restored through the normalizing/validating settings API. |
+| **MEDIUM: Filenames alone insufficient for bundle proof** | **RESOLVED** | Explicit main-bundle pairing, narrowly constrained byte differences and normalized byte equality provide the missing evidence. |
+| **MEDIUM: Merge checks not bound to approved head** | **RESOLVED** | Both merges use `--match-head-commit`, immediate rechecks, PR-derived merge SHAs and parent verification. |
+| **MEDIUM: Evidence edits conflict with branch transition** | **PARTIAL** | Pre-merge evidence is committed, but Task 2 step 6 instructs recording the merge after that commit and before step 7’s checkout. This reintroduces an uncommitted evidence edit across the transition. |
+| **MEDIUM: Package approval not tied to installed artifact** | **RESOLVED** | Approval identifies exact version and integrity; installation requires matching values; signature/provenance failures stop execution. |
+| **MEDIUM: wud can undo rollback** | **RESOLVED** | Rollback explicitly leaves wud stopped pending an owner decision. |
+| **MEDIUM: Dependency exposure wording too absolute** | **RESOLVED** | Docker, default pip and developer-extra installations are distinguished, including independently resolved pip runtime dependencies. |
+| **LOW: Impossible or weak acceptance criteria** | **PARTIAL** | Dry-run output and mandatory shellcheck are corrected. Many automated verifiers still check recorded text rather than outcomes, although the accompanying acceptance criteria are substantially stronger. |
+
+## 3. Remaining and new concerns
+
+### HIGH — 130-06 Task 1, step 7(b): Probe precheck does not inspect the application’s actual queue inputs
+
+The application requests `/api/v3/queue/details` from each **configured target URL**. See [arr_queue.py:149](/Users/julianamacbook/seedsyncarr/src/python/controller/arr_queue.py:149) and [arr_queue.py:167](/Users/julianamacbook/seedsyncarr/src/python/controller/arr_queue.py:167).
+
+The plan instead requests `/api/v3/queue?pageSize=1000` through assumed container host ports. It neither verifies those containers correspond to production’s configured targets nor establishes that all records were returned.
+
+Consequently, “match count 0” may describe the wrong Arr instance or an incomplete record set. The subsequent gate can see a matching completed record that the precheck missed, undermining the promised no-transfer behavior.
+
+**Fix:** Derive targets from production’s configured URLs, verify instance identity, and inspect the same complete queue data used by the application. Use identical basename normalization and fail closed on incomplete or unparseable responses. Describe no-transfer as conditional on those verified preconditions rather than guaranteed by a prior snapshot.
+
+### MEDIUM — 130-03 Task 2 and 130-05 Task 2: Exact restoration still excludes some nonempty starting keys
+
+The settings handler trims Arr keys and rejects invalid values before storing them. See [config.py:354](/Users/julianamacbook/seedsyncarr/src/python/web/handler/config.py:354).
+
+A pre-smoke key containing surrounding whitespace therefore cannot be restored byte-for-byte through that route; a malformed nonempty key may be rejected outright. The revised disk-repair path covers **empty originals only**. Fingerprinting detects this failure but leaves restoration blocked after mutation.
+
+**Fix:** Provide a controlled restoration path for original values the API cannot reproduce, or detect these states before mutation and stop before changing the sandbox.
+
+### MEDIUM — 130-04 Task 2, steps 6–7: Merge recording again dirties the tree before checkout
+
+Step 5 commits pending evidence. Step 6 then says to record the merge SHA and checks. Step 7 immediately switches branches and cherry-picks commits that modify the same evidence file.
+
+If recorded on disk as instructed, these changes can obstruct checkout or cherry-pick.
+
+**Fix:** Keep merge results in scratch storage until after the transition, or commit them before checkout and include that commit in the replay. Assert a clean tracked tree immediately before checkout.
+
+### MEDIUM — NEW — 130-02 Task 2, steps 2 and 5: Whole-tree cleanliness checks conflict with required evidence edits
+
+Task 1 writes the package facts and owner reply into `130-REL-EVIDENCE.md` without committing them. Task 2 then requires `git diff --stat` to list **only** the Angular lockfile, and later requires the tree to be clean apart from that lockfile.
+
+The required evidence edits violate both checks on the normal execution path.
+
+**Fix:** Commit Task 1’s evidence before Task 2, and scope source-change assertions to the relevant manifests while explicitly allowing current evidence edits.
+
+### MEDIUM — NEW — 130-05 Task 1, steps 6–7: “Sonarr only” is not established
+
+The revised plan allows Radarr to be enabled initially, but never disables it before the “Queue check, Sonarr only” step.
+
+An enabled, unreachable original Radarr can block the expected hold; an enabled, reachable Radarr means the test exercises both integrations despite its label.
+
+**Fix:** Capture the existing state, set `RADARR_ENABLED_SET=1` before temporarily disabling Radarr, and verify Sonarr is the sole enabled target before creating the first root. Restore the original flag through the existing teardown.
+
+## 4. Suggestions
+
+- Correct the five execution gaps above before approval.
+- Preserve the revised bundle, merge-binding and wud safeguards.
+- Keep requirement satisfaction separate from deployment completion: an accepted passive deviation must not become a REL-08 PASS.
+- Add focused harness fixture cases for padded and malformed original keys, alongside the empty/mixed-state cases.
+
+## 5. Risk Assessment
+
+**HIGH pending correction of the production probe precheck.** Most round-1 risks are now substantially reduced. After the probe and restoration gaps are closed and the deterministic sequencing blockers corrected, **MEDIUM** is appropriate for this release involving live credentials, production state and irreversible publication.
