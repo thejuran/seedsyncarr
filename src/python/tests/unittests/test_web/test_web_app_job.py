@@ -279,10 +279,13 @@ class TestWebAppJobCleanup(unittest.TestCase):
         self._setup_job()
         self.assertIs(mock_thread_cls.call_args.kwargs.get("daemon"), True)
 
-    def test_join_timeout_constant_below_docker_grace(self):
-        """WEB-02: the join bound is 5 s, below Docker's 10 s stop grace."""
+    def test_join_timeout_constant_pinned_at_5s(self):
+        """WEB-02: pins the join bound at 5 s.
+
+        The value is budgeted against docker's 10 s stop grace (see the
+        constant's comment). Changing it must be a deliberate edit here too.
+        """
         self.assertEqual(WebAppJob._SERVER_THREAD_JOIN_TIMEOUT_IN_SECS, 5.0)
-        self.assertLess(WebAppJob._SERVER_THREAD_JOIN_TIMEOUT_IN_SECS, 10.0)
 
 
 class _BlockingWebApp(bottle.Bottle):
