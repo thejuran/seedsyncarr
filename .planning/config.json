@@ -18,14 +18,14 @@
     "code_review_depth": "standard",
     "ui_review": true,
     "skip_discuss": false,
-    "use_worktrees": true,
+    "use_worktrees": false,
     "auto_advance": true,
     "research_before_questions": true
   },
   "granularity": "standard",
   "resolve_model_ids": true,
   "git": {
-    "branching_strategy": "phase",
+    "branching_strategy": "none",
     "create_tag": false
   },
   "hooks": {

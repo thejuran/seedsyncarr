@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8.1
 milestone_name: Configuration and Shutdown Correctness
-status: ready_to_plan
-stopped_at: Phase 129 complete (2/2, PR #156 CI green, awaiting owner merge) — ready to discuss Phase 130
-last_updated: "2026-11-20T04:48:32Z"
-last_activity: "2026-11-20 -- Phase 129 complete: PR #156 CI all green, verification passed; ready for Phase 130 (release 1.8.1)"
+status: executing
+stopped_at: Completed 130-02-PLAN.md
+last_updated: "2026-11-22T20:05:00.000Z"
+last_activity: "2026-11-22 -- 130-02 complete (minimatch #110 left open by owner decision, UI bundle identical to 1.8.0)"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
-  percent: 60
+  total_plans: 13
+  completed_plans: 9
+  percent: 69
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-18)
 
 **Core value:** Reliable file sync from seedbox to local with automated media library integration
-**Current focus:** Phase 130 — release 1.8.1
+**Current focus:** Phase 130: release-1-8-1
 
 ## Current Position
 
-Phase: 130
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-20
+Phase: 130 (release-1-8-1) — EXECUTING
+Plan: 3 of 6
+Status: Executing Phase 130
+Last activity: 2026-11-22 -- 130-02 complete (minimatch #110 left open by owner decision, UI bundle identical to 1.8.0)
 
 ## Accumulated Context
 
@@ -137,6 +137,9 @@ Decisions are logged in PROJECT.md Key Decisions table.
 - [Phase 128]: Queue checks trim the stored arr key on read; a missing/invalid key makes start_fetch skip after the URL check and the unchanged gate holds as <code>_unavailable
 - [Phase 128]: ArrQueueClient warn-once state resets when a valid key is seen, so a key broken again warns again
 - [Phase 128]: Local coverage 86.47% (base 86.39%) with CI-only modules excluded; Linux CI is the authoritative coverage gate
+- [Phase 130]: 130-01: soupsieve rolled to 4.1.3 via Poetry-only python floor >=3.11.5; [project] requires-python unchanged
+- [Phase 130]: 130-01: paste #146 and pytz #145 left out of 1.8.1 (paste.session unused; pytz test-only)
+- [Phase 130]: Owner declined @isaacs/nonrecursive-glob-match 1.1.0 (no provenance attestation); minimatch alert #110 stays open, dev-only medium
 
 ### Phase 110 Decisions (2026-06-02)
 
@@ -202,9 +205,9 @@ Credential rotations remain operator follow-ups; one-time Done-group cleanup was
 
 ## Session Continuity
 
-Last session: 2026-11-19T23:55:19.164Z
-Stopped at: Phase 129 context gathered
-Next action: Verify Phase 128 (confirm coverage >= 88 on Linux CI).
+Last session: 2026-11-22T20:00:11.508Z
+Stopped at: Completed 130-02-PLAN.md
+Next action: Execute 130-03 on release/1.8.1.
 
 **Prior session (2026-10-28):** Completed 126-06-PLAN.md -- production deployed to :1.8.0@sha256:6e8d453f...4879aa7 by digest, clean recovery confirmed, owner verbatim 'confirmed'. Phase 126 complete; v1.8.0 Reliability milestone (Phases 121-126, 13/13 requirements) fully delivered.
 
@@ -219,7 +222,8 @@ Earlier context: Reliability follows at Phase 121. Owner rotates credentials on 
 
 ## Operator Next Steps
 
-- Plan Phase 129 with `/bm:plan-phase 129` (Codex plan review alongside the plan checker)
+- Execute Phase 130 with `/bm:execute-phase 130` (6 sequential plans on the main working tree; owner checkpoints before package install, before tag, before prod deploy, and final confirmation)
+- Phase 130 runs with temporary config overrides `workflow.use_worktrees=false` and `git.branching_strategy=none` (set 2026-11-20). After Phase 130 closes, restore `workflow.use_worktrees=true` and `git.branching_strategy=phase`.
 
 ## Deferred Items
 

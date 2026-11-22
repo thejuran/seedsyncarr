@@ -1,0 +1,421 @@
+# Phase 130: Release 1.8.1 Evidence
+
+**Phase:** 130-release-1-8-1
+**Branch:** release/1.8.1 (local only, not pushed)
+**Base merge SHA:** 9d89848c68e670a03c97331eca612f932003c933 (PR #156 merge commit, `origin/main` at cut time)
+**Started:** 2026-11-20
+
+Only package names, versions, counts, test names and exception class names are recorded. No secret value appears in this file.
+
+## PR #156 merge (D-01, D-02)
+
+**Starting point (step 1):**
+- Checked-out branch: `gsd/phase-129-web-service-cleanup-isolation`
+- `PLANNING_HEAD`: `b84d1177e359dbacb0bcc1a8182f1bd0bcd8b69f` (passes the test: `git cat-file -e HEAD:.planning/phases/130-release-1-8-1/130-06-PLAN.md` succeeded)
+- Tracked tree clean: `git status --porcelain --untracked-files=no` printed nothing (untracked `.planning/reconcile-ledger.json` and `.planning/reconcile-pending.json` left alone)
+- `PR_HEAD`: `d23f4bdcd86130954939094a06912b3838aabd4b`
+- Nothing was pushed to the PR branch. Remote `gsd/phase-129-web-service-cleanup-isolation` still at `d23f4bdcd86130954939094a06912b3838aabd4b` after the merge.
+
+**D-02 pre-merge checks (step 2, then re-read immediately before the merge at 2026-11-20T22:33:23Z):**
+
+| Check | Observed |
+|-------|----------|
+| state | OPEN |
+| mergeable | MERGEABLE |
+| mergeStateStatus | CLEAN |
+| headRefOid | d23f4bdcd86130954939094a06912b3838aabd4b (= `PR_HEAD`, unchanged between first read and pre-merge re-read) |
+| `gh pr checks 156` | 13 SUCCESS, 5 SKIPPED (publish jobs: Publish Docker Image, Publish Docker Image (:dev), Publish Documentation, Publish GitHub Release, Publish to PyPI; normal on a PR), 0 failing, 0 pending |
+| `git merge-base --is-ancestor PR_HEAD PLANNING_HEAD` | succeeded |
+| `git diff --name-only PR_HEAD PLANNING_HEAD` | 15 paths, all under `.planning/` (18 commits) |
+
+**Merge (step 3):**
+- Command: `gh pr merge 156 --merge --match-head-commit d23f4bdcd86130954939094a06912b3838aabd4b` (merge commit, history kept, no branch deletion)
+- `MERGE_156` (from `gh pr view 156 --json mergeCommit`): `9d89848c68e670a03c97331eca612f932003c933`, mergedAt 2026-11-20T22:33:25Z, state MERGED
+- Subject: `Merge pull request #156 from thejuran/gsd/phase-129-web-service-cleanup-isolation`
+- Parents: `74b7a6e4b0ed11d9c0089e5eab49590085738a3d` (previous main) and `d23f4bdcd86130954939094a06912b3838aabd4b` (second parent = `PR_HEAD`)
+- After `git fetch origin`: `origin/main` = `9d89848c68e670a03c97331eca612f932003c933` = `MERGE_156` (no extra commits)
+- Side effect: the merge to main publishes `:dev` and docs as normal. Production and the sandbox do not use `:dev`.
+
+**Release branch (step 4):**
+- `git branch release/1.8.1 b84d1177e359dbacb0bcc1a8182f1bd0bcd8b69f` then `git rebase --onto origin/main d23f4bdcd86130954939094a06912b3838aabd4b release/1.8.1`: 18 planning commits replayed, no conflict
+- Branch head after replay: `764976d5555f15557f757409c80750b43a0d8176`
+- `git merge-base --is-ancestor origin/main HEAD`: succeeded
+- `git diff --name-only origin/main HEAD`: only `.planning/` paths; per-commit check of all 18 replayed commits found 0 paths outside `.planning/`
+- `git ls-remote --heads origin release/1.8.1`: empty (not pushed)
+
+## Dependabot snapshot (start of 130-01)
+
+Taken after the #156 merge, 2026-11-20, via `gh api repos/thejuran/seedsyncarr/dependabot/alerts` and `gh pr list --author app/dependabot`.
+
+**Open alert count:** 5
+
+**Open alert detail:**
+
+| # | Package | Scope | Severity | First fixed |
+|---|---------|-------|----------|-------------|
+| 108 | soupsieve | runtime | medium | 2.10.0 |
+| 109 | soupsieve | runtime | high | 4.0.0 |
+| 110 | minimatch | development | medium | 11.0.1 |
+| 111 | soupsieve | runtime | medium | 3.0.2 |
+| 112 | soupsieve | runtime | high | 3.0.2 |
+
+**Open Dependabot PR list:**
+
+| PR | Created | Title |
+|----|---------|-------|
+| 154 | 2026-11-18 | chore(deps): bump the npm_and_yarn group across 1 directory with 23 updates |
+| 153 | 2026-11-18 | chore(deps-dev): bump puppeteer from 25.16.0 to 25.17.0 in the root group |
+| 151 | 2026-11-13 | chore(deps): bump soupsieve from 2.9.1 to 4.0 in /src/python in the pip group across 1 directory |
+| 149 | 2026-11-11 | chore(deps-dev): bump mkdocs-material from 9.8.0 to 9.8.1 in /src/python |
+| 147 | 2026-11-04 | chore(deps-dev): bump pytest from 9.1.1 to 9.2.0 in /src/python |
+| 146 | 2026-11-04 | chore(deps): bump paste from 3.10.1 to 3.11.0 in /src/python |
+| 145 | 2026-11-04 | chore(deps): bump pytz from 2026.5 to 2026.6 in /src/python |
+
+**Comparison against the plan's interfaces list:** exact match. 5 open alerts (soupsieve #108, #109, #111, #112; minimatch #110) and 7 open Dependabot PRs (#154, #153, #151, #149, #147, #146, #145). No new runtime/shipped alert and no new Dependabot PR. D-07 owner item not triggered.
+
+## Triage: left out (D-04, D-05 deferrals)
+
+- **paste #146 (3.10.1 -> 3.11.0): left out.** Its "critical" advisory GHSA-vf89-fq68-57cx is in paste's session-cookie feature (`paste.session`). SeedSyncarr does not use that feature. Fresh `grep -rn "paste" src/python --include='*.py'` import lines:
+  - `src/python/web/web_app_job.py:6: from paste import httpserver`
+  - `src/python/web/web_app_job.py:7: from paste.translogger import TransLogger`
+  - `src/python/tests/unittests/test_web/test_web_app_job.py:533: from paste import httpserver as paste_httpserver` (test)
+  - `src/python/tests/unittests/test_web/test_web_app_job.py:591: from paste import httpserver as paste_httpserver` (test)
+  - `grep -rnE "SessionMiddleware|paste\.session"`: no match.
+  Rolling it in would also change the web server library that Phase 129's shutdown fix depends on, with no reachable benefit. There is no Dependabot alert for it.
+- **pytz #145 (2026.5 -> 2026.6): left out.** A timezone data refresh. Fresh grep shows only test files import pytz: `tests/unittests/test_web/test_serialize/test_serialize_model.py:4` and `tests/unittests/test_web/test_serialize/test_serialize_status.py:4`. No runtime module imports it.
+- **Scope of the paste and pytz decision:** it decides what the Docker image contains (the lock keeps Paste 3.10.1 and pytz 2026.5 there). People who install with pip are not pinned by the lock: the package metadata only sets lower bounds (`paste>=3.10.1`, `pytz>=2025.2`), and pip picks the newest allowed version for them, with or without this release.
+- **#154 (Angular npm group), #153 (puppeteer), #149 (mkdocs-material), #147 (pytest): left open** per D-05 and the CONTEXT deferred list (dev/build tooling, no shipped change wanted in 1.8.1).
+- **#151 (soupsieve 2.9.1 -> 4.0):** not merged or cherry-picked; superseded by the soupsieve roll-in below (D-03).
+
+## Roll-in: soupsieve
+
+**Commit:** `fd810805` `chore(130-01): roll in soupsieve 4.x via Poetry Python floor (alerts #108, #109, #111, #112)`
+
+**Preconditions:** `poetry --version` = Poetry (version 2.3.4). `poetry check` baseline captured before the edit (four `[project]`/`[tool.poetry]` duplicate-field warnings only); output after the change is byte-identical.
+
+**Commands (from `src/python`):**
+1. `[tool.poetry.dependencies] python = ">=3.11,<3.13"` changed to `python = ">=3.11.5,<3.13"` (one line). `[project] requires-python = ">=3.11,<3.13"` unchanged. soupsieve not added as a direct dependency. Dependabot PR #151 not cherry-picked.
+2. `poetry update soupsieve --lock` (lock never hand-edited).
+
+**Resolved version:** soupsieve **4.1.3** (was 2.9.1). `python-versions = ">=3.11.5"`, `groups = ["main", "dev"]`, marker `main = "extra == \"dev\""` unchanged.
+
+**Changed-package list (lock diff):** soupsieve 2.9.1 -> 4.1.3 only. Other lock changes: `[metadata] python-versions` (`>=3.11,<3.13` -> `>=3.11.5,<3.13`) and `content-hash`. No hunk inside the `ruff`, `paste` or `pytz` package blocks. No main-group package without the dev marker moved.
+
+**Diff stat:**
+```
+ src/python/poetry.lock    | 12 ++++++------
+ src/python/pyproject.toml |  2 +-
+ 2 files changed, 7 insertions(+), 7 deletions(-)
+```
+
+**Lock header line:** `# This file is automatically @generated by Poetry 2.3.4 and should not be changed by hand.`
+
+**Python floor compatibility (every place Poetry reads the narrowed constraint):**
+
+| Where | Source | `python3 --version` |
+|-------|--------|---------------------|
+| Build stage | Dockerfile line 37 `FROM python:3.11-slim-bullseye` (runs `poetry install`), pulled 2026-11-20 | Python 3.11.13 |
+| Runtime stage | Dockerfile line 79 `FROM python:3.11-slim` (runs `poetry install --only main`), pulled 2026-11-20 | Python 3.11.18 |
+| Published 1.8.0 image | `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f...` | Python 3.11.18 |
+
+All three are at or above 3.11.5.
+
+**Local environment:** `poetry install` (docs/DEVELOPMENT.md) reported `Updating soupsieve (2.9.1 -> 4.1.3)`; `poetry run python -c "import soupsieve; print(soupsieve.__version__)"` printed `4.1.3`.
+
+**Targeted checks (after the change):**
+- Web suites `poetry run pytest tests/unittests/test_web tests/integration/test_web -q -p no:cacheprovider`: `564 passed, 2 warnings, 95 subtests passed in 10.96s` (0 failed)
+- Quick regression run (test_web_app_job, test_arr_queue, test_arr_key_parity, test_arr_api_key): `77 passed, 2 warnings, 82 subtests passed in 4.83s` (0 failed)
+- Whole-tree ruff 0.15.22 (scratch venv outside the repo, `ruff check src/python/` from repo root): `All checks passed!`
+- The 2 warnings are a `PytestConfigWarning` (unknown config option) and the existing `DeprecationWarning` from `webob/compat.py` (`from cgi import parse_header`, webob is a webtest dependency); neither comes from soupsieve.
+
+D-06 stop rule not triggered.
+
+### Shipped-or-not (D-03)
+
+**Standard Docker image** (published 1.8.0, same lock content apart from soupsieve): not installed.
+```
+$ docker run --rm --entrypoint sh ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7 -c 'python3 --version; pip list 2>/dev/null | grep -iE "soupsieve|beautifulsoup|webtest|paste|pytz"; python3 -c "import soupsieve" 2>&1 | tail -1'
+Python 3.11.18
+Paste              3.10.1
+pytz               2026.5
+ModuleNotFoundError: No module named 'soupsieve'
+```
+(No soupsieve, beautifulsoup4 or webtest in the image's package list.)
+
+**Default `pip install seedsyncarr`:** not installed. `[project] dependencies` lists bottle, paste, patool, pexpect, pytz, requests, tblib and cryptography; it does not list soupsieve, beautifulsoup4 or webtest.
+
+**Install with the dev extra (`pip install seedsyncarr[dev]`):** installed. `[project.optional-dependencies] dev` lists `webtest>=3.0.7`, which pulls beautifulsoup4 and through it soupsieve, at whatever version pip resolves at that time, independent of this lock.
+
+**Owner wording:**
+"The 4 soupsieve alerts are in a tool used only for running the test suite. It is not in the Docker image, and a normal pip install does not include it. Someone who installed the optional developer extras (`seedsyncarr[dev]`) to run the tests would have it; that is a development setup, not a running SeedSyncarr. We are updating our own pinned copy so the alerts close."
+
+## Package legitimacy: @isaacs/nonrecursive-glob-match
+
+Recorded 2026-11-20 (Plan 130-02 Task 1). Nothing installed; no file under `src/angular/` changed.
+
+**Exact version the resolver selects.** Scratch copy of `src/angular/package.json` and `src/angular/package-lock.json` outside the repo; npm 11.12.1; `npm update --package-lock-only --ignore-scripts eslint @eslint/config-array @typescript-eslint/parser @typescript-eslint/eslint-plugin @typescript-eslint/typescript-estree typescript-eslint` (no `node_modules` created, no script run). Scratch lock entry `node_modules/@isaacs/nonrecursive-glob-match`:
+
+PKG_VERSION=1.1.0
+PKG_INTEGRITY=sha512-GPm/Dbvk5RLmhRnxXIa7nTpK0xtl4E0wj0MslsuNiJ1FIROU+2+9lgUC/dgF7Ey4QCWhfEsgxilMRMCdHPfDfw==
+
+- `resolved`: https://registry.npmjs.org/@isaacs/nonrecursive-glob-match/-/nonrecursive-glob-match-1.1.0.tgz
+- `dev: true`, license BlueOak-1.0.0
+- Same scratch lock: hoisted `node_modules/minimatch` 10.2.6 -> 11.0.9; karma, karma-coverage and glob keep minimatch 3.1.5. minimatch 11.0.9 declares `"@isaacs/nonrecursive-glob-match": "^1.1.0"` (11.0.1 declared `^1.0.1`), so every fixed minimatch needs this package.
+
+**Registry facts for exactly 1.1.0** (`npm view @isaacs/nonrecursive-glob-match@1.1.0 name version dist.integrity dist.tarball dist.signatures dist.attestations time maintainers repository.url scripts --json`):
+
+| Fact | Value |
+|------|-------|
+| `dist.integrity` | sha512-GPm/Dbvk5RLmhRnxXIa7nTpK0xtl4E0wj0MslsuNiJ1FIROU+2+9lgUC/dgF7Ey4QCWhfEsgxilMRMCdHPfDfw== (equals the scratch lock integrity: YES) |
+| `dist.tarball` | equals the scratch lock `resolved`: YES |
+| Tarball checked by hand | downloaded to an isolated scratch dir (not extracted into the repo, nothing run); computed sha512 equals the integrity above; 36 files: `dist/`, `src/` (TypeScript source), README, LICENSE, package.json; no dependencies |
+| Package created | 2026-10-26T23:53:21Z |
+| This version published | 2026-11-05T21:38:25Z (versions: 0.0.0-stage, 1.0.0, 1.0.1, 1.0.2, 1.0.3, 1.1.0; `latest` = 1.1.0) |
+| Maintainers | `isaacs <i@izs.me>` (only maintainer); published by `_npmUser` isaacs (a manual publish, not a CI trusted-publisher publish) |
+| `repository.url` | **ABSENT** (no `repository` or `homepage` field in the published metadata) |
+| Script names | snap, test, format, prepare, presnap, pretest, typedoc, preversion, postversion, prepublishOnly. No `preinstall`, `install` or `postinstall` (`prepare` does not run when installed from the registry) |
+| Registry signatures (`dist.signatures`) | PRESENT (2 ECDSA signatures, keyid SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U) |
+| Provenance attestation (`dist.attestations`) | **ABSENT** for 1.1.0, and for every other published version (1.0.0 to 1.0.3). The registry attestation endpoint `/-/npm/v1/attestations/@isaacs%2fnonrecursive-glob-match@1.1.0` returns `{"error":"Not found"}` |
+| Comparison: minimatch 11.0.9 | HAS a SLSA v1 provenance attestation, `repository.url` git+ssh://git@github.com/isaacs/minimatch.git, published through GitHub Actions trusted publishing approved by isaacs |
+| Source repo outside the registry | `github.com/isaacs/nonrecursive-glob-match` exists, public, created 2026-03-06, tag `v1.1.0` present. The registry metadata does not link to it and no attestation ties the tarball to it |
+
+**Findings (stated plainly, not a clean result):**
+1. No provenance attestation exists for this package at any version, so the plan's Task 2 legitimacy check ("the new package with a verified attestation from its recorded source repository") cannot pass. Under the plan's rule this is not waivable: an approve would reach Task 2 step 4 and stop there.
+2. No source repository is recorded in the registry metadata.
+3. Integrity matches, registry signatures are present, the publisher is minimatch's own author, and there is no install-time script.
+4. The research note "SLSA provenance attestation present" is wrong for this package; it holds for minimatch itself, not for this helper.
+
+**Recommendation to the owner: decline.** Alert #110 (minimatch, dev-only, medium) stays open for a later release when the helper package carries provenance or has more history.
+
+## Owner decision: new package (Plan 130-02 Task 1, 2026-11-22)
+
+Owner's reply, verbatim, as the owner selected it in the AskUserQuestion dialog (relayed to the executor by the orchestrator):
+
+> Decline (Recommended)
+
+PKG_DECISION=decline
+
+Note: the reply came through the orchestrator relay; the executor did not see the dialog itself. It is acted on because decline is the plan's default and the safe option (nothing is installed, no repository file changes). A relayed approve would not have been acted on this way.
+
+## Roll-in: minimatch (skipped by owner decision)
+
+The owner declined the new helper package `@isaacs/nonrecursive-glob-match` 1.1.0 (`PKG_DECISION=decline`, above), so no lockfile change was made. `src/angular/package.json` and `src/angular/package-lock.json` are unchanged from `origin/main`; no `overrides` were added; #154 was not merged or cherry-picked.
+
+**Alert #110 (minimatch, scope development, medium) stays open.** Reason: every fixed minimatch (>= 11.0.1) requires `@isaacs/nonrecursive-glob-match`, which has no provenance attestation at any version and no source repository in its registry record, so it cannot pass this release's package legitimacy check. minimatch here is used only by the code-style checker (eslint, typescript-eslint) during development. It is not in the Docker image or the built web UI. Revisit when the helper package publishes with provenance.
+
+**Unchanged tree checks (2026-11-22, `src/angular`, after `npm ci` on the unchanged lock):**
+- `npm ls minimatch --all`: `minimatch@10.2.6` (hoisted, used by eslint, `@eslint/config-array`, `@typescript-eslint/typescript-estree`; the vulnerable instance, left by decision) and `minimatch@3.1.5` (karma, karma-coverage, glob; outside the vulnerable range)
+- `npm run lint` (`eslint "src/**/*.ts" --max-warnings 0`, eslint v10.13.0): exit 0
+- `npm audit signatures`: not run. It is required only on the approve path (to check the new package); the lock is unchanged from 1.8.0.
+
+### Bundle identity proof (D-05)
+
+Run 2026-11-22 on `release/1.8.1` at 52d75b72 (version still 1.8.0, before any bump), scratch directory outside the repo:
+
+```
+cid=$(docker create ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7)
+docker cp "$cid":/app/html "$S/img/" && docker rm "$cid"
+(cd src/angular && npm ci && npx ng build --configuration=production --output-path "$S/local")
+(cd "$S/img/html" && find . -type f | sort | xargs shasum -a 256) > "$S/img.sha"
+(cd "$S/local/browser" && find . -type f | sort | xargs shasum -a 256) > "$S/local.sha"
+diff "$S/img.sha" "$S/local.sha" && echo BUNDLE_IDENTICAL
+```
+
+| Check | Result |
+|-------|--------|
+| Files in published 1.8.0 `/app/html` | 21 |
+| Files in local `<out>/browser` | 21 |
+| `diff` exit status | 0 |
+| Repo written by the build | no: `git status --porcelain --untracked-files=no -- src/angular package.json package-lock.json` empty; `git status --porcelain -- src/angular` empty |
+
+BUNDLE_IDENTICAL
+
+D-06 stop rule not triggered (`npm ci`, lint and the bundle comparison all passed).
+
+## Dependency list for the owner (draft, D-07)
+
+**Rolled in:**
+- **soupsieve 2.9.1 -> 4.1.3** (closes 4 alerts: #108, #109, #111, #112). A tool used only for running the test suite. It is not in the Docker image and not part of a normal pip install; it is only present for someone who installed the optional `dev` extra (`seedsyncarr[dev]`) to run the tests.
+
+**Left out, and why:**
+- **minimatch (alert #110, medium, development only): skipped by owner decision.** The fix needs a brand-new helper package that has no signed build-provenance record, so it failed our package check. minimatch is used only by the code-style checker during development; it is not in the Docker image or the web UI. The alert stays open for a later release.
+- **paste #146 (3.10.1 -> 3.11.0):** its critical advisory is in a session-cookie feature SeedSyncarr does not use, and updating would change the web server library the 1.8.1 shutdown fix relies on.
+- **pytz #145 (2026.5 -> 2026.6):** timezone data refresh; only the tests import pytz.
+- Scope of the paste and pytz decision: it fixes what the Docker image contains. pip installs choose their own paste and pytz versions and are not pinned by us.
+- **#154 (Angular npm group), #153 (puppeteer), #149 (mkdocs-material), #147 (pytest):** development and build tooling; deferred so that 1.8.1 changes nothing that ships.
+
+**Alert count:** 5 open before this release; expected after the release merges: 1 (minimatch #110, left open by decision).
+
+No dependency inside the 1.8.1 Docker image or the web UI changed. A normal pip install is unaffected by this update.
+
+## Regression gates (D-08)
+
+Run 2026-11-22 on `release/1.8.1` at `96ca0b1a` (after the 1.8.1 bump), from `src/python`. Each node ID was first confirmed with `--collect-only -q` (ARR: 14 tests collected; WEB: 10 tests collected), then run with `-v`. No test was written or changed (`git diff --name-only origin/main release/1.8.1 -- src/python/tests` prints nothing).
+
+**ARR (Phase 128).** Fail-before evidence: 128-VERIFICATION.md, row "Regression fails before the fix | Phase tests against a scratch copy with pre-phase `arr_queue.py` and `config.py` | 18 failed, 3 passed" (pre-phase commit `2f2b1576`).
+
+| Test | Result |
+|------|--------|
+| `tests/unittests/test_controller/test_arr_queue.py::TestArrQueueFetch::test_padded_in_memory_key_is_sent_normalized` | PASSED |
+| `tests/unittests/test_controller/test_arr_queue.py::TestArrQueueTargets::test_padded_key_and_trimmed_key_share_identity` | PASSED |
+| `tests/integration/test_web/test_handler/test_arr_key_parity.py::TestArrKeyParity::test_boundary_specific_inputs_are_handled_by_each_path` | PASSED |
+| `...::TestArrKeyParity::test_no_key_material_in_parity_logs_or_responses` | PASSED |
+| `...::TestArrKeyParity::test_padded_key_in_live_config_agrees_between_test_connection_and_queue` | PASSED |
+| `...::TestArrKeyParity::test_padded_key_saved_then_same_key_on_all_three_paths` | PASSED |
+| `...::TestArrKeyParity::test_padded_key_saved_then_same_key_on_all_three_paths_radarr` | PASSED |
+| `...::TestArrKeyParity::test_rule_table_verdicts_agree_on_all_three_paths` | PASSED |
+| `tests/unittests/test_web/test_handler/test_config_handler.py::TestConfigHandlerSet::test_set_arr_key_radarr_padded_is_trimmed` | PASSED |
+| `tests/unittests/test_web/test_handler/test_config_handler.py::TestConfigHandlerSet::test_set_arr_key_sonarr_padded_is_trimmed` | PASSED |
+| `tests/unittests/test_common/test_arr_api_key.py` (6 tests: `test_is_valid_does_not_raise_on_non_str`, `test_is_valid_does_not_trim`, `test_normalize_table`, `test_pattern_is_printable_ascii_without_space`, `test_rule_table_pins_nbsp_rows`, `test_valid_after_normalize_table`) | 6 PASSED |
+
+```
+14 passed, 2 warnings, 62 subtests passed in 0.17s
+2 passed, 152 deselected, 1 warning in 0.09s     (-k padded_is_trimmed)
+```
+
+**WEB (Phase 129).** Fail-before evidence: 129-VERIFICATION.md, rows "SC1 fails before the fix | ... 982e4518 | 11 failed, 2 passed" and "129-02 tests fail before the fix | ... 4ad109ec, `-k "not process_exits"` | 7 failed, 14 passed".
+
+| Test (`tests/unittests/test_web/test_web_app_job.py`) | Result |
+|------|--------|
+| `TestWebAppJobCleanup::test_app_stop_failure_still_stops_server_and_joins` | PASSED |
+| `TestWebAppJobCleanup::test_server_stop_failure_still_joins_thread` | PASSED |
+| `TestWebAppJobCleanup::test_join_failure_is_logged_and_cleanup_returns` | PASSED |
+| `TestWebAppJobCleanup::test_all_steps_fail_all_attempted_and_logged` | PASSED |
+| `TestWebAppJobCleanup::test_cleanup_without_setup_does_not_raise` | PASSED |
+| `TestWebAppJobCleanup::test_server_not_created_skips_server_and_join` | PASSED |
+| `TestWebAppJobCleanup::test_thread_not_started_skips_join` | PASSED |
+| `TestMyWSGIRefServer::test_cleanup_returns_within_bound_with_stuck_requests` | PASSED |
+| `TestMyWSGIRefServer::test_process_exits_when_web_server_never_stopped` | PASSED |
+| `TestMyWSGIRefServer::test_real_server_stop_frees_port` | PASSED |
+
+```
+10 passed, 1 warning in 2.30s
+whole file: 27 passed, 1 warning, 4 subtests passed in 2.30s
+```
+
+The whole file has 27 tests (the plan expected 25); all pass. No D-08 gap.
+
+## Release gate
+
+Hygiene: only command output, counts, names and conclusions are recorded. No secret value appears here.
+
+### Full host suite
+
+```
+$ cd src/python && poetry run pytest tests/unittests tests/integration -q -p no:cacheprovider \
+    --ignore=tests/unittests/test_ssh/test_sshcp.py \
+    --ignore=tests/unittests/test_controller/test_scan/test_scanner_process.py \
+    --ignore=tests/unittests/test_system/test_scanner.py \
+    --ignore=tests/unittests/test_controller/test_extract/test_extract_process.py \
+    --ignore=tests/integration/test_lftp
+2066 passed, 62 skipped, 2 warnings, 220 subtests passed in 59.12s
+```
+
+0 failed. The five ignored modules are the macOS host exclusions; Linux PR CI runs them and is the authority for the full suite and the coverage floor of 88.
+
+### Ruff 0.15.22 (whole tree)
+
+```
+$ <scratch>/ruff/bin/ruff --version
+ruff 0.15.22
+$ <scratch>/ruff/bin/ruff check src/python/
+All checks passed!
+```
+
+### Angular
+
+```
+$ make run-tests-angular
+Chrome Headless 156.0.0.0 (Linux 0.0.0): Executed 657 of 657 SUCCESS
+TOTAL: 657 SUCCESS
+Statements 84.62% | Branches 70.49% | Functions 81.56% | Lines 85.44%
+(make exit 0)
+$ cd src/angular && npm run lint
+> eslint "src/**/*.ts" --max-warnings 0
+(exit 0)
+```
+
+### Packaging
+
+`build`/`twine` in a scratch venv (CI installs them the same way; the Poetry venv has neither):
+
+```
+$ cd src/python && rm -rf dist && <scratch>/pkg/bin/python -m build -q
+Successfully built seedsyncarr-1.8.1.tar.gz and seedsyncarr-1.8.1-py3-none-any.whl
+$ <scratch>/pkg/bin/twine check dist/*
+Checking dist/seedsyncarr-1.8.1-py3-none-any.whl: PASSED with warnings   (long_description missing; same as 1.8.0)
+Checking dist/seedsyncarr-1.8.1.tar.gz: PASSED with warnings
+$ python3 ../../scripts/verify-python-package.py dist
+PASS seedsyncarr-1.8.1-py3-none-any.whl members=86
+PASS seedsyncarr-1.8.1.tar.gz members=85
+TOTAL members=171
+PACKAGE_OK
+```
+
+### Release metadata
+
+```
+$ npm run test:release-metadata
+pass 21, fail 0
+$ node scripts/verify-release-metadata.mjs 1.8.1
+Release metadata matches 1.8.1:
+- CHANGELOG.md has release section [1.8.1]
+- release-notes.md links to CHANGELOG.md through the {{VERSION}} tag placeholder
+- package.json version is 1.8.1
+- src/angular/package.json version is 1.8.1
+- src/angular/package-lock.json version is 1.8.1
+- src/angular/package-lock.json packages[""].version is 1.8.1
+$ grep -n '"version"' package-lock.json | head -2
+3:  "version": "1.8.1",
+8:      "version": "1.8.1",
+$ grep -n '^version' src/python/pyproject.toml
+7:version = "1.8.1"
+47:version = "1.8.1"
+```
+
+D-15 re-check before writing the rollback wording: `git diff --stat v1.8.0 HEAD -- src/python/common/config.py src/python/common/persist.py src/python/controller/controller_persist.py src/python/controller/auto_queue.py src/python/seedsyncarr.py` printed nothing.
+
+### Bundle after version bump (D-05)
+
+Run 2026-11-22 at `96ca0b1a`. OLD = `/app/html` from `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7` (`docker create` + `docker cp`); NEW = `npm ci` then `npx ng build --configuration=production --output-path <scratch>/local`, directory `browser`. Repo unchanged by the build (`git status --porcelain -- src/angular package.json package-lock.json` empty).
+
+| Rule | Result |
+|------|--------|
+| (1) manifests | old 21 files, new 21 files |
+| (2) classify | SAME 19; CHANGED `index.html`; OLD_ONLY `main-PNOY3NS3.js`; NEW_ONLY `main-IUJV4FYG.js` |
+| (3) pairing | pass: CHANGED is exactly `index.html`, one OLD_ONLY and one NEW_ONLY `main-*.js` |
+| (4) main pair | pass: both 592784 bytes; 1 differing byte, offset 810 (1-based), old `0` (octal 060) new `1` (octal 061), preceded by `1.8.` in both; normalized NEW_MAIN vs OLD_MAIN `cmp` exit 0 |
+| (5) index pair | **FAIL**: after replacing `main-IUJV4FYG.js` with `main-PNOY3NS3.js` in a copy of NEW `index.html`, `cmp` against OLD `index.html` exits 1 (`differ: char 176, line 3`; 43 differing bytes) |
+| (6) marker | not printed (rule 5 failed) |
+
+**Rule 5 failure, files involved:** NEW `index.html` vs OLD `index.html`. The 43 differing bytes are all inside one value of the `Content-Security-Policy` meta tag: the first `'sha256-...'` source is `YfYMCWXRDftdQRERu89sZc+aoYHCHgh2z5zmg8GktJc=` in 1.8.0 and `4GfT9xUl0t4kuYbns0ZgR+hF//73QnZXVhi2jZeexK4=` in the new build. The second hash (`LMY6wYoF...`) is unchanged.
+
+**Diagnosis (recorded, not used to pass the rule):** `index.html` has two inline scripts, and the CSP lists the sha256 of each. Recomputing those hashes from the files gives exactly the values in each file's CSP. The first inline script is the loader that names the main bundle file, so its hash changes whenever the main file name changes. After mapping the file name back, the new inline script is byte-identical to the old one. With both the file name and that derived hash mapped back, the new `index.html` is byte-identical to 1.8.0's. The fixed rule does not allow the second substitution, so the check is recorded as FAILED and the plan stops for the owner (no push, no PR).
+
+#### Rule 5 exception (plan-rule deviation, decided by the orchestrator)
+
+Decision (2026-11-22): the orchestrator, which owns technical calls under the owner's standing division of labor, chose to treat rule 5 as met with one narrowly scoped exception, based on the evidence above. This is a deviation from the plan's fixed rule and is listed for the owner at the Plan 04 checkpoint.
+
+The only additional difference permitted in `index.html` is the CSP `sha256-` source of the first inline script (the loader that names the main bundle file). The check, run as a script over both files:
+
+1. Each file has exactly two inline scripts, and each file's CSP hashes equal the sha256 recomputed from its own inline scripts.
+2. The first new inline script equals the old one once `main-IUJV4FYG.js` is mapped back to `main-PNOY3NS3.js`. The second inline script is identical.
+3. Exactly one CSP hash differs, and it is the hash of that loader script (old `YfYMCWXRDftdQRERu89sZc+aoYHCHgh2z5zmg8GktJc=`, new `4GfT9xUl0t4kuYbns0ZgR+hF//73QnZXVhi2jZeexK4=`).
+4. With the main file name and that derived hash mapped back, the new `index.html` is byte-identical to 1.8.0's.
+
+```
+RULE5_EXCEPTION ok old_hash=YfYMCWXRDftdQRERu89sZc+aoYHCHgh2z5zmg8GktJc= new_hash=4GfT9xUl0t4kuYbns0ZgR+hF//73QnZXVhi2jZeexK4= cmp_exit=0
+```
+
+Any other difference would still fail. With rules 1 to 4 passing as written and rule 5 met under this exception:
+
+BUNDLE_VERSION_ONLY same=19 main=main-PNOY3NS3.js:main-IUJV4FYG.js bytes_changed=1
+
+## Dependabot re-check before push (D-07)
+
+2026-11-22, `gh api 'repos/thejuran/seedsyncarr/dependabot/alerts?state=open&per_page=100'` and `gh pr list --author app/dependabot --state open`:
+
+- Open alerts: #108, #109, #111, #112 (soupsieve, runtime scope in `src/python/poetry.lock`), #110 (minimatch, development, `src/angular/package-lock.json`). 5 alerts.
+- Open Dependabot PRs: #154, #153, #151, #149, #147, #146, #145. 7 PRs.
+
+Identical to the Plan 01 snapshot. No new alert or PR, so there is no new owner item. The soupsieve alerts close only after the release merges to `main`.
