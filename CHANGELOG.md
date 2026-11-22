@@ -4,6 +4,27 @@ All notable changes to SeedSyncarr are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.8.1] - 2026-11-22
+
+A patch release with two fixes. Upgrading from 1.8.0 needs
+no configuration changes.
+
+### Fixed
+
+- Sonarr and Radarr API keys saved with stray spaces or tabs around them, for
+  example from copy-paste, now work for saving, Test Connection and queue
+  checks alike, and a missing or malformed key holds downloads safely instead
+  of being sent. (ARR-01, ARR-02, ARR-03)
+- Stopping or restarting SeedSyncarr no longer hangs or leaves the web server
+  half-stopped, and one part of the web service failing to stop no longer
+  prevents the rest from stopping. (WEB-01, WEB-02)
+
+### Changed
+
+- Development-only dependency updates for test and lint tooling; nothing
+  inside the Docker image, the web UI or the PyPI package changed because of
+  them.
+
 ## [1.8.0] - 2026-10-28
 
 A reliability release. It closes a second credential-exposure issue alongside
