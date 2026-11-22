@@ -186,3 +186,13 @@ PKG_INTEGRITY=sha512-GPm/Dbvk5RLmhRnxXIa7nTpK0xtl4E0wj0MslsuNiJ1FIROU+2+9lgUC/dg
 4. The research note "SLSA provenance attestation present" is wrong for this package; it holds for minimatch itself, not for this helper.
 
 **Recommendation to the owner: decline.** Alert #110 (minimatch, dev-only, medium) stays open for a later release when the helper package carries provenance or has more history.
+
+## Owner decision: new package (Plan 130-02 Task 1, 2026-11-22)
+
+Owner's reply, verbatim, as the owner selected it in the AskUserQuestion dialog (relayed to the executor by the orchestrator):
+
+> Decline (Recommended)
+
+PKG_DECISION=decline
+
+Note: the reply came through the orchestrator relay; the executor did not see the dialog itself. It is acted on because decline is the plan's default and the safe option (nothing is installed, no repository file changes). A relayed approve would not have been acted on this way.
