@@ -247,3 +247,156 @@ D-06 stop rule not triggered (`npm ci`, lint and the bundle comparison all passe
 **Alert count:** 5 open before this release; expected after the release merges: 1 (minimatch #110, left open by decision).
 
 No dependency inside the 1.8.1 Docker image or the web UI changed. A normal pip install is unaffected by this update.
+
+## Regression gates (D-08)
+
+Run 2026-11-22 on `release/1.8.1` at `96ca0b1a` (after the 1.8.1 bump), from `src/python`. Each node ID was first confirmed with `--collect-only -q` (ARR: 14 tests collected; WEB: 10 tests collected), then run with `-v`. No test was written or changed (`git diff --name-only origin/main release/1.8.1 -- src/python/tests` prints nothing).
+
+**ARR (Phase 128).** Fail-before evidence: 128-VERIFICATION.md, row "Regression fails before the fix | Phase tests against a scratch copy with pre-phase `arr_queue.py` and `config.py` | 18 failed, 3 passed" (pre-phase commit `2f2b1576`).
+
+| Test | Result |
+|------|--------|
+| `tests/unittests/test_controller/test_arr_queue.py::TestArrQueueFetch::test_padded_in_memory_key_is_sent_normalized` | PASSED |
+| `tests/unittests/test_controller/test_arr_queue.py::TestArrQueueTargets::test_padded_key_and_trimmed_key_share_identity` | PASSED |
+| `tests/integration/test_web/test_handler/test_arr_key_parity.py::TestArrKeyParity::test_boundary_specific_inputs_are_handled_by_each_path` | PASSED |
+| `...::TestArrKeyParity::test_no_key_material_in_parity_logs_or_responses` | PASSED |
+| `...::TestArrKeyParity::test_padded_key_in_live_config_agrees_between_test_connection_and_queue` | PASSED |
+| `...::TestArrKeyParity::test_padded_key_saved_then_same_key_on_all_three_paths` | PASSED |
+| `...::TestArrKeyParity::test_padded_key_saved_then_same_key_on_all_three_paths_radarr` | PASSED |
+| `...::TestArrKeyParity::test_rule_table_verdicts_agree_on_all_three_paths` | PASSED |
+| `tests/unittests/test_web/test_handler/test_config_handler.py::TestConfigHandlerSet::test_set_arr_key_radarr_padded_is_trimmed` | PASSED |
+| `tests/unittests/test_web/test_handler/test_config_handler.py::TestConfigHandlerSet::test_set_arr_key_sonarr_padded_is_trimmed` | PASSED |
+| `tests/unittests/test_common/test_arr_api_key.py` (6 tests: `test_is_valid_does_not_raise_on_non_str`, `test_is_valid_does_not_trim`, `test_normalize_table`, `test_pattern_is_printable_ascii_without_space`, `test_rule_table_pins_nbsp_rows`, `test_valid_after_normalize_table`) | 6 PASSED |
+
+```
+14 passed, 2 warnings, 62 subtests passed in 0.17s
+2 passed, 152 deselected, 1 warning in 0.09s     (-k padded_is_trimmed)
+```
+
+**WEB (Phase 129).** Fail-before evidence: 129-VERIFICATION.md, rows "SC1 fails before the fix | ... 982e4518 | 11 failed, 2 passed" and "129-02 tests fail before the fix | ... 4ad109ec, `-k "not process_exits"` | 7 failed, 14 passed".
+
+| Test (`tests/unittests/test_web/test_web_app_job.py`) | Result |
+|------|--------|
+| `TestWebAppJobCleanup::test_app_stop_failure_still_stops_server_and_joins` | PASSED |
+| `TestWebAppJobCleanup::test_server_stop_failure_still_joins_thread` | PASSED |
+| `TestWebAppJobCleanup::test_join_failure_is_logged_and_cleanup_returns` | PASSED |
+| `TestWebAppJobCleanup::test_all_steps_fail_all_attempted_and_logged` | PASSED |
+| `TestWebAppJobCleanup::test_cleanup_without_setup_does_not_raise` | PASSED |
+| `TestWebAppJobCleanup::test_server_not_created_skips_server_and_join` | PASSED |
+| `TestWebAppJobCleanup::test_thread_not_started_skips_join` | PASSED |
+| `TestMyWSGIRefServer::test_cleanup_returns_within_bound_with_stuck_requests` | PASSED |
+| `TestMyWSGIRefServer::test_process_exits_when_web_server_never_stopped` | PASSED |
+| `TestMyWSGIRefServer::test_real_server_stop_frees_port` | PASSED |
+
+```
+10 passed, 1 warning in 2.30s
+whole file: 27 passed, 1 warning, 4 subtests passed in 2.30s
+```
+
+The whole file has 27 tests (the plan expected 25); all pass. No D-08 gap.
+
+## Release gate
+
+Hygiene: only command output, counts, names and conclusions are recorded. No secret value appears here.
+
+### Full host suite
+
+```
+$ cd src/python && poetry run pytest tests/unittests tests/integration -q -p no:cacheprovider \
+    --ignore=tests/unittests/test_ssh/test_sshcp.py \
+    --ignore=tests/unittests/test_controller/test_scan/test_scanner_process.py \
+    --ignore=tests/unittests/test_system/test_scanner.py \
+    --ignore=tests/unittests/test_controller/test_extract/test_extract_process.py \
+    --ignore=tests/integration/test_lftp
+2066 passed, 62 skipped, 2 warnings, 220 subtests passed in 59.12s
+```
+
+0 failed. The five ignored modules are the macOS host exclusions; Linux PR CI runs them and is the authority for the full suite and the coverage floor of 88.
+
+### Ruff 0.15.22 (whole tree)
+
+```
+$ <scratch>/ruff/bin/ruff --version
+ruff 0.15.22
+$ <scratch>/ruff/bin/ruff check src/python/
+All checks passed!
+```
+
+### Angular
+
+```
+$ make run-tests-angular
+Chrome Headless 156.0.0.0 (Linux 0.0.0): Executed 657 of 657 SUCCESS
+TOTAL: 657 SUCCESS
+Statements 84.62% | Branches 70.49% | Functions 81.56% | Lines 85.44%
+(make exit 0)
+$ cd src/angular && npm run lint
+> eslint "src/**/*.ts" --max-warnings 0
+(exit 0)
+```
+
+### Packaging
+
+`build`/`twine` in a scratch venv (CI installs them the same way; the Poetry venv has neither):
+
+```
+$ cd src/python && rm -rf dist && <scratch>/pkg/bin/python -m build -q
+Successfully built seedsyncarr-1.8.1.tar.gz and seedsyncarr-1.8.1-py3-none-any.whl
+$ <scratch>/pkg/bin/twine check dist/*
+Checking dist/seedsyncarr-1.8.1-py3-none-any.whl: PASSED with warnings   (long_description missing; same as 1.8.0)
+Checking dist/seedsyncarr-1.8.1.tar.gz: PASSED with warnings
+$ python3 ../../scripts/verify-python-package.py dist
+PASS seedsyncarr-1.8.1-py3-none-any.whl members=86
+PASS seedsyncarr-1.8.1.tar.gz members=85
+TOTAL members=171
+PACKAGE_OK
+```
+
+### Release metadata
+
+```
+$ npm run test:release-metadata
+pass 21, fail 0
+$ node scripts/verify-release-metadata.mjs 1.8.1
+Release metadata matches 1.8.1:
+- CHANGELOG.md has release section [1.8.1]
+- release-notes.md links to CHANGELOG.md through the {{VERSION}} tag placeholder
+- package.json version is 1.8.1
+- src/angular/package.json version is 1.8.1
+- src/angular/package-lock.json version is 1.8.1
+- src/angular/package-lock.json packages[""].version is 1.8.1
+$ grep -n '"version"' package-lock.json | head -2
+3:  "version": "1.8.1",
+8:      "version": "1.8.1",
+$ grep -n '^version' src/python/pyproject.toml
+7:version = "1.8.1"
+47:version = "1.8.1"
+```
+
+D-15 re-check before writing the rollback wording: `git diff --stat v1.8.0 HEAD -- src/python/common/config.py src/python/common/persist.py src/python/controller/controller_persist.py src/python/controller/auto_queue.py src/python/seedsyncarr.py` printed nothing.
+
+### Bundle after version bump (D-05)
+
+Run 2026-11-22 at `96ca0b1a`. OLD = `/app/html` from `ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7` (`docker create` + `docker cp`); NEW = `npm ci` then `npx ng build --configuration=production --output-path <scratch>/local`, directory `browser`. Repo unchanged by the build (`git status --porcelain -- src/angular package.json package-lock.json` empty).
+
+| Rule | Result |
+|------|--------|
+| (1) manifests | old 21 files, new 21 files |
+| (2) classify | SAME 19; CHANGED `index.html`; OLD_ONLY `main-PNOY3NS3.js`; NEW_ONLY `main-IUJV4FYG.js` |
+| (3) pairing | pass: CHANGED is exactly `index.html`, one OLD_ONLY and one NEW_ONLY `main-*.js` |
+| (4) main pair | pass: both 592784 bytes; 1 differing byte, offset 810 (1-based), old `0` (octal 060) new `1` (octal 061), preceded by `1.8.` in both; normalized NEW_MAIN vs OLD_MAIN `cmp` exit 0 |
+| (5) index pair | **FAIL**: after replacing `main-IUJV4FYG.js` with `main-PNOY3NS3.js` in a copy of NEW `index.html`, `cmp` against OLD `index.html` exits 1 (`differ: char 176, line 3`; 43 differing bytes) |
+| (6) marker | not printed (rule 5 failed) |
+
+**Rule 5 failure, files involved:** NEW `index.html` vs OLD `index.html`. The 43 differing bytes are all inside one value of the `Content-Security-Policy` meta tag: the first `'sha256-...'` source is `YfYMCWXRDftdQRERu89sZc+aoYHCHgh2z5zmg8GktJc=` in 1.8.0 and `4GfT9xUl0t4kuYbns0ZgR+hF//73QnZXVhi2jZeexK4=` in the new build. The second hash (`LMY6wYoF...`) is unchanged.
+
+**Diagnosis (recorded, not used to pass the rule):** `index.html` has two inline scripts, and the CSP lists the sha256 of each. Recomputing those hashes from the files gives exactly the values in each file's CSP. The first inline script is the loader that names the main bundle file, so its hash changes whenever the main file name changes. After mapping the file name back, the new inline script is byte-identical to the old one. With both the file name and that derived hash mapped back, the new `index.html` is byte-identical to 1.8.0's. The fixed rule does not allow the second substitution, so the check is recorded as FAILED and the plan stops for the owner (no push, no PR).
+
+## Dependabot re-check before push (D-07)
+
+2026-11-22, `gh api 'repos/thejuran/seedsyncarr/dependabot/alerts?state=open&per_page=100'` and `gh pr list --author app/dependabot --state open`:
+
+- Open alerts: #108, #109, #111, #112 (soupsieve, runtime scope in `src/python/poetry.lock`), #110 (minimatch, development, `src/angular/package-lock.json`). 5 alerts.
+- Open Dependabot PRs: #154, #153, #151, #149, #147, #146, #145. 7 PRs.
+
+Identical to the Plan 01 snapshot. No new alert or PR, so there is no new owner item. The soupsieve alerts close only after the release merges to `main`.
