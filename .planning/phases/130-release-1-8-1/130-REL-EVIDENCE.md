@@ -196,3 +196,54 @@ Owner's reply, verbatim, as the owner selected it in the AskUserQuestion dialog 
 PKG_DECISION=decline
 
 Note: the reply came through the orchestrator relay; the executor did not see the dialog itself. It is acted on because decline is the plan's default and the safe option (nothing is installed, no repository file changes). A relayed approve would not have been acted on this way.
+
+## Roll-in: minimatch (skipped by owner decision)
+
+The owner declined the new helper package `@isaacs/nonrecursive-glob-match` 1.1.0 (`PKG_DECISION=decline`, above), so no lockfile change was made. `src/angular/package.json` and `src/angular/package-lock.json` are unchanged from `origin/main`; no `overrides` were added; #154 was not merged or cherry-picked.
+
+**Alert #110 (minimatch, scope development, medium) stays open.** Reason: every fixed minimatch (>= 11.0.1) requires `@isaacs/nonrecursive-glob-match`, which has no provenance attestation at any version and no source repository in its registry record, so it cannot pass this release's package legitimacy check. minimatch here is used only by the code-style checker (eslint, typescript-eslint) during development. It is not in the Docker image or the built web UI. Revisit when the helper package publishes with provenance.
+
+**Unchanged tree checks (2026-11-22, `src/angular`, after `npm ci` on the unchanged lock):**
+- `npm ls minimatch --all`: `minimatch@10.2.6` (hoisted, used by eslint, `@eslint/config-array`, `@typescript-eslint/typescript-estree`; the vulnerable instance, left by decision) and `minimatch@3.1.5` (karma, karma-coverage, glob; outside the vulnerable range)
+- `npm run lint` (`eslint "src/**/*.ts" --max-warnings 0`, eslint v10.13.0): exit 0
+- `npm audit signatures`: not run. It is required only on the approve path (to check the new package); the lock is unchanged from 1.8.0.
+
+### Bundle identity proof (D-05)
+
+Run 2026-11-22 on `release/1.8.1` at 52d75b72 (version still 1.8.0, before any bump), scratch directory outside the repo:
+
+```
+cid=$(docker create ghcr.io/thejuran/seedsyncarr:1.8.0@sha256:6e8d453f15865d7d9f68f8d8d42e8daccbe49f6fe888f3b1e3c1fe4fe4879aa7)
+docker cp "$cid":/app/html "$S/img/" && docker rm "$cid"
+(cd src/angular && npm ci && npx ng build --configuration=production --output-path "$S/local")
+(cd "$S/img/html" && find . -type f | sort | xargs shasum -a 256) > "$S/img.sha"
+(cd "$S/local/browser" && find . -type f | sort | xargs shasum -a 256) > "$S/local.sha"
+diff "$S/img.sha" "$S/local.sha" && echo BUNDLE_IDENTICAL
+```
+
+| Check | Result |
+|-------|--------|
+| Files in published 1.8.0 `/app/html` | 21 |
+| Files in local `<out>/browser` | 21 |
+| `diff` exit status | 0 |
+| Repo written by the build | no: `git status --porcelain --untracked-files=no -- src/angular package.json package-lock.json` empty; `git status --porcelain -- src/angular` empty |
+
+BUNDLE_IDENTICAL
+
+D-06 stop rule not triggered (`npm ci`, lint and the bundle comparison all passed).
+
+## Dependency list for the owner (draft, D-07)
+
+**Rolled in:**
+- **soupsieve 2.9.1 -> 4.1.3** (closes 4 alerts: #108, #109, #111, #112). A tool used only for running the test suite. It is not in the Docker image and not part of a normal pip install; it is only present for someone who installed the optional `dev` extra (`seedsyncarr[dev]`) to run the tests.
+
+**Left out, and why:**
+- **minimatch (alert #110, medium, development only): skipped by owner decision.** The fix needs a brand-new helper package that has no signed build-provenance record, so it failed our package check. minimatch is used only by the code-style checker during development; it is not in the Docker image or the web UI. The alert stays open for a later release.
+- **paste #146 (3.10.1 -> 3.11.0):** its critical advisory is in a session-cookie feature SeedSyncarr does not use, and updating would change the web server library the 1.8.1 shutdown fix relies on.
+- **pytz #145 (2026.5 -> 2026.6):** timezone data refresh; only the tests import pytz.
+- Scope of the paste and pytz decision: it fixes what the Docker image contains. pip installs choose their own paste and pytz versions and are not pinned by us.
+- **#154 (Angular npm group), #153 (puppeteer), #149 (mkdocs-material), #147 (pytest):** development and build tooling; deferred so that 1.8.1 changes nothing that ships.
+
+**Alert count:** 5 open before this release; expected after the release merges: 1 (minimatch #110, left open by decision).
+
+No dependency inside the 1.8.1 Docker image or the web UI changed. A normal pip install is unaffected by this update.
